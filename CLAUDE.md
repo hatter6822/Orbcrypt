@@ -52,7 +52,7 @@ Orbcrypt/
   Crypto/
     Scheme.lean                       AOE scheme syntax (Setup, Enc, Dec)
     Security.lean                     IND-CPA game, adversary structure, advantage definition
-    OIA.lean                          Orbit Indistinguishability Assumption (stated as axiom)
+    OIA.lean                          Orbit Indistinguishability Assumption (Prop definition)
   Theorems/
     Correctness.lean                  Dec(Enc(m)) = m
     InvariantAttack.lean              Separating invariant implies Adv = 1/2 (complete break)
@@ -112,7 +112,7 @@ formalization/
   phases/
     PHASE_1_PROJECT_SCAFFOLDING.md    Week 1: lakefile.lean, directory structure, root import, clean build
     PHASE_2_GROUP_ACTION_FOUNDATIONS.md  Weeks 2-4: orbit/stabilizer API, canonical forms, invariants
-    PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md  Weeks 5-6: AOE scheme, IND-CPA game, OIA axiom
+    PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md  Weeks 5-6: AOE scheme, IND-CPA game, OIA assumption
     PHASE_4_CORE_THEOREMS.md          Weeks 7-10: correctness, invariant attack, OIA implies CPA
     PHASE_5_CONCRETE_CONSTRUCTION.md  Weeks 11-14: S_n on bitstrings, HGOE instance, Hamming defense
     PHASE_6_POLISH_AND_DOCUMENTATION.md  Weeks 15-16: sorry audit, docstrings, Mathlib update, README
@@ -192,7 +192,7 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
 
 ## Key conventions
 
-- **No axiom/sorry**: forbidden in the final formalization proof surface. The only permitted axiom is `OIA` (the Orbit Indistinguishability Assumption), which is a computational conjecture analogous to "factoring is hard" in RSA. It must be clearly documented with its mathematical justification. Zero `sorry` at release.
+- **No axiom/sorry**: forbidden in the final formalization proof surface. Zero custom axioms — the OIA (Orbit Indistinguishability Assumption) is a `Prop`-valued definition, NOT a Lean `axiom`. Theorems carry it as an explicit hypothesis (e.g., `theorem oia_implies_1cpa (hOIA : OIA scheme) : IsSecure scheme`). A universal `axiom` would introduce inconsistency by asserting OIA for trivial group actions where it is provably false. Zero `sorry` at release.
 - **autoImplicit := false**: the lakefile.lean enforces this project-wide. All universe and type variables must be declared explicitly. This prevents subtle bugs from Lean auto-introducing variables.
 - **Maximal Mathlib reuse**: never redefine what Mathlib already provides. Wrap and re-export where convenient, but the source of truth is Mathlib's `MulAction` framework. Import only the specific Mathlib modules needed — never `import Mathlib`.
 - **Naming conventions**:
@@ -297,7 +297,7 @@ Canonical ownership: `DEVELOPMENT.md` owns the full scheme specification. `forma
 | `formalization/FORMALIZATION_PLAN.md` | ~17KB | Master Lean 4 roadmap | Architecture, module dependencies, Mathlib integration, timeline, conventions |
 | `formalization/phases/PHASE_1_*.md` | ~8KB | Scaffolding guide | lakefile.lean setup, directory structure, .gitignore, clean build verification |
 | `formalization/phases/PHASE_2_*.md` | ~20KB | Group action guide | Orbit API wrappers, canonical forms, invariant functions (11 work units) |
-| `formalization/phases/PHASE_3_*.md` | ~16KB | Crypto definitions guide | AOE scheme, IND-CPA game, OIA axiom (8 work units) |
+| `formalization/phases/PHASE_3_*.md` | ~16KB | Crypto definitions guide | AOE scheme, IND-CPA game, OIA assumption (8 work units) |
 | `formalization/phases/PHASE_4_*.md` | ~40KB | Core theorems guide | Correctness proof, invariant attack proof, OIA->CPA reduction (16 work units, 4 tracks) |
 | `formalization/phases/PHASE_5_*.md` | ~26KB | Construction guide | S_n bitstring action, HGOE instance, Hamming defense (12 work units) |
 | `formalization/phases/PHASE_6_*.md` | ~24KB | Polish guide | sorry audit by module, docstrings, CI, Mathlib pin, final audit (13 work units) |
@@ -350,7 +350,7 @@ Phase 2 (Group Action Foundations) has been completed:
 Phase 3 (Cryptographic Definitions) has been completed:
 - `Crypto/Scheme.lean` — `OrbitEncScheme` structure with `reps`, `reps_distinct`, `canonForm`; `encrypt` function (`g • reps m`); `decrypt` function (canonical form lookup via `Exists.choose`, noncomputable)
 - `Crypto/Security.lean` — `Adversary` structure with `choose` and `guess`; `hasAdvantage` predicate (∃ distinguishing group elements); `IsSecure` predicate (no adversary has advantage)
-- `Crypto/OIA.lean` — `OIA` axiom (strong deterministic formulation: `∀ f m₀ m₁ g₀ g₁, f(g₀ • reps m₀) = f(g₁ • reps m₁)`); comprehensive documentation covering axiom justification, probabilistic relationship, weak-version counterexample, dependency audit, and hardness foundations
+- `Crypto/OIA.lean` — `OIA` as `Prop`-valued definition (strong deterministic formulation: `∀ f m₀ m₁ g₀ g₁, f(g₀ • reps m₀) = f(g₁ • reps m₁)`); NOT an `axiom` (avoids inconsistency from trivial instantiation); comprehensive documentation covering soundness rationale, probabilistic relationship, weak-version counterexample, dependency audit, and hardness foundations
 - All 8 work units (3.1–3.8) implemented with zero `sorry`, zero warnings
 - `lake build` succeeds with exit code 0 (902 jobs, zero errors)
 

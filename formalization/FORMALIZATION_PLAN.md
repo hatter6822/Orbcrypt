@@ -55,7 +55,7 @@ is hard" in RSA. We state it as an axiom and prove that security follows from it
 | G-invariant functions | Definition, properties, separating condition | `GroupAction/Invariant.lean` |
 | AOE scheme syntax | `OrbitEncScheme` structure with `encrypt` and `decrypt` | `Crypto/Scheme.lean` |
 | IND-CPA security game | Adversary structure, advantage definition | `Crypto/Security.lean` |
-| OIA axiom | Formal statement as Lean axiom | `Crypto/OIA.lean` |
+| OIA assumption | Formal statement as `Prop` definition | `Crypto/OIA.lean` |
 | Correctness theorem | `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` |
 | Invariant attack theorem | Separating invariant implies complete break | `Theorems/InvariantAttack.lean` |
 | OIA implies IND-1-CPA | Conditional security reduction | `Theorems/OIAImpliesCPA.lean` |
@@ -176,7 +176,7 @@ These modules define the abstract encryption scheme and security notions.
 |--------|----------------|---------|
 | `Scheme.lean` | `OrbitEncScheme`, `encrypt`, `decrypt` | Formalizes AOE syntax from DEVELOPMENT.md §4.1 |
 | `Security.lean` | `Adversary`, `hasAdvantage`, `IsSecure` | Deterministic abstraction of IND-CPA from §4.3 |
-| `OIA.lean` | `OIA` (axiom) | Formalizes §5.2 as a Lean axiom |
+| `OIA.lean` | `OIA` (`Prop` definition) | Formalizes §5.2 as a `Prop`-valued definition (not `axiom`) |
 
 ### Layer 3: Theorems (`Theorems/`)
 
@@ -336,7 +336,7 @@ smaller units, not added.
 | Maximum useful parallelism | 3 contributors |
 | Lean source files produced | 10 |
 | Key theorems proved | 3 (+ supporting lemmas) |
-| Axioms introduced | 1 (OIA) |
+| Custom axioms introduced | 0 (OIA is a `Prop` definition, not an `axiom`) |
 
 ### Effort Distribution
 

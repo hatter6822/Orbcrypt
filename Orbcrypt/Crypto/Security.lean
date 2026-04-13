@@ -85,10 +85,9 @@ game.
 -/
 def hasAdvantage [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) (A : Adversary X M) : Prop :=
-  let (m₀, m₁) := A.choose scheme.reps
   ∃ g₀ g₁ : G,
-    A.guess scheme.reps (g₀ • scheme.reps m₀) ≠
-    A.guess scheme.reps (g₁ • scheme.reps m₁)
+    A.guess scheme.reps (g₀ • scheme.reps (A.choose scheme.reps).1) ≠
+    A.guess scheme.reps (g₁ • scheme.reps (A.choose scheme.reps).2)
 
 -- ============================================================================
 -- Work Unit 3.6: IND-1-CPA Security Definition

@@ -9,19 +9,26 @@ This is the sole computational assumption in the formalization, analogous to
 
 ## Main declarations
 
-* `Orbcrypt.OIA` — the strong deterministic OIA, stated as an axiom
+* `Orbcrypt.OIA` — the strong deterministic OIA, as a `Prop`-valued definition
 
 ## The Orbit Indistinguishability Assumption
 
-### Why an axiom
+### Why a `Prop` definition (not an `axiom`)
 
-The OIA is a computational hardness assumption. It asserts that no efficient
-algorithm can distinguish between elements drawn from different orbits of the
-secret group action. Proving such a statement would require resolving deep
-open problems in complexity theory (akin to showing P ≠ NP). Following
-standard practice in formal cryptography, we state it as an axiom to cleanly
-separate the algebraic proof structure from the computational hardness
-assumption.
+The OIA is a computational hardness assumption about a SPECIFIC group action
+and scheme. It asserts that no efficient algorithm can distinguish between
+elements drawn from different orbits of the secret group action.
+
+A Lean `axiom` is universally quantified — it would assert OIA for ALL group
+actions, including trivial ones where the claim is provably false (e.g.,
+`Unit` acting on `Bool` gives `true = false`). This introduces logical
+inconsistency, making every proposition provable.
+
+Instead, we define OIA as a `Prop` that theorems carry as an explicit
+hypothesis. This matches DEVELOPMENT.md §8.1 ("If the OIA holds for the
+setup family Π") and is standard practice in formal cryptography. The
+result is STRONGER assurance: `#print axioms oia_implies_1cpa` shows only
+Lean's standard axioms, confirming zero custom axioms.
 
 ### Strong deterministic formulation
 
@@ -75,13 +82,16 @@ of whether OIA is true or false.
 
 ### Auditing
 
-Users can verify which theorems depend on this axiom by running:
+Users can verify axiom dependencies by running:
 
   `#print axioms oia_implies_1cpa`
 
-This will show the OIA axiom (and Lean's standard axioms: `propext`,
-`Quot.sound`, `Classical.choice`) and nothing else, confirming that
-the security theorem's only non-standard assumption is OIA.
+This will show ONLY Lean's standard axioms (`propext`, `Quot.sound`,
+`Classical.choice`) — no custom axioms. The OIA appears as a hypothesis
+in the theorem's type signature, not as an axiom in the logical foundation.
+This provides stronger assurance than an axiom-based approach: the theorem
+is provably valid in the standard Lean axiom system, with OIA as an
+explicit assumption that can be independently evaluated.
 
 ### Hardness foundations
 
@@ -112,26 +122,42 @@ namespace Orbcrypt
 -- ============================================================================
 
 /--
-The Orbit Indistinguishability Assumption (OIA).
+The Orbit Indistinguishability Assumption (OIA) for a specific scheme.
 
-This axiom asserts that no Boolean function can distinguish elements drawn
+The OIA asserts that no Boolean function can distinguish elements drawn
 from two different message orbits. Specifically: for any `f : X → Bool`,
 any two messages `m₀ m₁`, and any group elements `g₀ g₁ ∈ G`,
 `f(g₀ • reps(m₀)) = f(g₁ • reps(m₁))`.
 
 This is the strong deterministic reformulation of the probabilistic OIA
-(DEVELOPMENT.md §5.2). It directly implies IND-1-CPA security
-(proved in `Theorems/OIAImpliesCPA.lean`).
+(DEVELOPMENT.md §5.2). When assumed for a specific scheme, it directly
+implies IND-1-CPA security (proved in `Theorems/OIAImpliesCPA.lean`).
+
+**Why a `Prop`-valued definition, not an `axiom`:** A Lean `axiom` is
+universally quantified over all types, instances, and schemes. An OIA
+axiom would assert indistinguishability for ALL group actions — including
+trivial ones (e.g., `Unit` acting on `Bool`) where the claim is provably
+false (`true ≠ false`). This would introduce logical inconsistency,
+making every proposition provable and defeating formal verification.
+
+Instead, OIA is defined as a `Prop` that specific theorems carry as a
+hypothesis: `theorem oia_implies_1cpa (hOIA : OIA scheme) : IsSecure scheme`.
+This matches DEVELOPMENT.md §8.1, which states *"If the OIA holds for the
+setup family Π"* — a conditional statement about a specific scheme.
+
+The result is STRONGER assurance: `#print axioms oia_implies_1cpa` shows
+only Lean's standard axioms (`propext`, `Quot.sound`, `Classical.choice`),
+confirming the theorem introduces no custom axioms beyond the hypothesis.
 -/
 -- Justification: The OIA is a computational conjecture grounded in the
 -- hardness of Graph Isomorphism (GI-OIA, §5.3) and Code Equivalence
--- (CE-OIA, §5.4). It is NOT a mathematical theorem. We state it as an
--- axiom to separate the algebraic proof structure from the computational
--- hardness assumption, following standard practice in formal cryptography.
-axiom OIA {G : Type*} {X : Type*} {M : Type*}
+-- (CE-OIA, §5.4). It is NOT a mathematical theorem. We state it as a
+-- Prop-valued definition so that theorems carry it as an explicit hypothesis,
+-- following standard practice in formal cryptography (cf. CryptHOL, EasyCrypt).
+def OIA {G : Type*} {X : Type*} {M : Type*}
     [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (f : X → Bool) (m₀ m₁ : M) (g₀ g₁ : G) :
+    (scheme : OrbitEncScheme G X M) : Prop :=
+  ∀ (f : X → Bool) (m₀ m₁ : M) (g₀ g₁ : G),
     f (g₀ • scheme.reps m₀) = f (g₁ • scheme.reps m₁)
 
 -- ============================================================================
@@ -140,11 +166,11 @@ axiom OIA {G : Type*} {X : Type*} {M : Type*}
 -- See the module docstring (/-! ... -/) at the top of this file for the
 -- comprehensive OIA discussion covering:
 --
--- 1. Why an axiom (computational hardness assumption, not a theorem)
+-- 1. Why a Prop definition, not an axiom (avoids inconsistency)
 -- 2. Relationship to probabilistic OIA (zero-advantage limit)
 -- 3. Why the weak per-element version is insufficient (with counterexample)
 -- 4. What depends on it (only OIAImpliesCPA.lean)
--- 5. How to audit (via #print axioms)
+-- 5. How to audit (via #print axioms — shows zero custom axioms)
 -- 6. Hardness foundations (GI and Code Equivalence reductions)
 
 end Orbcrypt

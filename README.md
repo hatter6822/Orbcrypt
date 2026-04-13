@@ -23,8 +23,8 @@ IND-1-CPA security under the Orbit Indistinguishability Assumption (OIA).
 - `GroupAction/Invariant.lean` — `IsGInvariant`, `IsSeparating`, orbit constancy, canonical invariance
 - `Crypto/Scheme.lean` — `OrbitEncScheme` structure, `encrypt`, `decrypt`
 - `Crypto/Security.lean` — `Adversary`, `hasAdvantage`, `IsSecure`
-- `Crypto/OIA.lean` — Orbit Indistinguishability Assumption (axiom)
-- All proofs complete — zero `sorry`, zero warnings
+- `Crypto/OIA.lean` — Orbit Indistinguishability Assumption (`Prop` definition, zero custom axioms)
+- All proofs complete — zero `sorry`, zero warnings, zero custom axioms
 - `lake build` succeeds (902 jobs, zero errors)
 
 **Next:** Phase 4 — Core Theorems (correctness, invariant attack, OIA ⟹ IND-1-CPA)
