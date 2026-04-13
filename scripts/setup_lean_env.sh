@@ -68,6 +68,52 @@ TOOLCHAIN_TAG="$(echo "${TOOLCHAIN}" | cut -d: -f2)"
 # elan normalises "org/repo:tag" -> "org-repo-tag" for directory names.
 TOOLCHAIN_DIR_NAME="$(echo "${TOOLCHAIN}" | sed 's|/|-|g; s|:|-|g')"
 
+# -------- Mathlib precompiled cache download --------
+# `lake exe cache get` downloads precompiled oleans for Mathlib so that
+# `lake build` does not have to compile Mathlib from source (~60+ minutes).
+# Network issues are common in CI and sandboxed environments, so we retry
+# with exponential backoff (2s, 4s, 8s, 16s — up to 4 retries).
+#
+# A marker file (.lake/.mathlib_cache_ok) is created after a successful
+# download to avoid running the (slow) cache check on every session start.
+# Delete the marker to force a re-download.
+MATHLIB_CACHE_MARKER="${ROOT_DIR}/.lake/.mathlib_cache_ok"
+
+mathlib_cache_present() {
+  [ -f "${MATHLIB_CACHE_MARKER}" ]
+}
+
+download_mathlib_cache() {
+  if mathlib_cache_present; then
+    log_elapsed "Mathlib cache already present (marker found)"
+    return 0
+  fi
+
+  local max_retries=4
+  local attempt=1
+  local backoff=2
+
+  while [ "${attempt}" -le "${max_retries}" ]; do
+    log_elapsed "downloading Mathlib cache (attempt ${attempt}/${max_retries})"
+    if (cd "${ROOT_DIR}" && lake exe cache get 2>&1); then
+      log_elapsed "Mathlib cache downloaded successfully"
+      mkdir -p "$(dirname "${MATHLIB_CACHE_MARKER}")"
+      touch "${MATHLIB_CACHE_MARKER}"
+      return 0
+    fi
+    if [ "${attempt}" -lt "${max_retries}" ]; then
+      log_elapsed "cache download failed; retrying in ${backoff}s..."
+      sleep "${backoff}"
+      backoff=$((backoff * 2))
+    fi
+    attempt=$((attempt + 1))
+  done
+
+  log_elapsed "warning: Mathlib cache download failed after ${max_retries} attempts"
+  log_elapsed "warning: builds will compile Mathlib from source (slow but functional)"
+  return 1
+}
+
 # -------- Fast-path: skip setup if everything is already ready --------
 fast_path_ready() {
   if [ -f "${ELAN_ENV_FILE}" ]; then
@@ -83,6 +129,7 @@ fast_path_ready() {
 
 if fast_path_ready; then
   log_elapsed "Lean environment already configured (fast-path)"
+  download_mathlib_cache || true
   if [ "${BUILD_REQUESTED}" -eq 1 ]; then
     log_elapsed "running lake build"
     (cd "${ROOT_DIR}" && lake build)
@@ -430,6 +477,8 @@ fi
 
 log_elapsed "Lean environment is ready"
 log_elapsed "lake version: $(lake --version)"
+
+download_mathlib_cache || true
 
 if [ "${QUIET}" -eq 0 ]; then
   echo "[setup] next steps:"
