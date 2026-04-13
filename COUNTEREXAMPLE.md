@@ -1,4 +1,4 @@
-The following is an example of counterexample that would be unsafe but seem good.
+The following is a *counterexample* that would be unsafe but seems good/secure.
 
 
 # 1. Setup: A Seemingly Good POE Instance
