@@ -88,11 +88,10 @@ theorem hasAdvantage_iff [Group G] [MulAction G X] [DecidableEq X]
 
 /-- OIA implies no adversary has advantage.
 
-    **Proof strategy:**
-    1. Unfold `hasAdvantage` to expose the `∃ g₀ g₁, ... ≠ ...`.
-    2. Push the negation inward: `¬ ∃ g₀ g₁, ... ≠ ...` becomes
-       `∀ g₀ g₁, ... = ...`.
-    3. Apply `oia_specialized` to close each universal goal. -/
+    **Proof strategy:** Assume `hasAdvantage scheme A` for contradiction.
+    Destructure to get `g₀, g₁` and the inequality `guess(...) ≠ guess(...)`.
+    Apply `oia_specialized` to derive the equality, contradicting the
+    inequality directly. -/
 theorem no_advantage_from_oia [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
     (hOIA : OIA scheme) (A : Adversary X M) :

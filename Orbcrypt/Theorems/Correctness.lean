@@ -131,16 +131,7 @@ theorem correctness [Group G] [MulAction G X] [DecidableEq X]
   rw [dif_pos h_exists]
   -- Goal: some h_exists.choose = some m
   congr 1
-  -- Step 4: Show the chosen witness equals m
-  -- h_exists.choose_spec : canon(g • reps m) = canon(reps h_exists.choose)
-  -- By decrypt_unique, any such witness must be m
-  have h_spec := h_exists.choose_spec
-  have h_canon : scheme.canonForm.canon (scheme.reps h_exists.choose) =
-      scheme.canonForm.canon (scheme.reps m) := by
-    rw [← h_spec]
-    exact canonical_isGInvariant scheme.canonForm g (scheme.reps m)
-  have h_orbits := canon_eq_implies_orbit_eq scheme.canonForm _ _ h_canon
-  by_contra h_ne
-  exact absurd h_orbits (scheme.reps_distinct _ _ h_ne)
+  -- Step 4: Show the chosen witness equals m via decrypt_unique (4.3–4.4)
+  exact decrypt_unique scheme g m h_exists.choose h_exists.choose_spec
 
 end Orbcrypt
