@@ -376,7 +376,9 @@ Phase 1: Scaffolding     █████  4.5h  (3%)
 
 ### Documentation
 
-- Every `.lean` file begins with a `/-- ... -/` module docstring.
+- Every `.lean` file begins with a `/-! ... -/` module docstring (not `/-- ... -/`).
+  Module docstrings use `/-!` to avoid parse errors in files without declarations.
+  Declaration docstrings (`/-- ... -/`) attach to the next declaration only.
 - Every public definition and theorem has a `/-- ... -/` docstring.
 - Axioms include a `-- Justification: ...` comment block explaining the
   mathematical and cryptographic reasoning.
