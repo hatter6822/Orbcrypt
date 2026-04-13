@@ -616,3 +616,524 @@ theorem invariant_attack [Group G] [MulAction G X] [DecidableEq X]
 **Definition of Done:**
 - `invariant_attack` compiles without `sorry`.
 - `#print axioms invariant_attack` shows only standard Lean axioms (no `OIA`).
+
+---
+
+### Track C: OIA ⟹ CPA (4.10 → 4.11 → 4.12 → 4.13)
+
+Track C proves Headline Result #3: OIA implies IND-1-CPA security. The
+original 4.8 (advantage elimination, 4h) is split into an unfolding helper
+(4.11) and the core contradiction (4.12), isolating the `hasAdvantage`
+destructuring from the OIA application logic.
+
+---
+
+#### 4.10 — OIA Specialization to Adversary
+
+**Effort:** 2h | **Module:** `Theorems/OIAImpliesCPA.lean` | **Deps:** 3.7, 3.4
+
+```lean
+/-- Specialize the OIA axiom to the adversary's guess function. -/
+theorem oia_specialized [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M)
+    (m₀ m₁ : M) (g₀ : G) :
+    ∃ g₁ : G,
+      A.guess scheme.reps (g₀ • scheme.reps m₀) =
+      A.guess scheme.reps (g₁ • scheme.reps m₁) := by
+  -- Apply OIA with f := fun x => A.guess scheme.reps x
+  exact OIA scheme (fun x => A.guess scheme.reps x) m₀ m₁ g₀
+```
+
+**Strategy:** Instantiate the `OIA` axiom with `f := A.guess scheme.reps`.
+The OIA gives `∃ g', f(g₀ • reps m₀) = f(g' • reps m₁)`, which is exactly
+what we need since `f x = A.guess scheme.reps x`.
+
+**Common pitfalls:**
+
+- The OIA axiom expects `f : X → Bool`. Verify that `A.guess scheme.reps`
+  has type `X → Bool` (it should, since `guess : (M → X) → X → Bool`
+  and partial application gives `X → Bool`).
+- If Lean complains about universe issues, add explicit type annotations:
+  `(fun x : X => A.guess scheme.reps x)`.
+
+**Definition of Done:**
+- `oia_specialized` compiles without `sorry`.
+- `#print axioms oia_specialized` shows the `OIA` axiom.
+
+---
+
+#### 4.11 — hasAdvantage Unfolding Lemma
+
+**Effort:** 2h | **Module:** `Theorems/OIAImpliesCPA.lean` | **Deps:** 3.5
+
+*New unit. The `let (m₀, m₁) := A.choose reps` pattern inside `hasAdvantage`
+is notoriously awkward in Lean 4 proofs. This unit isolates that problem.*
+
+```lean
+/-- Unfold hasAdvantage past the let-binding for easier reasoning.
+    This avoids repeated pattern-match gymnastics in 4.12. -/
+theorem hasAdvantage_iff [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    hasAdvantage scheme A ↔
+      ∃ g₀ g₁ : G,
+        A.guess scheme.reps (g₀ • scheme.reps (A.choose scheme.reps).1) ≠
+        A.guess scheme.reps (g₁ • scheme.reps (A.choose scheme.reps).2) := by
+  unfold hasAdvantage
+  -- The let-binding (m₀, m₁) := A.choose reps destructures to .1 and .2
+  constructor
+  · intro ⟨g₀, g₁, h⟩; exact ⟨g₀, g₁, h⟩
+  · intro ⟨g₀, g₁, h⟩; exact ⟨g₀, g₁, h⟩
+```
+
+**Strategy:**
+
+1. Unfold `hasAdvantage` to expose the `let` destructuring.
+2. Show that `let (m₀, m₁) := pair` is definitionally equal to using
+   `pair.1` and `pair.2`.
+3. The proof may be `rfl` or `Iff.rfl` if Lean reduces the `let` binding
+   automatically. If not, a manual `constructor` with identity functions works.
+
+**Why this unit exists:**
+
+The `let (m₀, m₁) := A.choose scheme.reps` pattern creates a local
+destructuring that does not always reduce in tactic mode. Proofs that
+try to work with `hasAdvantage` directly often stall on this binding.
+By proving an `iff` that replaces it with `.1` / `.2`, subsequent proofs
+(especially 4.12) become purely algebraic.
+
+**Alternative approach:** If the `iff` is trivial by definitional equality,
+this unit reduces to a one-liner. If not, consider refactoring `hasAdvantage`
+itself (back in 3.5) to use `.1` / `.2` directly:
+
+```lean
+def hasAdvantage ... : Prop :=
+  let pair := A.choose scheme.reps
+  ∃ g₀ g₁ : G,
+    A.guess scheme.reps (g₀ • scheme.reps pair.1) ≠
+    A.guess scheme.reps (g₁ • scheme.reps pair.2)
+```
+
+**Definition of Done:**
+- `hasAdvantage_iff` compiles (even if the proof is `Iff.rfl`).
+- The right-hand side uses only `.1` / `.2`, no `let` destructuring.
+
+---
+
+#### 4.12 — Advantage Elimination
+
+**Effort:** 2.5h | **Module:** `Theorems/OIAImpliesCPA.lean` | **Deps:** 4.10, 4.11
+
+```lean
+/-- OIA implies no adversary has advantage. -/
+theorem no_advantage_from_oia [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    ¬ hasAdvantage scheme A := by
+  rw [hasAdvantage_iff]
+  -- Goal: ¬ ∃ g₀ g₁, guess(g₀ • reps m₀) ≠ guess(g₁ • reps m₁)
+  intro ⟨g₀, g₁, hNeq⟩
+  -- By OIA (4.10): ∃ g₁', guess(g₀ • reps m₀) = guess(g₁' • reps m₁)
+  obtain ⟨g₁', hEq⟩ := oia_specialized scheme A _ _ g₀
+  -- But we also need: guess(g₁' • reps m₁) = guess(g₁ • reps m₁)?
+  -- No — we need a second OIA application or a different argument.
+  -- See strategy below.
+  sorry
+```
+
+**Strategy (detailed):**
+
+The core argument is by contradiction:
+
+1. Assume `hasAdvantage`: ∃ g₀ g₁ such that
+   `guess(g₀ • reps m₀) ≠ guess(g₁ • reps m₁)`.
+2. Apply OIA with `f := guess ∘ reps` and `g := g₀`:
+   get `g₁'` with `guess(g₀ • reps m₀) = guess(g₁' • reps m₁)`.
+3. Now `guess(g₁' • reps m₁) ≠ guess(g₁ • reps m₁)` (by transitivity with step 1).
+4. But `guess(· • reps m₁)` is just `f' : G → Bool` applied to `g₁'` vs `g₁`.
+   We need OIA to also say that *within* the same orbit, the guess is
+   consistent — but OIA is a *cross-orbit* statement.
+
+**Revised strategy:** The proof works differently depending on the exact OIA
+formulation. With the OIA from unit 3.7:
+
+> For any `f : X → Bool`, `m₀ m₁ : M`, `g : G`,
+> ∃ g' : G, `f(g • reps m₀) = f(g' • reps m₁)`.
+
+The argument is:
+
+1. Negate `hasAdvantage`: show `∀ g₀ g₁, guess(g₀ • reps m₀) = guess(g₁ • reps m₁)`.
+2. Fix arbitrary `g₀, g₁`.
+3. By OIA with `g := g₀`: ∃ g₁' with `guess(g₀ • reps m₀) = guess(g₁' • reps m₁)`.
+4. By OIA with `g := g₁` and swapped messages (m₁, m₀):
+   ∃ g₀' with `guess(g₁ • reps m₁) = guess(g₀' • reps m₀)`.
+5. By OIA with `g := g₀'`: ∃ g₁'' with `guess(g₀' • reps m₀) = guess(g₁'' • reps m₁)`.
+6. Since `guess : X → Bool` and we're in `Bool`, chain:
+   `guess(g₀ • reps m₀) = guess(g₁' • reps m₁)` and
+   `guess(g₁ • reps m₁) = guess(g₀' • reps m₀) = guess(g₁'' • reps m₁)`.
+
+**Simpler approach (recommended):** Since `Bool` has only two values, argue:
+
+1. From OIA: for every `g₀`, ∃ `g₁'` matching on orbit 1.
+   So `guess(g₀ • reps m₀)` is *achievable* on orbit 1.
+2. From OIA (swapped): for every `g₁`, ∃ `g₀'` matching on orbit 0.
+   So `guess(g₁ • reps m₁)` is *achievable* on orbit 0.
+3. Combining: `guess(g₀ • reps m₀) = guess(g₁' • reps m₁)` and
+   `guess(g₁ • reps m₁) = guess(g₀' • reps m₀)`.
+4. Apply OIA again to `g₀'` to get `g₁''`:
+   `guess(g₀' • reps m₀) = guess(g₁'' • reps m₁)`.
+5. Chain: `guess(g₁ • reps m₁) = guess(g₀' • reps m₀) = guess(g₁'' • reps m₁)`.
+   Then: `guess(g₀ • reps m₀) = guess(g₁' • reps m₁)`.
+   And: `guess(g₁ • reps m₁) = guess(g₁'' • reps m₁)`.
+
+Actually, the simplest proof is direct:
+
+```lean
+theorem no_advantage_from_oia ... : ¬ hasAdvantage scheme A := by
+  rw [hasAdvantage_iff]
+  push_neg
+  intro g₀ g₁
+  -- Need: guess(g₀ • reps m₀) = guess(g₁ • reps m₁)
+  -- OIA gives g₁' with guess(g₀ • reps m₀) = guess(g₁' • reps m₁)
+  obtain ⟨g₁', h₁⟩ := oia_specialized scheme A _ _ g₀
+  -- OIA (swapped) gives g₀' with guess(g₁ • reps m₁) = guess(g₀' • reps m₀)
+  obtain ⟨g₀', h₂⟩ := OIA scheme (fun x => A.guess scheme.reps x)
+    (A.choose scheme.reps).2 (A.choose scheme.reps).1 g₁
+  -- Now: guess(g₀ • m₀) = guess(g₁' • m₁) [h₁]
+  --      guess(g₁ • m₁) = guess(g₀' • m₀) [h₂]
+  -- OIA on g₀' gives g₁'' with guess(g₀' • m₀) = guess(g₁'' • m₁) [h₃]
+  obtain ⟨g₁'', h₃⟩ := oia_specialized scheme A _ _ g₀'
+  -- Chain: guess(g₁ • m₁) = guess(g₀' • m₀) = guess(g₁'' • m₁)
+  -- And:   guess(g₀ • m₀) = guess(g₁' • m₁)
+  -- Since Bool has two values, both sides equal the same Bool value.
+  -- Actually: we have h₁ and h₂.symm.trans h₃
+  -- So guess(g₀ • m₀) [=h₁=] guess(g₁' • m₁)
+  --    guess(g₁ • m₁) [=h₂=] guess(g₀' • m₀) [=h₃=] guess(g₁'' • m₁)
+  -- This shows the guess on orbit 1 is consistent.
+  -- But we need guess(g₀ • m₀) = guess(g₁ • m₁) specifically.
+  -- Use h₁: guess(g₀ • m₀) = guess(g₁' • m₁)
+  -- Use h₂: guess(g₁ • m₁) = guess(g₀' • m₀)
+  -- Use h₃: guess(g₀' • m₀) = guess(g₁'' • m₁)
+  -- Chain h₂ and h₃: guess(g₁ • m₁) = guess(g₁'' • m₁)
+  -- But this doesn't directly give us what we need...
+  -- KEY INSIGHT: Apply OIA once more — this time to equate g₁' and g₁.
+  -- Actually, the simplest proof: use OIA to get the direct match.
+  -- h₁ gives guess(g₀ • m₀) = guess(g₁' • m₁)
+  -- h₂ gives guess(g₁ • m₁) = guess(g₀' • m₀)
+  -- h₃ gives guess(g₀' • m₀) = guess(g₁'' • m₁)
+  -- So guess(g₁ • m₁) = guess(g₁'' • m₁) — both on orbit 1, same output.
+  -- And guess(g₀ • m₀) = guess(g₁' • m₁) — cross orbit, same output.
+  -- We need: guess(g₁' • m₁) = guess(g₁ • m₁)?
+  -- This is NOT guaranteed by OIA (OIA is cross-orbit).
+  -- RESOLUTION: The OIA as stated is per-element, so we actually need:
+  --   for ALL g₁, the value guess(g₁ • reps m₁) is the same.
+  -- This follows if OIA is applied in both directions.
+  sorry
+```
+
+**⚠️ Important design note:** The proof of 4.12 depends critically on the
+exact formulation of OIA. With the per-element OIA from 3.7, the cleanest
+proof proceeds as follows:
+
+```lean
+  -- For any g₀: ∃ g₁', guess(g₀•m₀) = guess(g₁'•m₁)     [OIA forward]
+  -- For any g₁: ∃ g₀', guess(g₁•m₁) = guess(g₀'•m₀)     [OIA backward]
+  -- Chain: guess(g₀•m₀) = guess(g₁'•m₁)                   [h₁]
+  --        guess(g₁•m₁) = guess(g₀'•m₀)                   [h₂]
+  --                      = guess(g₁''•m₁)                  [OIA on g₀']
+  -- So guess maps orbit 0 into {guess(g₁'•m₁)} and orbit 1 into {guess(g₁''•m₁)}.
+  -- If both sets are singletons of the same value, we're done.
+  -- Use h₁ and the OIA on g₀' to conclude.
+  rw [h₁]
+  rw [h₂, h₃]  -- may need .symm adjustments
+```
+
+If the proof becomes unwieldy, consider strengthening the OIA axiom in 3.7
+to a "uniform" version that directly implies constancy on orbits. See the
+risk analysis section for details.
+
+**Common pitfalls:**
+
+- `push_neg` on `¬ ∃ g₀ g₁, ... ≠ ...` should give `∀ g₀ g₁, ... = ...`.
+  If `push_neg` fails, use `simp only [not_exists, ne_eq, not_not]`.
+- The swapped OIA application needs the messages in reverse order. Make sure
+  `(A.choose scheme.reps).2` and `.1` are correct.
+- This proof may require 3 or 4 applications of OIA. Each introduces an
+  existential witness. Keep variable names clear (`g₁'`, `g₀'`, `g₁''`).
+
+**Definition of Done:**
+- `no_advantage_from_oia` compiles without `sorry`.
+- `#print axioms no_advantage_from_oia` shows the `OIA` axiom.
+
+---
+
+#### 4.13 — Security Theorem Assembly (Headline Result #3)
+
+**Effort:** 1.5h | **Module:** `Theorems/OIAImpliesCPA.lean` | **Deps:** 4.12
+
+```lean
+/--
+**Security Theorem.** The OIA implies IND-1-CPA security.
+Formalizes DEVELOPMENT.md §8.1.
+-/
+theorem oia_implies_1cpa [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) :
+    IsSecure scheme := by
+  -- IsSecure = ∀ A, ¬ hasAdvantage scheme A
+  intro A
+  exact no_advantage_from_oia scheme A
+```
+
+**Strategy:** Unfold `IsSecure`, introduce adversary `A`, delegate to
+`no_advantage_from_oia` (4.12). This should be 2–3 lines.
+
+**Definition of Done:**
+- `oia_implies_1cpa` compiles without `sorry`.
+- `#print axioms oia_implies_1cpa` shows `OIA` plus standard axioms.
+- The proof is ≤ 5 lines.
+
+
+---
+
+### Track D: Contrapositive (Optional) (4.14 → 4.15)
+
+Track D is a stretch goal. It proves the converse direction: if some adversary
+has advantage, then a distinguishing function exists. Together with Track B,
+this establishes a precise equivalence between insecurity and separating
+invariants.
+
+---
+
+#### 4.14 — Distinguisher Extraction
+
+**Effort:** 3h | **Module:** `Theorems/OIAImpliesCPA.lean` | **Deps:** 3.5
+
+```lean
+/-- Extract a distinguishing function from an adversary with advantage.
+    The function is simply the adversary's guess, partially applied. -/
+theorem adversary_yields_distinguisher [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (A : Adversary X M) (hAdv : hasAdvantage scheme A) :
+    ∃ (f : X → Bool) (m₀ m₁ : M) (g₀ g₁ : G),
+      f (g₀ • scheme.reps m₀) ≠ f (g₁ • scheme.reps m₁) := by
+  rw [hasAdvantage_iff] at hAdv
+  obtain ⟨g₀, g₁, hNeq⟩ := hAdv
+  exact ⟨fun x => A.guess scheme.reps x,
+         (A.choose scheme.reps).1, (A.choose scheme.reps).2,
+         g₀, g₁, hNeq⟩
+```
+
+**Strategy:** The distinguishing function is just `A.guess scheme.reps`.
+The proof extracts the witness group elements from `hasAdvantage` and
+repackages them with the guess function.
+
+**Common pitfalls:**
+- The `hasAdvantage_iff` lemma (4.11) is needed to get past the `let` binding.
+- Make sure the existential witnesses match the order in the goal.
+
+**Definition of Done:**
+- `adversary_yields_distinguisher` compiles without `sorry`.
+
+---
+
+#### 4.15 — Contrapositive Theorem
+
+**Effort:** 3h | **Module:** `Theorems/OIAImpliesCPA.lean` | **Deps:** 4.14, 4.9
+
+```lean
+/--
+**Contrapositive.** If the scheme is insecure, a separating function exists.
+This establishes (together with the invariant attack theorem) a precise
+equivalence: insecurity ↔ existence of a separating invariant, modulo
+the distinction between G-invariant functions and arbitrary distinguishers.
+
+Note: this theorem shows that *some* function distinguishes orbits, but
+does not prove that function is G-invariant. The full equivalence would
+require showing that any distinguisher can be "averaged" into a G-invariant
+one, which requires probabilistic reasoning beyond our current scope.
+-/
+theorem insecure_implies_separating [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (A : Adversary X M) (hAdv : hasAdvantage scheme A) :
+    ∃ (f : X → Bool) (m₀ m₁ : M),
+      ∃ g₀ g₁ : G, f (g₀ • scheme.reps m₀) ≠ f (g₁ • scheme.reps m₁) := by
+  obtain ⟨f, m₀, m₁, g₀, g₁, h⟩ := adversary_yields_distinguisher scheme A hAdv
+  exact ⟨f, m₀, m₁, g₀, g₁, h⟩
+```
+
+**Strategy:** Direct application of 4.14. The repackaging is trivial.
+
+**Note:** This is marked optional. If time is tight, skip Track D entirely.
+The three headline theorems (4.5, 4.9, 4.13) are the primary deliverables.
+
+**Definition of Done:**
+- `insecure_implies_separating` compiles without `sorry`.
+- Documentation notes the scope limitation (non-invariant distinguisher).
+
+
+---
+
+### 4.16 — Cross-Track Integration Verification
+
+**Effort:** 2h | **Module:** All `Theorems/*.lean` | **Deps:** 4.5, 4.9, 4.13
+
+*New unit. Verifies that all three tracks compose correctly and that axiom
+dependencies are exactly as expected.*
+
+**Checklist:**
+
+1. Build all three theorem modules individually:
+   ```bash
+   source ~/.elan/env && lake build Orbcrypt.Theorems.Correctness
+   source ~/.elan/env && lake build Orbcrypt.Theorems.InvariantAttack
+   source ~/.elan/env && lake build Orbcrypt.Theorems.OIAImpliesCPA
+   ```
+
+2. Verify axiom dependencies:
+   ```lean
+   #print axioms correctness          -- Only standard Lean axioms
+   #print axioms invariant_attack     -- Only standard Lean axioms
+   #print axioms oia_implies_1cpa     -- OIA + standard Lean axioms
+   ```
+
+3. Verify no `sorry` remains:
+   ```bash
+   grep -rn "sorry" Orbcrypt/Theorems/ --include="*.lean"
+   # Must return empty
+   ```
+
+4. Verify the three theorems compose — add to a scratch file:
+   ```lean
+   import Orbcrypt.Theorems.Correctness
+   import Orbcrypt.Theorems.InvariantAttack
+   import Orbcrypt.Theorems.OIAImpliesCPA
+
+   -- All three results available in one namespace:
+   #check @correctness
+   #check @invariant_attack
+   #check @oia_implies_1cpa
+   ```
+
+**Definition of Done:**
+- All three modules build without errors.
+- Axiom audit passes (correctness and invariant_attack are OIA-free).
+- Zero `sorry` in `Theorems/`.
+
+
+---
+
+## Parallel Execution Plan
+
+```
+Phase 3 complete
+     │
+     ├──────────────────┬──────────────────┐
+     ▼                  ▼                  ▼
+  Track A            Track B            Track C
+  Correctness        Invariant Attack    OIA ⟹ CPA
+  ┌────────────┐     ┌────────────┐     ┌────────────┐
+  │ 4.1  1.5h  │     │ 4.6  2h    │     │ 4.10 2h    │
+  │ 4.2  2h    │     │ 4.7  1.5h  │     │ 4.11 2h    │
+  │ 4.3  2.5h  │     │ 4.8  3h    │     │ 4.12 2.5h  │
+  │ 4.4  2h    │     │ 4.9  2h    │     │ 4.13 1.5h  │
+  │ 4.5  2h    │     └────────────┘     └────────────┘
+  └────────────┘          │                  │
+     │                    │                  │
+     └────────────────────┴──────────────────┘
+                          │
+                          ▼
+                   4.16 Integration (2h)
+                          │
+                          ▼
+                Track D (Optional)
+                ┌────────────┐
+                │ 4.14 3h    │
+                │ 4.15 3h    │
+                └────────────┘
+```
+
+All three main tracks are fully independent and can execute in parallel.
+Track D is optional and depends on 4.9 and 4.13.
+
+**Optimal schedule for a single contributor:**
+
+| Day | Work | Hours | Running Total |
+|-----|------|-------|---------------|
+| 1 | 4.1 (encrypt-in-orbit) + 4.6 (adversary construction) | 3.5h | 3.5h |
+| 2 | 4.2 (canon-of-encrypt) + 4.7 (invariance helper) | 3.5h | 7h |
+| 3 | 4.3 (decrypt helpers) + 4.10 (OIA specialization) | 4.5h | 11.5h |
+| 4 | 4.4 (predicate uniqueness) + 4.11 (hasAdvantage unfolding) | 4h | 15.5h |
+| 5 | 4.8 (adversary correctness case split) | 3h | 18.5h |
+| 6 | 4.5 (correctness theorem) + 4.12 (advantage elimination) | 4.5h | 23h |
+| 7 | 4.9 (invariant attack assembly) + 4.13 (security assembly) | 3.5h | 26.5h |
+| 8 | 4.16 (integration) | 2h | 28.5h |
+| 9 | 4.14 + 4.15 (contrapositive, optional) | 6h | 34.5h |
+
+With three parallel contributors, the main body (4.1–4.13 + 4.16) can
+complete in ~12h wall-clock time.
+
+---
+
+## Risk Analysis
+
+| Risk | Units | Likelihood | Impact | Mitigation |
+|------|-------|-----------|--------|------------|
+| `Fintype.find?` spec lemma missing or weak | 4.3, 4.5 | High | High | Prototype in scratch file first; switch to `Finset.filter` approach if needed; redesign `decrypt` in 3.3 as last resort |
+| `let (m₀, m₁) := ...` awkward in proofs | 4.11, 4.12 | Medium | Medium | `hasAdvantage_iff` (4.11) isolates this; alternatively refactor `hasAdvantage` in 3.5 to use `.1`/`.2` |
+| `decide` / `BEq` coercion issues | 4.6, 4.8 | Medium | Low | Use `if-then-else` pattern instead of `decide`; add explicit `@[simp]` unfolding lemmas in 4.6 |
+| OIA axiom too strong (trivially false) | 4.10–4.13 | Low | Critical | Before starting Track C, construct a toy model in a scratch file where OIA holds (e.g., trivial group G = {1}); if OIA is false there, the formulation is wrong |
+| OIA axiom too weak for 4.12 proof | 4.12 | Medium | High | The per-element OIA from 3.7 may need strengthening; consider a "uniform" version: `∀ g₀, ∃ g₁, ...` AND `∀ g₁, ∃ g₀, ...` (bidirectional) |
+| Proof of 4.12 requires more than 3 OIA applications | 4.12 | Medium | Medium | Budget extra time; the `Bool` type has only 2 values, which constrains the proof space |
+| `canon_eq_of_mem_orbit` direction mismatch | 4.2, 4.4 | Medium | Low | Check the exact statement from 2.6; add `.symm` if needed |
+
+---
+
+## Common Lean 4 Pitfalls for Phase 4
+
+1. **`unfold` vs `simp only`:** `unfold` replaces a definition with its body
+   exactly once. `simp only [def_name]` may simplify further. Prefer
+   `simp only` when you want controlled reduction with other lemmas.
+
+2. **`decide` on propositions:** `decide (p)` requires `[Decidable p]`.
+   For `f c = f (reps m₀)` this needs `DecidableEq Y`. Always check that
+   the relevant `DecidableEq` instance is in scope.
+
+3. **`push_neg` depth:** `push_neg` on `¬ ∃ x y, P x y ∧ Q x y` may not
+   fully normalize. Use `simp only [not_exists, not_and, not_not]` for
+   finer control.
+
+4. **`cases b` on `Bool`:** Always produces exactly two goals (`true` and
+   `false`). Use `case true =>` / `case false =>` for clarity, not
+   positional tactics.
+
+5. **Existential witnesses:** When the goal is `∃ x, P x`, use `use witness`
+   or `exact ⟨witness, proof⟩`. Do not use `existsi` (deprecated in Lean 4).
+
+6. **Axiom leakage:** After any proof involving `OIA`, always check
+   `#print axioms theorem_name` to verify only the expected axioms appear.
+   Accidental `sorry` introduces `sorryAx` which is easy to miss.
+
+---
+
+## Exit Criteria
+
+- [ ] `Theorems/Correctness.lean` compiles without `sorry`
+- [ ] `Theorems/InvariantAttack.lean` compiles without `sorry`
+- [ ] `Theorems/OIAImpliesCPA.lean` compiles without `sorry` (axiom `OIA` is acceptable)
+- [ ] `lake build Orbcrypt.Theorems.Correctness` succeeds
+- [ ] `lake build Orbcrypt.Theorems.InvariantAttack` succeeds
+- [ ] `lake build Orbcrypt.Theorems.OIAImpliesCPA` succeeds
+- [ ] `#print axioms correctness` shows only standard Lean axioms (no `OIA`)
+- [ ] `#print axioms invariant_attack` shows only standard Lean axioms (no `OIA`)
+- [ ] `#print axioms oia_implies_1cpa` shows `OIA` plus standard axioms
+- [ ] All definitions and theorems have `/-- ... -/` docstrings
+- [ ] Each proof has a strategy comment at its top
+- [ ] `grep -rn "sorry" Orbcrypt/Theorems/` returns empty
+
+---
+
+## Transition to Phase 5
+
+Phase 5 instantiates the abstract framework with the concrete S\_n action on
+bitstrings, producing a working `OrbitEncScheme` instance and formally proving
+that the Hamming weight defense works.
+
+See: [Phase 5 — Concrete Construction](PHASE_5_CONCRETE_CONSTRUCTION.md)
