@@ -1,6 +1,6 @@
 # Phase 6 — Polish & Documentation
 
-## Weeks 15–16 | 6 Work Units | ~16 Hours
+## Weeks 15–16 | 13 Work Units | ~23 Hours
 
 *Part of the [Orbcrypt Lean 4 Formalization Plan](../FORMALIZATION_PLAN.md)*
 
@@ -12,8 +12,15 @@ Phase 6 transforms the formalization from a working proof artifact into a
 release-quality project. It audits for completeness, adds documentation,
 configures continuous integration, and performs a final verification.
 
-This phase has **two parallel tracks**: content quality (6.1–6.4) and
-infrastructure (6.5–6.6).
+The original 6 work units have been decomposed into 13 smaller units. The
+`sorry` audit (originally one 4-hour block) is split across four module
+groups so that each audit is focused and less error-prone. Documentation
+is split by layer. A new Mathlib compatibility check (6.11) and a
+dedicated final audit checklist (6.13) ensure nothing is missed.
+
+This phase has **three parallel tracks**: sorry audit (6.1–6.4),
+documentation (6.5–6.9), and infrastructure (6.10–6.11). All converge
+at the final verification (6.12–6.13).
 
 ---
 
@@ -22,7 +29,8 @@ infrastructure (6.5–6.6).
 1. Zero `sorry` in non-axiom positions across all `.lean` files.
 2. Every module, definition, and theorem has proper documentation.
 3. CI pipeline ensures the project builds on every push.
-4. Clean build from scratch succeeds with zero warnings.
+4. Mathlib compatibility verified and pinned.
+5. Clean build from scratch succeeds with zero warnings.
 
 ---
 
@@ -35,59 +43,170 @@ infrastructure (6.5–6.6).
 
 ## Work Units
 
-### 6.1 — Audit All `sorry`
+### Track A: Sorry Audit (6.1 → 6.2 → 6.3 → 6.4)
 
-**Effort:** 4h | **Module:** All `.lean` files | **Deps:** All prior phases
+The sorry audit is the most critical activity in Phase 6. Splitting it by
+module group ensures focused attention and prevents "sorry blindness" from
+auditing too many files in one sitting.
 
-#### Implementation Guidance
-
-1. Search for all `sorry` instances:
-   ```bash
-   grep -rn "sorry" Orbcrypt/ --include="*.lean"
-   ```
-
-2. For each `sorry` found, choose one of:
-   - **Prove it.** Most remaining `sorry` should be provable with the lemmas
-     already established.
-   - **Promote to `axiom`.** If the statement is a computational assumption
-     that cannot be proved (like OIA), declare it as an `axiom` with a
-     justification comment.
-   - **Remove it.** If the lemma is unused and not worth proving, delete it.
-     Do not leave dead `sorry` code.
-
-3. After all `sorry` instances are resolved, verify:
-   ```bash
-   grep -rn "sorry" Orbcrypt/ --include="*.lean"
-   # Should return empty
-   ```
-
-4. Verify axiom transparency:
-   ```lean
-   #print axioms correctness          -- Should show only standard axioms
-   #print axioms invariant_attack     -- Should show only standard axioms
-   #print axioms oia_implies_1cpa     -- Should show OIA + standard axioms
-   ```
-
-#### Common `sorry` Patterns and Fixes
-
-| Pattern | Typical Cause | Fix |
-|---------|--------------|-----|
-| Orbit membership `sorry` | Missing `simp` lemma | Add `@[simp]` to `smul_mem_orbit` |
-| `Fintype.find?` `sorry` | Spec lemma unknown | Use `Finset.univ.find?_some` or equivalent |
-| `DecidableEq` `sorry` | Instance not derived | Add `deriving DecidableEq` or use `inferInstance` |
-| `ext` goal `sorry` | Function extensionality | Apply `funext` tactic |
+For each `sorry` found, choose one of:
+- **Prove it.** Most remaining `sorry` should be provable with established lemmas.
+- **Promote to `axiom`.** Only if the statement is a computational assumption
+  that cannot be proved (like OIA). Must include a justification comment.
+- **Remove it.** If the lemma is unused and not worth proving, delete it.
 
 ---
 
-### 6.2 — Add Module Docstrings
+#### 6.1 — Sorry Audit: GroupAction Modules
 
-**Effort:** 3h | **Module:** All `.lean` files | **Deps:** All prior phases
+**Effort:** 2h | **Module:** `GroupAction/*.lean` | **Deps:** Phase 2
 
-Each `.lean` file must begin with a module-level docstring explaining:
-- What the module contains
-- Its role in the overall formalization
-- Which section of DEVELOPMENT.md it formalizes
-- Key definitions and theorems in the module
+**Files to audit:**
+1. `GroupAction/Basic.lean` — orbit API, partition, orbit-stabilizer, membership
+2. `GroupAction/Canonical.lean` — CanonicalForm, uniqueness, idempotence
+3. `GroupAction/Invariant.lean` — IsGInvariant, IsSeparating, invariant-orbit
+
+**Procedure:**
+```bash
+grep -rn "sorry" Orbcrypt/GroupAction/ --include="*.lean"
+```
+
+**Common sorry patterns in this layer:**
+
+| Pattern | Likely Location | Fix |
+|---------|----------------|-----|
+| `orbit_disjoint_or_eq sorry` | Basic.lean | Use `MulAction.orbitRel` + equivalence class disjointness |
+| `orbit_eq_of_smul sorry` | Basic.lean | Apply `MulAction.orbit_eq_iff` with witness `g` |
+| `canon_eq_of_mem_orbit sorry` | Canonical.lean | Chain `orbit_eq_iff` → `orbit_iff.mpr` |
+| `invariant_const_on_orbit sorry` | Invariant.lean | `obtain ⟨g, hg⟩ := mem_orbit_iff.mp hy; rw [← hg, hf g]` |
+| `separating_implies_distinct_orbits sorry` | Invariant.lean | Contradiction: equal orbits → same f-value → contradicts separation |
+
+**Definition of Done:**
+- `grep -rn "sorry" Orbcrypt/GroupAction/` returns empty.
+- `lake build Orbcrypt.GroupAction.Basic` succeeds (and Canonical, Invariant).
+
+---
+
+#### 6.2 — Sorry Audit: Crypto Modules
+
+**Effort:** 1.5h | **Module:** `Crypto/*.lean` | **Deps:** Phase 3
+
+**Files to audit:**
+1. `Crypto/Scheme.lean` — OrbitEncScheme, encrypt, decrypt
+2. `Crypto/Security.lean` — Adversary, hasAdvantage, IsSecure
+3. `Crypto/OIA.lean` — OIA axiom (this file should contain NO sorry,
+   only an `axiom` declaration)
+
+**Procedure:**
+```bash
+grep -rn "sorry" Orbcrypt/Crypto/ --include="*.lean"
+```
+
+**Expected state:** These modules are mostly definitions, not proofs. Any
+`sorry` here likely indicates a missing instance (e.g., `Decidable` for the
+decrypt predicate) rather than an unproved theorem.
+
+**Common sorry patterns:**
+
+| Pattern | Likely Location | Fix |
+|---------|----------------|-----|
+| `DecidableEq` instance sorry | Scheme.lean | Use `inferInstance` or derive |
+| `Decidable (decryptPred ...)` sorry | Scheme.lean | Follows from `DecidableEq X` |
+| Stray `sorry` in OIA.lean | OIA.lean | Must be an `axiom`, not a `sorry`-ed theorem |
+
+**Critical check for OIA.lean:**
+```lean
+-- OIA.lean must contain exactly ONE axiom and ZERO sorry:
+-- axiom OIA ... : ...
+-- No: theorem OIA ... := sorry
+```
+
+**Definition of Done:**
+- `grep -rn "sorry" Orbcrypt/Crypto/` returns empty.
+- `OIA.lean` uses `axiom`, not `sorry`.
+- All three Crypto modules build.
+
+---
+
+#### 6.3 — Sorry Audit: Theorem Modules
+
+**Effort:** 2h | **Module:** `Theorems/*.lean` | **Deps:** Phase 4
+
+**Files to audit:**
+1. `Theorems/Correctness.lean` — encrypt-in-orbit, canon-of-encrypt, correctness
+2. `Theorems/InvariantAttack.lean` — adversary, adversary correctness, attack theorem
+3. `Theorems/OIAImpliesCPA.lean` — OIA specialization, advantage elimination, security
+
+**Procedure:**
+```bash
+grep -rn "sorry" Orbcrypt/Theorems/ --include="*.lean"
+```
+
+**Common sorry patterns:**
+
+| Pattern | Likely Location | Fix |
+|---------|----------------|-----|
+| `Fintype.find?` spec sorry | Correctness.lean | Locate correct Mathlib lemma name; see 4.3 guidance |
+| `decryptPred_unique` sorry | Correctness.lean | Contrapositive of `reps_distinct`; see 4.4 |
+| `decide_eq_false` sorry | InvariantAttack.lean | Use `decide_eq_false_iff_not` or `if_neg` |
+| `no_advantage_from_oia` sorry | OIAImpliesCPA.lean | Multi-step OIA application; see 4.12 strategy |
+
+**Axiom audit (critical):**
+```lean
+-- After all sorry are resolved, verify:
+#print axioms correctness          -- Must NOT contain sorryAx or OIA
+#print axioms invariant_attack     -- Must NOT contain sorryAx or OIA
+#print axioms oia_implies_1cpa     -- Must contain OIA, must NOT contain sorryAx
+```
+
+If `sorryAx` appears in any `#print axioms` output, there is a hidden
+`sorry` somewhere in the dependency chain. Use `#print axioms lemma_name`
+on each intermediate lemma to locate it.
+
+**Definition of Done:**
+- `grep -rn "sorry" Orbcrypt/Theorems/` returns empty.
+- Axiom audit passes for all three headline theorems.
+- All three Theorem modules build.
+
+---
+
+#### 6.4 — Sorry Audit: Construction Modules
+
+**Effort:** 1.5h | **Module:** `Construction/*.lean` | **Deps:** Phase 5
+
+**Files to audit:**
+1. `Construction/Permutation.lean` — Bitstring, S\_n action, Hamming weight
+2. `Construction/HGOE.lean` — subgroup action, scheme instance, weight defense
+
+**Procedure:**
+```bash
+grep -rn "sorry" Orbcrypt/Construction/ --include="*.lean"
+```
+
+**Common sorry patterns:**
+
+| Pattern | Likely Location | Fix |
+|---------|----------------|-----|
+| `perm_action_faithful` sorry | Permutation.lean | Construct indicator bitstring; see 5.4 |
+| `hammingWeight_invariant` sorry | Permutation.lean | Finset bijection; see 5.6 approach B |
+| `subgroupBitstringAction` sorry | HGOE.lean | Coercion + parent action; see 5.7 |
+
+**Definition of Done:**
+- `grep -rn "sorry" Orbcrypt/Construction/` returns empty.
+- Both Construction modules build.
+
+---
+
+### Track B: Documentation (6.5 → 6.6 → 6.7 → 6.8 → 6.9)
+
+---
+
+#### 6.5 — Module Docstrings: Foundations Layer
+
+**Effort:** 2h | **Module:** `GroupAction/*.lean`, `Crypto/*.lean` | **Deps:** Track A
+
+Each `.lean` file must begin with a module-level docstring. The foundations
+layer (6 files) is documented first since it's the most stable.
 
 **Template:**
 ```lean
@@ -108,17 +227,53 @@ Formalizes the group action fundamentals from DEVELOPMENT.md §3.1.
 -/
 ```
 
+**Files to document (6):**
+1. `GroupAction/Basic.lean` — references DEVELOPMENT.md §3.1
+2. `GroupAction/Canonical.lean` — references DEVELOPMENT.md §3.2
+3. `GroupAction/Invariant.lean` — references DEVELOPMENT.md §4.4
+4. `Crypto/Scheme.lean` — references DEVELOPMENT.md §4.1
+5. `Crypto/Security.lean` — references DEVELOPMENT.md §4.3
+6. `Crypto/OIA.lean` — references DEVELOPMENT.md §5.2
+
+**Definition of Done:**
+- All 6 files begin with a `/-- ... -/` module docstring.
+- Each docstring lists key definitions and key results.
+- Each docstring references the relevant DEVELOPMENT.md section.
+
 ---
 
-### 6.3 — Add Inline Proof Comments
+#### 6.6 — Module Docstrings: Theorems & Construction Layer
 
-**Effort:** 3h | **Module:** All `.lean` files | **Deps:** All prior phases
+**Effort:** 2h | **Module:** `Theorems/*.lean`, `Construction/*.lean` | **Deps:** Track A
 
-Each non-trivial proof tactic block should have a comment explaining the
-strategy. Focus on:
+**Files to document (5):**
+1. `Theorems/Correctness.lean` — references DEVELOPMENT.md §4.2
+2. `Theorems/InvariantAttack.lean` — references DEVELOPMENT.md §4.4 and COUNTEREXAMPLE.md
+3. `Theorems/OIAImpliesCPA.lean` — references DEVELOPMENT.md §8.1
+4. `Construction/Permutation.lean` — references DEVELOPMENT.md §3.2, §7.1
+5. `Construction/HGOE.lean` — references DEVELOPMENT.md §7.1
 
-1. **Theorem-level strategy comments:** At the top of each proof, a 1-3 line
-   comment explaining the approach.
+**Special attention:**
+- `Theorems/OIAImpliesCPA.lean` should note which theorems depend on OIA.
+- `Construction/HGOE.lean` should note the connection to COUNTEREXAMPLE.md.
+
+**Definition of Done:**
+- All 5 files begin with a `/-- ... -/` module docstring.
+- Theorem modules note their axiom dependencies.
+
+---
+
+#### 6.7 — Inline Proof Comments
+
+**Effort:** 2.5h | **Module:** All `.lean` files | **Deps:** Track A
+
+Add strategy comments to every non-trivial proof. Focus on the *why*, not
+the *what*.
+
+**Comment levels:**
+
+1. **Theorem-level strategy:** At the top of each proof, 1–3 lines
+   explaining the overall approach.
    ```lean
    theorem correctness ... := by
      -- Strategy: unfold encrypt/decrypt, show canon(g • reps m) = canon(reps m)
@@ -132,35 +287,119 @@ strategy. Focus on:
      have h_orbit : c ∈ orbit G (reps m) := encrypt_mem_orbit ...
    ```
 
-3. **Do not over-comment.** Skip comments for simple `simp`, `exact`, or
-   `rfl` steps. Comment the *why*, not the *what*.
+3. **Do NOT comment:** Simple `simp`, `exact`, `rfl`, or `trivial` steps.
+   Comment the *why*, not the *what*.
+
+**Priority order (highest first):**
+1. Three headline theorems (correctness, invariant_attack, oia_implies_1cpa)
+2. Key supporting lemmas (canon_encrypt, invariantAttackAdversary_correct,
+   no_advantage_from_oia)
+3. Infrastructure (decryptPred helpers, hammingWeight_invariant)
+
+**Definition of Done:**
+- Every proof > 3 lines has a strategy comment.
+- Key `have` statements in headline proofs are annotated.
+- No over-commenting on trivial steps.
 
 ---
 
-### 6.4 — Dependency Graph
+#### 6.8 — Module Dependency Graph
 
-**Effort:** 2h | **Module:** Documentation | **Deps:** All prior phases
+**Effort:** 1.5h | **Module:** `Orbcrypt.lean` or `ARCHITECTURE.md` | **Deps:** Track A
 
-Generate a text-based dependency graph showing:
-1. Module-level import dependencies (which files import which).
-2. Theorem dependencies (which lemmas each headline theorem uses).
-3. Axiom dependencies (which theorems depend on the OIA axiom).
+Generate and document three dependency views:
 
-Add this as a comment block in `Orbcrypt.lean` or as a separate
-`ARCHITECTURE.md` in the project root.
-
-**Generate programmatically where possible:**
+**1. Module-level imports:**
 ```bash
-# Module imports
-grep -h "^import Orbcrypt" Orbcrypt/*.lean Orbcrypt/**/*.lean | sort -u
-
-# Axiom dependencies
-lake env lean --run -c '#print axioms correctness' 2>/dev/null
+grep -h "^import Orbcrypt" Orbcrypt/**/*.lean | sort -u
 ```
 
+Document as a text diagram in `Orbcrypt.lean` (as a comment block) or in a
+new `ARCHITECTURE.md` file.
+
+**2. Theorem dependencies (for headline results):**
+```
+correctness
+  ├── encrypt_mem_orbit (4.1)
+  ├── canon_encrypt (4.2)
+  ├── decryptPred_self (4.4)
+  ├── decryptPred_unique (4.4)
+  └── Fintype.find? spec (Mathlib)
+
+invariant_attack
+  ├── invariantAttackAdversary (4.6)
+  ├── invariant_on_encrypt (4.7)
+  └── invariantAttackAdversary_correct (4.8)
+
+oia_implies_1cpa
+  ├── no_advantage_from_oia (4.12)
+  ├── oia_specialized (4.10)
+  └── OIA (axiom)
+```
+
+**3. Axiom dependencies:**
+```bash
+# In a Lean file:
+#print axioms correctness
+#print axioms invariant_attack
+#print axioms oia_implies_1cpa
+```
+
+**Definition of Done:**
+- Dependency graph documented (either in `Orbcrypt.lean` or `ARCHITECTURE.md`).
+- All three views (module, theorem, axiom) are included.
+
 ---
 
-### 6.5 — CI Configuration
+#### 6.9 — Axiom Transparency Report
+
+**Effort:** 1h | **Module:** Documentation | **Deps:** 6.8
+
+Create a dedicated section (in `Orbcrypt.lean` or `ARCHITECTURE.md`) that
+clearly states:
+
+1. **The sole axiom:** `OIA` — what it says, why it's an axiom, and where
+   it's declared (`Crypto/OIA.lean`).
+2. **What depends on it:** Only `oia_implies_1cpa` (and transitively,
+   `IsSecure` results). The correctness theorem and invariant attack theorem
+   are unconditional.
+3. **What does NOT depend on it:** `correctness`, `invariant_attack`,
+   all `GroupAction/` lemmas, all `Construction/` proofs.
+4. **How to verify:** `#print axioms <theorem_name>` commands.
+
+**Template:**
+```lean
+/--
+## Axiom Transparency
+
+This formalization introduces exactly ONE axiom beyond Lean's standard axioms:
+
+  `axiom OIA` (declared in `Orbcrypt.Crypto.OIA`)
+
+### Axiom-free results
+- `correctness` (Theorems/Correctness.lean)
+- `invariant_attack` (Theorems/InvariantAttack.lean)
+- All GroupAction/ and Construction/ lemmas
+
+### OIA-dependent results
+- `oia_implies_1cpa` (Theorems/OIAImpliesCPA.lean)
+- `IsSecure` (derived from oia_implies_1cpa)
+
+Verify with: `#print axioms <theorem_name>`
+-/
+```
+
+**Definition of Done:**
+- Axiom transparency report written and placed.
+- Every claim in the report is verified with `#print axioms`.
+
+---
+
+### Track C: Infrastructure (6.10 → 6.11)
+
+---
+
+#### 6.10 — CI Configuration
 
 **Effort:** 2h | **Module:** `.github/workflows/` | **Deps:** Phase 1
 
@@ -173,26 +412,110 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Install elan
+        run: |
+          curl https://elan.lean-lang.org/install.sh -sSf | sh
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+      - name: Cache Mathlib
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.elan
+            .lake
+          key: mathlib-${{ hashFiles('lean-toolchain', 'lakefile.lean') }}
+          restore-keys: mathlib-
+      - name: Fetch Mathlib cache
+        run: lake exe cache get || true
+      - name: Build
+        run: lake build
+      - name: Verify no sorry
+        run: |
+          if grep -rn "sorry" Orbcrypt/ --include="*.lean"; then
+            echo "ERROR: sorry found in source files"
+            exit 1
+          fi
+```
+
+**Key considerations:**
+- Use Mathlib cache to avoid rebuilding Mathlib (~30 min without cache).
+- The `cache get || true` allows builds even if the cache is stale.
+- The sorry check is a separate step so it's visible in CI output.
+- Set `timeout-minutes: 30` to prevent runaway builds.
+
+**Alternative: Use `leanprover/lean4-action@v1`** if available. This
+handles elan installation and Mathlib caching automatically:
+```yaml
       - uses: leanprover/lean4-action@v1
         with:
           mathlib-cache: true
       - run: lake build
 ```
 
-**Key considerations:**
-- Use `mathlib-cache: true` to avoid rebuilding Mathlib on every CI run.
-- Cache `~/.elan` and `./lake-packages` for faster subsequent builds.
-- Set a reasonable timeout (30 minutes should suffice with cached Mathlib).
+**Definition of Done:**
+- `.github/workflows/lean4-build.yml` exists and is valid YAML.
+- The workflow passes on a test push (or dry-run with `act` locally).
 
 ---
 
-### 6.6 — Final Build Verification
+#### 6.11 — Mathlib Compatibility Check
 
-**Effort:** 2h | **Module:** All | **Deps:** 6.1–6.5
+**Effort:** 1.5h | **Module:** `lakefile.lean`, `lean-toolchain` | **Deps:** Phase 1
 
-Perform a clean build from scratch and verify everything:
+*New unit. Ensures the Mathlib pin is intentional and up-to-date.*
+
+**Procedure:**
+
+1. Check current Mathlib pin:
+   ```bash
+   cat lean-toolchain
+   grep -A2 "require mathlib" lakefile.lean
+   ```
+
+2. Check if a newer Mathlib is available:
+   ```bash
+   cd .lake/packages/mathlib
+   git log --oneline -5
+   ```
+
+3. **Decision point:** If the pin is more than 3 months old:
+   - Option A: Keep the current pin (stability). Document the pin date and
+     the reason for not updating.
+   - Option B: Update to latest Mathlib. Run `lake update mathlib`, then
+     `lake build` and fix any breakage. This is risky — only do it if
+     specific Mathlib bugs are blocking.
+
+4. **Pin explicitly** if not already:
+   ```lean
+   require mathlib from git
+     "https://github.com/leanprover-community/mathlib4" @ "abc123..."
+   ```
+
+5. Document the pin in a comment:
+   ```lean
+   -- Pinned to Mathlib4 commit abc123 (2024-XX-XX)
+   -- Compatible with lean4:v4.X.0
+   -- Last verified: YYYY-MM-DD
+   ```
+
+**Definition of Done:**
+- Mathlib version is explicitly pinned in `lakefile.lean`.
+- `lean-toolchain` version matches Mathlib's requirement.
+- `lake build` succeeds with the pinned version.
+
+---
+
+### Convergence: Final Verification (6.12 → 6.13)
+
+---
+
+#### 6.12 — Clean Build Verification
+
+**Effort:** 1.5h | **Module:** All | **Deps:** 6.1–6.11
+
+Perform a clean build from scratch:
 
 ```bash
 lake clean
@@ -201,32 +524,110 @@ lake build           # Full build
 echo $?              # Must be 0
 ```
 
-**Verification checklist:**
-1. Zero errors from `lake build`.
-2. Zero `sorry` (verified by grep).
-3. `#print axioms` for each headline theorem shows expected dependencies.
-4. CI workflow passes on a push to a test branch.
-5. All `.lean` files have module docstrings.
+**If build fails:**
+1. Read the error message carefully.
+2. Identify which module fails (the error shows the file path).
+3. Check if the failure is a Mathlib API change (common after updates).
+4. Fix the specific module and re-run `lake build <Module.Path>`.
+5. Do NOT use `lake build` without a target — use specific module paths
+   to avoid rebuilding everything.
+
+**Post-build checks:**
+```bash
+# Zero sorry:
+grep -rn "sorry" Orbcrypt/ --include="*.lean"
+
+# Count definitions and theorems:
+grep -c "^theorem\|^def\|^instance\|^axiom" Orbcrypt/**/*.lean
+
+# Count lines of Lean:
+find Orbcrypt/ -name "*.lean" -exec cat {} + | wc -l
+```
+
+**Definition of Done:**
+- `lake clean && lake build` succeeds with exit code 0.
+- `grep sorry` returns empty.
+- Build completes in < 5 minutes (with cached Mathlib).
+
+---
+
+#### 6.13 — Final Audit Checklist
+
+**Effort:** 1.5h | **Module:** All | **Deps:** 6.12
+
+This is the **final quality gate** before the formalization is declared
+complete. Go through every item systematically.
+
+**Proof integrity:**
+- [ ] `#print axioms correctness` — no `OIA`, no `sorryAx`
+- [ ] `#print axioms invariant_attack` — no `OIA`, no `sorryAx`
+- [ ] `#print axioms oia_implies_1cpa` — only `OIA` + standard axioms
+- [ ] `grep -rn "sorry" Orbcrypt/` returns empty
+- [ ] `grep -rn "axiom" Orbcrypt/` returns only the OIA declaration
+
+**Documentation:**
+- [ ] Every `.lean` file has a module-level `/-- ... -/` docstring
+- [ ] Every public `theorem` and `def` has a `/-- ... -/` docstring
+- [ ] The OIA axiom has a justification comment block
+- [ ] Dependency graph documented in `Orbcrypt.lean` or `ARCHITECTURE.md`
+- [ ] Axiom transparency report written
+
+**Infrastructure:**
+- [ ] `lakefile.lean` pins Mathlib to a specific commit
+- [ ] `lean-toolchain` matches Mathlib's requirement
+- [ ] `.github/workflows/lean4-build.yml` exists and is valid
+- [ ] CI passes on a test push
+
+**Code quality:**
+- [ ] `autoImplicit := false` is set in `lakefile.lean`
+- [ ] No `import Mathlib` (only specific module imports)
+- [ ] Every proof > 3 lines has a strategy comment
+- [ ] Naming follows conventions (snake_case theorems, CamelCase structures)
+
+**Git:**
+- [ ] All files committed
+- [ ] Commit messages reference work unit numbers
+- [ ] No build artifacts in the repository
+
+**Definition of Done:**
+- Every checkbox above is checked.
+- The project is ready for review and public release.
 
 ---
 
 ## Parallel Execution Plan
 
 ```
-  Track A: Content Quality     Track B: Infrastructure
-  ┌───────────────────────┐    ┌──────────────────────┐
-  │ 6.1 Audit sorry       │    │ 6.5 CI configuration │
-  │ 6.2 Module docstrings │    └──────────────────────┘
-  │ 6.3 Proof comments    │              │
-  │ 6.4 Dependency graph  │              │
-  └───────────────────────┘              │
-           │                             │
-           └──────────────┬──────────────┘
-                          ▼
-                  6.6 Final verification
+  Track A: Sorry Audit    Track B: Documentation    Track C: Infrastructure
+  ┌───────────────────┐   ┌───────────────────┐     ┌──────────────────┐
+  │ 6.1 GroupAction 2h│   │ 6.5 Foundations 2h│     │ 6.10 CI config 2h│
+  │ 6.2 Crypto    1.5h│   │ 6.6 Thm+Constr 2h│     │ 6.11 Mathlib  1.5h│
+  │ 6.3 Theorems    2h│   │ 6.7 Proof cmts2.5h│     └──────────────────┘
+  │ 6.4 Construct 1.5h│   │ 6.8 Dep graph 1.5h│            │
+  └───────────────────┘   │ 6.9 Axiom rpt   1h│            │
+           │              └───────────────────┘            │
+           └──────────────────────┬────────────────────────┘
+                                  ▼
+                       6.12 Clean build verification (1.5h)
+                                  │
+                                  ▼
+                       6.13 Final audit checklist (1.5h)
 ```
 
-6.5 (CI) can proceed independently of the content quality work.
+Track A (sorry audit) must complete before Track B (documentation) can
+finalize, since docstrings may reference the proved lemmas. Track C
+(infrastructure) is fully independent.
+
+**Optimal schedule for a single contributor:**
+
+| Day | Work | Hours | Running Total |
+|-----|------|-------|---------------|
+| 1 | 6.1 (GroupAction audit) + 6.10 (CI config) | 4h | 4h |
+| 2 | 6.2 (Crypto audit) + 6.11 (Mathlib check) | 3h | 7h |
+| 3 | 6.3 (Theorems audit) + 6.5 (foundations docstrings) | 4h | 11h |
+| 4 | 6.4 (Construction audit) + 6.6 (theorem docstrings) | 3.5h | 14.5h |
+| 5 | 6.7 (proof comments) + 6.8 (dep graph) | 4h | 18.5h |
+| 6 | 6.9 (axiom report) + 6.12 (clean build) + 6.13 (final audit) | 4h | 22.5h |
 
 ---
 
@@ -234,10 +635,12 @@ echo $?              # Must be 0
 
 | Risk | Units | Likelihood | Impact | Mitigation |
 |------|-------|-----------|--------|------------|
-| Stubborn `sorry` that requires new lemma | 6.1 | Medium | High | Budget 4h specifically for this; promote to `axiom` if truly stuck |
-| CI action version incompatibility | 6.5 | Low | Low | Pin action versions; test locally first with `act` |
-| Mathlib cache miss in CI | 6.5 | Medium | Medium | Use official `lean4-action` which handles caching |
-| Documentation is tedious and gets rushed | 6.2, 6.3 | High | Medium | Do 6.2 and 6.3 incrementally alongside other work |
+| Stubborn `sorry` requiring new lemma | 6.1–6.4 | Medium | High | Budget 2h overflow per audit block; promote to `axiom` as last resort (requires justification) |
+| CI action version incompatibility | 6.10 | Low | Low | Pin action versions; test locally with `act` |
+| Mathlib cache miss in CI | 6.10 | Medium | Medium | Use `actions/cache` with proper key; `cache get || true` fallback |
+| Mathlib update breaks proofs | 6.11 | Medium | High | Default to keeping current pin; only update if specific bug blocks |
+| Documentation is tedious and gets rushed | 6.5–6.7 | High | Medium | Do documentation alongside sorry audit (alternate between proof and prose) |
+| `#print axioms` reveals unexpected dependency | 6.13 | Low | High | Investigate immediately; trace through intermediate lemmas to find the leak |
 
 ---
 
@@ -247,13 +650,16 @@ These are the **final exit criteria for the entire formalization**:
 
 - [ ] `lake clean && lake build` succeeds with exit code 0
 - [ ] `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
-- [ ] `#print axioms correctness` — no `OIA`, no `sorry`
-- [ ] `#print axioms invariant_attack` — no `OIA`, no `sorry`
-- [ ] `#print axioms oia_implies_1cpa` — only `OIA` (plus standard Lean axioms)
+- [ ] `grep -rn "axiom" Orbcrypt/ --include="*.lean"` returns only OIA
+- [ ] `#print axioms correctness` — no `OIA`, no `sorryAx`
+- [ ] `#print axioms invariant_attack` — no `OIA`, no `sorryAx`
+- [ ] `#print axioms oia_implies_1cpa` — only `OIA` (plus standard)
 - [ ] Every `.lean` file has a module-level docstring
 - [ ] Every public theorem has a docstring
 - [ ] GitHub Actions CI passes on push
-- [ ] Dependency graph documented in `Orbcrypt.lean` or `ARCHITECTURE.md`
+- [ ] Dependency graph documented
+- [ ] Axiom transparency report written
+- [ ] `lakefile.lean` pins Mathlib explicitly
 - [ ] All files committed and pushed
 
 ---
