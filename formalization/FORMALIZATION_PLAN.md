@@ -223,9 +223,9 @@ Familiarity with these is essential before beginning implementation:
 | `MulAction.orbit G x` | `Set X` | The orbit of x under G |
 | `MulAction.stabilizer G x` | `Subgroup G` | The stabilizer of x |
 | `MulAction.orbitRel G X` | `Setoid X` | Orbits as equivalence classes |
-| `MulAction.orbit_eq_iff` | theorem | `orbit G x = orbit G y ↔ ∃ g, g • x = y` |
+| `MulAction.orbit_eq_iff` | theorem | `orbit G x = orbit G y ↔ x ∈ orbit G y` |
 | `MulAction.mem_orbit_iff` | theorem | `y ∈ orbit G x ↔ ∃ g, g • x = y` |
-| `MulAction.card_orbit_mul_card_stabilizer` | theorem | Orbit-stabilizer: `|orbit| * |stab| = |G|` |
+| `MulAction.card_orbit_mul_card_stabilizer_eq_card_group` | theorem | Orbit-stabilizer: `|orbit| * |stab| = |G|` |
 | `Equiv.Perm` | type | Permutations (symmetric group) |
 
 ### Version Strategy
