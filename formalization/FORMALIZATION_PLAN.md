@@ -108,27 +108,34 @@ Orbcrypt/
               GroupAction.Basic
              /       |        \
             /        |         \
- GroupAction.   GroupAction.   (orbit lemmas
-  Canonical      Invariant     feed both)
-           \        |         /
-            \       |        /
-             Crypto.Scheme
-            /              \
-           /                \
-  Crypto.Security        Crypto.OIA
-     |        \            /
-     |         \          /
-     |    Theorems.OIAImpliesCPA
-     |
-  Theorems.Correctness
-  Theorems.InvariantAttack
-              |
-              v
-  Construction.Permutation
-              |
-              v
-  Construction.HGOE
+ GroupAction.   GroupAction.    \
+  Canonical      Invariant      \
+           \        |         /  \
+            \       |        /    \
+             Crypto.Scheme        \
+            /              \       \
+           /                \       \
+  Crypto.Security        Crypto.OIA \
+     |        \            /         \
+     |         \          /           \
+     |    Theorems.OIAImpliesCPA      |
+     |                                |
+  Theorems.Correctness                |
+  Theorems.InvariantAttack            |
+     |                                |
+     └────────────┬───────────────────┘
+                  |
+   Construction.Permutation  (depends on GroupAction.Basic only)
+                  |
+                  v
+   Construction.HGOE  (depends on Permutation + Theorems + Crypto)
 ```
+
+**Note:** `Construction/Permutation.lean` depends only on `GroupAction.Basic`
+(not on Crypto or Theorems). `Construction/HGOE.lean` depends on both
+`Permutation.lean` and the Theorem modules. This is what enables the
+parallelism described in §6 — Permutation.lean can be built as soon as
+Phase 2 completes.
 
 ### Design Principles
 
@@ -203,7 +210,7 @@ Instantiation with S\_n acting on bitstrings.
 | `Mathlib.GroupTheory.Subgroup.Basic` | `Subgroup` type for G ≤ S\_n | `Construction/HGOE.lean` |
 | `Mathlib.GroupTheory.Perm.Basic` | `Equiv.Perm` (symmetric group S\_n) | `Construction/Permutation.lean` |
 | `Mathlib.Data.Fintype.Basic` | `Fintype` for finite message spaces | `Crypto/Scheme.lean` |
-| `Mathlib.Data.ZMod.Basic` | `ZMod 2` (F\_2) for bitstring arithmetic | `Construction/Permutation.lean` |
+| `Mathlib.Data.ZMod.Basic` | `ZMod 2` (F\_2) — available if bitstrings need algebraic operations | `Construction/Permutation.lean` (optional; `Bool` is used instead) |
 | `Mathlib.Order.BooleanAlgebra` | Boolean operations for adversary output | `Crypto/Security.lean` |
 
 ### Key Mathlib API Surface
@@ -240,10 +247,10 @@ criteria.
 | 1 | Project Scaffolding | 1 | 4 | 4.5h | [Phase 1](phases/PHASE_1_PROJECT_SCAFFOLDING.md) |
 | 2 | Group Action Foundations | 2–4 | 11 | 28h | [Phase 2](phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) |
 | 3 | Cryptographic Definitions | 5–6 | 8 | 18h | [Phase 3](phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) |
-| 4 | Core Theorems | 7–10 | 16 | 38h | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
-| 5 | Concrete Construction | 11–14 | 12 | 28h | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
-| 6 | Polish & Documentation | 15–16 | 13 | 23h | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
-| | **Total** | **16** | **64** | **~139.5h** | |
+| 4 | Core Theorems | 7–10 | 16 | 33h | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
+| 5 | Concrete Construction | 11–14 | 12 | 26h | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
+| 6 | Polish & Documentation | 15–16 | 13 | 22.5h | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
+| | **Total** | **16** | **64** | **~132h** | |
 
 ### Phase Dependencies
 
@@ -297,7 +304,7 @@ parallelism for independent work units.
 **Chain C — OIA implies CPA:**
 ```
 1.1 → 1.4 → 2.1 → 3.1 → 3.7 → 4.10 → 4.11 → 4.12 → 4.13
- 2h    1h    3h    3h    2h     2h      2h     2.5h    1.5h   = 19h
+ 2h    1h    3h    3h    2h    1.5h     2h     1.5h    1.5h   = 17.5h
 ```
 
 **Overall critical path: Chain A at ~32 hours** of sequential work, achievable
@@ -323,7 +330,7 @@ smaller units, not added.
 | Metric | Value |
 |--------|-------|
 | Total work units | 64 |
-| Total estimated effort | ~139.5 engineer-hours |
+| Total estimated effort | ~132 engineer-hours |
 | Calendar duration | 16 weeks |
 | Minimum serial effort (critical path) | ~32 hours |
 | Maximum useful parallelism | 3 contributors |
@@ -334,11 +341,11 @@ smaller units, not added.
 ### Effort Distribution
 
 ```
-Phase 4: Core Theorems   ██████████████████████████████████████████  38h  (27%)
-Phase 2: Group Actions   ██████████████████████████████  28h  (20%)
-Phase 5: Construction    ██████████████████████████████  28h  (20%)
-Phase 6: Polish          ████████████████████████  23h  (16%)
-Phase 3: Crypto Defs     ████████████████████  18h  (13%)
+Phase 4: Core Theorems   █████████████████████████████████████  33h  (25%)
+Phase 2: Group Actions   ██████████████████████████████  28h  (21%)
+Phase 5: Construction    ████████████████████████████  26h  (20%)
+Phase 6: Polish          ████████████████████████  22.5h  (17%)
+Phase 3: Crypto Defs     ████████████████████  18h  (14%)
 Phase 1: Scaffolding     █████  4.5h  (3%)
 ```
 

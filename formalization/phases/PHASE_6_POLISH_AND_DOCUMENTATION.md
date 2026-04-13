@@ -1,6 +1,6 @@
 # Phase 6 — Polish & Documentation
 
-## Weeks 15–16 | 13 Work Units | ~23 Hours
+## Weeks 15–16 | 13 Work Units | ~22.5 Hours
 
 *Part of the [Orbcrypt Lean 4 Formalization Plan](../FORMALIZATION_PLAN.md)*
 

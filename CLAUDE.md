@@ -242,17 +242,17 @@ The formalization depends heavily on Mathlib's group action library. Familiarity
 
 ## Formalization roadmap
 
-The Lean 4 formalization proceeds in six phases across 16 weeks (~139.5 engineer-hours):
+The Lean 4 formalization proceeds in six phases across 16 weeks (~132 engineer-hours):
 
 | Phase | Title | Weeks | Units | Effort | Document |
 |-------|-------|-------|-------|--------|----------|
 | 1 | Project Scaffolding | 1 | 4 | 4.5h | `formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md` |
 | 2 | Group Action Foundations | 2-4 | 11 | 28h | `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` |
 | 3 | Cryptographic Definitions | 5-6 | 8 | 18h | `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` |
-| 4 | Core Theorems | 7-10 | 16 | 38h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` |
-| 5 | Concrete Construction | 11-14 | 12 | 28h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` |
-| 6 | Polish & Documentation | 15-16 | 13 | 23h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` |
-| | **Total** | **16** | **64** | **~139.5h** | |
+| 4 | Core Theorems | 7-10 | 16 | 33h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` |
+| 5 | Concrete Construction | 11-14 | 12 | 26h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` |
+| 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` |
+| | **Total** | **16** | **64** | **~132h** | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```

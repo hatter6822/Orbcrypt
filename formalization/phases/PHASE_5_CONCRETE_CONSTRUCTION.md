@@ -1,6 +1,6 @@
 # Phase 5 — Concrete Construction
 
-## Weeks 11–14 | 12 Work Units | ~28 Hours
+## Weeks 11–14 | 12 Work Units | ~26 Hours
 
 *Part of the [Orbcrypt Lean 4 Formalization Plan](../FORMALIZATION_PLAN.md)*
 
