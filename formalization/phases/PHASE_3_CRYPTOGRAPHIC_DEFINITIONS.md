@@ -1,6 +1,6 @@
 # Phase 3 — Cryptographic Definitions
 
-## Weeks 5–6 | 8 Work Units | ~18 Hours
+## Weeks 5–6 | 11 Work Units | ~21 Hours
 
 *Part of the [Orbcrypt Lean 4 Formalization Plan](../FORMALIZATION_PLAN.md)*
 
@@ -8,32 +8,28 @@
 
 ## Overview
 
-Phase 3 defines the cryptographic layer of the formalization: the abstract
-orbit encryption scheme, the adversary model, and the Orbit Indistinguishability
-Assumption. These definitions bridge the mathematical foundations (Phase 2) and
-the theorem proofs (Phase 4).
+Phase 3 defines the cryptographic layer: the abstract orbit encryption scheme,
+the adversary model, and the OIA axiom. A critical addition is the
+**pre-validation sprint** (unit 3.9) — a risk-reduction step that sketches
+Phase 4 proofs before finalizing definitions, ensuring no costly rework.
 
-This phase has **two parallel tracks** after the scheme definition (units
-3.1–3.3): the security game track (3.4–3.6) and the OIA track (3.7–3.8).
+This phase has **two parallel tracks** after the scheme core (3.1–3.3b):
+the security game track (3.4–3.6) and the OIA track (3.7–3.8).
 
 ---
 
 ## Objectives
 
-1. A complete `OrbitEncScheme` structure with `encrypt` and `decrypt` functions
-   that formally capture DEVELOPMENT.md §4.1.
-2. A deterministic adversary model and IND-CPA advantage definition that
-   abstracts DEVELOPMENT.md §4.3.
-3. The OIA stated as a Lean axiom with clear documentation explaining the
-   relationship to the probabilistic definition in DEVELOPMENT.md §5.2.
+1. `OrbitEncScheme` structure with `encrypt` and `decrypt`.
+2. Deterministic adversary model and IND-CPA advantage definition.
+3. OIA axiom with documentation.
+4. **Validated** that all definitions compose correctly for Phase 4 proofs.
 
 ---
 
 ## Prerequisites
 
 - Phase 2 complete: all `GroupAction/` modules compile without `sorry`.
-- In particular: `CanonicalForm` structure (2.5) and `IsGInvariant` (2.8) are
-  available.
 
 ---
 
@@ -41,404 +37,303 @@ This phase has **two parallel tracks** after the scheme definition (units
 
 ### 3.1 — Scheme Structure
 
-**Effort:** 3 hours
-**Module:** `Crypto/Scheme.lean`
-**Deliverable:** `OrbitEncScheme` structure definition.
-**Dependencies:** Phase 2 (specifically 2.5, CanonicalForm)
-
-#### Implementation Guidance
+**Effort:** 2h | **Module:** `Crypto/Scheme.lean` | **Deps:** 2.5
 
 ```lean
-import Orbcrypt.GroupAction.Basic
-import Orbcrypt.GroupAction.Canonical
-
-/--
-An Abstract Orbit Encryption (AOE) scheme. Formalizes DEVELOPMENT.md §4.1.
-
-The scheme is parameterized by:
-- `G`: the secret group (key)
-- `X`: the ciphertext space
-- `M`: the message space
-
-The scheme consists of:
-- `reps`: a function mapping each message to its orbit representative
-- `reps_distinct`: a proof that distinct messages map to distinct orbits
-- `canonForm`: a canonical form function for the group action
--/
 structure OrbitEncScheme (G : Type*) (X : Type*) (M : Type*)
     [Group G] [MulAction G X] [DecidableEq X] where
-  /-- Maps each message to its orbit representative. -/
   reps : M → X
-  /-- Distinct messages have representatives in distinct orbits. -/
   reps_distinct : ∀ m₁ m₂ : M, m₁ ≠ m₂ →
     MulAction.orbit G (reps m₁) ≠ MulAction.orbit G (reps m₂)
-  /-- The canonical form function used for decryption. -/
   canonForm : CanonicalForm G X
 ```
 
-**Design decisions:**
-- `M` is left abstract (not required to be `Fintype` yet). The `Fintype M`
-  constraint is added only where needed (specifically, in `decrypt`).
-- `DecidableEq X` is needed for the lookup in `decrypt`.
-- The scheme is symmetric-key: `G` (the group) serves as the secret key.
+**Sub-steps:**
+1. **(1h)** Define the structure with full docstrings for each field.
+2. **(1h)** Verify `#check OrbitEncScheme` and field accessors compile.
 
 ---
 
 ### 3.2 — Encrypt Function
 
-**Effort:** 1 hour
-**Module:** `Crypto/Scheme.lean`
-**Deliverable:** `encrypt` function definition.
-**Dependencies:** 3.1
-
-#### Implementation Guidance
+**Effort:** 1h | **Module:** `Crypto/Scheme.lean` | **Deps:** 3.1
 
 ```lean
-/--
-Encryption: apply a group element to the orbit representative of the message.
-Enc(sk, m) = g • reps(m) for a uniformly sampled g ∈ G.
-
-In the formalization, `g` is a parameter (not sampled), since we work in a
-deterministic setting. The probabilistic sampling is abstracted by quantifying
-over all `g ∈ G` in the security definitions.
--/
 def encrypt [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) (g : G) (m : M) : X :=
   g • scheme.reps m
 ```
 
-This is a one-liner, but it is important to have it as a named definition so
-that the correctness theorem can unfold it cleanly.
+One-liner. Verify `#check @encrypt` shows expected type.
 
 ---
 
-### 3.3 — Decrypt Function
+### 3.3a — Decrypt: Survey Search Mechanisms
 
-**Effort:** 4 hours
-**Module:** `Crypto/Scheme.lean`
-**Deliverable:** `decrypt` function definition using `Fintype.find` or
-equivalent.
-**Dependencies:** 3.1, 2.5
+**Effort:** 1.5h | **Module:** scratch file | **Deps:** 3.1
 
-#### Implementation Guidance
+**This is risk reduction.** The `decrypt` function must search a finite type
+for a matching canonical form. Multiple Mathlib mechanisms exist, and choosing
+the wrong one makes the correctness proof (4.3) much harder.
 
+**Evaluate each candidate in a scratch file:**
+
+| Mechanism | API | Correctness Lemma |
+|-----------|-----|-------------------|
+| `Fintype.choose` | Returns the element satisfying a decidable predicate (must be unique) | `Fintype.choose_spec` |
+| `Finset.univ.find?` | Returns `Option` from a decidable predicate on `Finset.univ` | `Finset.find?_some`, `Finset.find?_none` |
+| `Fintype.find?` | Similar but on `Fintype` directly | Check if exists in current Mathlib |
+| Manual `Finset.univ.filter` | Filter + extract singleton | `Finset.filter_singleton`, `Finset.card_eq_one` |
+
+**For each candidate, test:**
+1. Does it compile with `[Fintype M] [DecidableEq M] [DecidableEq X]`?
+2. What specification lemma does it provide?
+3. How easy is it to prove "returns `some m`" when a unique match exists?
+
+**Output:** Decision on which mechanism to use, documented in a comment.
+
+### 3.3b — Decrypt: Implementation
+
+**Effort:** 2.5h | **Module:** `Crypto/Scheme.lean` | **Deps:** 3.3a
+
+Implement `decrypt` using the mechanism chosen in 3.3a.
+
+**Recommended implementation (using `Finset.univ.find?`):**
 ```lean
-/--
-Decryption: compute the canonical form of the ciphertext, then find the
-message whose representative has the same canonical form.
-
-Returns `some m` if a matching message is found, `none` otherwise.
-For honestly generated ciphertexts, this always returns `some m`
-(proved in Phase 4, Theorem `correctness`).
--/
 def decrypt [Group G] [MulAction G X] [DecidableEq X]
     [Fintype M] [DecidableEq M]
     (scheme : OrbitEncScheme G X M) (c : X) : Option M :=
-  Fintype.find? (fun m => scheme.canonForm.canon c = scheme.canonForm.canon (scheme.reps m))
+  (Finset.univ : Finset M).find?
+    (fun m => decide (scheme.canonForm.canon c = scheme.canonForm.canon (scheme.reps m)))
 ```
 
-**Implementation challenges:**
-
-1. **`Fintype M` requirement:** `decrypt` must search over all messages to find
-   a match. This requires `M` to be a finite type with decidable equality.
-   Add `[Fintype M]` and `[DecidableEq M]` to the context.
-
-2. **`Fintype.find?` vs alternatives:** Lean 4's `Fintype` provides several
-   search mechanisms:
-   - `Fintype.find?` — returns `Option M`, matching our signature.
-   - Manual construction via `Finset.univ.find?`.
-   Choose whichever has better lemma support in Mathlib.
-
-3. **`DecidableEq X` for canonical form comparison:** The comparison
-   `scheme.canonForm.canon c = scheme.canonForm.canon (scheme.reps m)` requires
-   `DecidableEq X`.
-
-4. **Alternative: direct definition via `Option.map`:**
+**Sub-steps:**
+1. **(1h)** Write the definition using the chosen mechanism.
+2. **(30m)** Verify it compiles with correct type class constraints.
+3. **(1h)** Write and verify the **decrypt specification lemma** that Phase 4
+   will consume:
    ```lean
-   def decrypt ... (c : X) : Option M :=
-     (Finset.univ.filter (fun m =>
-       scheme.canonForm.canon c = scheme.canonForm.canon (scheme.reps m)
-     )).min'  -- or similar
+   /-- Key spec lemma: if the predicate holds for exactly one m, decrypt returns it. -/
+   theorem decrypt_spec [Group G] [MulAction G X] [DecidableEq X]
+       [Fintype M] [DecidableEq M]
+       (scheme : OrbitEncScheme G X M) (c : X) (m : M)
+       (hMatch : scheme.canonForm.canon c = scheme.canonForm.canon (scheme.reps m))
+       (hUnique : ∀ m', scheme.canonForm.canon c = scheme.canonForm.canon (scheme.reps m') → m' = m) :
+       decrypt scheme c = some m := by
+     sorry  -- Will be proved here or deferred to Phase 4
    ```
-   Choose the approach that makes the correctness proof (4.3) cleanest.
-
-#### Risks
-
-| Risk | Mitigation |
-|------|------------|
-| `Fintype.find?` specification lemmas are weak | Switch to `Finset.univ.find?` which has richer API |
-| Performance issues with `DecidableEq` on large types | Not a concern for formalization (proofs, not computation) |
-| `sorry` in `DecidableEq` instances | Ensure all types used have proper `DecidableEq` instances |
+   Even if the proof is deferred (`sorry`), stating this lemma validates that
+   the `decrypt` implementation has the right shape for the correctness proof.
 
 ---
 
 ### 3.4 — Adversary Structure
 
-**Effort:** 2 hours
-**Module:** `Crypto/Security.lean`
-**Deliverable:** `Adversary` structure definition.
-**Dependencies:** 3.1
-
-#### Implementation Guidance
+**Effort:** 1.5h | **Module:** `Crypto/Security.lean` | **Deps:** 3.1
 
 ```lean
-import Orbcrypt.Crypto.Scheme
-
-/--
-A deterministic adversary for the IND-1-CPA game. Formalizes the adversary
-model from DEVELOPMENT.md §4.3.
-
-Since we work in a deterministic setting (no probability monad), the adversary
-is a pair of pure functions:
-- `choose`: given the public orbit representatives, select a challenge pair
-- `guess`: given the representatives and a challenge ciphertext, output a bit
-
-The probabilistic aspects (random coins for the adversary, random group element
-for the challenger) are abstracted by quantifying over all possible values.
--/
 structure Adversary (X : Type*) (M : Type*) where
-  /-- Choose two challenge messages given the orbit representatives. -/
   choose : (M → X) → M × M
-  /-- Guess which message was encrypted, given reps and the challenge ciphertext. -/
   guess : (M → X) → X → Bool
 ```
 
-**Design note:** The adversary sees the orbit representatives (`reps : M → X`)
-as public parameters, but does not see the secret group `G`. This matches the
-security model in DEVELOPMENT.md §4.3 where `params` (including {x_m}) is
-public but `sk` (including G) is secret.
+**Sub-steps:**
+1. **(45m)** Define the structure with docstrings.
+2. **(45m)** Add accessor convenience lemmas:
+   ```lean
+   def Adversary.chosenM₀ (A : Adversary X M) (reps : M → X) : M :=
+     (A.choose reps).1
+   def Adversary.chosenM₁ (A : Adversary X M) (reps : M → X) : M :=
+     (A.choose reps).2
+   ```
+   These avoid the `let (m₀, m₁) := ...` pattern that can cause issues in proofs.
 
 ---
 
-### 3.5 — 1-CPA Advantage Definition
+### 3.5a — Advantage: Definition
 
-**Effort:** 3 hours
-**Module:** `Crypto/Security.lean`
-**Deliverable:** `hasAdvantage` predicate.
-**Dependencies:** 3.4, 3.2
-
-#### Implementation Guidance
+**Effort:** 1.5h | **Module:** `Crypto/Security.lean` | **Deps:** 3.4, 3.2
 
 ```lean
-/--
-An adversary "has advantage" if there exist group elements g₀, g₁ such that
-the adversary's guess differs on encryptions of its two chosen messages.
-
-This is a deterministic abstraction of non-zero advantage in the probabilistic
-IND-1-CPA game. In the probabilistic setting, advantage is:
-  |Pr[A(g • x_{m₀}) = 1] - Pr[A(g • x_{m₁}) = 1]| / 2
-
-The deterministic version captures the key idea: the adversary can produce
-*some* distinguishing behavior between the two orbits.
--/
 def hasAdvantage [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) (A : Adversary X M) : Prop :=
-  let (m₀, m₁) := A.choose scheme.reps
   ∃ g₀ g₁ : G,
-    A.guess scheme.reps (g₀ • scheme.reps m₀) ≠
-    A.guess scheme.reps (g₁ • scheme.reps m₁)
+    A.guess scheme.reps (g₀ • scheme.reps (A.chosenM₀ scheme.reps)) ≠
+    A.guess scheme.reps (g₁ • scheme.reps (A.chosenM₁ scheme.reps))
 ```
 
-**Why this formulation works:** If no group elements produce different guesses,
-then the adversary's guess function is "orbit-blind" — it cannot tell which
-orbit a ciphertext came from, regardless of the specific group element used.
-This corresponds to zero advantage in the probabilistic game.
+**Key change from v1:** Use `A.chosenM₀` / `A.chosenM₁` instead of
+`let (m₀, m₁) := A.choose scheme.reps`. This avoids `let`-in-`Prop` issues
+that were flagged as a risk in the original plan.
+
+### 3.5b — Advantage: Unfold Lemma
+
+**Effort:** 1h | **Module:** `Crypto/Security.lean` | **Deps:** 3.5a
+
+```lean
+/-- Unfold hasAdvantage for use in Phase 4 proofs. -/
+theorem hasAdvantage_iff [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    hasAdvantage scheme A ↔
+    ∃ g₀ g₁ : G,
+      A.guess scheme.reps (g₀ • scheme.reps (A.chosenM₀ scheme.reps)) ≠
+      A.guess scheme.reps (g₁ • scheme.reps (A.chosenM₁ scheme.reps)) := by
+  rfl
+```
+
+Even if this is `rfl`, having it as a named lemma ensures Phase 4 can `rw`
+cleanly. Also prove the negation form:
+
+```lean
+theorem not_hasAdvantage_iff ... :
+    ¬ hasAdvantage scheme A ↔
+    ∀ g₀ g₁ : G,
+      A.guess scheme.reps (g₀ • scheme.reps (A.chosenM₀ scheme.reps)) =
+      A.guess scheme.reps (g₁ • scheme.reps (A.chosenM₁ scheme.reps)) := by
+  simp [hasAdvantage_iff, not_exists, not_ne_iff]
+```
 
 ---
 
-### 3.6 — IND-1-CPA Security Definition
+### 3.6 — Security Definition
 
-**Effort:** 2 hours
-**Module:** `Crypto/Security.lean`
-**Deliverable:** `IsSecure` predicate.
-**Dependencies:** 3.5
-
-#### Implementation Guidance
+**Effort:** 1h | **Module:** `Crypto/Security.lean` | **Deps:** 3.5a
 
 ```lean
-/--
-A scheme is IND-1-CPA secure if no adversary has advantage.
-
-This is the deterministic analogue of: for all PPT adversaries A,
-Adv^{IND-1-CPA}_A(λ) ≤ negl(λ).
--/
 def IsSecure [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) : Prop :=
   ∀ (A : Adversary X M), ¬ hasAdvantage scheme A
 ```
 
-**Relationship to the full definition:** This captures IND-1-CPA (single-query,
-no oracle). The full IND-CPA with adaptive oracle queries (DEVELOPMENT.md §8.2)
-requires modeling stateful adversaries and sequential oracle interactions,
-which is beyond the current scope.
-
 ---
 
 ### 3.7 — OIA Axiom
 
-**Effort:** 2 hours
-**Module:** `Crypto/OIA.lean`
-**Deliverable:** OIA stated as a Lean axiom.
-**Dependencies:** 3.1
-
-#### Implementation Guidance
+**Effort:** 2h | **Module:** `Crypto/OIA.lean` | **Deps:** 3.1
 
 ```lean
-import Orbcrypt.Crypto.Scheme
-
-/--
-The Orbit Indistinguishability Assumption (OIA).
-
-This axiom asserts that for any function `f : X → Bool` and any two messages,
-the "behavior" of `f` on one orbit can be matched by the other orbit.
-Specifically: for any `g ∈ G`, there exists `g' ∈ G` such that
-`f(g • reps(m₀)) = f(g' • reps(m₁))`.
-
-This is a deterministic reformulation of the probabilistic OIA
-(DEVELOPMENT.md §5.2), which states:
-
-  |Pr[A(g • x_{m₀}) = 1] - Pr[A(g • x_{m₁}) = 1]| ≤ negl(λ)
-
-The deterministic version is strictly stronger: it asserts that every
-output of `f` on orbit 0 is achievable on orbit 1, not merely that the
-distributions are close. This suffices for our theorem (OIA ⟹ IND-1-CPA)
-and avoids the need for a probability monad.
-
--- Justification: The OIA is a computational conjecture grounded in the
--- hardness of Graph Isomorphism (GI-OIA, §5.3) and Code Equivalence
--- (CE-OIA, §5.4). It is NOT a mathematical theorem. We state it as an
--- axiom to separate the algebraic proof structure from the computational
--- hardness assumption, following standard practice in formal cryptography.
--/
 axiom OIA [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
     (f : X → Bool) (m₀ m₁ : M) (g : G) :
     ∃ g' : G, f (g • scheme.reps m₀) = f (g' • scheme.reps m₁)
 ```
 
-**Critical design choice:** The OIA is stated as an `axiom`, not a `theorem`.
-This makes explicit that it is an unproven assumption. Lean's `#print axioms`
-command will show which theorems depend on it, providing transparency about
-what is conditional.
-
-**Alternative formulation (weaker but still sufficient):**
-```lean
-axiom OIA' ... : ∀ f m₀ m₁,
-  (∀ g : G, f (g • scheme.reps m₀) = true) ↔
-  (∀ g : G, f (g • scheme.reps m₁) = true)
-```
-This says "f is constantly true on one orbit iff it's constantly true on the
-other." The stronger per-element version above is preferred because it maps
-more directly to the probabilistic OIA.
+**Sub-steps:**
+1. **(1h)** State the axiom. Verify `#check @OIA` shows expected signature.
+2. **(1h)** Write the justification comment block documenting:
+   - Why it's an axiom (computational conjecture)
+   - Relationship to probabilistic OIA (deterministic is stronger)
+   - What depends on it (only `OIAImpliesCPA.lean`)
+   - How to audit (`#print axioms`)
 
 ---
 
-### 3.8 — OIA Discussion Comment Block
+### 3.8 — Pre-Validation Sprint (Risk Reduction)
 
-**Effort:** 1 hour
-**Module:** `Crypto/OIA.lean`
-**Deliverable:** Detailed documentation explaining the OIA's role and
-limitations.
-**Dependencies:** 3.7
+**Effort:** 2.5h | **Module:** scratch file | **Deps:** 3.1–3.7
 
-#### Implementation Guidance
+**This is the most important risk reduction step in the entire plan.**
 
-Add a comprehensive comment block to `OIA.lean` explaining:
+Before declaring Phase 3 complete, sketch all three Phase 4 headline proofs
+in a scratch file with `sorry` at non-trivial steps. This validates that:
+1. The `decrypt` implementation composes with `encrypt` correctly.
+2. The `hasAdvantage` definition unfolds cleanly in proofs.
+3. The OIA axiom is strong enough to prove the security theorem.
+4. The OIA axiom is not so strong as to be trivially false.
 
-1. **Why an axiom:** The OIA is a computational hardness assumption. Proving it
-   would require showing P ≠ NP-type separations, which is far beyond current
-   mathematics.
+**Validation 1 — Correctness sketch (30m):**
+```lean
+-- Verify this proof structure works:
+example (scheme : OrbitEncScheme G X M) (m : M) (g : G) :
+    decrypt scheme (encrypt scheme g m) = some m := by
+  -- Can we unfold encrypt to g • reps m?
+  -- Can we apply canon_eq_of_mem_orbit?
+  -- Can we use decrypt_spec?
+  sorry
+```
 
-2. **Relationship to probabilistic OIA:** The deterministic formulation is
-   strictly stronger. If the deterministic OIA holds, the probabilistic OIA
-   certainly holds. The converse is not necessarily true, but the theorems we
-   prove (correctness, invariant attack, OIA ⟹ CPA) are all valid under the
-   stronger assumption.
+**Validation 2 — Invariant attack sketch (30m):**
+```lean
+-- Verify the adversary construction type-checks:
+example (f : X → Y) [DecidableEq Y] (m₀ m₁ : M) :
+    Adversary X M :=
+  { choose := fun _ => (m₀, m₁)
+    guess := fun reps c => decide (f c = f (reps m₀)) }
+```
 
-3. **What depends on it:** Only `Theorems/OIAImpliesCPA.lean` uses the OIA
-   axiom. The correctness theorem and invariant attack theorem are
-   unconditional.
+**Validation 3 — OIA sketch (45m):**
+```lean
+-- Verify OIA can be instantiated with the adversary's guess function:
+example (scheme : OrbitEncScheme G X M) (A : Adversary X M) (m₀ m₁ : M) (g : G) :
+    ∃ g' : G, A.guess scheme.reps (g • scheme.reps m₀) =
+              A.guess scheme.reps (g' • scheme.reps m₁) :=
+  OIA scheme (A.guess scheme.reps) m₀ m₁ g
+```
 
-4. **Auditing:** Users can run `#print axioms oia_implies_1cpa` to verify that
-   this theorem depends on the OIA axiom (and Lean's standard axioms) and
-   nothing else.
+**Validation 4 — OIA consistency check (45m):**
+Construct a toy model where the OIA holds to verify it's not trivially false:
+```lean
+-- Trivial model: one-element group, one-element space
+-- G = Unit, X = Bool, M = Unit
+-- OIA should hold vacuously (only one orbit)
+```
+
+**If any validation fails:** Revise the affected definition (decrypt, hasAdvantage,
+or OIA) before proceeding. This is why the sprint exists — catching definition
+mismatches in Phase 3 costs hours; catching them in Phase 4 costs days.
 
 ---
 
 ## Parallel Execution Plan
 
 ```
-         3.1 Scheme Structure
-                  │
-                  ▼
-         3.2 Encrypt Function
-                  │
-                  ▼
-         3.3 Decrypt Function
-              /        \
-             /          \
-            ▼            ▼
-   Track A: Security    Track B: OIA
-   ┌──────────────┐    ┌──────────────┐
-   │ 3.4 Adversary │    │ 3.7 OIA Axiom│
-   │ 3.5 Advantage │    │ 3.8 Comments │
-   │ 3.6 IsSecure  │    └──────────────┘
-   └──────────────┘
+    3.1 Scheme → 3.2 Encrypt → 3.3a Survey → 3.3b Decrypt
+                                                  │
+                          ┌───────────────────────┤
+                          ▼                       ▼
+                 Track A: Security         Track B: OIA
+                 ┌──────────────┐         ┌──────────────┐
+                 │ 3.4 Adversary │         │ 3.7 OIA Axiom│
+                 │ 3.5a Adv def  │         └──────────────┘
+                 │ 3.5b Unfold   │                │
+                 │ 3.6 IsSecure  │                │
+                 └──────────────┘                │
+                          │                       │
+                          └───────────┬───────────┘
+                                      ▼
+                            3.8 Pre-Validation Sprint
 ```
-
-**Optimal schedule for a single contributor:**
-
-| Day | Work | Hours | Running Total |
-|-----|------|-------|---------------|
-| 1 | 3.1 (Scheme structure) + 3.2 (encrypt) | 4h | 4h |
-| 2 | 3.3 (decrypt) | 4h | 8h |
-| 3 | 3.4 (adversary) + 3.7 (OIA axiom) | 4h | 12h |
-| 4 | 3.5 (advantage) + 3.8 (OIA comments) | 4h | 16h |
-| 5 | 3.6 (IsSecure) | 2h | 18h |
 
 ---
 
 ## Risk Analysis
 
-| Risk | Units Affected | Likelihood | Impact | Mitigation |
-|------|---------------|-----------|--------|------------|
-| `decrypt` implementation is tricky with `Fintype.find?` | 3.3 | High | Medium | Prototype multiple approaches; accept a less elegant implementation if needed |
-| OIA axiom formulation too strong/weak for Phase 4 proofs | 3.7 | Medium | High | Test the OIA formulation by sketching the OIA ⟹ CPA proof (4.7–4.9) before finalizing |
-| `Adversary` structure doesn't compose well with advantage | 3.4, 3.5 | Low | Medium | The structure is simple enough that refactoring is cheap |
-| `let (m₀, m₁) := ...` pattern causes issues in `Prop` | 3.5 | Medium | Low | Replace with explicit `Prod.fst` / `Prod.snd` if needed |
-
-### Pre-Validation Recommendation
-
-Before committing to the OIA axiom formulation (3.7), **sketch the proof of
-OIA ⟹ IND-1-CPA** (Phase 4, unit 4.7) on paper or in a scratch file with
-`sorry`. This validates that the axiom is:
-1. Strong enough to prove the security theorem.
-2. Not so strong as to be trivially false or prove unintended results.
+| Risk | Units | Likelihood | Impact | Mitigation |
+|------|-------|-----------|--------|------------|
+| `decrypt` mechanism has weak spec lemmas | 3.3a/b | High | High | 3.3a surveys all options first; 3.3b includes spec lemma |
+| OIA too strong or too weak | 3.7 | Medium | Critical | 3.8 validates with sketch proofs and toy model |
+| `let` pattern in `hasAdvantage` causes issues | 3.5a | Medium | Medium | Use explicit `chosenM₀`/`chosenM₁` accessors |
+| `Adversary.guess` type doesn't compose with OIA | 3.4 | Low | High | 3.8 validates composition explicitly |
+| `DecidableEq` missing for canonical form comparison | 3.3b | Low | Low | Already required on `X` in `OrbitEncScheme` |
 
 ---
 
 ## Exit Criteria
 
-All of the following must be true before proceeding to Phase 4:
-
-- [ ] `Crypto/Scheme.lean` compiles without `sorry`
+- [ ] `Crypto/Scheme.lean` compiles without `sorry` (except `decrypt_spec` if deferred)
 - [ ] `Crypto/Security.lean` compiles without `sorry`
-- [ ] `Crypto/OIA.lean` compiles (contains an `axiom`, not `sorry`)
+- [ ] `Crypto/OIA.lean` compiles with only the `OIA` axiom
 - [ ] `lake build` succeeds with zero errors
-- [ ] `#check OrbitEncScheme` succeeds
-- [ ] `#check encrypt` and `#check decrypt` succeed
-- [ ] `#check Adversary` and `#check hasAdvantage` succeed
-- [ ] `#check @OIA` shows the expected type signature
-- [ ] `decrypt` handles the `Fintype M` requirement correctly
-- [ ] OIA documentation explains the axiom's role and limitations
+- [ ] Pre-validation sprint (3.8) confirms all Phase 4 proof sketches type-check
+- [ ] `not_hasAdvantage_iff` provides clean negation form
+- [ ] OIA consistency verified with toy model
 
 ---
 
 ## Transition to Phase 4
 
-With the cryptographic definitions in place, Phase 4 proves the three headline
-theorems. Each theorem combines definitions from this phase (the scheme,
-adversary, OIA) with lemmas from Phase 2 (orbit membership, canonical form
-properties, invariant functions).
+With definitions validated by the pre-validation sprint, Phase 4 fills in the
+`sorry` gaps in the headline proofs with confidence that no definitional
+rework is needed.
 
 See: [Phase 4 — Core Theorems](PHASE_4_CORE_THEOREMS.md)

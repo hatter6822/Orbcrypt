@@ -1,6 +1,6 @@
 # Phase 2 — Group Action Foundations
 
-## Weeks 2–4 | 11 Work Units | ~28 Hours
+## Weeks 2–4 | 16 Work Units | ~30 Hours
 
 *Part of the [Orbcrypt Lean 4 Formalization Plan](../FORMALIZATION_PLAN.md)*
 
@@ -14,7 +14,7 @@ upon. It populates the three `GroupAction/` modules — `Basic.lean`,
 definitions, and lemmas that directly support the cryptographic theorems in
 Phase 4.
 
-This phase has **three parallel tracks** after the initial Mathlib wrapping
+This phase has **three parallel tracks** after the initial Mathlib exploration
 (unit 2.1), offering up to 3x speedup with multiple contributors.
 
 ---
@@ -38,115 +38,120 @@ This phase has **three parallel tracks** after the initial Mathlib wrapping
 
 ## Work Units
 
-### 2.1 — Orbit API Wrapper
+### 2.1a — Mathlib API Exploration (Risk Reduction)
 
-**Effort:** 3 hours
-**Module:** `GroupAction/Basic.lean`
-**Deliverable:** Re-export `MulAction.orbit`, `MulAction.stabilizer` from
-Mathlib with convenience aliases.
+**Effort:** 1.5h | **Module:** scratch file | **Deps:** 1.4
 
-#### Implementation Guidance
+Open a scratch `.lean` file and systematically explore the Mathlib API surface
+that the entire formalization depends on. This is pure research — no deliverable
+code, but the findings determine the implementation strategy for every
+subsequent unit.
+
+**Checklist:**
+- [ ] `#check @MulAction.orbit` — confirm type signature
+- [ ] `#check @MulAction.mem_orbit_iff` — confirm it gives `∃ g, g • x = y`
+- [ ] `#check @MulAction.orbit_eq_iff` — confirm it gives orbit equality criterion
+- [ ] Search for `MulAction.orbit_smul` or equivalent (needed for 2.4b)
+- [ ] `#check @MulAction.orbitRel` — confirm it provides a `Setoid`
+- [ ] `#check @MulAction.card_orbit_mul_card_stabilizer` — confirm Fintype constraints
+- [ ] Check what `Fintype` instances exist for `MulAction.orbit` and `MulAction.stabilizer`
+- [ ] Test whether `Disjoint` on `Set X` works smoothly or requires workarounds
+- [ ] Document any API name mismatches between expected and actual Mathlib names
+
+**Output:** A brief notes file listing confirmed API names, type signatures,
+and any surprises. This prevents wasted effort in later units.
+
+### 2.1b — Orbit API Wrappers
+
+**Effort:** 1.5h | **Module:** `GroupAction/Basic.lean` | **Deps:** 2.1a
+
+Using findings from 2.1a, write the convenience wrappers:
 
 ```lean
 import Mathlib.GroupTheory.GroupAction.Basic
 import Mathlib.GroupTheory.GroupAction.Defs
 
-/--
-Orbcrypt.GroupAction.Basic — Core orbit and stabilizer API.
-
-Re-exports Mathlib's `MulAction` framework with convenience aliases and
-additional lemmas needed for orbit encryption proofs.
--/
-
 namespace Orbcrypt
 
--- Re-export core Mathlib definitions for convenience.
--- Users of Orbcrypt modules should not need to import Mathlib directly
--- for basic orbit operations.
-
-/-- The orbit of `x` under the group `G`. Alias for `MulAction.orbit G x`. -/
+/-- The orbit of `x` under the group `G`. -/
 abbrev orbit (G : Type*) [Group G] [MulAction G X] (x : X) : Set X :=
   MulAction.orbit G x
 
-/-- The stabilizer of `x` in `G`. Alias for `MulAction.stabilizer G x`. -/
+/-- The stabilizer of `x` in `G`. -/
 abbrev stabilizer (G : Type*) [Group G] [MulAction G X] (x : X) : Subgroup G :=
   MulAction.stabilizer G x
 
 end Orbcrypt
 ```
 
-**Key Mathlib entry points to explore:**
-- `MulAction.orbit_eq_iff` — characterizes when two orbits are equal
-- `MulAction.mem_orbit_iff` — membership in an orbit
-- `MulAction.orbitRel` — the equivalence relation induced by orbits
-
-#### Definition of Done
-
-- `GroupAction/Basic.lean` compiles with the re-exports
-- A `#check Orbcrypt.orbit` succeeds in a scratch file
+**Definition of Done:** File compiles, `#check Orbcrypt.orbit` succeeds.
 
 ---
 
-### 2.2 — Orbit Partition Theorem
+### 2.2a — Orbit Partition: Type Setup and Strategy Selection
 
-**Effort:** 4 hours
-**Module:** `GroupAction/Basic.lean`
-**Deliverable:** Proof that any two orbits are either equal or disjoint.
-**Dependencies:** 2.1
+**Effort:** 1.5h | **Module:** `GroupAction/Basic.lean` | **Deps:** 2.1b
 
-#### Implementation Guidance
+State the orbit partition theorem and determine which proof strategy works
+cleanest in Lean 4. There are two candidate approaches — try both in a
+scratch file before committing.
 
+**Approach 1 — Via `orbitRel` (preferred):**
 ```lean
-/-- Any two orbits under a group action are either equal or disjoint. -/
 theorem orbit_disjoint_or_eq [Group G] [MulAction G X]
     (x y : X) :
     MulAction.orbit G x = MulAction.orbit G y ∨
     Disjoint (MulAction.orbit G x) (MulAction.orbit G y) := by
+  -- Use MulAction.orbitRel to get equivalence relation
+  -- Equivalence classes are equal or disjoint by Setoid properties
   sorry
 ```
 
-**Proof strategy:** Use Mathlib's `MulAction.orbitRel`, which gives an
-equivalence relation whose classes are exactly the orbits. Two equivalence
-classes are either identical or disjoint — this is a basic property of
-equivalence relations (`Setoid.eq_or_disjoint` or equivalent).
-
-**Alternative approach:** Prove directly:
-1. Suppose the orbits are not disjoint, i.e., ∃ z ∈ orbit G x ∩ orbit G y.
-2. Then ∃ g₁ g₂, g₁ • x = z = g₂ • y, so x = g₁⁻¹ • g₂ • y.
-3. Therefore orbit G x = orbit G y (by `MulAction.orbit_eq_iff`).
-
-**Mathlib references:**
-- `MulAction.orbit_eq_iff` — the key equivalence
-- `Set.Disjoint` or `Disjoint` in the lattice sense
-
-#### Risks
-
-This proof may require careful navigation of Mathlib's `Set` vs `Finset`
-distinctions and the `Disjoint` type class hierarchy. If `Disjoint` on `Set`
-is awkward, consider stating the theorem as:
+**Approach 2 — Direct (fallback if Disjoint is awkward):**
 ```lean
-MulAction.orbit G x = MulAction.orbit G y ∨
-  ∀ z, z ∉ MulAction.orbit G x ∨ z ∉ MulAction.orbit G y
+theorem orbit_disjoint_or_eq' [Group G] [MulAction G X]
+    (x y : X) :
+    MulAction.orbit G x = MulAction.orbit G y ∨
+    (MulAction.orbit G x ∩ MulAction.orbit G y = ∅) := by
+  -- If ∃ z ∈ intersection, obtain g₁ g₂ with g₁•x = z = g₂•y
+  -- Then orbit G x = orbit G y via orbit_eq_iff
+  -- Otherwise intersection is empty
+  sorry
 ```
+
+**Deliverable:** The theorem stated and compiling (with `sorry`), and a
+decision documented in a comment about which approach to use.
+
+### 2.2b — Orbit Partition: Complete Proof
+
+**Effort:** 2.5h | **Module:** `GroupAction/Basic.lean` | **Deps:** 2.2a
+
+Complete the proof chosen in 2.2a. The critical sub-steps are:
+
+**If using Approach 1 (orbitRel):**
+1. Invoke `MulAction.orbitRel G X` to get the equivalence relation.
+2. Use `Setoid.eq_or_disjoint` (or equivalent) on the orbit classes.
+3. Bridge between `Setoid` classes and `MulAction.orbit` using
+   `MulAction.orbitRel_apply` or similar.
+
+**If using Approach 2 (direct):**
+1. `by_cases h : ∃ z, z ∈ orbit G x ∧ z ∈ orbit G y`
+2. **Case ∃ z:** Obtain `⟨z, hz_x, hz_y⟩`. From `hz_x`: `∃ g₁, g₁ • x = z`.
+   From `hz_y`: `∃ g₂, g₂ • y = z`. Then `g₁ • x = g₂ • y`, so
+   `x = g₁⁻¹ • g₂ • y = (g₁⁻¹ * g₂) • y`. Apply `orbit_eq_iff`.
+3. **Case ¬∃ z:** The intersection is empty. Conclude `Disjoint`.
+
+**If stuck:** Accept Approach 2 with `∩ = ∅` formulation even if `Disjoint`
+doesn't work directly. The key consumer (the correctness proof in 4.3) only
+needs the logical content, not the specific `Disjoint` API.
 
 ---
 
 ### 2.3 — Orbit-Stabilizer Theorem Wrapper
 
-**Effort:** 2 hours
-**Module:** `GroupAction/Basic.lean`
-**Deliverable:** Wrapped version of Mathlib's orbit-stabilizer theorem with
-explicit type annotations.
-**Dependencies:** 2.1
-
-#### Implementation Guidance
-
-Mathlib provides `MulAction.card_orbit_mul_card_stabilizer`. Wrap it with
-explicit type annotations for our use case:
+**Effort:** 2h | **Module:** `GroupAction/Basic.lean` | **Deps:** 2.1b
 
 ```lean
-/-- Orbit-stabilizer theorem: |orbit G x| * |stab_G(x)| = |G|.
-    Wraps Mathlib's `MulAction.card_orbit_mul_card_stabilizer`. -/
 theorem orbit_stabilizer [Group G] [Fintype G] [MulAction G X]
     [DecidableEq X] (x : X) :
     Fintype.card (MulAction.orbit G x) *
@@ -155,392 +160,308 @@ theorem orbit_stabilizer [Group G] [Fintype G] [MulAction G X]
   exact MulAction.card_orbit_mul_card_stabilizer G x
 ```
 
-**Note:** This may require `Fintype` instances for the orbit and stabilizer.
-Check whether Mathlib provides these automatically. If not, constructing
-`Fintype` instances for orbits of finite groups acting on finite types may
-require additional instance declarations.
-
-#### Definition of Done
-
-- The wrapper compiles and `#check orbit_stabilizer` succeeds
-- The statement is a direct specialization of the Mathlib theorem
+**Sub-steps:**
+1. **(30m)** Verify that Mathlib provides `Fintype` instances for
+   `MulAction.orbit G x` and `MulAction.stabilizer G x` when `[Fintype G]`
+   and `[Fintype X]` are available. If not, add them.
+2. **(30m)** State the wrapper with the correct type class constraints.
+3. **(1h)** Verify it compiles. If the `exact` doesn't work directly, inspect
+   the type mismatch and add necessary coercions or instance arguments.
 
 ---
 
-### 2.4 — Orbit Membership Lemmas
+### 2.4a — Orbit Membership: `smul_mem_orbit`
 
-**Effort:** 3 hours
-**Module:** `GroupAction/Basic.lean`
-**Deliverable:** Two key lemmas connecting group action to orbit membership.
-**Dependencies:** 2.1
-
-#### Implementation Guidance
+**Effort:** 1h | **Module:** `GroupAction/Basic.lean` | **Deps:** 2.1b
 
 ```lean
 /-- Applying a group element to `x` yields a member of the orbit of `x`. -/
 theorem smul_mem_orbit [Group G] [MulAction G X]
-    (g : G) (x : X) : g • x ∈ MulAction.orbit G x := by
-  exact MulAction.mem_orbit _ g
+    (g : G) (x : X) : g • x ∈ MulAction.orbit G x :=
+  MulAction.mem_orbit _ g
+```
 
-/-- If `y` is obtained from `x` by a group action, they share the same orbit. -/
+**This should be a direct Mathlib application.** If `MulAction.mem_orbit`
+does not exist by that name, search for `MulAction.mem_orbit_iff.mpr ⟨g, rfl⟩`.
+
+Tag with `@[simp]` if it helps downstream proofs.
+
+### 2.4b — Orbit Equality Under Action: `orbit_eq_of_smul`
+
+**Effort:** 2h | **Module:** `GroupAction/Basic.lean` | **Deps:** 2.4a
+
+```lean
+/-- Acting on x doesn't change its orbit. -/
 theorem orbit_eq_of_smul [Group G] [MulAction G X]
     (g : G) (x : X) : MulAction.orbit G (g • x) = MulAction.orbit G x := by
   sorry
 ```
 
-**Proof strategy for `orbit_eq_of_smul`:** Use `MulAction.orbit_eq_iff`.
-We need to show ∃ g' : G, g' • x = g • x (take g' = g), and for the
-reverse ∃ g' : G, g' • (g • x) = x (take g' = g⁻¹). Alternatively,
-Mathlib may have this directly as `MulAction.orbit_smul`.
+**Step-by-step proof:**
+1. Apply `Set.eq_of_subset_of_subset` (show mutual inclusion).
+2. **Forward (⊆):** Let `y ∈ orbit G (g • x)`. Then `∃ h, h • (g • x) = y`,
+   so `(h * g) • x = y` by `mul_smul`. Thus `y ∈ orbit G x`.
+3. **Reverse (⊇):** Let `y ∈ orbit G x`. Then `∃ h, h • x = y`,
+   so `(h * g⁻¹) • (g • x) = h • (g⁻¹ • (g • x)) = h • x = y` by
+   `mul_smul` and `inv_smul_smul`. Thus `y ∈ orbit G (g • x)`.
 
-**Mathlib references:**
-- `MulAction.mem_orbit` — direct proof of membership
-- `MulAction.orbit_eq_iff` — orbit equality criterion
-- Look for `MulAction.orbit_smul` (may exist under a slightly different name)
+**Alternative:** Check if Mathlib has this as `MulAction.orbit_smul` or
+`MulAction.orbit_eq_of_mem_orbit`. The 2.1a exploration should have found this.
 
 ---
 
 ### 2.5 — Canonical Form Structure
 
-**Effort:** 2 hours
-**Module:** `GroupAction/Canonical.lean`
-**Deliverable:** The `CanonicalForm` structure definition.
-**Dependencies:** 2.1
-
-#### Implementation Guidance
+**Effort:** 2h | **Module:** `GroupAction/Canonical.lean` | **Deps:** 2.1b
 
 ```lean
-import Mathlib.GroupTheory.GroupAction.Basic
-import Orbcrypt.GroupAction.Basic
-
-/--
-A canonical form for a group action is a function `canon : X → X` that:
-1. Maps each element to a member of its own orbit (`mem_orbit`).
-2. Uniquely identifies orbits: `canon x = canon y ↔ orbit G x = orbit G y`
-   (`orbit_iff`).
-
-This abstracts the concept of "lexicographically minimal element of the orbit"
-used in the concrete Orbcrypt construction (DEVELOPMENT.md §3.2).
--/
 structure CanonicalForm (G : Type*) (X : Type*)
     [Group G] [MulAction G X] where
-  /-- The canonicalization function. -/
   canon : X → X
-  /-- The canonical form of `x` lies in the orbit of `x`. -/
   mem_orbit : ∀ x, canon x ∈ MulAction.orbit G x
-  /-- Two elements have the same canonical form iff they are in the same orbit. -/
   orbit_iff : ∀ x y, canon x = canon y ↔
     MulAction.orbit G x = MulAction.orbit G y
 ```
 
-**Design rationale:** We define `CanonicalForm` as a structure rather than a
-type class because a given group action may admit multiple canonical forms
-(e.g., lex-min, lex-max). The encryption scheme explicitly carries its
-canonical form as data.
-
-#### Definition of Done
-
-- `CanonicalForm` structure compiles
-- `#check CanonicalForm` shows the expected type
-- `#check CanonicalForm.canon` shows `X → X`
+**Sub-steps:**
+1. **(1h)** Define the structure with docstrings for each field.
+2. **(1h)** Verify `#check CanonicalForm`, `#check CanonicalForm.canon`,
+   and `#check CanonicalForm.orbit_iff` all succeed with expected types.
 
 ---
 
-### 2.6 — Canonical Form Uniqueness
+### 2.6a — Canon Forward Direction
 
-**Effort:** 3 hours
-**Module:** `GroupAction/Canonical.lean`
-**Deliverable:** Proof that canonical form equality implies orbit equality
-and vice versa (both directions of `orbit_iff` as separate, named lemmas).
-**Dependencies:** 2.5
-
-#### Implementation Guidance
+**Effort:** 45m | **Module:** `GroupAction/Canonical.lean` | **Deps:** 2.5
 
 ```lean
-/-- If two elements have the same canonical form, they are in the same orbit. -/
+/-- Canon equality implies orbit equality. -/
 theorem canon_eq_implies_orbit_eq [Group G] [MulAction G X]
     (can : CanonicalForm G X) (x y : X) :
     can.canon x = can.canon y → MulAction.orbit G x = MulAction.orbit G y :=
   (can.orbit_iff x y).mp
+```
 
-/-- If two elements are in the same orbit, they have the same canonical form. -/
+Direct extraction from `orbit_iff`. One-liner.
+
+### 2.6b — Canon Reverse Direction
+
+**Effort:** 45m | **Module:** `GroupAction/Canonical.lean` | **Deps:** 2.5
+
+```lean
+/-- Orbit equality implies canon equality. -/
 theorem orbit_eq_implies_canon_eq [Group G] [MulAction G X]
     (can : CanonicalForm G X) (x y : X) :
     MulAction.orbit G x = MulAction.orbit G y → can.canon x = can.canon y :=
   (can.orbit_iff x y).mpr
 ```
 
-These are direct consequences of the `orbit_iff` field, but having them as
-separate named lemmas improves readability in the correctness proof (Phase 4).
+Direct extraction from `orbit_iff`. One-liner.
 
-**Additional useful lemma:**
+### 2.6c — Canon Equality from Orbit Membership
+
+**Effort:** 1.5h | **Module:** `GroupAction/Canonical.lean` | **Deps:** 2.6b, 2.4b
+
 ```lean
-/-- Elements in the same orbit have the same canonical form (membership version). -/
+/-- If y is in the orbit of x, they have the same canonical form. -/
 theorem canon_eq_of_mem_orbit [Group G] [MulAction G X]
-    (can : CanonicalForm G X) (x y : X)
+    (can : CanonicalForm G X) {x y : X}
     (h : y ∈ MulAction.orbit G x) :
     can.canon y = can.canon x := by
   sorry
-  -- Strategy: h gives ∃ g, g • x = y.
-  -- Therefore orbit G y = orbit G x (by orbit_eq_of_smul or orbit_eq_iff).
-  -- Apply orbit_iff.mpr.
 ```
+
+**Step-by-step proof:**
+1. From `h : y ∈ orbit G x`, obtain `⟨g, hg⟩ : ∃ g, g • x = y` via
+   `MulAction.mem_orbit_iff.mp`.
+2. Rewrite goal as `can.canon (g • x) = can.canon x` using `← hg`.
+3. Apply `orbit_eq_implies_canon_eq` with the fact that
+   `orbit G (g • x) = orbit G x` (from `orbit_eq_of_smul`, unit 2.4b).
+
+**This lemma is the workhorse of the correctness proof** — it's called in
+Phase 4 unit 4.2 to show `canon(encrypt) = canon(reps m)`.
 
 ---
 
 ### 2.7 — Canonical Form Idempotence
 
-**Effort:** 2 hours
-**Module:** `GroupAction/Canonical.lean`
-**Deliverable:** Proof that applying `canon` twice gives the same result as
-applying it once.
-**Dependencies:** 2.5, 2.6
-
-#### Implementation Guidance
+**Effort:** 1.5h | **Module:** `GroupAction/Canonical.lean` | **Deps:** 2.6c
 
 ```lean
-/-- Canonical form is idempotent: `canon(canon(x)) = canon(x)`. -/
 theorem canon_idem [Group G] [MulAction G X]
     (can : CanonicalForm G X) (x : X) :
     can.canon (can.canon x) = can.canon x := by
   sorry
 ```
 
-**Proof strategy:**
-1. By `mem_orbit`, `can.canon x ∈ orbit G x`.
-2. Therefore `orbit G (can.canon x) = orbit G x`.
-3. By `orbit_iff` (mpr direction): `can.canon (can.canon x) = can.canon x`.
-
-This is a straightforward application of 2.6 and is a good sanity check on the
-`CanonicalForm` definition.
+**Proof:** Apply `canon_eq_of_mem_orbit` with `can.mem_orbit x`, which gives
+`can.canon x ∈ orbit G x`. This is a direct one-step application of 2.6c.
 
 ---
 
-### 2.8 — G-Invariant Function Definition
+### 2.8 — G-Invariant Function Definition and Properties
 
-**Effort:** 2 hours
-**Module:** `GroupAction/Invariant.lean`
-**Deliverable:** Definition of `IsGInvariant` and basic closure properties.
-**Dependencies:** 2.1
-
-#### Implementation Guidance
+**Effort:** 2h | **Module:** `GroupAction/Invariant.lean` | **Deps:** 2.1b
 
 ```lean
-import Mathlib.GroupTheory.GroupAction.Basic
-import Orbcrypt.GroupAction.Basic
-
-/--
-A function `f : X → Y` is G-invariant if it is unchanged by the group action:
-`f(g • x) = f(x)` for all `g ∈ G` and `x ∈ X`.
-
-Equivalently, `f` is constant on each orbit of `G`.
-This is the central concept in the invariant attack theorem
-(DEVELOPMENT.md §4.4).
--/
 def IsGInvariant [Group G] [MulAction G X] (f : X → Y) : Prop :=
   ∀ (g : G) (x : X), f (g • x) = f x
 ```
 
-**Basic closure properties to prove:**
-
-```lean
-/-- The identity function is G-invariant (trivially). -/
-theorem isGInvariant_id [Group G] [MulAction G X] :
-    IsGInvariant (G := G) (id : X → X) := by
-  sorry  -- Only true if G acts trivially; skip this or state carefully
-
-/-- Composition with any function preserves G-invariance. -/
-theorem IsGInvariant.comp [Group G] [MulAction G X]
-    {f : X → Y} (hf : IsGInvariant (G := G) f) (h : Y → Z) :
-    IsGInvariant (G := G) (h ∘ f) := by
-  intro g x
-  simp [Function.comp, hf g x]
-
-/-- A constant function is G-invariant. -/
-theorem isGInvariant_const [Group G] [MulAction G X] (c : Y) :
-    IsGInvariant (G := G) (fun _ => c) := by
-  intro g x; rfl
-```
+**Sub-steps:**
+1. **(45m)** Define `IsGInvariant` with docstring.
+2. **(45m)** Prove `IsGInvariant.comp`: composition preserves invariance.
+3. **(30m)** Prove `isGInvariant_const`: constant functions are invariant.
 
 ---
 
-### 2.9 — Invariant-Orbit Lemma
+### 2.9a — Invariant-Orbit Lemma: Witness Extraction
 
-**Effort:** 3 hours
-**Module:** `GroupAction/Invariant.lean`
-**Deliverable:** Proof that a G-invariant function is constant on each orbit.
-**Dependencies:** 2.8, 2.4
+**Effort:** 1h | **Module:** `GroupAction/Invariant.lean` | **Deps:** 2.8, 2.4a
 
-#### Implementation Guidance
+This is the setup step for the critical `invariant_const_on_orbit` lemma.
+The proof hinges on extracting the group element from orbit membership.
+
+**Key insight to verify in a scratch file:**
+```lean
+-- Confirm this works:
+example [Group G] [MulAction G X] {x y : X} (h : y ∈ MulAction.orbit G x) :
+    ∃ g : G, g • x = y :=
+  MulAction.mem_orbit_iff.mp h
+```
+
+If `MulAction.mem_orbit_iff` doesn't give exactly this form, find the correct
+unpacking. This determines the structure of the full proof.
+
+### 2.9b — Invariant-Orbit Lemma: Complete Proof
+
+**Effort:** 2h | **Module:** `GroupAction/Invariant.lean` | **Deps:** 2.9a
 
 ```lean
-/--
-A G-invariant function takes the same value on all elements of an orbit.
-This is the key lemma used in the invariant attack theorem:
-if f is invariant and c = g • x_m, then f(c) = f(x_m).
--/
 theorem invariant_const_on_orbit [Group G] [MulAction G X]
     {f : X → Y} (hf : IsGInvariant (G := G) f)
     {x y : X} (hy : y ∈ MulAction.orbit G x) :
     f y = f x := by
-  sorry
+  obtain ⟨g, hg⟩ := MulAction.mem_orbit_iff.mp hy  -- Step 1: extract g
+  rw [← hg]                                          -- Step 2: rewrite y as g • x
+  exact hf g x                                       -- Step 3: apply invariance
 ```
 
-**Proof strategy:**
-1. `hy : y ∈ orbit G x` gives `∃ g : G, g • x = y` (by `MulAction.mem_orbit_iff`).
-2. Obtain `g` and `hg : g • x = y`.
-3. Rewrite: `f y = f (g • x)` (by `hg`).
-4. Apply `hf g x`: `f (g • x) = f x`.
+**If this direct proof doesn't work**, the issue is likely in step 1.
+Alternatives:
+- `MulAction.mem_orbit_iff` may use `∃ g, g • x = y` or `∃ g, x = g • y` —
+  check the direction.
+- Use `Exists.elim` or `match` instead of `obtain` if tactic issues arise.
 
-**This lemma is critical.** It is used directly in:
-- The invariant attack theorem (Phase 4, unit 4.5): the adversary computes
-  f(c*) = f(g • x_{m_b}) = f(x_{m_b}) to identify the message.
-- The correctness proof (Phase 4, unit 4.2): canonical form is G-invariant,
-  so canon(g • x_m) = canon(x_m).
+**This is the single most important lemma in the formalization.** Both the
+invariant attack theorem (4.5) and the correctness proof (4.2, via 2.6c)
+depend on it. Test it thoroughly.
 
 ---
 
-### 2.10 — Separating Invariant Definition
+### 2.10 — Separating Invariant Definition and Orbit Distinctness
 
-**Effort:** 2 hours
-**Module:** `GroupAction/Invariant.lean`
-**Deliverable:** Definition of `IsSeparating` and proof that separation implies
-distinct orbits.
-**Dependencies:** 2.8, 2.9
-
-#### Implementation Guidance
+**Effort:** 2h | **Module:** `GroupAction/Invariant.lean` | **Deps:** 2.9b
 
 ```lean
-/--
-A function `f` separates two points `x₀` and `x₁` under a group action if:
-1. `f` is G-invariant, and
-2. `f(x₀) ≠ f(x₁)`.
-
-The invariant attack theorem shows that any separating function yields a
-complete break of the encryption scheme.
--/
 def IsSeparating [Group G] [MulAction G X] (f : X → Y)
     (x₀ x₁ : X) : Prop :=
   IsGInvariant (G := G) f ∧ f x₀ ≠ f x₁
-
-/-- A separating invariant implies that its arguments lie in distinct orbits. -/
-theorem separating_implies_distinct_orbits [Group G] [MulAction G X]
-    {f : X → Y} {x₀ x₁ : X}
-    (h : IsSeparating (G := G) f x₀ x₁) :
-    MulAction.orbit G x₀ ≠ MulAction.orbit G x₁ := by
-  sorry
 ```
 
-**Proof strategy (by contradiction):**
-1. Assume `orbit G x₀ = orbit G x₁`.
-2. Then `x₁ ∈ orbit G x₀` (since x₁ ∈ orbit G x₁ = orbit G x₀).
-3. By `invariant_const_on_orbit` (2.9): `f x₁ = f x₀`.
-4. This contradicts `h.2 : f x₀ ≠ f x₁`.
+**Sub-steps:**
+1. **(30m)** Define `IsSeparating` with docstring.
+2. **(1.5h)** Prove `separating_implies_distinct_orbits`:
+
+```lean
+theorem separating_implies_distinct_orbits ... :
+    MulAction.orbit G x₀ ≠ MulAction.orbit G x₁ := by
+  intro hEq                           -- Assume orbits are equal
+  have : x₁ ∈ MulAction.orbit G x₀ := -- x₁ ∈ its own orbit, rewrite
+    hEq ▸ MulAction.mem_orbit_self x₁
+  have : f x₁ = f x₀ :=              -- By invariant_const_on_orbit
+    invariant_const_on_orbit h.1 this
+  exact h.2 this.symm                 -- Contradicts f x₀ ≠ f x₁
+```
+
+The trickiest step is showing `x₁ ∈ orbit G x₀` from `orbit G x₀ = orbit G x₁`.
+Use `hEq ▸ MulAction.mem_orbit_self x₁` (rewrite the set membership using
+the orbit equality).
 
 ---
 
 ### 2.11 — Canonical Form Is G-Invariant
 
-**Effort:** 2 hours
-**Module:** `GroupAction/Invariant.lean`
-**Deliverable:** Proof that the canonical form function is G-invariant.
-**Dependencies:** 2.5, 2.8
-
-#### Implementation Guidance
+**Effort:** 2h | **Module:** `GroupAction/Invariant.lean` | **Deps:** 2.5, 2.8, 2.4b
 
 ```lean
-/--
-The canonical form function is G-invariant: `canon(g • x) = canon(x)`.
-This connects the canonical form (used for decryption) to the invariant
-framework (used for security analysis).
--/
 theorem canonical_isGInvariant [Group G] [MulAction G X]
     (can : CanonicalForm G X) :
     IsGInvariant (G := G) can.canon := by
-  sorry
+  intro g x
+  exact orbit_eq_implies_canon_eq can x (g • x)
+    (orbit_eq_of_smul g x).symm
 ```
 
-**Proof strategy:**
-1. We need to show `can.canon (g • x) = can.canon x` for all `g, x`.
-2. By `orbit_eq_of_smul` (2.4): `orbit G (g • x) = orbit G x`.
-3. By `can.orbit_iff` (mpr direction): `can.canon (g • x) = can.canon x`.
-
-**This connects two parallel tracks:** it requires both the canonical form
-(Track B) and the invariant framework (Track C), making it a natural
-integration point.
+**Step-by-step:**
+1. Unfold `IsGInvariant`: need `can.canon (g • x) = can.canon x`.
+2. From `orbit_eq_of_smul` (2.4b): `orbit G (g • x) = orbit G x`.
+3. From `orbit_eq_implies_canon_eq` (2.6b): orbit equality implies canon equality.
+4. Chain them. Note the symmetry: `orbit_eq_of_smul` gives
+   `orbit G (g • x) = orbit G x`, but we need `orbit G x = orbit G (g • x)`
+   or vice versa depending on the direction of `orbit_eq_implies_canon_eq`.
 
 ---
 
 ## Parallel Execution Plan
 
-After unit 2.1 (the shared foundation), three tracks can proceed simultaneously:
-
 ```
-                          2.1 Orbit API Wrapper
-                         /         |          \
-                        /          |           \
-          ┌────────────┘           │            └────────────┐
-          ▼                        ▼                         ▼
-   Track A: Basic            Track B: Canonical        Track C: Invariant
-   ┌──────────────┐          ┌──────────────┐          ┌──────────────┐
-   │ 2.2 Partition │          │ 2.5 Structure │          │ 2.8 Definition │
-   │ 2.3 Orb-Stab  │          │ 2.6 Uniqueness│          │ 2.9 Orbit Lem  │
-   │ 2.4 Membership│          │ 2.7 Idempot.  │          │ 2.10 Separating│
-   └──────────────┘          └──────────────┘          └──────────────┘
-          │                        │                         │
-          └────────────────────────┼─────────────────────────┘
-                                   ▼
-                        2.11 Canon Is Invariant
-                      (joins Tracks B and C)
+                      2.1a Mathlib Exploration
+                              │
+                      2.1b Orbit API Wrappers
+                     /         |          \
+                    /          |           \
+      ┌────────────┘           │            └────────────┐
+      ▼                        ▼                         ▼
+ Track A: Basic          Track B: Canonical        Track C: Invariant
+ ┌──────────────┐        ┌──────────────┐          ┌──────────────┐
+ │ 2.2a State   │        │ 2.5 Structure │          │ 2.8 Define   │
+ │ 2.2b Prove   │        │ 2.6a Forward  │          │ 2.9a Witness │
+ │ 2.3 Orb-Stab │        │ 2.6b Reverse  │          │ 2.9b Proof   │
+ │ 2.4a smul_mem│        │ 2.6c Mem ver. │          │ 2.10 Separate│
+ │ 2.4b orb_eq  │        │ 2.7 Idempot.  │          └──────────────┘
+ └──────────────┘        └──────────────┘                  │
+      │                        │                           │
+      └────────────────────────┼───────────────────────────┘
+                               ▼
+                    2.11 Canon Is Invariant
+                  (joins Tracks A, B, and C)
 ```
 
-**Optimal schedule for a single contributor:**
-
-| Day | Work | Hours | Running Total |
-|-----|------|-------|---------------|
-| 1 | 2.1 (API wrapper) | 3h | 3h |
-| 2 | 2.5 (CanonicalForm struct) + 2.8 (IsGInvariant def) | 4h | 7h |
-| 3 | 2.2 (orbit partition) + 2.9 (invariant-orbit lemma) | 7h | 14h |
-| 4 | 2.3 (orbit-stabilizer) + 2.4 (membership) | 5h | 19h |
-| 5 | 2.6 (uniqueness) + 2.10 (separating) | 5h | 24h |
-| 6 | 2.7 (idempotence) + 2.11 (canon is invariant) | 4h | 28h |
+**Risk-first ordering within each track:**
+- Track A: Start with 2.4a (easiest, validates API), then 2.4b (medium), then
+  2.2a/2.2b (hardest), then 2.3 (wrapper).
+- Track B: Start with 2.5 (definition), then 2.6a/b (one-liners), then 2.6c
+  (medium), then 2.7 (uses 2.6c).
+- Track C: Start with 2.8 (definition), then 2.9a (exploration), then 2.9b
+  (critical proof), then 2.10 (uses 2.9b).
 
 ---
 
 ## Risk Analysis
 
-| Risk | Units Affected | Likelihood | Impact | Mitigation |
-|------|---------------|-----------|--------|------------|
-| Mathlib API changes between pinned versions | All | Low (pinned) | High | Pin Mathlib commit in lakefile.lean; do not update mid-phase |
-| `Disjoint` on `Set` is awkward to work with | 2.2 | Medium | Low | Use pointwise formulation instead |
-| `Fintype` instances missing for orbits | 2.3 | Medium | Medium | May need to add `[Fintype X]` constraints or construct instances manually |
-| `orbit_eq_of_smul` not in Mathlib by that name | 2.4 | Medium | Low | Search for equivalent: `MulAction.orbit_smul`, or prove from `orbit_eq_iff` |
-| Proof of 2.9 harder than expected (universe issues) | 2.9 | Low | Medium | Keep types in the same universe; use `MulAction.mem_orbit_iff.mp` explicitly |
-
----
-
-## Common Lean 4 / Mathlib Pitfalls
-
-1. **Universe polymorphism:** Ensure `G`, `X`, and `Y` are in compatible
-   universes. If you see `universe mismatch` errors, add explicit universe
-   annotations.
-
-2. **Instance search depth:** Complex `MulAction` instance chains (e.g.,
-   for subgroups) may exceed Lean's default instance search depth. Use
-   `set_option maxHeartbeats 400000` if needed, but treat this as a code smell.
-
-3. **`simp` lemma selection:** Tag your lemmas with `@[simp]` sparingly.
-   Over-tagging causes `simp` to loop or produce unexpected results.
-
-4. **`sorry` hygiene:** During development, use `sorry` freely but grep for
-   it before declaring a unit complete. Phase 6 will audit all remaining
-   `sorry` instances.
+| Risk | Units | Likelihood | Impact | Mitigation |
+|------|-------|-----------|--------|------------|
+| Mathlib API names differ from expected | 2.1a | Medium | High | 2.1a exploration catches this before any code is written |
+| `Disjoint` on `Set` awkward | 2.2a | Medium | Low | Use `∩ = ∅` formulation (Approach 2) |
+| `Fintype` instances missing for orbits | 2.3 | Medium | Medium | Add `[Fintype X]` or construct instances manually |
+| `orbit_eq_of_smul` not in Mathlib | 2.4b | Medium | Low | Prove from `orbit_eq_iff` (proof sketched above) |
+| `mem_orbit_iff` direction mismatch | 2.9a | Low | Medium | 2.9a specifically validates this before the proof |
+| Universe polymorphism errors | All | Low | Medium | Keep G, X, Y in same universe; add explicit annotations |
 
 ---
 
 ## Exit Criteria
-
-All of the following must be true before proceeding to Phase 3:
 
 - [ ] `GroupAction/Basic.lean` compiles without `sorry`
 - [ ] `GroupAction/Canonical.lean` compiles without `sorry`
@@ -548,8 +469,9 @@ All of the following must be true before proceeding to Phase 3:
 - [ ] `lake build` succeeds with zero errors
 - [ ] `orbit_disjoint_or_eq` proved
 - [ ] `CanonicalForm` structure defined with `canon`, `mem_orbit`, `orbit_iff`
+- [ ] `canon_eq_of_mem_orbit` proved (critical for Phase 4)
 - [ ] `IsGInvariant` and `IsSeparating` defined
-- [ ] `invariant_const_on_orbit` proved
+- [ ] `invariant_const_on_orbit` proved (critical for Phase 4)
 - [ ] `canonical_isGInvariant` proved
 - [ ] All lemmas have docstrings
 
@@ -558,8 +480,7 @@ All of the following must be true before proceeding to Phase 3:
 ## Transition to Phase 3
 
 With the group action foundations complete, Phase 3 builds the cryptographic
-layer on top — defining `OrbitEncScheme`, the adversary model, and the OIA
-axiom. These definitions directly reference the `CanonicalForm` and
-`IsGInvariant` types from this phase.
+layer — defining `OrbitEncScheme`, the adversary model, and the OIA axiom.
+These definitions directly reference `CanonicalForm` and `IsGInvariant`.
 
 See: [Phase 3 — Cryptographic Definitions](PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md)
