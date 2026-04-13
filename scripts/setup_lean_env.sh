@@ -68,6 +68,124 @@ TOOLCHAIN_TAG="$(echo "${TOOLCHAIN}" | cut -d: -f2)"
 # elan normalises "org/repo:tag" -> "org-repo-tag" for directory names.
 TOOLCHAIN_DIR_NAME="$(echo "${TOOLCHAIN}" | sed 's|/|-|g; s|:|-|g')"
 
+# -------- Parse Mathlib revision for SHA-pinned cache URLs --------
+# Pin cache URLs to the exact Mathlib commit locked in lake-manifest.json,
+# not a mutable branch like 'master'. This follows the same security pattern
+# used for the elan and Lean toolchain downloads above (immutable references
+# with integrity verification).
+MATHLIB_REV=""
+if [ -f "${ROOT_DIR}/lake-manifest.json" ]; then
+  if command -v jq >/dev/null 2>&1; then
+    MATHLIB_REV="$(jq -r '.packages[] | select(.name == "mathlib") | .rev' "${ROOT_DIR}/lake-manifest.json" 2>/dev/null)"
+  elif command -v python3 >/dev/null 2>&1; then
+    MATHLIB_REV="$(python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+for p in data.get('packages', []):
+    if p.get('name') == 'mathlib':
+        print(p['rev'])
+        break
+" "${ROOT_DIR}/lake-manifest.json" 2>/dev/null)"
+  fi
+fi
+# Validate: must be a 40-character lowercase hex string (SHA-1 commit hash).
+# Reject anything else to prevent URL injection from a crafted manifest.
+if ! echo "${MATHLIB_REV}" | grep -qE '^[a-f0-9]{40}$'; then
+  MATHLIB_REV=""
+fi
+if [ -z "${MATHLIB_REV}" ]; then
+  log_elapsed "warning: could not parse a valid Mathlib commit from lake-manifest.json; cache URLs will not be SHA-pinned"
+fi
+
+# -------- Lake / Mathlib cache configuration --------
+# The default cache endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
+# are blocked in some sandboxed / CI environments. We redirect both Lake's native
+# cache and Mathlib's legacy cache to raw.githubusercontent.com, which is accessible.
+#
+# Security model:
+#   - All URLs use HTTPS (transport security via TLS).
+#   - URLs are pinned to the exact Mathlib commit from lake-manifest.json
+#     (immutable reference — cannot be changed by pushes to master).
+#   - Mathlib's cache tool verifies downloaded .ltar files by content hash,
+#     providing integrity checking independent of the transport layer.
+#   - The config.toml is created once and not overwritten, respecting manual edits.
+#
+# Two systems need configuration:
+#   1. ~/.lake/config.toml  — Lake's native cache service (used by `lake build --try-cache`)
+#   2. MATHLIB_CACHE_GET_URL — Mathlib's legacy cache tool (used by `lake exe cache get`)
+#
+# A marker file (.lake/.mathlib_cache_ok) tracks whether setup has been completed.
+MATHLIB_CACHE_MARKER="${ROOT_DIR}/.lake/.mathlib_cache_ok"
+LAKE_CONFIG_DIR="${HOME}/.lake"
+LAKE_CONFIG_FILE="${LAKE_CONFIG_DIR}/config.toml"
+# Use the pinned commit for immutable URLs; fall back to 'master' only if parsing failed.
+CACHE_GIT_REF="${MATHLIB_REV:-master}"
+CACHE_BASE_URL="https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}"
+
+mathlib_cache_present() {
+  [ -f "${MATHLIB_CACHE_MARKER}" ]
+}
+
+configure_lake_cache() {
+  if mathlib_cache_present; then
+    log_elapsed "Lake cache already configured (marker found)"
+    return 0
+  fi
+
+  # 1. Create ~/.lake/config.toml to redirect Lake's native cache service
+  #    away from blocked Reservoir to an accessible GitHub endpoint.
+  #    Uses SHA-pinned commit ref (not 'master') for immutable URLs.
+  if [ ! -f "${LAKE_CONFIG_FILE}" ]; then
+    log_elapsed "creating ${LAKE_CONFIG_FILE} (pinned to ${CACHE_GIT_REF})"
+    mkdir -p "${LAKE_CONFIG_DIR}"
+    cat > "${LAKE_CONFIG_FILE}" << CACHEEOF
+# Lake cache configuration — redirects cache lookups to raw.githubusercontent.com
+# because the default endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
+# are not accessible in this environment.
+#
+# URLs are pinned to Mathlib commit ${CACHE_GIT_REF}
+# from lake-manifest.json for immutability.
+#
+# To restore default Reservoir behavior, delete this file.
+cache.defaultService = "github-raw"
+
+[[cache.service]]
+name = "github-raw"
+kind = "s3"
+artifactEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}/.lake/artifacts"
+revisionEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}/.lake/revisions"
+CACHEEOF
+    log_elapsed "Lake native cache redirected to raw.githubusercontent.com"
+  else
+    log_elapsed "~/.lake/config.toml already exists; skipping"
+  fi
+
+  # 2. Export MATHLIB_CACHE_GET_URL so Mathlib's legacy cache tool also
+  #    uses raw.githubusercontent.com instead of blocked Azure Blob Storage.
+  export MATHLIB_CACHE_GET_URL="${CACHE_BASE_URL}"
+  log_elapsed "MATHLIB_CACHE_GET_URL set to ${CACHE_BASE_URL}"
+
+  # 3. Attempt cache download (single try — `lake exe cache get` handles
+  #    per-file retries internally). With the redirected URL, files that
+  #    aren't hosted on raw.githubusercontent.com return fast 404s instead
+  #    of hanging on blocked hosts.
+  log_elapsed "attempting Mathlib cache download"
+  mkdir -p "$(dirname "${MATHLIB_CACHE_MARKER}")"
+  if (cd "${ROOT_DIR}" && lake exe cache get 2>&1); then
+    log_elapsed "Mathlib cache downloaded successfully"
+    touch "${MATHLIB_CACHE_MARKER}"
+    return 0
+  fi
+
+  # Cache data not available at this endpoint, but config is in place —
+  # mark as configured so we don't re-attempt on every session start.
+  touch "${MATHLIB_CACHE_MARKER}"
+  log_elapsed "warning: Mathlib cache not available at ${CACHE_BASE_URL}"
+  log_elapsed "warning: builds will compile Mathlib from source (slow but functional)"
+  return 1
+}
+
 # -------- Fast-path: skip setup if everything is already ready --------
 fast_path_ready() {
   if [ -f "${ELAN_ENV_FILE}" ]; then
@@ -83,6 +201,7 @@ fast_path_ready() {
 
 if fast_path_ready; then
   log_elapsed "Lean environment already configured (fast-path)"
+  configure_lake_cache || true
   if [ "${BUILD_REQUESTED}" -eq 1 ]; then
     log_elapsed "running lake build"
     (cd "${ROOT_DIR}" && lake build)
@@ -430,6 +549,8 @@ fi
 
 log_elapsed "Lean environment is ready"
 log_elapsed "lake version: $(lake --version)"
+
+configure_lake_cache || true
 
 if [ "${QUIET}" -eq 0 ]; then
   echo "[setup] next steps:"
