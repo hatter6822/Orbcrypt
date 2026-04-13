@@ -15,19 +15,22 @@ IND-1-CPA security under the Orbit Indistinguishability Assumption (OIA).
 
 ## Status
 
-**Phase 3 (Cryptographic Definitions) — Complete**
+**Phase 4 (Core Theorems) — Complete**
 
-- Lean 4 v4.30.0-rc1 project with Mathlib dependency
-- `GroupAction/Basic.lean` — orbit/stabilizer API, orbit partition theorem, orbit-stabilizer wrapper, membership lemmas
-- `GroupAction/Canonical.lean` — `CanonicalForm` structure, uniqueness, idempotence
-- `GroupAction/Invariant.lean` — `IsGInvariant`, `IsSeparating`, orbit constancy, canonical invariance
-- `Crypto/Scheme.lean` — `OrbitEncScheme` structure, `encrypt`, `decrypt`
-- `Crypto/Security.lean` — `Adversary`, `hasAdvantage`, `IsSecure`
-- `Crypto/OIA.lean` — Orbit Indistinguishability Assumption (`Prop` definition, zero custom axioms)
-- All proofs complete — zero `sorry`, zero warnings, zero custom axioms
+All three headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
+
+| # | Theorem | File | Axiom Dependencies |
+|---|---------|------|--------------------|
+| 1 | `correctness` — `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` | Standard Lean only |
+| 2 | `invariant_attack` — separating invariant implies complete break | `Theorems/InvariantAttack.lean` | Standard Lean only |
+| 3 | `oia_implies_1cpa` — OIA implies IND-1-CPA security | `Theorems/OIAImpliesCPA.lean` | Zero axioms (OIA is a hypothesis) |
+
+Prior phases complete:
+- `GroupAction/` — orbit/stabilizer API, canonical forms, G-invariant functions (Phase 2)
+- `Crypto/` — `OrbitEncScheme`, `Adversary`, `hasAdvantage`, `IsSecure`, `OIA` (Phase 3)
 - `lake build` succeeds (902 jobs, zero errors)
 
-**Next:** Phase 4 — Core Theorems (correctness, invariant attack, OIA ⟹ IND-1-CPA)
+**Next:** Phase 5 — Concrete Construction (S_n action on bitstrings, HGOE instance, Hamming defense)
 
 ## Build
 
