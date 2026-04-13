@@ -240,10 +240,10 @@ criteria.
 | 1 | Project Scaffolding | 1 | 4 | 4.5h | [Phase 1](phases/PHASE_1_PROJECT_SCAFFOLDING.md) |
 | 2 | Group Action Foundations | 2–4 | 11 | 28h | [Phase 2](phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) |
 | 3 | Cryptographic Definitions | 5–6 | 8 | 18h | [Phase 3](phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) |
-| 4 | Core Theorems | 7–10 | 10 | 36h | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
-| 5 | Concrete Construction | 11–14 | 8 | 28h | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
-| 6 | Polish & Documentation | 15–16 | 6 | 16h | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
-| | **Total** | **16** | **47** | **~130.5h** | |
+| 4 | Core Theorems | 7–10 | 16 | 38h | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
+| 5 | Concrete Construction | 11–14 | 12 | 28h | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
+| 6 | Polish & Documentation | 15–16 | 13 | 23h | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
+| | **Total** | **16** | **64** | **~139.5h** | |
 
 ### Phase Dependencies
 
@@ -255,23 +255,23 @@ Phase 2 ─── Group Action Foundations
    │
    ├──────────────────────────────────┐
    ▼                                  ▼
-Phase 3 ─── Crypto Definitions    Phase 5a ─── Permutation.lean (5.1–5.4)
+Phase 3 ─── Crypto Definitions    Phase 5a ─── Permutation.lean (5.1–5.6)
    │                                  │
    ▼                                  │
 Phase 4 ─── Core Theorems            │
    │                                  │
    ├──────────────────────────────────┘
    ▼
-Phase 5b ─── HGOE.lean (5.5–5.8)
+Phase 5b ─── HGOE.lean (5.7–5.11)
    │
    ▼
 Phase 6 ─── Polish & Documentation
 ```
 
 **Key parallelism opportunity:** `Construction/Permutation.lean` (Phase 5,
-units 5.1–5.4) depends only on Phase 2's group action foundations. It can
+units 5.1–5.6) depends only on Phase 2's group action foundations. It can
 begin as soon as Phase 2 completes, running in parallel with Phases 3 and 4.
-The HGOE instantiation (units 5.5–5.8) then joins both streams.
+The HGOE instantiation (units 5.7–5.11) then joins both streams.
 
 ---
 
@@ -284,24 +284,27 @@ parallelism for independent work units.
 
 **Chain A — Correctness (longest path):**
 ```
-1.1 → 1.4 → 2.1 → 2.4 → 2.5 → 2.6 → 3.1 → 3.2 → 3.3 → 4.1 → 4.2 → 4.3
- 2h    1h    3h    3h    2h    3h    3h    1h    4h    2h    3h    5h  = 32h
+1.1 → 1.4 → 2.1 → 2.4 → 2.5 → 2.6 → 3.1 → 3.2 → 3.3 → 4.1 → 4.2 → 4.3 → 4.4 → 4.5
+ 2h    1h    3h    3h    2h    3h    3h    1h    4h   1.5h   2h   2.5h   2h    2h  = 32h
 ```
 
 **Chain B — Invariant Attack:**
 ```
-1.1 → 1.4 → 2.1 → 2.8 → 2.9 → 3.1 → 3.4 → 4.4 → 4.5 → 4.6
- 2h    1h    3h    2h    3h    3h    2h    4h    5h    2h       = 27h
+1.1 → 1.4 → 2.1 → 2.8 → 2.9 → 3.1 → 3.4 → 4.6 → 4.7 → 4.8 → 4.9
+ 2h    1h    3h    2h    3h    3h    2h    2h   1.5h   3h    2h      = 24.5h
 ```
 
 **Chain C — OIA implies CPA:**
 ```
-1.1 → 1.4 → 2.1 → 3.1 → 3.7 → 4.7 → 4.8 → 4.9
- 2h    1h    3h    3h    2h    3h    4h    2h       = 20h
+1.1 → 1.4 → 2.1 → 3.1 → 3.7 → 4.10 → 4.11 → 4.12 → 4.13
+ 2h    1h    3h    3h    2h     2h      2h     2.5h    1.5h   = 19h
 ```
 
 **Overall critical path: Chain A at ~32 hours** of sequential work, achievable
-within the 16-week timeline even at modest weekly throughput.
+within the 16-week timeline even at modest weekly throughput. The finer
+decomposition of Phase 4 does not change the critical path length because
+the total effort per chain is preserved — work is redistributed into
+smaller units, not added.
 
 ### Parallelism Opportunities
 
@@ -309,8 +312,9 @@ within the 16-week timeline even at modest weekly throughput.
 |-------|-------------------|---------------------|
 | 2 | Basic (2.2–2.4) ∥ Canonical (2.5–2.7) ∥ Invariant (2.8–2.11) | 3x |
 | 3 | Security (3.4–3.6) ∥ OIA (3.7–3.8), after Scheme (3.1–3.3) | 2x |
-| 4 | Correctness (4.1–4.3) ∥ InvariantAttack (4.4–4.6) ∥ OIA→CPA (4.7–4.9) | 3x |
-| 5 | Permutation (5.1–5.4) can pipeline with Phase 3–4 | pipeline |
+| 4 | Correctness (4.1–4.5) ∥ InvariantAttack (4.6–4.9) ∥ OIA→CPA (4.10–4.13) | 3x |
+| 5 | Permutation (5.1–5.6) can pipeline with Phase 3–4 | pipeline |
+| 6 | Sorry audit (6.1–6.4) ∥ Documentation (6.5–6.9) ∥ Infrastructure (6.10–6.11) | 3x |
 
 ---
 
@@ -318,8 +322,8 @@ within the 16-week timeline even at modest weekly throughput.
 
 | Metric | Value |
 |--------|-------|
-| Total work units | 47 |
-| Total estimated effort | ~130.5 engineer-hours |
+| Total work units | 64 |
+| Total estimated effort | ~139.5 engineer-hours |
 | Calendar duration | 16 weeks |
 | Minimum serial effort (critical path) | ~32 hours |
 | Maximum useful parallelism | 3 contributors |
@@ -330,11 +334,11 @@ within the 16-week timeline even at modest weekly throughput.
 ### Effort Distribution
 
 ```
-Phase 2: Group Actions   ████████████████████████████  28h  (21%)
-Phase 4: Core Theorems   ████████████████████████████████████  36h  (28%)
-Phase 5: Construction    ████████████████████████████  28h  (21%)
-Phase 3: Crypto Defs     ██████████████████  18h  (14%)
-Phase 6: Polish          ████████████████  16h  (12%)
+Phase 4: Core Theorems   ██████████████████████████████████████████  38h  (27%)
+Phase 2: Group Actions   ██████████████████████████████  28h  (20%)
+Phase 5: Construction    ██████████████████████████████  28h  (20%)
+Phase 6: Polish          ████████████████████████  23h  (16%)
+Phase 3: Crypto Defs     ████████████████████  18h  (13%)
 Phase 1: Scaffolding     █████  4.5h  (3%)
 ```
 
