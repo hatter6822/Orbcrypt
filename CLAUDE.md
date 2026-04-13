@@ -2,7 +2,7 @@
 
 ## What this project is
 
-Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phase 1 (project scaffolding) complete; Lean 4 project builds cleanly with Mathlib dependency. Phase 2 (group action foundations) is next.
+Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phases 1–3 complete. Group action foundations, cryptographic definitions (scheme, adversary, OIA axiom) are fully formalized. Phase 4 (core theorems) is next.
 
 ## Build and run
 
@@ -329,7 +329,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phase 2 Complete — Phase 3 Ready
+**Current Phase:** Phase 3 Complete — Phase 4 Ready
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency, `autoImplicit := false`
@@ -347,10 +347,17 @@ Phase 2 (Group Action Foundations) has been completed:
 - All 11 work units (2.1–2.11) implemented with zero `sorry`, zero warnings
 - `lake build` succeeds with exit code 0 (902 jobs, zero errors)
 
+Phase 3 (Cryptographic Definitions) has been completed:
+- `Crypto/Scheme.lean` — `OrbitEncScheme` structure with `reps`, `reps_distinct`, `canonForm`; `encrypt` function (`g • reps m`); `decrypt` function (canonical form lookup via `Exists.choose`, noncomputable)
+- `Crypto/Security.lean` — `Adversary` structure with `choose` and `guess`; `hasAdvantage` predicate (∃ distinguishing group elements); `IsSecure` predicate (no adversary has advantage)
+- `Crypto/OIA.lean` — `OIA` axiom (strong deterministic formulation: `∀ f m₀ m₁ g₀ g₁, f(g₀ • reps m₀) = f(g₁ • reps m₁)`); comprehensive documentation covering axiom justification, probabilistic relationship, weak-version counterexample, dependency audit, and hardness foundations
+- All 8 work units (3.1–3.8) implemented with zero `sorry`, zero warnings
+- `lake build` succeeds with exit code 0 (902 jobs, zero errors)
+
 **Immediate Next Steps:**
-1. Phase 3.1–3.3: Define `OrbitEncScheme` structure in `Crypto/Scheme.lean`
-2. Phase 3.4–3.6: Define adversary model and IND-CPA game in `Crypto/Security.lean`
-3. Phase 3.7–3.8: State OIA axiom in `Crypto/OIA.lean`
+1. Phase 4.1–4.5 (Track A): Correctness theorem in `Theorems/Correctness.lean`
+2. Phase 4.6–4.9 (Track B): Invariant attack theorem in `Theorems/InvariantAttack.lean`
+3. Phase 4.10–4.13 (Track C): OIA implies IND-1-CPA in `Theorems/OIAImpliesCPA.lean`
 4. Phase 5.1–5.6 (parallel): `Construction/Permutation.lean` can begin (depends only on Phase 2)
 
 ## Vulnerability reporting

@@ -15,16 +15,19 @@ IND-1-CPA security under the Orbit Indistinguishability Assumption (OIA).
 
 ## Status
 
-**Phase 2 (Group Action Foundations) — Complete**
+**Phase 3 (Cryptographic Definitions) — Complete**
 
 - Lean 4 v4.30.0-rc1 project with Mathlib dependency
 - `GroupAction/Basic.lean` — orbit/stabilizer API, orbit partition theorem, orbit-stabilizer wrapper, membership lemmas
 - `GroupAction/Canonical.lean` — `CanonicalForm` structure, uniqueness, idempotence
 - `GroupAction/Invariant.lean` — `IsGInvariant`, `IsSeparating`, orbit constancy, canonical invariance
+- `Crypto/Scheme.lean` — `OrbitEncScheme` structure, `encrypt`, `decrypt`
+- `Crypto/Security.lean` — `Adversary`, `hasAdvantage`, `IsSecure`
+- `Crypto/OIA.lean` — Orbit Indistinguishability Assumption (axiom)
 - All proofs complete — zero `sorry`, zero warnings
 - `lake build` succeeds (902 jobs, zero errors)
 
-**Next:** Phase 3 — Cryptographic Definitions
+**Next:** Phase 4 — Core Theorems (correctness, invariant attack, OIA ⟹ IND-1-CPA)
 
 ## Build
 
