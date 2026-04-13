@@ -289,20 +289,30 @@ import Orbcrypt.Crypto.Scheme
 /--
 The Orbit Indistinguishability Assumption (OIA).
 
-This axiom asserts that for any function `f : X → Bool` and any two messages,
-the "behavior" of `f` on one orbit can be matched by the other orbit.
-Specifically: for any `g ∈ G`, there exists `g' ∈ G` such that
-`f(g • reps(m₀)) = f(g' • reps(m₁))`.
+This axiom asserts that no Boolean function can distinguish elements drawn
+from two different message orbits. Specifically: for any `f : X → Bool`,
+any two messages `m₀ m₁`, and any group elements `g₀ g₁ ∈ G`,
+`f(g₀ • reps(m₀)) = f(g₁ • reps(m₁))`.
 
-This is a deterministic reformulation of the probabilistic OIA
+This is the strong deterministic reformulation of the probabilistic OIA
 (DEVELOPMENT.md §5.2), which states:
 
   |Pr[A(g • x_{m₀}) = 1] - Pr[A(g • x_{m₁}) = 1]| ≤ negl(λ)
 
-The deterministic version is strictly stronger: it asserts that every
-output of `f` on orbit 0 is achievable on orbit 1, not merely that the
-distributions are close. This suffices for our theorem (OIA ⟹ IND-1-CPA)
-and avoids the need for a probability monad.
+The probabilistic OIA says the *distributions* of f-values are close when
+sampling g uniformly. The strong deterministic version says f gives the
+*same value* at every pair of orbit elements — equivalent to saying that
+the orbit distributions are identical (not just close). This is the natural
+deterministic analogue and directly implies IND-1-CPA security.
+
+**Why not the weaker per-element version?** An earlier draft used:
+  `∀ g, ∃ g', f(g • reps m₀) = f(g' • reps m₁)`
+This only guarantees surjectivity (every f-value on orbit 0 is achievable
+on orbit 1), but does NOT prevent a function from taking both `true` and
+`false` on both orbits simultaneously. In that case, `hasAdvantage` holds
+even though the weak OIA holds. Concrete counterexample: G = S₂ acting on
+two 2-element orbits, f(a)=T, f(b)=F, f(c)=T, f(d)=F — weak OIA holds
+but f(a) ≠ f(d) gives advantage. The strong version prevents this.
 
 -- Justification: The OIA is a computational conjecture grounded in the
 -- hardness of Graph Isomorphism (GI-OIA, §5.3) and Code Equivalence
@@ -312,8 +322,8 @@ and avoids the need for a probability monad.
 -/
 axiom OIA [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
-    (f : X → Bool) (m₀ m₁ : M) (g : G) :
-    ∃ g' : G, f (g • scheme.reps m₀) = f (g' • scheme.reps m₁)
+    (f : X → Bool) (m₀ m₁ : M) (g₀ g₁ : G) :
+    f (g₀ • scheme.reps m₀) = f (g₁ • scheme.reps m₁)
 ```
 
 **Critical design choice:** The OIA is stated as an `axiom`, not a `theorem`.
@@ -321,15 +331,20 @@ This makes explicit that it is an unproven assumption. Lean's `#print axioms`
 command will show which theorems depend on it, providing transparency about
 what is conditional.
 
-**Alternative formulation (weaker but still sufficient):**
+**What the strong OIA implies:** `f` is constant on `orbit(m₀) ∪ orbit(m₁)`
+for every Boolean `f`. This is the strongest possible deterministic
+indistinguishability — no Boolean test can separate the orbits at *any*
+pair of points. It models the probabilistic OIA in the limit where
+advantage is exactly zero (not just negligible).
+
+**Alternative formulation (weaker, NOT sufficient):**
 ```lean
-axiom OIA' ... : ∀ f m₀ m₁,
-  (∀ g : G, f (g • scheme.reps m₀) = true) ↔
-  (∀ g : G, f (g • scheme.reps m₁) = true)
+-- DO NOT USE: this version is too weak for the security theorem.
+axiom OIA_weak ... (f : X → Bool) (m₀ m₁ : M) (g : G) :
+    ∃ g' : G, f (g • scheme.reps m₀) = f (g' • scheme.reps m₁)
 ```
-This says "f is constantly true on one orbit iff it's constantly true on the
-other." The stronger per-element version above is preferred because it maps
-more directly to the probabilistic OIA.
+This per-element surjectivity version only guarantees image equality, not
+value equality. See the counterexample above for why it fails.
 
 ---
 
@@ -349,11 +364,13 @@ Add a comprehensive comment block to `OIA.lean` explaining:
    would require showing P ≠ NP-type separations, which is far beyond current
    mathematics.
 
-2. **Relationship to probabilistic OIA:** The deterministic formulation is
-   strictly stronger. If the deterministic OIA holds, the probabilistic OIA
-   certainly holds. The converse is not necessarily true, but the theorems we
-   prove (correctness, invariant attack, OIA ⟹ CPA) are all valid under the
-   stronger assumption.
+2. **Relationship to probabilistic OIA:** The strong deterministic OIA
+   (`∀ g₀ g₁, f(g₀•m₀) = f(g₁•m₁)`) corresponds to the probabilistic OIA
+   in the zero-advantage limit (identical distributions, not just close).
+   It is strictly stronger than the probabilistic "negligible advantage"
+   version, but it avoids the need for a probability monad. An earlier
+   per-element version (`∀ g, ∃ g', ...`) was found to be insufficient —
+   see the counterexample documented in unit 3.7.
 
 3. **What depends on it:** Only `Theorems/OIAImpliesCPA.lean` uses the OIA
    axiom. The correctness theorem and invariant attack theorem are
@@ -403,7 +420,7 @@ Add a comprehensive comment block to `OIA.lean` explaining:
 | Risk | Units Affected | Likelihood | Impact | Mitigation |
 |------|---------------|-----------|--------|------------|
 | `decrypt` implementation is tricky with `Fintype.find?` | 3.3 | High | Medium | Prototype multiple approaches; accept a less elegant implementation if needed |
-| OIA axiom formulation too strong/weak for Phase 4 proofs | 3.7 | Medium | High | Test the OIA formulation by sketching the OIA ⟹ CPA proof (4.7–4.9) before finalizing |
+| OIA axiom formulation too strong/weak for Phase 4 proofs | 3.7 | Low (resolved) | High | The strong deterministic OIA (`∀ g₀ g₁, f(g₀•m₀) = f(g₁•m₁)`) was chosen after identifying that the per-element version (`∀ g, ∃ g', ...`) is provably insufficient — see counterexample in 3.7 documentation. Still validate with a toy model where OIA holds (e.g., trivial group). |
 | `Adversary` structure doesn't compose well with advantage | 3.4, 3.5 | Low | Medium | The structure is simple enough that refactoring is cheap |
 | `let (m₀, m₁) := ...` pattern causes issues in `Prop` | 3.5 | Medium | Low | Replace with explicit `Prod.fst` / `Prod.snd` if needed |
 

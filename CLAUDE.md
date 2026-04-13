@@ -122,8 +122,9 @@ Read(file_path, offset=501, limit=500)   # lines 501-1000
 - `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` (~500 lines)
 - `formalization/FORMALIZATION_PLAN.md` (~400 lines)
 - `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` (~400 lines)
-- `formalization/phases/PHASE_4_CORE_THEOREMS.md` (~350 lines)
-- `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` (~330 lines)
+- `formalization/phases/PHASE_4_CORE_THEOREMS.md` (~1140 lines)
+- `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` (~750 lines)
+- `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` (~680 lines)
 
 When editing large files, read the specific region around the target lines first (e.g., `offset=380, limit=40`) rather than the whole file. This avoids context-window pressure and "file too large" errors.
 
@@ -241,25 +242,25 @@ The formalization depends heavily on Mathlib's group action library. Familiarity
 
 ## Formalization roadmap
 
-The Lean 4 formalization proceeds in six phases across 16 weeks (~130.5 engineer-hours):
+The Lean 4 formalization proceeds in six phases across 16 weeks (~132 engineer-hours):
 
 | Phase | Title | Weeks | Units | Effort | Document |
 |-------|-------|-------|-------|--------|----------|
 | 1 | Project Scaffolding | 1 | 4 | 4.5h | `formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md` |
 | 2 | Group Action Foundations | 2-4 | 11 | 28h | `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` |
 | 3 | Cryptographic Definitions | 5-6 | 8 | 18h | `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` |
-| 4 | Core Theorems | 7-10 | 10 | 36h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` |
-| 5 | Concrete Construction | 11-14 | 8 | 28h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` |
-| 6 | Polish & Documentation | 15-16 | 6 | 16h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` |
-| | **Total** | **16** | **47** | **~130.5h** | |
+| 4 | Core Theorems | 7-10 | 16 | 33h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` |
+| 5 | Concrete Construction | 11-14 | 12 | 26h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` |
+| 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` |
+| | **Total** | **16** | **64** | **~132h** | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
-1.1 -> 1.4 -> 2.1 -> 2.4 -> 2.5 -> 2.6 -> 3.1 -> 3.2 -> 3.3 -> 4.1 -> 4.2 -> 4.3
- 2h     1h     3h     3h     2h     3h     3h     1h     4h     2h     3h     5h
+1.1 -> 1.4 -> 2.1 -> 2.4 -> 2.5 -> 2.6 -> 3.1 -> 3.2 -> 3.3 -> 4.1 -> 4.2 -> 4.3 -> 4.4 -> 4.5
+ 2h     1h     3h     3h     2h     3h     3h     1h     4h    1.5h    2h    2.5h    2h     2h
 ```
 
-**Key parallelism opportunity:** `Construction/Permutation.lean` (Phase 5, units 5.1-5.4) depends only on Phase 2's group action foundations. It can begin as soon as Phase 2 completes, running in parallel with Phases 3 and 4.
+**Key parallelism opportunity:** `Construction/Permutation.lean` (Phase 5, units 5.1-5.6) depends only on Phase 2's group action foundations. It can begin as soon as Phase 2 completes, running in parallel with Phases 3 and 4.
 
 Read the individual phase documents for detailed implementation guidance, work unit breakdowns, risk analysis, and verification criteria before starting any phase.
 
@@ -287,9 +288,9 @@ Canonical ownership: `DEVELOPMENT.md` owns the full scheme specification. `forma
 | `formalization/phases/PHASE_1_*.md` | ~8KB | Scaffolding guide | lakefile.lean setup, directory structure, .gitignore, clean build verification |
 | `formalization/phases/PHASE_2_*.md` | ~20KB | Group action guide | Orbit API wrappers, canonical forms, invariant functions (11 work units) |
 | `formalization/phases/PHASE_3_*.md` | ~16KB | Crypto definitions guide | AOE scheme, IND-CPA game, OIA axiom (8 work units) |
-| `formalization/phases/PHASE_4_*.md` | ~13KB | Core theorems guide | Correctness proof, invariant attack proof, OIA->CPA reduction (10 work units) |
-| `formalization/phases/PHASE_5_*.md` | ~12KB | Construction guide | S_n bitstring action, HGOE instance, Hamming defense (8 work units) |
-| `formalization/phases/PHASE_6_*.md` | ~9KB | Polish guide | sorry audit, docstrings, Mathlib update, README (6 work units) |
+| `formalization/phases/PHASE_4_*.md` | ~40KB | Core theorems guide | Correctness proof, invariant attack proof, OIA->CPA reduction (16 work units, 4 tracks) |
+| `formalization/phases/PHASE_5_*.md` | ~26KB | Construction guide | S_n bitstring action, HGOE instance, Hamming defense (12 work units) |
+| `formalization/phases/PHASE_6_*.md` | ~24KB | Polish guide | sorry audit by module, docstrings, CI, Mathlib pin, final audit (13 work units) |
 
 ## Mathematical context
 
@@ -324,6 +325,7 @@ All design documentation has been written and merged to `main`:
 - `DEVELOPMENT.md` — full scheme specification with security analysis (merged via PR #1)
 - Formalization plan extracted into dedicated document suite (merged via PR #2)
 - 6 detailed phase documents with work unit breakdowns, risk analysis, and verification criteria
+- Phases 4–6 expanded with granular sub-units (64 total work units across all phases)
 
 **Immediate Next Steps:**
 1. Phase 1.1: Create `lakefile.lean` with Mathlib dependency

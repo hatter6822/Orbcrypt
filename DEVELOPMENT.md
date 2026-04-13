@@ -1033,7 +1033,7 @@ The complete Lean 4 formalization plan has been extracted into a dedicated
 document suite for clarity and actionability. The plan covers the formal
 verification of three headline results — correctness, the invariant attack
 theorem, and the conditional security reduction (OIA ⟹ IND-1-CPA) — across
-47 work units in 6 phases spanning 16 weeks (~130 engineer-hours).
+64 work units in 6 phases spanning 16 weeks (~132 engineer-hours).
 
 ### Documents
 
@@ -1043,9 +1043,9 @@ theorem, and the conditional security reduction (OIA ⟹ IND-1-CPA) — across
 | [Phase 1 — Project Scaffolding](formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md) | Lean 4 project initialization, Mathlib dependency, directory structure, build verification (Week 1, 4 units, ~4.5h) |
 | [Phase 2 — Group Action Foundations](formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) | Orbit API, canonical forms, G-invariant functions, orbit partition theorem (Weeks 2–4, 11 units, ~28h) |
 | [Phase 3 — Cryptographic Definitions](formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) | `OrbitEncScheme`, adversary model, IND-CPA game, OIA axiom (Weeks 5–6, 8 units, ~18h) |
-| [Phase 4 — Core Theorems](formalization/phases/PHASE_4_CORE_THEOREMS.md) | Correctness proof, invariant attack theorem, OIA ⟹ IND-1-CPA reduction (Weeks 7–10, 10 units, ~36h) |
-| [Phase 5 — Concrete Construction](formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md) | S\_n action on bitstrings, HGOE instance, Hamming weight defense proof (Weeks 11–14, 8 units, ~28h) |
-| [Phase 6 — Polish & Documentation](formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) | `sorry` audit, docstrings, CI configuration, final verification (Weeks 15–16, 6 units, ~16h) |
+| [Phase 4 — Core Theorems](formalization/phases/PHASE_4_CORE_THEOREMS.md) | Correctness proof, invariant attack theorem, OIA ⟹ IND-1-CPA reduction (Weeks 7–10, 16 units, ~33h) |
+| [Phase 5 — Concrete Construction](formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md) | S\_n action on bitstrings, HGOE instance, Hamming weight defense proof (Weeks 11–14, 12 units, ~26h) |
+| [Phase 6 — Polish & Documentation](formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) | `sorry` audit, docstrings, CI configuration, final verification (Weeks 15–16, 13 units, ~22.5h) |
 
 ### Summary
 
