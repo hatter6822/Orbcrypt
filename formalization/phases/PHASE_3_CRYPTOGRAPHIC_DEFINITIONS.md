@@ -438,16 +438,16 @@ OIA ⟹ IND-1-CPA** (Phase 4, unit 4.7) on paper or in a scratch file with
 
 All of the following must be true before proceeding to Phase 4:
 
-- [ ] `Crypto/Scheme.lean` compiles without `sorry`
-- [ ] `Crypto/Security.lean` compiles without `sorry`
-- [ ] `Crypto/OIA.lean` compiles (contains an `axiom`, not `sorry`)
-- [ ] `lake build` succeeds with zero errors
-- [ ] `#check OrbitEncScheme` succeeds
-- [ ] `#check encrypt` and `#check decrypt` succeed
-- [ ] `#check Adversary` and `#check hasAdvantage` succeed
-- [ ] `#check @OIA` shows the expected type signature
-- [ ] `decrypt` handles the `Fintype M` requirement correctly
-- [ ] OIA documentation explains the axiom's role and limitations
+- [x] `Crypto/Scheme.lean` compiles without `sorry`
+- [x] `Crypto/Security.lean` compiles without `sorry`
+- [x] `Crypto/OIA.lean` compiles (defines `OIA` as `Prop`, not `axiom` — avoids inconsistency)
+- [x] `lake build` succeeds with zero errors
+- [x] `#check OrbitEncScheme` succeeds
+- [x] `#check encrypt` and `#check decrypt` succeed
+- [x] `#check Adversary` and `#check hasAdvantage` succeed
+- [x] `#check @OIA` shows the expected type signature
+- [x] `decrypt` handles the `Fintype M` requirement correctly
+- [x] OIA documentation explains the assumption's role, soundness rationale, and limitations
 
 ---
 
