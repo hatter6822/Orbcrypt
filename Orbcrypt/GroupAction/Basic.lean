@@ -88,7 +88,7 @@ theorem orbit_stabilizer (x : X)
     Fintype.card (MulAction.orbit G x) *
     Fintype.card (MulAction.stabilizer G x) =
     Fintype.card G :=
-  MulAction.card_orbit_mul_card_stabilizer_eq_card_group x
+  MulAction.card_orbit_mul_card_stabilizer_eq_card_group G x
 
 end OrbitStabilizer
 
