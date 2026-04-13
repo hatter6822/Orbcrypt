@@ -2,26 +2,28 @@
 
 ## What this project is
 
-Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: design and formalization planning complete; Lean 4 implementation not yet started.
+Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phase 1 (project scaffolding) complete; Lean 4 project builds cleanly with Mathlib dependency. Phase 2 (group action foundations) is next.
 
 ## Build and run
 
 ```bash
-# Environment setup (install Lean 4 via elan)
-curl https://elan.lean-lang.org/install.sh -sSf | sh
-source ~/.elan/env
+# Environment setup (recommended: use the setup script)
+./scripts/setup_lean_env.sh
 
-# Fetch Mathlib (first run takes 10-30 minutes)
-lake update
+# Or manually: install Lean 4 via elan
+source ~/.elan/env
 
 # Build entire project
 source ~/.elan/env && lake build
 
-# Verify Mathlib resolution
-lake env printPaths
+# Build a specific module
+source ~/.elan/env && lake build Orbcrypt.GroupAction.Basic
+
+# Download Mathlib precompiled cache (speeds up builds that import Mathlib)
+lake exe cache get
 ```
 
-**Note:** The Lean 4 project scaffold (lakefile.lean, lean-toolchain, module stubs) does not yet exist. Phase 1 of the formalization plan creates it. Until then, there is nothing to build — the repository contains only design documents and formalization plans.
+**Toolchain:** Lean 4 v4.30.0-rc1 (pinned in `lean-toolchain` to match Mathlib). The `scripts/setup_lean_env.sh` script handles full environment setup including elan, the Lean toolchain, and CRT verification.
 
 ## Module build verification (mandatory)
 
@@ -38,7 +40,7 @@ lake build Orbcrypt.GroupAction.Basic
 
 **`lake build` (default target) is NOT sufficient.** The default target only builds modules reachable from the root `Orbcrypt.lean` import file. Modules not yet imported will silently pass `lake build` even with broken proofs. Always build the specific module path.
 
-## Source layout (planned)
+## Source layout
 
 ```
 Orbcrypt.lean                         Root import file (imports all submodules)
@@ -97,6 +99,14 @@ CLAUDE.md                             This file — development guidance for Cla
 DEVELOPMENT.md                        Master specification (~56KB): scheme design, security proofs, hardness reductions
 POE.md                                Permutation-Orbit Encryption high-level concept exposition
 COUNTEREXAMPLE.md                     Critical vulnerability analysis: invariant attack theorem
+lakefile.lean                         Lake build configuration (Mathlib dependency, autoImplicit := false)
+lean-toolchain                        Lean 4 version pin (v4.30.0-rc1, matching Mathlib)
+lake-manifest.json                    Dependency lock file (Mathlib + 8 transitive deps)
+.gitignore                            Build artifact exclusions
+scripts/
+  setup_lean_env.sh                   Lean environment setup (elan, toolchain, CRT verification)
+.claude/
+  settings.json                       Claude Code session hook (auto-runs setup on start)
 formalization/
   FORMALIZATION_PLAN.md               Master Lean 4 formalization roadmap (architecture, timeline, conventions)
   phases/
@@ -198,7 +208,7 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
   - Comment proof strategy at the top of each theorem
   - Avoid `decide` on large finite types (performance trap)
 - **Documentation**:
-  - Every `.lean` file begins with a `/-- ... -/` module docstring
+  - Every `.lean` file begins with a `/-! ... -/` module docstring (not `/-- ... -/`)
   - Every public definition and theorem has a `/-- ... -/` docstring
   - Axioms include a `-- Justification: ...` comment block
 - **Import discipline**: import by full path within the project: `import Orbcrypt.GroupAction.Basic`. Re-export key definitions via the root `Orbcrypt.lean`.
@@ -319,20 +329,23 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Design Complete, Implementation Not Started
+**Current Phase:** Phase 1 Complete — Phase 2 Ready
 
-All design documentation has been written and merged to `main`:
-- `DEVELOPMENT.md` — full scheme specification with security analysis (merged via PR #1)
-- Formalization plan extracted into dedicated document suite (merged via PR #2)
-- 6 detailed phase documents with work unit breakdowns, risk analysis, and verification criteria
-- Phases 4–6 expanded with granular sub-units (64 total work units across all phases)
+Phase 1 (Project Scaffolding) has been completed:
+- `lakefile.lean` — Lean 4 package with Mathlib dependency, `autoImplicit := false`
+- `lean-toolchain` — pinned to `leanprover/lean4:v4.30.0-rc1` (matching Mathlib master)
+- `lake-manifest.json` — locks Mathlib at commit `fa6418a8` plus 8 transitive dependencies
+- 11 stub `.lean` files in correct directory structure with module docstrings
+- `Orbcrypt.lean` — root import file importing all 11 submodules
+- `scripts/setup_lean_env.sh` — automated Lean environment setup (elan + toolchain)
+- `.claude/settings.json` — SessionStart hook for auto-setup
+- `lake build` succeeds with exit code 0, zero errors, zero warnings, zero `sorry`
 
 **Immediate Next Steps:**
-1. Phase 1.1: Create `lakefile.lean` with Mathlib dependency
-2. Phase 1.2: Create directory structure with stub `.lean` files
-3. Phase 1.3: Create root `Orbcrypt.lean` import file
-4. Phase 1.4: Verify `lake build` succeeds with zero errors
-5. Phase 2: Begin group action foundations (orbit/stabilizer API wrappers)
+1. Phase 2.1: Populate `GroupAction/Basic.lean` with orbit/stabilizer API wrappers
+2. Phase 2.2–2.4: Orbit lemmas, stabilizer properties, orbit-stabilizer wrapper
+3. Phase 2.5–2.7: `CanonicalForm` structure, uniqueness, idempotence
+4. Phase 2.8–2.11: G-invariant functions, separating condition
 
 ## Vulnerability reporting
 

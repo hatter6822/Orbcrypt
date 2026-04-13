@@ -1,0 +1,443 @@
+#!/usr/bin/env bash
+# Orbcrypt — Lean 4 Environment Setup
+# Adapted from seLe4n (https://github.com/hatter6822/seLe4n)
+# Sets up elan, Lean 4 toolchain, and Mathlib for the Orbcrypt project.
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+QUIET=0
+BUILD_REQUESTED=0
+for arg in "$@"; do
+  case "${arg}" in
+    --quiet|-q) QUIET=1 ;;
+    --build) BUILD_REQUESTED=1 ;;
+  esac
+done
+log() { if [ "${QUIET}" -eq 0 ]; then echo "$@"; fi; }
+
+# Elapsed-time helper for performance diagnostics.
+SETUP_START_TIME="${EPOCHREALTIME:-$(date +%s)}"
+log_elapsed() {
+  local now="${EPOCHREALTIME:-$(date +%s)}"
+  local elapsed
+  if command -v bc >/dev/null 2>&1; then
+    elapsed="$(echo "${now} - ${SETUP_START_TIME}" | bc)"
+  else
+    elapsed="$(( ${now%.*} - ${SETUP_START_TIME%.*} ))"
+  fi
+  log "[setup +${elapsed}s] $*"
+}
+
+ELAN_HOME_DEFAULT="${HOME}/.elan"
+ELAN_HOME_DIR="${ELAN_HOME:-$ELAN_HOME_DEFAULT}"
+ELAN_ENV_FILE="${ELAN_HOME_DIR}/env"
+LEAN_TOOLCHAIN_FILE="${ROOT_DIR}/lean-toolchain"
+ELAN_INSTALLER_URL="https://raw.githubusercontent.com/leanprover/elan/87f5ec2f5627dd3df16b346733147412c3ddeef1/elan-init.sh"
+ELAN_INSTALLER_SHA256="4bacca9502cb89736fe63d2685abc2947cfbf34dc87673504f1bb4c43eda9264"
+
+# Pin elan binary release version for direct download path.
+ELAN_BINARY_VERSION="v4.2.1"
+ELAN_BINARY_SHA256_X86="4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c"
+ELAN_BINARY_SHA256_ARM="bb78726ace6a912c7122a389018bcd69d9122ce04659800101392f7db380d3b3"
+
+# SHA-256 hashes for the Lean toolchain archives (v4.30.0-rc1).
+# To regenerate after version bump:
+#   curl -fsSL "https://github.com/leanprover/lean4/releases/download/v4.30.0-rc1/lean-4.30.0-rc1-linux.tar.zst" | sha256sum
+#   curl -fsSL "https://github.com/leanprover/lean4/releases/download/v4.30.0-rc1/lean-4.30.0-rc1-linux_aarch64.tar.zst" | sha256sum
+#   curl -fsSL "https://github.com/leanprover/lean4/releases/download/v4.30.0-rc1/lean-4.30.0-rc1-linux.zip" | sha256sum
+#   curl -fsSL "https://github.com/leanprover/lean4/releases/download/v4.30.0-rc1/lean-4.30.0-rc1-linux_aarch64.zip" | sha256sum
+LEAN_TOOLCHAIN_SHA256_ZST_X86="37c2913cf41b49f33ab2eebc449d12394081817315c9f915af1ff43f1642de42"
+LEAN_TOOLCHAIN_SHA256_ZST_ARM="66593bc683fbf6acd889353b37704f6ba088b07e1224bc560d01e291f6e57502"
+LEAN_TOOLCHAIN_SHA256_ZIP_X86="b2293b2003350c456aec8f954f75e0743a1cf0b63e3127e0c90d7c430e7dec49"
+LEAN_TOOLCHAIN_SHA256_ZIP_ARM="a70829d2f2ea1b1752b6b805b2b2acb76b3e38be4ee71e6717d5ed8f9d8467e1"
+
+# -------- Parse toolchain spec early (needed by fast-path) --------
+if [ ! -f "${LEAN_TOOLCHAIN_FILE}" ]; then
+  echo "error: lean-toolchain not found at ${LEAN_TOOLCHAIN_FILE}" >&2
+  exit 1
+fi
+TOOLCHAIN="$(tr -d '\n\r' < "${LEAN_TOOLCHAIN_FILE}")"
+if [ -z "${TOOLCHAIN}" ]; then
+  echo "error: ${LEAN_TOOLCHAIN_FILE} is empty" >&2
+  exit 1
+fi
+# Parse toolchain spec "org/repo:tag" into components for download URLs.
+TOOLCHAIN_ORG="$(echo "${TOOLCHAIN}" | cut -d/ -f1)"
+TOOLCHAIN_REPO="$(echo "${TOOLCHAIN}" | cut -d/ -f2 | cut -d: -f1)"
+TOOLCHAIN_TAG="$(echo "${TOOLCHAIN}" | cut -d: -f2)"
+# elan normalises "org/repo:tag" -> "org-repo-tag" for directory names.
+TOOLCHAIN_DIR_NAME="$(echo "${TOOLCHAIN}" | sed 's|/|-|g; s|:|-|g')"
+
+# -------- Fast-path: skip setup if everything is already ready --------
+fast_path_ready() {
+  if [ -f "${ELAN_ENV_FILE}" ]; then
+    # shellcheck disable=SC1090
+    source "${ELAN_ENV_FILE}"
+  fi
+  command -v lake >/dev/null 2>&1 || return 1
+  local tc_dir="${ELAN_HOME_DIR}/toolchains/${TOOLCHAIN_DIR_NAME}"
+  [ -x "${tc_dir}/bin/lean" ] || return 1
+  [ -f "${tc_dir}/lib/crti.o" ] || return 1
+  return 0
+}
+
+if fast_path_ready; then
+  log_elapsed "Lean environment already configured (fast-path)"
+  if [ "${BUILD_REQUESTED}" -eq 1 ]; then
+    log_elapsed "running lake build"
+    (cd "${ROOT_DIR}" && lake build)
+  fi
+  exit 0
+fi
+
+log_elapsed "full environment setup required"
+
+# -------- Prerequisite check --------
+if ! command -v curl >/dev/null 2>&1; then
+  echo "error: curl is required to install elan" >&2
+  exit 1
+fi
+
+# -------- Package management helpers --------
+APT_UPDATE_DONE=0
+
+run_pkg_install() {
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    "$@"
+  fi
+}
+
+apt_update_once() {
+  if [ "${APT_UPDATE_DONE}" -eq 0 ]; then
+    if ! run_pkg_install apt-get update; then
+      run_pkg_install apt-get update \
+        -o Dir::Etc::sourceparts="-" \
+        -o APT::Get::List-Cleanup="0" || true
+    fi
+    APT_UPDATE_DONE=1
+  fi
+}
+
+compute_sha256() {
+  local target_file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${target_file}" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${target_file}" | awk '{print $1}'
+  else
+    echo "error: neither sha256sum nor shasum is available" >&2
+    exit 1
+  fi
+}
+
+verify_toolchain_sha256() {
+  local target_file="$1"
+  local format="$2"
+  local expected_sha=""
+
+  case "$(uname -m)" in
+    x86_64|amd64)
+      if [ "${format}" = "zst" ]; then
+        expected_sha="${LEAN_TOOLCHAIN_SHA256_ZST_X86}"
+      else
+        expected_sha="${LEAN_TOOLCHAIN_SHA256_ZIP_X86}"
+      fi
+      ;;
+    aarch64|arm64)
+      if [ "${format}" = "zst" ]; then
+        expected_sha="${LEAN_TOOLCHAIN_SHA256_ZST_ARM}"
+      else
+        expected_sha="${LEAN_TOOLCHAIN_SHA256_ZIP_ARM}"
+      fi
+      ;;
+  esac
+
+  if [ -z "${expected_sha}" ]; then
+    echo "error: no SHA-256 hash configured for architecture $(uname -m); aborting" >&2
+    return 1
+  fi
+
+  local actual_sha
+  actual_sha="$(compute_sha256 "${target_file}")"
+  if [ "${actual_sha}" != "${expected_sha}" ]; then
+    echo "error: Lean toolchain checksum verification failed" >&2
+    echo "  expected: ${expected_sha}" >&2
+    echo "  actual:   ${actual_sha}" >&2
+    rm -f "${target_file}"
+    exit 1
+  fi
+  log_elapsed "toolchain SHA-256 verified (${format})"
+}
+
+# -------- zstd install (quick, no apt-get update) --------
+install_zstd_if_needed() {
+  if command -v zstd >/dev/null 2>&1; then
+    return 0
+  fi
+  if command -v apt-get >/dev/null 2>&1; then
+    if timeout 5 bash -c 'sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zstd 2>/dev/null' >/dev/null 2>&1; then
+      log_elapsed "zstd installed from cache"
+    else
+      log_elapsed "zstd not in cache; will use zip fallback"
+    fi
+  fi
+}
+
+install_zstd_if_needed
+
+# -------- Architecture detection --------
+detect_arch_suffix() {
+  local arch
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64|amd64)  echo "" ;;
+    aarch64|arm64) echo "_aarch64" ;;
+    *) echo "error: unsupported architecture '${arch}'" >&2; exit 1 ;;
+  esac
+}
+
+# -------- elan env file --------
+ensure_elan_env_file() {
+  if [ -f "${ELAN_ENV_FILE}" ]; then
+    return 0
+  fi
+  mkdir -p "$(dirname "${ELAN_ENV_FILE}")"
+  cat > "${ELAN_ENV_FILE}" << 'ENVEOF'
+#!/bin/sh
+# elan shell setup
+case ":${PATH}:" in
+    *:"${HOME}/.elan/bin":*)
+        ;;
+    *)
+        export PATH="${HOME}/.elan/bin:${PATH}"
+        ;;
+esac
+ENVEOF
+}
+
+# -------- Manual curl-based install --------
+manual_curl_install() {
+  log_elapsed "manual curl-based install starting"
+
+  local elan_bin_dir="${ELAN_HOME_DIR}/bin"
+  local toolchain_dir="${ELAN_HOME_DIR}/toolchains/${TOOLCHAIN_DIR_NAME}"
+  local arch_suffix
+  arch_suffix="$(detect_arch_suffix)"
+  local version_number="${TOOLCHAIN_TAG#v}"
+  local lean_archive_name="lean-${version_number}-linux${arch_suffix}"
+
+  mkdir -p "${elan_bin_dir}" "${ELAN_HOME_DIR}/toolchains"
+
+  ensure_elan_env_file
+
+  cat > "${ELAN_HOME_DIR}/settings.toml" << SETTINGSEOF
+version = "12"
+default_toolchain = "${TOOLCHAIN_DIR_NAME}"
+SETTINGSEOF
+
+  # Download elan binary in background
+  local elan_bg_pid=""
+  if [ ! -x "${elan_bin_dir}/elan" ]; then
+    (
+      local arch_name expected_sha
+      case "$(uname -m)" in
+        x86_64|amd64)
+          arch_name="x86_64-unknown-linux-gnu"
+          expected_sha="${ELAN_BINARY_SHA256_X86}"
+          ;;
+        aarch64|arm64)
+          arch_name="aarch64-unknown-linux-gnu"
+          expected_sha="${ELAN_BINARY_SHA256_ARM}"
+          ;;
+        *) exit 1 ;;
+      esac
+      local elan_tar
+      elan_tar="$(mktemp)"
+      curl -fsSL "https://github.com/leanprover/elan/releases/download/${ELAN_BINARY_VERSION}/elan-${arch_name}.tar.gz" -o "${elan_tar}"
+      local actual_sha
+      actual_sha="$(compute_sha256 "${elan_tar}")"
+      if [ "${actual_sha}" != "${expected_sha}" ]; then
+        echo "error: elan binary checksum verification failed" >&2
+        rm -f "${elan_tar}"
+        exit 1
+      fi
+      tar -xzf "${elan_tar}" -C "${elan_bin_dir}/" \
+        && chmod +x "${elan_bin_dir}/elan-init"
+      rm -f "${elan_tar}"
+    ) &
+    elan_bg_pid=$!
+  fi
+
+  # Install Lean toolchain (foreground — critical path)
+  if [ ! -d "${toolchain_dir}/bin" ]; then
+    log_elapsed "downloading Lean toolchain ${TOOLCHAIN}"
+
+    if command -v zstd >/dev/null 2>&1; then
+      local lean_tar
+      lean_tar="$(mktemp)"
+      trap 'rm -f "${lean_tar}"' EXIT
+      curl -fsSL "https://github.com/${TOOLCHAIN_ORG}/${TOOLCHAIN_REPO}/releases/download/${TOOLCHAIN_TAG}/${lean_archive_name}.tar.zst" -o "${lean_tar}"
+      verify_toolchain_sha256 "${lean_tar}" "zst"
+      log_elapsed "extracting toolchain (zstd)"
+      local lean_extracted
+      lean_extracted="$(mktemp)"
+      rm -f "${lean_extracted}"
+      lean_extracted="${lean_extracted}.tar"
+      zstd -d "${lean_tar}" -o "${lean_extracted}"
+      tar -xf "${lean_extracted}" -C "${ELAN_HOME_DIR}/toolchains/"
+      rm -f "${lean_tar}" "${lean_extracted}"
+      trap - EXIT
+    else
+      log_elapsed "zstd unavailable; downloading zip archive instead"
+      local lean_zip
+      lean_zip="$(mktemp)"
+      trap 'rm -f "${lean_zip}"' EXIT
+      curl -fsSL "https://github.com/${TOOLCHAIN_ORG}/${TOOLCHAIN_REPO}/releases/download/${TOOLCHAIN_TAG}/${lean_archive_name}.zip" -o "${lean_zip}"
+      verify_toolchain_sha256 "${lean_zip}" "zip"
+      unzip -qo "${lean_zip}" -d "${ELAN_HOME_DIR}/toolchains/"
+      rm -f "${lean_zip}"
+      trap - EXIT
+    fi
+
+    # Rename extracted directory to match elan's naming convention.
+    local extracted_dir="${ELAN_HOME_DIR}/toolchains/${lean_archive_name}"
+    if [ -d "${extracted_dir}" ] && [ "${extracted_dir}" != "${toolchain_dir}" ]; then
+      mv "${extracted_dir}" "${toolchain_dir}"
+    fi
+
+    log_elapsed "Lean toolchain installed to ${toolchain_dir}"
+  else
+    log_elapsed "Lean toolchain already present at ${toolchain_dir}"
+  fi
+
+  # Wait for elan background download
+  if [ -n "${elan_bg_pid}" ]; then
+    if wait "${elan_bg_pid}" 2>/dev/null; then
+      log_elapsed "elan binary download complete (SHA-256 verified)"
+    else
+      log_elapsed "warning: elan binary download failed; toolchain symlinks will be used instead"
+    fi
+  fi
+
+  # Create direct symlinks so lean/lake/leanc are on PATH immediately
+  for bin in lean lake leanc leanmake; do
+    if [ -x "${toolchain_dir}/bin/${bin}" ] && [ ! -e "${elan_bin_dir}/${bin}" ]; then
+      ln -sf "${toolchain_dir}/bin/${bin}" "${elan_bin_dir}/${bin}"
+    fi
+  done
+
+  # Register toolchain with elan via symlink
+  # shellcheck disable=SC1090
+  source "${ELAN_ENV_FILE}"
+  if command -v elan >/dev/null 2>&1; then
+    elan toolchain link "${TOOLCHAIN}" "${toolchain_dir}" 2>/dev/null || true
+    elan default "${TOOLCHAIN}" 2>/dev/null || true
+  fi
+
+  mkdir -p "${ELAN_HOME_DIR}/update-hashes"
+  echo "manual-install" > "${ELAN_HOME_DIR}/update-hashes/${TOOLCHAIN_DIR_NAME}"
+}
+
+# -------- Main installation flow --------
+source_elan_env() {
+  if [ -f "${ELAN_ENV_FILE}" ]; then
+    # shellcheck disable=SC1090
+    source "${ELAN_ENV_FILE}"
+  fi
+}
+
+source_elan_env
+TOOLCHAIN_FRESHLY_INSTALLED=0
+
+local_tc_dir="${ELAN_HOME_DIR}/toolchains/${TOOLCHAIN_DIR_NAME}"
+if [ ! -x "${local_tc_dir}/bin/lean" ]; then
+  log_elapsed "installing Lean toolchain ${TOOLCHAIN} (direct download)"
+  if manual_curl_install; then
+    TOOLCHAIN_FRESHLY_INSTALLED=1
+  else
+    log_elapsed "direct install failed; falling back to elan installer"
+    if ! command -v elan >/dev/null 2>&1; then
+      log_elapsed "downloading elan installer"
+      elan_installer="$(mktemp)"
+      trap 'rm -f "${elan_installer}"' EXIT
+      curl -fsSL "${ELAN_INSTALLER_URL}" -o "${elan_installer}"
+      installer_sha256="$(compute_sha256 "${elan_installer}")"
+      if [ "${installer_sha256}" != "${ELAN_INSTALLER_SHA256}" ]; then
+        echo "error: elan installer checksum verification failed" >&2
+        exit 1
+      fi
+      if ! sh "${elan_installer}" -y --no-modify-path; then
+        echo "error: both direct install and elan installer failed" >&2
+        exit 1
+      fi
+      rm -f "${elan_installer}"
+      trap - EXIT
+    fi
+    ensure_elan_env_file
+    source_elan_env
+    if command -v elan >/dev/null 2>&1 && [ ! -d "${local_tc_dir}/bin" ]; then
+      elan toolchain install "${TOOLCHAIN}" 2>/dev/null || true
+    fi
+    elan default "${TOOLCHAIN}" 2>/dev/null || true
+    TOOLCHAIN_FRESHLY_INSTALLED=1
+  fi
+else
+  log_elapsed "Lean toolchain ${TOOLCHAIN} is already installed"
+fi
+
+ensure_elan_env_file
+source_elan_env
+
+if ! command -v lake >/dev/null 2>&1; then
+  echo "error: lake is still not on PATH after setup" >&2
+  exit 1
+fi
+
+# -------- CRT startup files verification --------
+if [ "${TOOLCHAIN_FRESHLY_INSTALLED}" -eq 1 ]; then
+  verify_crt_files() {
+    local tc_dir="${ELAN_HOME_DIR}/toolchains/${TOOLCHAIN_DIR_NAME}"
+    local missing=0
+    for crt_file in crti.o crt1.o Scrt1.o; do
+      if [ ! -f "${tc_dir}/lib/${crt_file}" ]; then
+        missing=1
+        break
+      fi
+    done
+    if [ "${missing}" -eq 1 ]; then
+      echo "[setup] warning: CRT startup files missing; re-downloading toolchain" >&2
+      rm -rf "${tc_dir}"
+      manual_curl_install
+      source_elan_env
+      for crt_file in crti.o crt1.o Scrt1.o; do
+        if [ ! -f "${tc_dir}/lib/${crt_file}" ]; then
+          echo "[setup] warning: ${crt_file} still missing; linking may fail" >&2
+          if command -v apt-get >/dev/null 2>&1; then
+            apt_update_once
+            run_pkg_install env DEBIAN_FRONTEND=noninteractive apt-get install -y libc-dev 2>/dev/null || true
+          fi
+          return 1
+        fi
+      done
+      log_elapsed "CRT files restored successfully"
+    fi
+    return 0
+  }
+  verify_crt_files
+fi
+
+log_elapsed "Lean environment is ready"
+log_elapsed "lake version: $(lake --version)"
+
+if [ "${QUIET}" -eq 0 ]; then
+  echo "[setup] next steps:"
+  echo "  source \"${ELAN_ENV_FILE}\""
+  echo "  lake build"
+fi
+
+if [ "${BUILD_REQUESTED}" -eq 1 ]; then
+  log_elapsed "running lake build"
+  (cd "${ROOT_DIR}" && lake build)
+fi

@@ -59,13 +59,13 @@ dependency configured and resolving.
    import Lake
    open Lake DSL
 
-   package orbcrypt where
+   package "orbcrypt" where
+     version := v!"0.1.0"
      leanOptions := #[
        ⟨`autoImplicit, false⟩  -- Enforce explicit universe/variable declarations
      ]
 
-   require mathlib from git
-     "https://github.com/leanprover-community/mathlib4"
+   require "leanprover-community" / "mathlib" @ git "master"
 
    @[default_target]
    lean_lib Orbcrypt where
@@ -77,7 +77,9 @@ dependency configured and resolving.
      universe variables. This is standard practice for formal verification
      projects.
    - Mathlib is pulled from git. For reproducibility, pin to a specific commit
-     hash rather than a branch after initial setup succeeds.
+     hash in `lake-manifest.json` rather than tracking a branch.
+   - **Lake 5.0.0 syntax:** Package names are now strings (`"orbcrypt"`),
+     and `require` uses scope/name syntax (`"leanprover-community" / "mathlib"`).
 
 3. **Create `.gitignore`:**
    ```
@@ -136,13 +138,21 @@ Orbcrypt/
     └── Permutation.lean
 ```
 
-Each `.lean` file should contain a minimal stub:
+Each `.lean` file should contain a minimal stub using a module docstring:
 
 ```lean
-/-- [Module purpose — one line] -/
+/-!
+# Module.Name
+
+[Module purpose — one or two lines]
+-/
 
 -- TODO: Implementation in Phase N, Work Unit N.X
 ```
+
+**Note:** Use `/-! ... -/` (module docstring) not `/-- ... -/` (declaration docstring).
+Declaration docstrings attach to the next declaration and will cause parse errors
+in files with no declarations. Module docstrings are freestanding.
 
 This ensures `lake build` can find all files referenced by the root import.
 
@@ -150,7 +160,7 @@ This ensures `lake build` can find all files referenced by the root import.
 
 ```bash
 find Orbcrypt/ -name "*.lean" | sort
-# Should list all 10 files in the structure above
+# Should list all 11 files in the structure above
 ```
 
 ---
@@ -165,14 +175,6 @@ find Orbcrypt/ -name "*.lean" | sort
 Create `Orbcrypt.lean` at the project root (next to `lakefile.lean`):
 
 ```lean
-/--
-Orbcrypt — Formal Verification of Permutation-Orbit Encryption
-
-This is the root import file. Importing `Orbcrypt` gives access to the
-complete formalization: group action foundations, cryptographic definitions,
-core theorems, and the concrete HGOE construction.
--/
-
 import Orbcrypt.GroupAction.Basic
 import Orbcrypt.GroupAction.Canonical
 import Orbcrypt.GroupAction.Invariant
@@ -187,7 +189,19 @@ import Orbcrypt.Theorems.OIAImpliesCPA
 
 import Orbcrypt.Construction.Permutation
 import Orbcrypt.Construction.HGOE
+
+/-!
+# Orbcrypt — Formal Verification of Permutation-Orbit Encryption
+
+This is the root import file. Importing `Orbcrypt` gives access to the
+complete formalization: group action foundations, cryptographic definitions,
+core theorems, and the concrete HGOE construction.
+-/
 ```
+
+**Note:** In Lean 4, `import` statements must appear at the very beginning of
+a file. Module docstrings (`/-! ... -/`) must come after all imports. Using a
+declaration docstring (`/-- ... -/`) before imports will cause a parse error.
 
 #### Verification
 
@@ -258,13 +272,13 @@ Strictly linear — no parallelism possible in this phase.
 
 All of the following must be true before proceeding to Phase 2:
 
-- [ ] `lean-toolchain` pins a specific Lean 4 version compatible with Mathlib
-- [ ] `lakefile.lean` declares the `orbcrypt` package with Mathlib dependency
-- [ ] `.gitignore` excludes build artifacts
-- [ ] All 10 `.lean` stub files exist in the correct directory structure
-- [ ] `Orbcrypt.lean` imports all 10 submodules
-- [ ] `lake build` completes with exit code 0 and zero errors
-- [ ] All files are committed to version control
+- [x] `lean-toolchain` pins a specific Lean 4 version compatible with Mathlib
+- [x] `lakefile.lean` declares the `orbcrypt` package with Mathlib dependency
+- [x] `.gitignore` excludes build artifacts
+- [x] All 11 `.lean` stub files exist in the correct directory structure
+- [x] `Orbcrypt.lean` imports all 11 submodules
+- [x] `lake build` completes with exit code 0 and zero errors
+- [x] All files are committed to version control
 
 ---
 
