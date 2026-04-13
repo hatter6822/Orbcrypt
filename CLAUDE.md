@@ -235,9 +235,9 @@ The formalization depends heavily on Mathlib's group action library. Familiarity
 | `MulAction.orbit G x` | `Set X` | The orbit of x under G |
 | `MulAction.stabilizer G x` | `Subgroup G` | The stabilizer of x |
 | `MulAction.orbitRel G X` | `Setoid X` | Orbits as equivalence classes |
-| `MulAction.orbit_eq_iff` | theorem | `orbit G x = orbit G y <-> exists g, g . x = y` |
+| `MulAction.orbit_eq_iff` | theorem | `orbit G x = orbit G y <-> x in orbit G y` |
 | `MulAction.mem_orbit_iff` | theorem | `y in orbit G x <-> exists g, g . x = y` |
-| `MulAction.card_orbit_mul_card_stabilizer` | theorem | Orbit-stabilizer: `|orbit| * |stab| = |G|` |
+| `MulAction.card_orbit_mul_card_stabilizer_eq_card_group` | theorem | Orbit-stabilizer: `|orbit| * |stab| = |G|` |
 | `Equiv.Perm` | type | Permutations (symmetric group) |
 
 **Required Mathlib modules:**
@@ -329,23 +329,29 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phase 1 Complete — Phase 2 Ready
+**Current Phase:** Phase 2 Complete — Phase 3 Ready
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency, `autoImplicit := false`
 - `lean-toolchain` — pinned to `leanprover/lean4:v4.30.0-rc1` (matching Mathlib master)
 - `lake-manifest.json` — locks Mathlib at commit `fa6418a8` plus 8 transitive dependencies
-- 11 stub `.lean` files in correct directory structure with module docstrings
+- 11 `.lean` files in correct directory structure
 - `Orbcrypt.lean` — root import file importing all 11 submodules
 - `scripts/setup_lean_env.sh` — automated Lean environment setup (elan + toolchain)
 - `.claude/settings.json` — SessionStart hook for auto-setup
-- `lake build` succeeds with exit code 0, zero errors, zero warnings, zero `sorry`
+
+Phase 2 (Group Action Foundations) has been completed:
+- `GroupAction/Basic.lean` — orbit/stabilizer aliases, orbit partition theorem (`orbit_disjoint_or_eq`), orbit-stabilizer wrapper, membership lemmas (`smul_mem_orbit`, `orbit_eq_of_smul`)
+- `GroupAction/Canonical.lean` — `CanonicalForm` structure with `canon`, `mem_orbit`, `orbit_iff`; uniqueness lemmas (`canon_eq_implies_orbit_eq`, `orbit_eq_implies_canon_eq`, `canon_eq_of_mem_orbit`); idempotence (`canon_idem`)
+- `GroupAction/Invariant.lean` — `IsGInvariant` definition with closure properties (`comp`, `const`); orbit constancy lemma (`invariant_const_on_orbit`); `IsSeparating` definition with `separating_implies_distinct_orbits`; `canonical_isGInvariant`
+- All 11 work units (2.1–2.11) implemented with zero `sorry`, zero warnings
+- `lake build` succeeds with exit code 0 (902 jobs, zero errors)
 
 **Immediate Next Steps:**
-1. Phase 2.1: Populate `GroupAction/Basic.lean` with orbit/stabilizer API wrappers
-2. Phase 2.2–2.4: Orbit lemmas, stabilizer properties, orbit-stabilizer wrapper
-3. Phase 2.5–2.7: `CanonicalForm` structure, uniqueness, idempotence
-4. Phase 2.8–2.11: G-invariant functions, separating condition
+1. Phase 3.1–3.3: Define `OrbitEncScheme` structure in `Crypto/Scheme.lean`
+2. Phase 3.4–3.6: Define adversary model and IND-CPA game in `Crypto/Security.lean`
+3. Phase 3.7–3.8: State OIA axiom in `Crypto/OIA.lean`
+4. Phase 5.1–5.6 (parallel): `Construction/Permutation.lean` can begin (depends only on Phase 2)
 
 ## Vulnerability reporting
 

@@ -542,16 +542,16 @@ After unit 2.1 (the shared foundation), three tracks can proceed simultaneously:
 
 All of the following must be true before proceeding to Phase 3:
 
-- [ ] `GroupAction/Basic.lean` compiles without `sorry`
-- [ ] `GroupAction/Canonical.lean` compiles without `sorry`
-- [ ] `GroupAction/Invariant.lean` compiles without `sorry`
-- [ ] `lake build` succeeds with zero errors
-- [ ] `orbit_disjoint_or_eq` proved
-- [ ] `CanonicalForm` structure defined with `canon`, `mem_orbit`, `orbit_iff`
-- [ ] `IsGInvariant` and `IsSeparating` defined
-- [ ] `invariant_const_on_orbit` proved
-- [ ] `canonical_isGInvariant` proved
-- [ ] All lemmas have docstrings
+- [x] `GroupAction/Basic.lean` compiles without `sorry`
+- [x] `GroupAction/Canonical.lean` compiles without `sorry`
+- [x] `GroupAction/Invariant.lean` compiles without `sorry`
+- [x] `lake build` succeeds with zero errors
+- [x] `orbit_disjoint_or_eq` proved
+- [x] `CanonicalForm` structure defined with `canon`, `mem_orbit`, `orbit_iff`
+- [x] `IsGInvariant` and `IsSeparating` defined
+- [x] `invariant_const_on_orbit` proved
+- [x] `canonical_isGInvariant` proved
+- [x] All lemmas have docstrings
 
 ---
 
