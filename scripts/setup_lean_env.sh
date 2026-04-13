@@ -68,10 +68,48 @@ TOOLCHAIN_TAG="$(echo "${TOOLCHAIN}" | cut -d: -f2)"
 # elan normalises "org/repo:tag" -> "org-repo-tag" for directory names.
 TOOLCHAIN_DIR_NAME="$(echo "${TOOLCHAIN}" | sed 's|/|-|g; s|:|-|g')"
 
+# -------- Parse Mathlib revision for SHA-pinned cache URLs --------
+# Pin cache URLs to the exact Mathlib commit locked in lake-manifest.json,
+# not a mutable branch like 'master'. This follows the same security pattern
+# used for the elan and Lean toolchain downloads above (immutable references
+# with integrity verification).
+MATHLIB_REV=""
+if [ -f "${ROOT_DIR}/lake-manifest.json" ]; then
+  if command -v jq >/dev/null 2>&1; then
+    MATHLIB_REV="$(jq -r '.packages[] | select(.name == "mathlib") | .rev' "${ROOT_DIR}/lake-manifest.json" 2>/dev/null)"
+  elif command -v python3 >/dev/null 2>&1; then
+    MATHLIB_REV="$(python3 -c "
+import json, sys
+with open(sys.argv[1]) as f:
+    data = json.load(f)
+for p in data.get('packages', []):
+    if p.get('name') == 'mathlib':
+        print(p['rev'])
+        break
+" "${ROOT_DIR}/lake-manifest.json" 2>/dev/null)"
+  fi
+fi
+# Validate: must be a 40-character lowercase hex string (SHA-1 commit hash).
+# Reject anything else to prevent URL injection from a crafted manifest.
+if ! echo "${MATHLIB_REV}" | grep -qE '^[a-f0-9]{40}$'; then
+  MATHLIB_REV=""
+fi
+if [ -z "${MATHLIB_REV}" ]; then
+  log_elapsed "warning: could not parse a valid Mathlib commit from lake-manifest.json; cache URLs will not be SHA-pinned"
+fi
+
 # -------- Lake / Mathlib cache configuration --------
 # The default cache endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
 # are blocked in some sandboxed / CI environments. We redirect both Lake's native
 # cache and Mathlib's legacy cache to raw.githubusercontent.com, which is accessible.
+#
+# Security model:
+#   - All URLs use HTTPS (transport security via TLS).
+#   - URLs are pinned to the exact Mathlib commit from lake-manifest.json
+#     (immutable reference — cannot be changed by pushes to master).
+#   - Mathlib's cache tool verifies downloaded .ltar files by content hash,
+#     providing integrity checking independent of the transport layer.
+#   - The config.toml is created once and not overwritten, respecting manual edits.
 #
 # Two systems need configuration:
 #   1. ~/.lake/config.toml  — Lake's native cache service (used by `lake build --try-cache`)
@@ -81,7 +119,9 @@ TOOLCHAIN_DIR_NAME="$(echo "${TOOLCHAIN}" | sed 's|/|-|g; s|:|-|g')"
 MATHLIB_CACHE_MARKER="${ROOT_DIR}/.lake/.mathlib_cache_ok"
 LAKE_CONFIG_DIR="${HOME}/.lake"
 LAKE_CONFIG_FILE="${LAKE_CONFIG_DIR}/config.toml"
-CACHE_BASE_URL="https://raw.githubusercontent.com/leanprover-community/mathlib4/master"
+# Use the pinned commit for immutable URLs; fall back to 'master' only if parsing failed.
+CACHE_GIT_REF="${MATHLIB_REV:-master}"
+CACHE_BASE_URL="https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}"
 
 mathlib_cache_present() {
   [ -f "${MATHLIB_CACHE_MARKER}" ]
@@ -95,13 +135,17 @@ configure_lake_cache() {
 
   # 1. Create ~/.lake/config.toml to redirect Lake's native cache service
   #    away from blocked Reservoir to an accessible GitHub endpoint.
+  #    Uses SHA-pinned commit ref (not 'master') for immutable URLs.
   if [ ! -f "${LAKE_CONFIG_FILE}" ]; then
-    log_elapsed "creating ${LAKE_CONFIG_FILE}"
+    log_elapsed "creating ${LAKE_CONFIG_FILE} (pinned to ${CACHE_GIT_REF})"
     mkdir -p "${LAKE_CONFIG_DIR}"
-    cat > "${LAKE_CONFIG_FILE}" << 'CACHEEOF'
+    cat > "${LAKE_CONFIG_FILE}" << CACHEEOF
 # Lake cache configuration — redirects cache lookups to raw.githubusercontent.com
 # because the default endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
 # are not accessible in this environment.
+#
+# URLs are pinned to Mathlib commit ${CACHE_GIT_REF}
+# from lake-manifest.json for immutability.
 #
 # To restore default Reservoir behavior, delete this file.
 cache.defaultService = "github-raw"
@@ -109,8 +153,8 @@ cache.defaultService = "github-raw"
 [[cache.service]]
 name = "github-raw"
 kind = "s3"
-artifactEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/master/.lake/artifacts"
-revisionEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/master/.lake/revisions"
+artifactEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}/.lake/artifacts"
+revisionEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}/.lake/revisions"
 CACHEEOF
     log_elapsed "Lake native cache redirected to raw.githubusercontent.com"
   else
