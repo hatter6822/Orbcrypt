@@ -68,48 +68,76 @@ TOOLCHAIN_TAG="$(echo "${TOOLCHAIN}" | cut -d: -f2)"
 # elan normalises "org/repo:tag" -> "org-repo-tag" for directory names.
 TOOLCHAIN_DIR_NAME="$(echo "${TOOLCHAIN}" | sed 's|/|-|g; s|:|-|g')"
 
-# -------- Mathlib precompiled cache download --------
-# `lake exe cache get` downloads precompiled oleans for Mathlib so that
-# `lake build` does not have to compile Mathlib from source (~60+ minutes).
-# Network issues are common in CI and sandboxed environments, so we retry
-# with exponential backoff (2s, 4s, 8s, 16s — up to 4 retries).
+# -------- Lake / Mathlib cache configuration --------
+# The default cache endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
+# are blocked in some sandboxed / CI environments. We redirect both Lake's native
+# cache and Mathlib's legacy cache to raw.githubusercontent.com, which is accessible.
 #
-# A marker file (.lake/.mathlib_cache_ok) is created after a successful
-# download to avoid running the (slow) cache check on every session start.
-# Delete the marker to force a re-download.
+# Two systems need configuration:
+#   1. ~/.lake/config.toml  — Lake's native cache service (used by `lake build --try-cache`)
+#   2. MATHLIB_CACHE_GET_URL — Mathlib's legacy cache tool (used by `lake exe cache get`)
+#
+# A marker file (.lake/.mathlib_cache_ok) tracks whether setup has been completed.
 MATHLIB_CACHE_MARKER="${ROOT_DIR}/.lake/.mathlib_cache_ok"
+LAKE_CONFIG_DIR="${HOME}/.lake"
+LAKE_CONFIG_FILE="${LAKE_CONFIG_DIR}/config.toml"
+CACHE_BASE_URL="https://raw.githubusercontent.com/leanprover-community/mathlib4/master"
 
 mathlib_cache_present() {
   [ -f "${MATHLIB_CACHE_MARKER}" ]
 }
 
-download_mathlib_cache() {
+configure_lake_cache() {
   if mathlib_cache_present; then
-    log_elapsed "Mathlib cache already present (marker found)"
+    log_elapsed "Lake cache already configured (marker found)"
     return 0
   fi
 
-  local max_retries=4
-  local attempt=1
-  local backoff=2
+  # 1. Create ~/.lake/config.toml to redirect Lake's native cache service
+  #    away from blocked Reservoir to an accessible GitHub endpoint.
+  if [ ! -f "${LAKE_CONFIG_FILE}" ]; then
+    log_elapsed "creating ${LAKE_CONFIG_FILE}"
+    mkdir -p "${LAKE_CONFIG_DIR}"
+    cat > "${LAKE_CONFIG_FILE}" << 'CACHEEOF'
+# Lake cache configuration — redirects cache lookups to raw.githubusercontent.com
+# because the default endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
+# are not accessible in this environment.
+#
+# To restore default Reservoir behavior, delete this file.
+cache.defaultService = "github-raw"
 
-  while [ "${attempt}" -le "${max_retries}" ]; do
-    log_elapsed "downloading Mathlib cache (attempt ${attempt}/${max_retries})"
-    if (cd "${ROOT_DIR}" && lake exe cache get 2>&1); then
-      log_elapsed "Mathlib cache downloaded successfully"
-      mkdir -p "$(dirname "${MATHLIB_CACHE_MARKER}")"
-      touch "${MATHLIB_CACHE_MARKER}"
-      return 0
-    fi
-    if [ "${attempt}" -lt "${max_retries}" ]; then
-      log_elapsed "cache download failed; retrying in ${backoff}s..."
-      sleep "${backoff}"
-      backoff=$((backoff * 2))
-    fi
-    attempt=$((attempt + 1))
-  done
+[[cache.service]]
+name = "github-raw"
+kind = "s3"
+artifactEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/master/.lake/artifacts"
+revisionEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/master/.lake/revisions"
+CACHEEOF
+    log_elapsed "Lake native cache redirected to raw.githubusercontent.com"
+  else
+    log_elapsed "~/.lake/config.toml already exists; skipping"
+  fi
 
-  log_elapsed "warning: Mathlib cache download failed after ${max_retries} attempts"
+  # 2. Export MATHLIB_CACHE_GET_URL so Mathlib's legacy cache tool also
+  #    uses raw.githubusercontent.com instead of blocked Azure Blob Storage.
+  export MATHLIB_CACHE_GET_URL="${CACHE_BASE_URL}"
+  log_elapsed "MATHLIB_CACHE_GET_URL set to ${CACHE_BASE_URL}"
+
+  # 3. Attempt cache download (single try — `lake exe cache get` handles
+  #    per-file retries internally). With the redirected URL, files that
+  #    aren't hosted on raw.githubusercontent.com return fast 404s instead
+  #    of hanging on blocked hosts.
+  log_elapsed "attempting Mathlib cache download"
+  mkdir -p "$(dirname "${MATHLIB_CACHE_MARKER}")"
+  if (cd "${ROOT_DIR}" && lake exe cache get 2>&1); then
+    log_elapsed "Mathlib cache downloaded successfully"
+    touch "${MATHLIB_CACHE_MARKER}"
+    return 0
+  fi
+
+  # Cache data not available at this endpoint, but config is in place —
+  # mark as configured so we don't re-attempt on every session start.
+  touch "${MATHLIB_CACHE_MARKER}"
+  log_elapsed "warning: Mathlib cache not available at ${CACHE_BASE_URL}"
   log_elapsed "warning: builds will compile Mathlib from source (slow but functional)"
   return 1
 }
@@ -129,7 +157,7 @@ fast_path_ready() {
 
 if fast_path_ready; then
   log_elapsed "Lean environment already configured (fast-path)"
-  download_mathlib_cache || true
+  configure_lake_cache || true
   if [ "${BUILD_REQUESTED}" -eq 1 ]; then
     log_elapsed "running lake build"
     (cd "${ROOT_DIR}" && lake build)
@@ -478,7 +506,7 @@ fi
 log_elapsed "Lean environment is ready"
 log_elapsed "lake version: $(lake --version)"
 
-download_mathlib_cache || true
+configure_lake_cache || true
 
 if [ "${QUIET}" -eq 0 ]; then
   echo "[setup] next steps:"
