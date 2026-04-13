@@ -3,9 +3,10 @@ import Orbcrypt.Crypto.Scheme
 /-!
 # Orbcrypt.Crypto.OIA
 
-Orbit Indistinguishability Assumption (OIA): formal statement as a Lean axiom.
-This is the sole computational assumption in the formalization, analogous to
-"factoring is hard" in RSA. Formalizes DEVELOPMENT.md §5.2.
+Orbit Indistinguishability Assumption (OIA): formal statement as a
+`Prop`-valued definition. This is the sole computational assumption in the
+formalization, analogous to "factoring is hard" in RSA.
+Formalizes DEVELOPMENT.md §5.2.
 
 ## Main declarations
 
@@ -32,7 +33,7 @@ Lean's standard axioms, confirming zero custom axioms.
 
 ### Strong deterministic formulation
 
-The axiom states: for any Boolean function `f : X → Bool`, any two messages
+OIA states: for any Boolean function `f : X → Bool`, any two messages
 `m₀ m₁ : M`, and any group elements `g₀ g₁ : G`,
 
   `f (g₀ • reps m₀) = f (g₁ • reps m₁)`
@@ -40,6 +41,30 @@ The axiom states: for any Boolean function `f : X → Bool`, any two messages
 This means `f` cannot distinguish ANY pair of orbit elements — it must return
 the same Boolean value on every element of every message orbit. This is the
 strongest possible deterministic indistinguishability.
+
+### Strength and limitations of the deterministic formulation
+
+The strong deterministic OIA quantifies over ALL Boolean functions `f : X → Bool`,
+including those that can detect membership in a specific orbit (e.g.,
+`fun x => decide (x = reps m₀)`). For any scheme with ≥ 2 messages whose
+orbit representatives are distinct points, such an `f` witnesses that `OIA`
+is unsatisfiable. This means:
+
+- `OIA scheme` is `False` for any non-trivial scheme
+- `OIA scheme → IsSecure scheme` is vacuously true (ex falso)
+- The theorem captures the ALGEBRAIC STRUCTURE of the security proof, but
+  the hypothesis is unrealistically strong
+
+This is a known limitation of the deterministic approach. The probabilistic
+OIA (§5.2) restricts to PPT adversaries who cannot efficiently compute
+orbit membership without the secret key. Formalizing this requires a
+probability monad and computational complexity framework, which are
+documented as non-goals for the current scope (see FORMALIZATION_PLAN.md §2).
+
+The formalization still provides value: it machine-checks that the algebraic
+argument "OIA-like indistinguishability implies CPA security" is logically
+valid. A future probabilistic upgrade would replace the hypothesis with a
+meaningful computational assumption while preserving the proof structure.
 
 ### Relationship to probabilistic OIA
 
@@ -73,9 +98,9 @@ f(d) = false. The weak OIA holds (for any g mapping to a, take g' mapping
 to c; for g mapping to b, take g' mapping to d). But f(a) ≠ f(d), so an
 adversary can distinguish specific orbit elements, giving non-zero advantage.
 
-### What depends on this axiom
+### What depends on this assumption
 
-Only `Theorems/OIAImpliesCPA.lean` uses the OIA axiom. The correctness
+Only `Theorems/OIAImpliesCPA.lean` uses the OIA assumption. The correctness
 theorem (`Theorems/Correctness.lean`) and invariant attack theorem
 (`Theorems/InvariantAttack.lean`) are unconditional — they hold regardless
 of whether OIA is true or false.
@@ -118,7 +143,7 @@ The OIA is grounded in two well-studied hardness assumptions:
 namespace Orbcrypt
 
 -- ============================================================================
--- Work Unit 3.7: OIA Axiom
+-- Work Unit 3.7: OIA Definition
 -- ============================================================================
 
 /--
