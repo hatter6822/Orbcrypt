@@ -1017,18 +1017,18 @@ complete in ~12h wall-clock time.
 
 ## Exit Criteria
 
-- [ ] `Theorems/Correctness.lean` compiles without `sorry`
-- [ ] `Theorems/InvariantAttack.lean` compiles without `sorry`
-- [ ] `Theorems/OIAImpliesCPA.lean` compiles without `sorry` (axiom `OIA` is acceptable)
-- [ ] `lake build Orbcrypt.Theorems.Correctness` succeeds
-- [ ] `lake build Orbcrypt.Theorems.InvariantAttack` succeeds
-- [ ] `lake build Orbcrypt.Theorems.OIAImpliesCPA` succeeds
-- [ ] `#print axioms correctness` shows only standard Lean axioms (no `OIA`)
-- [ ] `#print axioms invariant_attack` shows only standard Lean axioms (no `OIA`)
-- [ ] `#print axioms oia_implies_1cpa` shows `OIA` plus standard axioms
-- [ ] All definitions and theorems have `/-- ... -/` docstrings
-- [ ] Each proof has a strategy comment at its top
-- [ ] `grep -rn "sorry" Orbcrypt/Theorems/` returns empty
+- [x] `Theorems/Correctness.lean` compiles without `sorry`
+- [x] `Theorems/InvariantAttack.lean` compiles without `sorry`
+- [x] `Theorems/OIAImpliesCPA.lean` compiles without `sorry` (axiom `OIA` is acceptable)
+- [x] `lake build Orbcrypt.Theorems.Correctness` succeeds
+- [x] `lake build Orbcrypt.Theorems.InvariantAttack` succeeds
+- [x] `lake build Orbcrypt.Theorems.OIAImpliesCPA` succeeds
+- [x] `#print axioms correctness` shows only standard Lean axioms (`propext`, `Classical.choice`, `Quot.sound`)
+- [x] `#print axioms invariant_attack` shows only standard Lean axioms (`propext`)
+- [x] `#print axioms oia_implies_1cpa` shows zero axioms (OIA is a hypothesis, not an axiom)
+- [x] All definitions and theorems have `/-- ... -/` docstrings
+- [x] Each proof has a strategy comment at its top
+- [x] `grep -rn "sorry" Orbcrypt/Theorems/` returns empty
 
 ---
 

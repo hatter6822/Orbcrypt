@@ -329,7 +329,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phase 3 Complete — Phase 4 Ready
+**Current Phase:** Phase 4 Complete — Phase 5 Ready
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency, `autoImplicit := false`
@@ -354,11 +354,18 @@ Phase 3 (Cryptographic Definitions) has been completed:
 - All 8 work units (3.1–3.8) implemented with zero `sorry`, zero warnings
 - `lake build` succeeds with exit code 0 (902 jobs, zero errors)
 
+Phase 4 (Core Theorems) has been completed:
+- `Theorems/Correctness.lean` — `encrypt_mem_orbit` (ciphertext in orbit), `canon_encrypt` (canonical form preserved), `decrypt_unique` (message recovery uniqueness), `correctness` (decrypt inverts encrypt). Axioms: `propext`, `Classical.choice`, `Quot.sound` (standard Lean only)
+- `Theorems/InvariantAttack.lean` — `invariantAttackAdversary` construction, `invariant_on_encrypt` helper, `invariantAttackAdversary_correct` (case split proof), `invariant_attack` (separating invariant implies complete break). Axioms: `propext` only
+- `Theorems/OIAImpliesCPA.lean` — `oia_specialized` (OIA instantiation), `hasAdvantage_iff` (clean unfolding), `no_advantage_from_oia` (advantage elimination), `oia_implies_1cpa` (OIA implies IND-1-CPA security). Axioms: zero (OIA is a hypothesis, not an axiom)
+- Track D (contrapositive): `adversary_yields_distinguisher`, `insecure_implies_separating`
+- All 16 work units (4.1–4.16) implemented with zero `sorry`, zero warnings, zero custom axioms
+- `lake build` succeeds with exit code 0 (902 jobs, zero errors)
+
 **Immediate Next Steps:**
-1. Phase 4.1–4.5 (Track A): Correctness theorem in `Theorems/Correctness.lean`
-2. Phase 4.6–4.9 (Track B): Invariant attack theorem in `Theorems/InvariantAttack.lean`
-3. Phase 4.10–4.13 (Track C): OIA implies IND-1-CPA in `Theorems/OIAImpliesCPA.lean`
-4. Phase 5.1–5.6 (parallel): `Construction/Permutation.lean` can begin (depends only on Phase 2)
+1. Phase 5.1–5.6: `Construction/Permutation.lean` — S_n action on bitstrings, Hamming weight
+2. Phase 5.7–5.11: `Construction/HGOE.lean` — concrete OrbitEncScheme instance, correctness
+3. Phase 6: Polish and documentation — sorry audit, docstrings, CI, final audit
 
 ## Vulnerability reporting
 
