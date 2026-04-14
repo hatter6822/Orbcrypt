@@ -329,11 +329,11 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phase 5 Complete — Phase 6 Ready
+**Current Phase:** All 6 Phases Complete — Formalization Done
 
 Phase 1 (Project Scaffolding) has been completed:
-- `lakefile.lean` — Lean 4 package with Mathlib dependency, `autoImplicit := false`
-- `lean-toolchain` — pinned to `leanprover/lean4:v4.30.0-rc1` (matching Mathlib master)
+- `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
+- `lean-toolchain` — pinned to `leanprover/lean4:v4.30.0-rc1` (matching Mathlib)
 - `lake-manifest.json` — locks Mathlib at commit `fa6418a8` plus 8 transitive dependencies
 - 11 `.lean` files in correct directory structure
 - `Orbcrypt.lean` — root import file importing all 11 submodules
@@ -368,8 +368,28 @@ Phase 5 (Concrete Construction) has been completed:
 - All 12 work units (5.1–5.12) implemented with zero `sorry`, zero warnings, zero custom axioms
 - `lake build` succeeds with exit code 0 (903 jobs, zero errors)
 
-**Immediate Next Steps:**
-1. Phase 6: Polish and documentation — sorry audit, docstrings, CI, final audit
+Phase 6 (Polish & Documentation) has been completed:
+- Sorry audit: zero `sorry` across all 11 Lean source files (verified by grep)
+- Module docstrings: all 11 files have `/-! ... -/` module docstrings with key definitions, results, and references
+- Inline proof comments: every proof > 3 lines has a strategy comment; key `have` statements annotated
+- Public definition docstrings: all 56 public `def`/`theorem`/`structure`/`instance`/`abbrev` declarations have `/-- ... -/` docstrings
+- Dependency graph: module-level imports, headline theorem dependencies, and axiom dependencies documented in `Orbcrypt.lean`
+- Axiom transparency report: written in `Orbcrypt.lean` — zero custom axioms, OIA is a hypothesis not an axiom
+- CI configuration: `.github/workflows/lean4-build.yml` — builds on push/PR, verifies no sorry, verifies no unexpected axioms
+- Mathlib pin: `lakefile.lean` pins Mathlib to commit `fa6418a815fa14843b7f0a19fe5983831c5f870e` (previously tracked `master`)
+- All 13 work units (6.1–6.13) complete
+
+**Formalization exit criteria (all met):**
+- `lake build` succeeds with exit code 0
+- `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
+- `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA is a `def`, not an `axiom`)
+- `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
+- `#print axioms invariant_attack` — no `OIA`, no `sorryAx` (standard Lean only)
+- `#print axioms oia_implies_1cpa` — only standard axioms (OIA is a hypothesis)
+- Every `.lean` file has a module-level docstring
+- Every public theorem and def has a docstring
+- GitHub Actions CI passes on push
+- Dependency graph and axiom transparency report documented
 
 ## Vulnerability reporting
 

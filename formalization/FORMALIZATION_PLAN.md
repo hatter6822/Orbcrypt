@@ -249,7 +249,7 @@ criteria.
 | 3 | Cryptographic Definitions | 5–6 | 8 | 18h | **Complete** | [Phase 3](phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) |
 | 4 | Core Theorems | 7–10 | 16 | 33h | **Complete** | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
 | 5 | Concrete Construction | 11–14 | 12 | 26h | **Complete** | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
-| 6 | Polish & Documentation | 15–16 | 13 | 22.5h | Pending | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
+| 6 | Polish & Documentation | 15–16 | 13 | 22.5h | **Complete** | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
 | | **Total** | **16** | **64** | **~132h** | | |
 
 ### Phase Dependencies
@@ -334,7 +334,7 @@ smaller units, not added.
 | Calendar duration | 16 weeks |
 | Minimum serial effort (critical path) | ~32 hours |
 | Maximum useful parallelism | 3 contributors |
-| Lean source files produced | 10 |
+| Lean source files produced | 11 (+ root import file) |
 | Key theorems proved | 3 (+ supporting lemmas) |
 | Custom axioms introduced | 0 (OIA is a `Prop` definition, not an `axiom`) |
 
