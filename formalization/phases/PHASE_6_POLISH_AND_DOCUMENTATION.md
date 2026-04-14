@@ -567,7 +567,7 @@ complete. Go through every item systematically.
 
 **Documentation:**
 - [x] Every `.lean` file has a module-level `/-! ... -/` docstring (12/12)
-- [x] Every public `theorem` and `def` has a `/-- ... -/` docstring (54/54)
+- [x] Every public `theorem` and `def` has a `/-- ... -/` docstring (56/56)
 - [x] The OIA definition has a justification comment block
 - [x] Dependency graph documented in `Orbcrypt.lean`
 - [x] Axiom transparency report written in `Orbcrypt.lean`

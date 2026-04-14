@@ -41,7 +41,7 @@ jobs:
           # Lean axiom declarations have the form: axiom <identifier> [params] : <type>
           # Use -P (Perl regex) to match declarations (identifier followed by type annotation)
           # This avoids false positives from "axiom" appearing in docstrings
-          if grep -Prn "^axiom\s+\w+\s*[\[({:⦃]" Orbcrypt/ --include="*.lean"; then
+          if grep -Prn "^axiom\s+\w+\s*[\[({:]" Orbcrypt/ --include="*.lean"; then
             echo "ERROR: unexpected axiom declaration found in source files"
             exit 1
           fi

@@ -372,7 +372,7 @@ Phase 6 (Polish & Documentation) has been completed:
 - Sorry audit: zero `sorry` across all 11 Lean source files (verified by grep)
 - Module docstrings: all 11 files have `/-! ... -/` module docstrings with key definitions, results, and references
 - Inline proof comments: every proof > 3 lines has a strategy comment; key `have` statements annotated
-- Public definition docstrings: all 54 public `def`/`theorem`/`structure`/`instance`/`abbrev` declarations have `/-- ... -/` docstrings
+- Public definition docstrings: all 56 public `def`/`theorem`/`structure`/`instance`/`abbrev` declarations have `/-- ... -/` docstrings
 - Dependency graph: module-level imports, headline theorem dependencies, and axiom dependencies documented in `Orbcrypt.lean`
 - Axiom transparency report: written in `Orbcrypt.lean` — zero custom axioms, OIA is a hypothesis not an axiom
 - CI configuration: `.github/workflows/lean4-build.yml` — builds on push/PR, verifies no sorry, verifies no unexpected axioms

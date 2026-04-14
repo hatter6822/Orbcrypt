@@ -43,7 +43,7 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 ### Build Stats
 
 - 11 Lean source files + root import file
-- 54 public definitions and theorems, all with docstrings
+- 56 public definitions and theorems, all with docstrings
 - Zero `sorry`, zero custom axioms, zero warnings
 - Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
 - GitHub Actions CI on every push
