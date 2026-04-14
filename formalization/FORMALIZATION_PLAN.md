@@ -242,15 +242,15 @@ The formalization proceeds in six phases. Each phase has its own detailed
 planning document with implementation guidance, risk analysis, and verification
 criteria.
 
-| Phase | Title | Weeks | Units | Effort | Document |
-|-------|-------|-------|-------|--------|----------|
-| 1 | Project Scaffolding | 1 | 4 | 4.5h | [Phase 1](phases/PHASE_1_PROJECT_SCAFFOLDING.md) |
-| 2 | Group Action Foundations | 2–4 | 11 | 28h | [Phase 2](phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) |
-| 3 | Cryptographic Definitions | 5–6 | 8 | 18h | [Phase 3](phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) |
-| 4 | Core Theorems | 7–10 | 16 | 33h | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
-| 5 | Concrete Construction | 11–14 | 12 | 26h | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
-| 6 | Polish & Documentation | 15–16 | 13 | 22.5h | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
-| | **Total** | **16** | **64** | **~132h** | |
+| Phase | Title | Weeks | Units | Effort | Status | Document |
+|-------|-------|-------|-------|--------|--------|----------|
+| 1 | Project Scaffolding | 1 | 4 | 4.5h | **Complete** | [Phase 1](phases/PHASE_1_PROJECT_SCAFFOLDING.md) |
+| 2 | Group Action Foundations | 2–4 | 11 | 28h | **Complete** | [Phase 2](phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) |
+| 3 | Cryptographic Definitions | 5–6 | 8 | 18h | **Complete** | [Phase 3](phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) |
+| 4 | Core Theorems | 7–10 | 16 | 33h | **Complete** | [Phase 4](phases/PHASE_4_CORE_THEOREMS.md) |
+| 5 | Concrete Construction | 11–14 | 12 | 26h | **Complete** | [Phase 5](phases/PHASE_5_CONCRETE_CONSTRUCTION.md) |
+| 6 | Polish & Documentation | 15–16 | 13 | 22.5h | Pending | [Phase 6](phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) |
+| | **Total** | **16** | **64** | **~132h** | | |
 
 ### Phase Dependencies
 

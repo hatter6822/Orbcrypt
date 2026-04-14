@@ -329,7 +329,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phase 4 Complete — Phase 5 Ready
+**Current Phase:** Phase 5 Complete — Phase 6 Ready
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency, `autoImplicit := false`
@@ -362,10 +362,14 @@ Phase 4 (Core Theorems) has been completed:
 - All 16 work units (4.1–4.16) implemented with zero `sorry`, zero warnings, zero custom axioms
 - `lake build` succeeds with exit code 0 (902 jobs, zero errors)
 
+Phase 5 (Concrete Construction) has been completed:
+- `Construction/Permutation.lean` — `Bitstring n` type (abbrev for `Fin n → Bool`); `MulAction (Equiv.Perm (Fin n)) (Bitstring n)` instance with `(σ • x) i = x (σ⁻¹ i)`; simp lemmas (`perm_smul_apply`, `one_perm_smul`); `perm_action_faithful` (non-identity perms move some bitstring); `hammingWeight` definition (count of true bits); `hammingWeight_invariant` (weight preserved by permutations, via `Finset.card_map`)
+- `Construction/HGOE.lean` — `subgroupBitstringAction` (subgroup inherits action via `MulAction.compHom`); `hgoeScheme` (concrete `OrbitEncScheme` constructor); `hgoe_correctness` (direct application of abstract correctness); `hammingWeight_invariant_subgroup` (bridge from full S_n to subgroup); `hgoe_weight_attack` (different weights imply complete break, via `invariant_attack`); `same_weight_not_separating` (same-weight representatives defeat Hamming attack)
+- All 12 work units (5.1–5.12) implemented with zero `sorry`, zero warnings, zero custom axioms
+- `lake build` succeeds with exit code 0 (903 jobs, zero errors)
+
 **Immediate Next Steps:**
-1. Phase 5.1–5.6: `Construction/Permutation.lean` — S_n action on bitstrings, Hamming weight
-2. Phase 5.7–5.11: `Construction/HGOE.lean` — concrete OrbitEncScheme instance, correctness
-3. Phase 6: Polish and documentation — sorry audit, docstrings, CI, final audit
+1. Phase 6: Polish and documentation — sorry audit, docstrings, CI, final audit
 
 ## Vulnerability reporting
 

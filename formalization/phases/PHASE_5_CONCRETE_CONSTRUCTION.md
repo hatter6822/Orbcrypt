@@ -729,19 +729,19 @@ significant schedule compression.
 
 ## Exit Criteria
 
-- [ ] `Construction/Permutation.lean` compiles without `sorry`
-- [ ] `Construction/HGOE.lean` compiles without `sorry`
-- [ ] `lake build Orbcrypt.Construction.Permutation` succeeds
-- [ ] `lake build Orbcrypt.Construction.HGOE` succeeds
-- [ ] `Bitstring n` has `DecidableEq` and `Fintype` instances
-- [ ] `MulAction (Equiv.Perm (Fin n)) (Bitstring n)` instance verified
-- [ ] `MulAction (↥G) (Bitstring n)` instance available for subgroups
-- [ ] `hammingWeight_invariant` proved for full S\_n
-- [ ] `hammingWeight_invariant_subgroup` proved for subgroups
-- [ ] `hgoeScheme` constructs a valid `OrbitEncScheme`
-- [ ] `same_weight_not_separating` proved
-- [ ] All definitions and theorems have docstrings
-- [ ] `grep -rn "sorry" Orbcrypt/Construction/` returns empty
+- [x] `Construction/Permutation.lean` compiles without `sorry`
+- [x] `Construction/HGOE.lean` compiles without `sorry`
+- [x] `lake build Orbcrypt.Construction.Permutation` succeeds
+- [x] `lake build Orbcrypt.Construction.HGOE` succeeds
+- [x] `Bitstring n` has `DecidableEq` and `Fintype` instances (via `abbrev` transparency)
+- [x] `MulAction (Equiv.Perm (Fin n)) (Bitstring n)` instance verified
+- [x] `MulAction (↥G) (Bitstring n)` instance available for subgroups (via `MulAction.compHom`)
+- [x] `hammingWeight_invariant` proved for full S\_n
+- [x] `hammingWeight_invariant_subgroup` proved for subgroups
+- [x] `hgoeScheme` constructs a valid `OrbitEncScheme`
+- [x] `same_weight_not_separating` proved
+- [x] All definitions and theorems have docstrings
+- [x] `grep -rn "sorry" Orbcrypt/Construction/` returns empty
 
 ---
 
