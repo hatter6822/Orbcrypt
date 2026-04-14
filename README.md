@@ -15,27 +15,38 @@ IND-1-CPA security under the Orbit Indistinguishability Assumption (OIA).
 
 ## Status
 
-**Phase 5 (Concrete Construction) — Complete**
+**Formalization Complete — All 6 Phases Done**
 
 All three headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
 
 | # | Theorem | File | Axiom Dependencies |
 |---|---------|------|--------------------|
-| 1 | `correctness` — `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` | Standard Lean only |
-| 2 | `invariant_attack` — separating invariant implies complete break | `Theorems/InvariantAttack.lean` | Standard Lean only |
-| 3 | `oia_implies_1cpa` — OIA implies IND-1-CPA security | `Theorems/OIAImpliesCPA.lean` | Zero axioms (OIA is a hypothesis) |
+| 1 | `correctness` — `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` | Standard Lean only (`propext`, `Classical.choice`, `Quot.sound`) |
+| 2 | `invariant_attack` — separating invariant implies complete break | `Theorems/InvariantAttack.lean` | Standard Lean only (`propext`) |
+| 3 | `oia_implies_1cpa` — OIA implies IND-1-CPA security | `Theorems/OIAImpliesCPA.lean` | Zero custom axioms (OIA is a hypothesis, not an axiom) |
 
-Concrete construction verified:
-- `Construction/Permutation.lean` — `Bitstring n` type, S_n permutation action, Hamming weight, weight-invariance proof
-- `Construction/HGOE.lean` — HGOE scheme instance, correctness instantiation, Hamming weight attack, same-weight defense
+### Axiom Transparency
 
-Prior phases complete:
-- `GroupAction/` — orbit/stabilizer API, canonical forms, G-invariant functions (Phase 2)
-- `Crypto/` — `OrbitEncScheme`, `Adversary`, `hasAdvantage`, `IsSecure`, `OIA` (Phase 3)
-- `Theorems/` — correctness, invariant attack, OIA implies IND-1-CPA (Phase 4)
-- `lake build` succeeds (903 jobs, zero errors)
+This formalization introduces **zero custom axioms**. The Orbit Indistinguishability
+Assumption (OIA) is a `Prop`-valued definition carried as an explicit hypothesis,
+not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 
-**Next:** Phase 6 — Polish & Documentation (sorry audit, docstrings, CI, final audit)
+### Module Summary
+
+| Layer | Modules | Content |
+|-------|---------|---------|
+| Group Actions | `GroupAction/{Basic, Canonical, Invariant}` | Orbit/stabilizer API, canonical forms, G-invariant functions |
+| Crypto Framework | `Crypto/{Scheme, Security, OIA}` | `OrbitEncScheme`, `Adversary`, `hasAdvantage`, `IsSecure`, `OIA` |
+| Core Theorems | `Theorems/{Correctness, InvariantAttack, OIAImpliesCPA}` | Three headline results + contrapositive direction |
+| Concrete Construction | `Construction/{Permutation, HGOE}` | S_n on bitstrings, HGOE instance, Hamming weight defense |
+
+### Build Stats
+
+- 11 Lean source files + root import file
+- 54 public definitions and theorems, all with docstrings
+- Zero `sorry`, zero custom axioms, zero warnings
+- Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
+- GitHub Actions CI on every push
 
 ## Build
 
