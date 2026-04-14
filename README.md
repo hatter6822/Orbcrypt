@@ -15,7 +15,7 @@ IND-1-CPA security under the Orbit Indistinguishability Assumption (OIA).
 
 ## Status
 
-**Phase 4 (Core Theorems) — Complete**
+**Phase 5 (Concrete Construction) — Complete**
 
 All three headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
 
@@ -25,12 +25,17 @@ All three headline results are machine-checked with zero `sorry`, zero warnings,
 | 2 | `invariant_attack` — separating invariant implies complete break | `Theorems/InvariantAttack.lean` | Standard Lean only |
 | 3 | `oia_implies_1cpa` — OIA implies IND-1-CPA security | `Theorems/OIAImpliesCPA.lean` | Zero axioms (OIA is a hypothesis) |
 
+Concrete construction verified:
+- `Construction/Permutation.lean` — `Bitstring n` type, S_n permutation action, Hamming weight, weight-invariance proof
+- `Construction/HGOE.lean` — HGOE scheme instance, correctness instantiation, Hamming weight attack, same-weight defense
+
 Prior phases complete:
 - `GroupAction/` — orbit/stabilizer API, canonical forms, G-invariant functions (Phase 2)
 - `Crypto/` — `OrbitEncScheme`, `Adversary`, `hasAdvantage`, `IsSecure`, `OIA` (Phase 3)
-- `lake build` succeeds (902 jobs, zero errors)
+- `Theorems/` — correctness, invariant attack, OIA implies IND-1-CPA (Phase 4)
+- `lake build` succeeds (903 jobs, zero errors)
 
-**Next:** Phase 5 — Concrete Construction (S_n action on bitstrings, HGOE instance, Hamming defense)
+**Next:** Phase 6 — Polish & Documentation (sorry audit, docstrings, CI, final audit)
 
 ## Build
 
