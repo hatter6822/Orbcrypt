@@ -117,12 +117,25 @@ Produce recommended parameter set for each level:
 **Effort:** 3h | **File:** `docs/PARAMETERS.md` | **Deps:** 14.2
 
 For each parameter set analyze:
-- **Brute-force orbit enumeration:** Cost = |G| / |Stab|
-- **Birthday attack:** Cost = sqrt(|G|) = 2^64 for lambda=128
-- **Babai's GI algorithm:** Cost = 2^O(sqrt(n log n))
-- **Algebraic attacks on QC structure:** Effective dim = n/b
 
-**Exit criteria:** Security margin table with bit-security estimates.
+- **Brute-force orbit enumeration:** Cost = |orbit| = |G| / |Stab|.
+  For |G| >= 2^lambda and |Stab| = 1, cost = 2^lambda.
+- **Birthday attack on orbits:** Cost = sqrt(|G|). For lambda=128 with
+  |G| >= 2^128, birthday cost is only 2^64. **Important:** to achieve
+  128-bit birthday resistance, we need |G| >= 2^256 (so sqrt = 2^128).
+  The recommended minimum is therefore log2(|G|) >= 2*lambda for full
+  birthday resistance, or document that birthday security is lambda/2
+  bits when log2(|G|) = lambda.
+- **Babai's GI algorithm:** Cost = 2^O(sqrt(n log n)) where n is the
+  number of vertices in the underlying graph (for GI-OIA). Compute for
+  each parameter set.
+- **Algebraic attacks on QC structure:** Effective dimension after folding
+  = n/b. Must ensure effective dim >= lambda for security. For b=8 and
+  lambda=128, need n >= 1024 (effective dim = 128). For b=32, need
+  n >= 4096.
+
+**Exit criteria:** Security margin table with bit-security estimates
+for each attack vector. Birthday resistance level explicitly stated.
 
 ---
 

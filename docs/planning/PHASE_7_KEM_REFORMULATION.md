@@ -240,7 +240,10 @@ def KEMOIA (kem : OrbitKEM G X K) : Prop :=
 1. **Orbit indistinguishability:** No function distinguishes orbit elements.
 2. **Key uniformity:** The derived key is the same for all orbit elements.
    This follows from canonical form G-invariance + deterministic `keyDerive`,
-   so the second conjunct is actually provable from `canonical_isGInvariant`.
+   so the second conjunct is actually provable from `canonical_isGInvariant`
+   (defined in `GroupAction/Invariant.lean`, line 146). That theorem has type
+   `IsGInvariant (G := G) can.canon`, i.e., `∀ g x, can.canon (g • x) = can.canon x`.
+   The KEM module must import `Orbcrypt.GroupAction.Invariant` to access it.
 
 Prove the second conjunct as a standalone lemma:
 

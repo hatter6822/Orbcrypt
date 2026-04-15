@@ -225,10 +225,43 @@ theorem hybrid_argument (hybrids : Fin (n+1) → PMF α) (D : α → Bool) :
 
 Exit: statement type-checks.
 
-**8.9c — Inductive proof (1.5h).** Prove by induction on n:
-- Base case (n=0): `advantage D d d = 0 ≤ 0` via `advantage_self`.
-- Step: split last hybrid via `advantage_triangle`, apply IH to prefix.
-Use `Fin.lastCases` or `Fin.snoc` if direct induction is awkward.
+**8.9c — Inductive proof (1.5h).** Prove by induction on n.
+
+Helper lemma needed first:
+```lean
+theorem advantage_self (D : α → Bool) (d : PMF α) :
+    advantage D d d = 0 := by
+  simp [advantage, sub_self, abs_zero]
+```
+
+Proof strategy for `hybrid_argument`:
+```lean
+theorem hybrid_argument : ... := by
+  induction n with
+  | zero =>
+    -- hybrids : Fin 1 → PMF α, so hybrids 0 = hybrids (Fin.last 0)
+    -- LHS = advantage D d d = 0 (by advantage_self)
+    -- RHS = Finset.sum Finset.univ (empty) = 0
+    simp [advantage_self]
+  | succ n ih =>
+    -- Split: advantage D (hybrids 0) (hybrids (Fin.last (n+1)))
+    --   ≤ advantage D (hybrids 0) (hybrids (Fin.last n).castSucc)
+    --     + advantage D (hybrids (Fin.last n).castSucc) (hybrids (Fin.last (n+1)))
+    -- Apply advantage_triangle, then IH on the prefix
+    calc advantage D (hybrids 0) (hybrids (Fin.last (n+1)))
+        ≤ advantage D (hybrids 0) (hybrids n.castSucc)
+          + advantage D (hybrids n.castSucc) (hybrids (Fin.last (n+1)))
+            := advantage_triangle ...
+      _ ≤ ... := by rw [Finset.sum_univ_succ]; linarith [ih ...]
+```
+
+The `Fin` arithmetic is the main difficulty. Key Mathlib lemmas:
+- `Fin.last_succ` for connecting `Fin.last (n+1)` with `(Fin.last n).succ`
+- `Finset.sum_univ_succ` for splitting the sum into prefix + last element
+- `Fin.castSucc` coercion for lifting `Fin n` into `Fin (n+1)`
+
+If the `Fin` manipulation proves too cumbersome, an alternative approach
+is to prove the equivalent statement for `List (PMF α)` and convert.
 
 Exit: full proof compiles with zero `sorry`.
 
@@ -346,6 +379,13 @@ theorem concreteOIA_mono (ε₁ ε₂ : ℝ) (hle : ε₁ ≤ ε₂)
 Exit: both compile.
 
 **Design note:** ConcreteOIA is the primary target. CompOIA is a stretch goal.
+
+**Implementation order:** Start with 8.5c (ConcreteOIA) and 8.5d (lemmas).
+Only attempt 8.5a (SchemeFamily) and 8.5b (CompOIA) after 8.5c/d compile
+successfully. If SchemeFamily causes type-elaboration issues (likely due to
+dependent instance bundling), abandon it and proceed with ConcreteOIA only.
+This decision does NOT affect downstream work units — 8.6, 8.7, 8.8 all
+have ConcreteOIA-based variants as their primary targets.
 
 **Exit criteria:** At least ConcreteOIA (8.5c + 8.5d) compiles.
 

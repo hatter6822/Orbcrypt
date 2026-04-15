@@ -134,8 +134,14 @@ HGOEGenerateCode := function(params)
 end;
 ```
 Exit: function returns a permutation group G with `Size(G) >= 2^lambda`.
-If GUAVA is unavailable, fall back to generating a random permutation group
-directly (less cryptographically motivated but sufficient for benchmarking).
+
+**GUAVA dependency note:** If GUAVA is unavailable, the QC code construction
+cannot be performed correctly. A random permutation group is acceptable ONLY
+for benchmarking decryption speed (canonical image timing) — it does NOT
+produce a cryptographically valid HGOE instance. All security-related tests
+(11.4, 11.8) MUST use a properly constructed QC code group. If GUAVA cannot
+be installed, this is a **no-go for security validation** and should be
+escalated before proceeding with Phase 11.
 
 **11.2c — Stage 4: Orbit representative harvesting (1.5h).** Sample
 weight-w bitstrings and compute canonical images to find distinct orbits:

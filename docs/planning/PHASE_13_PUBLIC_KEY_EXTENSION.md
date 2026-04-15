@@ -64,7 +64,7 @@ Orbcrypt/
 **Effort:** 4h | **File:** `PublicKey/ObliviousSampling.lean` | **Deps:** Phase 7
 
 ```lean
-structure OrbitalRandomizers (G : Type*) (X : Type*)
+structure OrbitalRandomizers (G : Type*) (X : Type*) (t : ℕ)
     [Group G] [MulAction G X] where
   basePoint : X
   randomizers : Fin t → X
