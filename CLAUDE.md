@@ -53,6 +53,12 @@ Orbcrypt/
     Scheme.lean                       AOE scheme syntax (Setup, Enc, Dec)
     Security.lean                     IND-CPA game, adversary structure, advantage definition
     OIA.lean                          Orbit Indistinguishability Assumption (Prop definition)
+    CompOIA.lean                      Probabilistic OIA: ConcreteOIA, CompOIA, orbit distribution
+    CompSecurity.lean                 Probabilistic IND-CPA game and security theorems
+  Probability/
+    Monad.lean                        PMF wrappers: uniformPMF, probTrue, sanity lemmas
+    Negligible.lean                   Negligible function definition and closure properties
+    Advantage.lean                    Distinguishing advantage, triangle inequality, hybrid argument
   Theorems/
     Correctness.lean                  Dec(Enc(m)) = m
     InvariantAttack.lean              Separating invariant implies Adv = 1/2 (complete break)
@@ -94,6 +100,20 @@ Orbcrypt/
               |
               v
   Construction.HGOE ──── Construction.HGOEKEM
+
+  Mathlib.Probability.PMF ──── Mathlib.Distributions.Uniform
+              |
+              v
+  Probability.Monad ─────── Probability.Negligible
+              |                       |
+              v                       v
+  Probability.Advantage ◄────────────┘
+              |
+              v
+  Crypto.CompOIA ◄── Crypto.OIA
+              |
+              v
+  Crypto.CompSecurity ◄── Crypto.Security
 ```
 
 ## Document layout
@@ -231,8 +251,11 @@ The entire formalization exists to machine-check three results. Understand what 
 | 3 | **Conditional Security** | OIA implies IND-1-CPA | `Theorems/OIAImpliesCPA.lean` | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks |
 | 4 | **KEM Correctness** | `decaps(encaps(g).1) = encaps(g).2` for all group elements g | `KEM/Correctness.lean` | The KEM correctly recovers the shared secret (proof by `rfl`) |
 | 5 | **KEM Security** | KEMOIA implies KEM security | `KEM/Security.lean` | If the KEM-OIA holds, no adversary can distinguish two encapsulations |
+| 6 | **Probabilistic Security** | ConcreteOIA(ε) implies IND-1-CPA advantage ≤ ε | `Crypto/CompSecurity.lean` | Non-vacuous security: ConcreteOIA is satisfiable (unlike deterministic OIA) |
+| 7 | **Asymptotic Security** | CompOIA implies negligible IND-1-CPA advantage | `Crypto/CompSecurity.lean` | Standard asymptotic formulation with negligible functions |
+| 8 | **Bridge** | Deterministic OIA implies ConcreteOIA(0) | `Crypto/CompOIA.lean` | Backward compatibility: probabilistic framework generalizes deterministic |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees.
 
 ## Mathlib integration
 
@@ -255,6 +278,10 @@ The formalization depends heavily on Mathlib's group action library. Familiarity
 - `Mathlib.Data.Fintype.Basic` — `Fintype` for finite message spaces
 - `Mathlib.Data.ZMod.Basic` — `ZMod 2` (F_2) for bitstring arithmetic
 - `Mathlib.Order.BooleanAlgebra` — Boolean operations for adversary output
+- `Mathlib.Probability.ProbabilityMassFunction.Basic` — `PMF` type for discrete distributions (Phase 8)
+- `Mathlib.Probability.ProbabilityMassFunction.Constructions` — `PMF.map`, `PMF.ofFintype` (Phase 8)
+- `Mathlib.Probability.Distributions.Uniform` — `PMF.uniformOfFintype` (Phase 8)
+- `Mathlib.Analysis.SpecificLimits.Basic` — convergence lemmas for negligible functions (Phase 8)
 
 **Version strategy:** Pin to a specific Mathlib4 commit via `lean-toolchain` and `lakefile.lean` for reproducible builds. Update Mathlib only during Phase 6 (Polish) if API breakage is discovered, and only after verifying all proofs still compile.
 
@@ -271,8 +298,9 @@ The Lean 4 formalization proceeds in seven completed phases plus planned extensi
 | 5 | Concrete Construction | 11-14 | 12 | 26h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` | Complete |
 | 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` | Complete |
 | 7 | KEM Reformulation | 17-19 | 8 | ~24h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
-| 8–16 | Practical Improvements | 18+ | 70 | ~248h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–7)** | **19** | **72** | **~156h** | | |
+| 8 | Probabilistic Foundations | 18-22 | 10 | ~40h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
+| 9–16 | Practical Improvements | 20+ | 60 | ~208h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–8)** | **22** | **82** | **~196h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -339,7 +367,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–7 Complete — KEM Reformulation Done
+**Current Phase:** Phases 1–8 Complete — Probabilistic Foundations Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -399,15 +427,28 @@ Phase 7 (KEM Reformulation) has been completed:
 - 22 new public declarations across 591 lines
 - `lake build` succeeds for all 16 modules (zero errors)
 
+Phase 8 (Probabilistic Foundations) has been completed:
+- `Probability/Monad.lean` — `uniformPMF` (wraps `PMF.uniformOfFintype`); `probEvent` and `probTrue` (event probability under PMF); `probEvent_certain`, `probEvent_impossible`, `probTrue_le_one` (sanity lemmas)
+- `Probability/Negligible.lean` — `IsNegligible` (standard crypto negligible function definition); `isNegligible_zero`, `IsNegligible.add`, `IsNegligible.mul_const` (closure properties)
+- `Probability/Advantage.lean` — `advantage` (distinguishing advantage `|Pr[D=1|d₀] - Pr[D=1|d₁]|`); `advantage_nonneg`, `advantage_symm`, `advantage_self`, `advantage_le_one` (basic properties); `advantage_triangle` (triangle inequality); `hybrid_argument` (general n-hybrid argument by induction)
+- `Crypto/CompOIA.lean` — `orbitDist` (orbit distribution via PMF.map); `orbitDist_support`, `orbitDist_pos_of_mem` (support characterization); `ConcreteOIA` (concrete-security OIA with explicit bound ε); `concreteOIA_zero_implies_perfect`, `concreteOIA_mono`, `concreteOIA_one` (basic lemmas); `SchemeFamily` (security-parameter-indexed families); `CompOIA` (asymptotic computational OIA); `det_oia_implies_concrete_zero` (bridge: deterministic OIA → ConcreteOIA(0))
+- `Crypto/CompSecurity.lean` — `indCPAAdvantage` (probabilistic IND-1-CPA advantage); `indCPAAdvantage_eq` (unfolding lemma); `concrete_oia_implies_1cpa` (ConcreteOIA(ε) → advantage ≤ ε); `concreteOIA_one_meaningful` (ConcreteOIA(1) is trivially satisfied); `CompIsSecure` (asymptotic security); `comp_oia_implies_1cpa` (CompOIA → computational security); `MultiQueryAdversary` structure; `single_query_bound` (per-query advantage ≤ ε, building block for multi-query)
+- All 10 work units (8.1–8.10) implemented with zero `sorry`, zero custom axioms
+- 5 new Lean files, ~30 new public declarations
+- `lake build` succeeds for all 21 modules (zero errors)
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules
+- `lake build` succeeds with exit code 0 for all modules (21 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
-- `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA are `def`s, not `axiom`s)
+- `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
 - `#print axioms invariant_attack` — no `OIA`, no `sorryAx` (standard Lean only)
 - `#print axioms oia_implies_1cpa` — only standard axioms (OIA is a hypothesis)
 - `#print axioms kem_correctness` — standard Lean only
 - `#print axioms kemoia_implies_secure` — standard Lean only (KEMOIA is a hypothesis)
+- `#print axioms concrete_oia_implies_1cpa` — standard Lean only (ConcreteOIA is a hypothesis)
+- `#print axioms comp_oia_implies_1cpa` — standard Lean only (CompOIA is a hypothesis)
+- `#print axioms det_oia_implies_concrete_zero` — standard Lean only (OIA is a hypothesis)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
