@@ -196,6 +196,33 @@ Instantiation with S\_n acting on bitstrings.
 |--------|-------------|
 | `Permutation.lean` | `Bitstring n` type, `MulAction` instance for S\_n, `hammingWeight`, weight-invariance proof |
 | `HGOE.lean` | `OrbitEncScheme` instance for a subgroup of S\_n, correctness instantiation, Hamming weight defense |
+| `HGOEKEM.lean` | HGOE-KEM instantiation, bridge from scheme to KEM |
+
+### Layer 5: KEM Reformulation (`KEM/`)
+
+| Module | Key Content |
+|--------|-------------|
+| `Syntax.lean` | `OrbitKEM` structure, `OrbitEncScheme.toKEM` bridge |
+| `Encapsulate.lean` | `encaps`, `decaps`, simp lemmas |
+| `Correctness.lean` | `kem_correctness` — decaps recovers encapsulated key (rfl) |
+| `Security.lean` | `KEMAdversary`, `KEMOIA`, `kemoia_implies_secure` |
+
+### Layer 6: Probabilistic Foundations (`Probability/`, `Crypto/Comp*`)
+
+| Module | Key Content |
+|--------|-------------|
+| `Probability/Monad.lean` | `uniformPMF`, `probTrue`, `probEvent` wrappers |
+| `Probability/Negligible.lean` | `IsNegligible`, closure properties |
+| `Probability/Advantage.lean` | `advantage`, triangle inequality, hybrid argument |
+| `Crypto/CompOIA.lean` | `orbitDist`, `ConcreteOIA`, `CompOIA`, bridge theorem |
+| `Crypto/CompSecurity.lean` | `indCPAAdvantage`, `concrete_oia_implies_1cpa`, `comp_oia_implies_1cpa` |
+
+### Layer 7: Key Management (`KeyMgmt/`)
+
+| Module | Key Content |
+|--------|-------------|
+| `SeedKey.lean` | `SeedKey` structure, `HGOEKeyExpansion` spec, `seed_kem_correctness`, backward compatibility |
+| `Nonce.lean` | `nonceEncaps`, `nonceDecaps`, nonce-misuse resistance, orbit leakage warning |
 
 ---
 
