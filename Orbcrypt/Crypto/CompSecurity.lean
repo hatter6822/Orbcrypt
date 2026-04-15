@@ -20,6 +20,8 @@ meaningful probabilistic result.
 
 * `Orbcrypt.concrete_oia_implies_1cpa` — ConcreteOIA(ε) implies every
   adversary has IND-1-CPA advantage at most ε (Theorem 8.7a)
+* `Orbcrypt.comp_oia_implies_1cpa` — CompOIA implies computational security
+* `Orbcrypt.single_query_bound` — per-query advantage bounded by ConcreteOIA
 * `Orbcrypt.concreteOIA_one_meaningful` — ConcreteOIA(1) is trivially true,
   demonstrating the definition is satisfiable
 * `Orbcrypt.indCPAAdvantage_eq` — unfolding lemma for IND-1-CPA advantage
@@ -196,43 +198,23 @@ structure MultiQueryAdversary (X : Type*) (M : Type*) (Q : ℕ) where
   /-- Given Q ciphertexts, guess the hidden bit. -/
   guess : (M → X) → (Fin Q → X) → Bool
 
-/-- Multi-query IND-CPA advantage using the hybrid argument.
+/-- Single-query advantage bound specialized to a specific adversary:
+    if ConcreteOIA holds with bound `ε`, the adversary's advantage on each
+    individual query is at most `ε`. This is the building block for
+    multi-query security via the hybrid argument.
 
-    The advantage is measured between the "all-left" and "all-right" worlds:
-    in world 0, all Q ciphertexts encrypt the left messages; in world 1,
-    all Q ciphertexts encrypt the right messages. -/
-noncomputable def indQCPAAdvantage {G : Type*} {X : Type*} {M : Type*} {Q : ℕ}
+    A full multi-query IND-Q-CPA theorem would state:
+    `indQCPAAdvantage scheme A ≤ Q * ε`
+    using the `hybrid_argument` lemma to telescope Q adjacent advantages.
+    This requires product distribution infrastructure (`PMF` over `Fin Q → X`)
+    which is deferred to a future phase. -/
+theorem single_query_bound {G : Type*} {X : Type*} {M : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
-    (_scheme : OrbitEncScheme G X M)
-    (_A : MultiQueryAdversary X M Q) : ℝ :=
-  -- Define the Q+1 hybrid distributions:
-  -- Hybrid i: first i queries use right messages, remaining use left messages
-  -- This is a placeholder definition that captures the type signature
-  -- Full implementation requires product distributions (PMF on Fin Q → X)
-  0 -- Placeholder: full definition requires product PMF infrastructure
-
-/-- **Multi-query security theorem (skeleton):** ConcreteOIA with bound `ε`
-    implies every Q-query adversary has IND-Q-CPA advantage at most `Q · ε`.
-
-    This follows from the hybrid argument: the Q+1 hybrid distributions
-    form a chain where adjacent hybrids differ in exactly one encryption
-    query, and ConcreteOIA bounds each adjacent advantage by `ε`.
-
-    The full multi-query game requires product distribution infrastructure
-    that is beyond the current scope. The current proof uses a placeholder
-    definition for `indQCPAAdvantage` (returns 0) and proves the bound
-    directly. -/
-theorem concrete_oia_implies_qcpa {G : Type*} {X : Type*} {M : Type*} {Q : ℕ}
-    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) (ε : ℝ) (hε : 0 ≤ ε)
-    (_hOIA : ConcreteOIA scheme ε)
-    (A : MultiQueryAdversary X M Q) :
-    indQCPAAdvantage scheme A ≤ Q * ε := by
-  -- Skeleton: the full proof requires product distributions and
-  -- the hybrid argument applied to the Q+1 hybrid chain.
-  -- The bound Q · ε follows from summing Q adjacent advantages,
-  -- each bounded by ε via ConcreteOIA.
-  simp [indQCPAAdvantage]
-  exact mul_nonneg (Nat.cast_nonneg' Q) hε
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (hOIA : ConcreteOIA scheme ε)
+    (D : X → Bool) (m₀ m₁ : M) :
+    advantage D (orbitDist (G := G) (scheme.reps m₀))
+      (orbitDist (G := G) (scheme.reps m₁)) ≤ ε :=
+  hOIA D m₀ m₁
 
 end Orbcrypt

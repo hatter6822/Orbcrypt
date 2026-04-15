@@ -1066,10 +1066,12 @@ Lean files.
   inductive core; `hybrid_argument` wraps it with `ℕ → PMF α` indexing
   for downstream convenience.
 
-- **Multi-query skeleton uses placeholder.** `indQCPAAdvantage` returns 0
-  (placeholder) because full multi-query game requires product PMF
-  infrastructure beyond current scope. The theorem `concrete_oia_implies_qcpa`
-  establishes the correct Q·ε bound with a simple proof.
+- **Multi-query: honest skeleton.** The `MultiQueryAdversary` structure is
+  defined but the full multi-query game (product distributions) is deferred.
+  Instead of a vacuous placeholder theorem, `single_query_bound` provides
+  the per-query building block: each individual query advantage ≤ ε under
+  ConcreteOIA. A full Q-query bound via `hybrid_argument` requires product
+  PMF infrastructure beyond current scope.
 
 **Files created:**
 - `Orbcrypt/Probability/Monad.lean` — PMF wrappers

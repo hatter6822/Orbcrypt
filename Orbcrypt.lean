@@ -155,6 +155,9 @@ comp_oia_implies_1cpa (Crypto/CompSecurity.lean)
   ├── CompIsSecure               — computational security (8.7c)
   └── IsNegligible               — negligible function framework (8.2)
 
+single_query_bound (Crypto/CompSecurity.lean)
+  └── ConcreteOIA (hypothesis)   — per-query advantage ≤ ε (building block for Q-CPA)
+
 hybrid_argument (Probability/Advantage.lean)
   └── advantage_triangle          — triangle inequality for advantage (8.3c)
 ```

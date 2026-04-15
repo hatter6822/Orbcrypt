@@ -37,8 +37,6 @@ namespace Orbcrypt
 
 open PMF ENNReal MeasureTheory
 
-variable {α : Type*}
-
 -- ============================================================================
 -- Work Unit 8.1a: Uniform distribution wrapper
 -- ============================================================================
