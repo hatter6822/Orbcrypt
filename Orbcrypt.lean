@@ -26,13 +26,17 @@ import Orbcrypt.Construction.Permutation
 import Orbcrypt.Construction.HGOE
 import Orbcrypt.Construction.HGOEKEM
 
+import Orbcrypt.KeyMgmt.SeedKey
+import Orbcrypt.KeyMgmt.Nonce
+
 /-!
 # Orbcrypt — Formal Verification of Permutation-Orbit Encryption
 
 This is the root import file. Importing `Orbcrypt` gives access to the
 complete formalization: group action foundations, cryptographic definitions,
 core theorems, the concrete HGOE construction, the KEM reformulation,
-and the probabilistic security foundations (Phase 8).
+the probabilistic security foundations (Phase 8), and the key compression
+and nonce-based encryption module (Phase 9).
 
 ## Module Dependency Graph
 
@@ -110,6 +114,20 @@ Mathlib.Probability.Distributions.Uniform
   ◄── indCPAAdvantage
   ◄── concrete_oia_implies_1cpa
   ◄── comp_oia_implies_1cpa
+
+KEM.Encapsulate + Construction.Permutation
+          │
+          ▼
+  KeyMgmt.SeedKey ◄── SeedKey, HGOEKeyExpansion
+  ◄── seed_kem_correctness
+  ◄── seed_determines_key
+  ◄── OrbitEncScheme.toSeedKey
+          │
+          ▼
+  KeyMgmt.Nonce ◄── KeyMgmt.SeedKey
+  ◄── nonceEncaps, nonceDecaps
+  ◄── nonce_encaps_correctness
+  ◄── nonce_reuse_leaks_orbit
 ```
 
 ## Headline Theorem Dependencies
@@ -160,6 +178,18 @@ single_query_bound (Crypto/CompSecurity.lean)
 
 hybrid_argument (Probability/Advantage.lean)
   └── advantage_triangle          — triangle inequality for advantage (8.3c)
+
+seed_kem_correctness (KeyMgmt/SeedKey.lean)
+  └── kem_correctness             — KEM correctness (7.3)
+
+nonce_encaps_correctness (KeyMgmt/Nonce.lean)
+  └── kem_correctness             — KEM correctness (7.3)
+
+nonce_reuse_leaks_orbit (KeyMgmt/Nonce.lean)
+  └── orbit_eq_of_smul            — group action preserves orbits (2.4)
+
+seed_determines_key (KeyMgmt/SeedKey.lean)
+  └── (definitional — rw)
 ```
 
 ## Axiom Transparency Report
@@ -185,6 +215,12 @@ These theorems depend only on Lean's standard axioms (`propext`,
 - All `Construction/` proofs — S_n action, HGOE, HGOE-KEM, Hamming weight
 - All `Probability/` lemmas — advantage, negligible, hybrid argument
 - `concreteOIA_one` (`Crypto/CompOIA.lean`) — ConcreteOIA(1) is always true
+- `seed_kem_correctness` (`KeyMgmt/SeedKey.lean`) — seed-based KEM correctness
+- `seed_determines_key` (`KeyMgmt/SeedKey.lean`) — equal seeds → equal key material
+- `nonce_encaps_correctness` (`KeyMgmt/Nonce.lean`) — nonce-based KEM correctness
+- `nonce_reuse_leaks_orbit` (`KeyMgmt/Nonce.lean`) — cross-KEM nonce reuse leaks
+  orbit membership (unconditional warning theorem)
+- All `KeyMgmt/` lemmas — seed keys, nonce encapsulation, backward compatibility
 
 ### OIA-dependent results (conditional)
 
@@ -228,6 +264,18 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.det_oia_implies_concrete_zero
 -- (standard Lean only — OIA appears as a hypothesis)
+
+#print axioms Orbcrypt.seed_kem_correctness
+-- (standard Lean only — follows from kem_correctness)
+
+#print axioms Orbcrypt.nonce_encaps_correctness
+-- (standard Lean only — follows from kem_correctness)
+
+#print axioms Orbcrypt.nonce_reuse_leaks_orbit
+-- (standard Lean only — follows from orbit_eq_of_smul)
+
+#print axioms Orbcrypt.seed_determines_key
+-- (standard Lean only — definitional rewriting)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden

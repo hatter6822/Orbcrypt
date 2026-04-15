@@ -1306,6 +1306,47 @@ the existing model.
 | 9.6 | Key Size Analysis | `KeyMgmt/SeedKey.lean` | 2h | 9.1 |
 | 9.7 | Backward Compatibility | `KeyMgmt/SeedKey.lean` | 3h | 9.1, Phase 3 |
 
+### Phase 9 Implementation Notes
+
+**Status: COMPLETE** — All 7 work units implemented, zero `sorry`, zero
+warnings, zero custom axioms. ~20 new public declarations across ~370 lines
+in 2 new Lean files.
+
+**Design decisions:**
+
+- **`SeedKey` structure simplified.** The `hExpand` hypothesis from the plan's
+  `seed_kem_correctness` was removed from the theorem because KEM correctness
+  depends only on the group element used, not how the canonical form was derived.
+  The theorem `seed_kem_correctness` is a direct application of `kem_correctness`
+  with `g := sampleGroup(seed, n)`.
+
+- **`nonce_reuse_leaks_orbit` fully proved.** The plan suggested `sorry` for the
+  orbit separation argument, but it is provable using `orbit_eq_of_smul`: since
+  `orbit G (g • x) = orbit G x` for any `g`, the ciphertexts inherit their base
+  points' orbit membership. The second disjunct in the plan's statement was
+  promoted to the full theorem statement (stronger result).
+
+- **Additional lemmas beyond plan.** `seed_determines_canon` (expansion
+  determinism), `distinct_nonces_distinct_elements` (PRF injectivity implies
+  distinct group elements), `nonceEncaps_mem_orbit` (ciphertext orbit membership),
+  and simp lemmas for `nonceEncaps`/`nonceDecaps` were added for downstream
+  usability. These strengthen the API without changing the plan's architecture.
+
+- **`HGOEKeyExpansion` parameterized by `M`.** The plan's specification referenced
+  `reps m` without specifying `M`. The structure was parameterized by `(n : ℕ)
+  (M : Type*)` with `reps : M → Bitstring n` as a field, making the types
+  clean and allowing the weight-uniformity property to reference actual orbit
+  representatives.
+
+**Files created:**
+- `Orbcrypt/KeyMgmt/SeedKey.lean` — `SeedKey`, `seed_kem_correctness`,
+  `HGOEKeyExpansion`, `seed_determines_key`, `seed_determines_canon`,
+  `OrbitEncScheme.toSeedKey`, `toSeedKey_expand`, `toSeedKey_sampleGroup`
+- `Orbcrypt/KeyMgmt/Nonce.lean` — `nonceEncaps`, `nonceDecaps`,
+  `nonce_encaps_correctness`, `nonce_reuse_deterministic`,
+  `distinct_nonces_distinct_elements`, `nonce_reuse_leaks_orbit`,
+  `nonceEncaps_mem_orbit` + simp lemmas
+
 ---
 
 ## Phase 10 — Authenticated Encryption & Modes

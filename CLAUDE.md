@@ -72,6 +72,9 @@ Orbcrypt/
     Permutation.lean                  S_n action on {0,1}^n, Bitstring type, Hamming weight
     HGOE.lean                         Hidden-Group Orbit Encryption instance, correctness, weight defense
     HGOEKEM.lean                      HGOE-KEM instantiation, bridge from scheme to KEM
+  KeyMgmt/
+    SeedKey.lean                      Seed-based key compression, HGOEKeyExpansion spec, backward compat
+    Nonce.lean                        Nonce-based deterministic encryption, misuse resistance properties
 ```
 
 ### Module dependency graph
@@ -114,6 +117,14 @@ Orbcrypt/
               |
               v
   Crypto.CompSecurity ◄── Crypto.Security
+
+  KEM.Encapsulate + Construction.Permutation
+              |
+              v
+  KeyMgmt.SeedKey ──── (SeedKey, HGOEKeyExpansion)
+              |
+              v
+  KeyMgmt.Nonce ────── (nonceEncaps, nonce-misuse properties)
 ```
 
 ## Document layout
@@ -254,8 +265,11 @@ The entire formalization exists to machine-check three results. Understand what 
 | 6 | **Probabilistic Security** | ConcreteOIA(ε) implies IND-1-CPA advantage ≤ ε | `Crypto/CompSecurity.lean` | Non-vacuous security: ConcreteOIA is satisfiable (unlike deterministic OIA) |
 | 7 | **Asymptotic Security** | CompOIA implies negligible IND-1-CPA advantage | `Crypto/CompSecurity.lean` | Standard asymptotic formulation with negligible functions |
 | 8 | **Bridge** | Deterministic OIA implies ConcreteOIA(0) | `Crypto/CompOIA.lean` | Backward compatibility: probabilistic framework generalizes deterministic |
+| 9 | **Seed-Key Correctness** | `decaps(encaps(sampleGroup(seed, n)).1) = encaps(sampleGroup(seed, n)).2` | `KeyMgmt/SeedKey.lean` | Seed-based key expansion preserves KEM correctness |
+| 10 | **Nonce Correctness** | `nonceDecaps(nonceEncaps(sk, kem, nonce).1) = nonceEncaps(sk, kem, nonce).2` | `KeyMgmt/Nonce.lean` | Nonce-based encryption preserves KEM correctness |
+| 11 | **Nonce Orbit Leakage** | Cross-KEM nonce reuse leaks orbit membership | `KeyMgmt/Nonce.lean` | Formal warning: nonce misuse breaks orbit indistinguishability |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks.
 
 ## Mathlib integration
 
@@ -287,7 +301,7 @@ The formalization depends heavily on Mathlib's group action library. Familiarity
 
 ## Formalization roadmap
 
-The Lean 4 formalization proceeds in seven completed phases plus planned extensions:
+The Lean 4 formalization proceeds in nine completed phases plus planned extensions:
 
 | Phase | Title | Weeks | Units | Effort | Document | Status |
 |-------|-------|-------|-------|--------|----------|--------|
@@ -299,8 +313,9 @@ The Lean 4 formalization proceeds in seven completed phases plus planned extensi
 | 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` | Complete |
 | 7 | KEM Reformulation | 17-19 | 8 | ~24h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
 | 8 | Probabilistic Foundations | 18-22 | 10 | ~40h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
-| 9–16 | Practical Improvements | 20+ | 60 | ~208h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–8)** | **22** | **82** | **~196h** | | |
+| 9 | Key Compression & Nonce-Based Enc | 20-22 | 7 | ~18h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
+| 10–16 | Practical Improvements | 22+ | 53 | ~190h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–9)** | **22** | **89** | **~214h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -367,7 +382,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–8 Complete — Probabilistic Foundations Done
+**Current Phase:** Phases 1–9 Complete — Key Compression & Nonce-Based Encryption Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -437,8 +452,15 @@ Phase 8 (Probabilistic Foundations) has been completed:
 - 5 new Lean files, ~30 new public declarations
 - `lake build` succeeds for all 21 modules (zero errors)
 
+Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
+- `KeyMgmt/SeedKey.lean` — `SeedKey` structure (compact seed + deterministic expansion + PRF-based sampling); `seed_kem_correctness` (seed-based KEM correctness, follows from `kem_correctness`); `HGOEKeyExpansion` (7-stage QC code key expansion specification with weight uniformity); `seed_determines_key` (equal seeds → equal key material); `seed_determines_canon` (equal seeds → equal canonical forms); `OrbitEncScheme.toSeedKey` (backward compatibility bridge); `toSeedKey_expand` and `toSeedKey_sampleGroup` (bridge preservation lemmas)
+- `KeyMgmt/Nonce.lean` — `nonceEncaps` (nonce-based deterministic KEM encapsulation); `nonceDecaps` (nonce-based decapsulation); `nonce_encaps_correctness` (decaps recovers encapsulated key); `nonce_reuse_deterministic` (same nonce → same output, by `rfl`); `distinct_nonces_distinct_elements` (injective PRF → distinct group elements); `nonce_reuse_leaks_orbit` (cross-KEM nonce reuse leaks orbit membership — formal warning theorem); `nonceEncaps_mem_orbit` (ciphertext lies in base point's orbit); simp lemmas for unfolding
+- All 7 work units (9.1–9.7) implemented with zero `sorry`, zero warnings, zero custom axioms
+- 2 new Lean files, ~20 new public declarations across ~370 lines
+- `lake build` succeeds for all 23 modules (zero errors)
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules (21 total)
+- `lake build` succeeds with exit code 0 for all modules (23 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
 - `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
@@ -449,6 +471,9 @@ Phase 8 (Probabilistic Foundations) has been completed:
 - `#print axioms concrete_oia_implies_1cpa` — standard Lean only (ConcreteOIA is a hypothesis)
 - `#print axioms comp_oia_implies_1cpa` — standard Lean only (CompOIA is a hypothesis)
 - `#print axioms det_oia_implies_concrete_zero` — standard Lean only (OIA is a hypothesis)
+- `#print axioms seed_kem_correctness` — standard Lean only (follows from kem_correctness)
+- `#print axioms nonce_encaps_correctness` — standard Lean only (follows from kem_correctness)
+- `#print axioms nonce_reuse_leaks_orbit` — standard Lean only (follows from orbit_eq_of_smul)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
