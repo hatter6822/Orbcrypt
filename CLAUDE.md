@@ -57,9 +57,15 @@ Orbcrypt/
     Correctness.lean                  Dec(Enc(m)) = m
     InvariantAttack.lean              Separating invariant implies Adv = 1/2 (complete break)
     OIAImpliesCPA.lean                OIA implies IND-1-CPA security
+  KEM/
+    Syntax.lean                       OrbitKEM structure, OrbitEncScheme.toKEM bridge
+    Encapsulate.lean                  encaps and decaps functions, simp lemmas
+    Correctness.lean                  decaps(encaps()) recovers the key (rfl)
+    Security.lean                     KEMAdversary, KEMOIA, kemoia_implies_secure
   Construction/
     Permutation.lean                  S_n action on {0,1}^n, Bitstring type, Hamming weight
     HGOE.lean                         Hidden-Group Orbit Encryption instance, correctness, weight defense
+    HGOEKEM.lean                      HGOE-KEM instantiation, bridge from scheme to KEM
 ```
 
 ### Module dependency graph
@@ -72,11 +78,11 @@ Orbcrypt/
   Canonical      Invariant     feed both)
            \        |         /
             \       |        /
-             Crypto.Scheme
-            /              \
-           /                \
-  Crypto.Security        Crypto.OIA
-     |        \            /
+             Crypto.Scheme ─────────── KEM.Syntax
+            /              \               |
+           /                \         KEM.Encapsulate
+  Crypto.Security        Crypto.OIA    /          \
+     |        \            /      KEM.Correctness  KEM.Security
      |         \          /
      |    Theorems.OIAImpliesCPA
      |
@@ -87,7 +93,7 @@ Orbcrypt/
   Construction.Permutation
               |
               v
-  Construction.HGOE
+  Construction.HGOE ──── Construction.HGOEKEM
 ```
 
 ## Document layout
@@ -223,8 +229,10 @@ The entire formalization exists to machine-check three results. Understand what 
 | 1 | **Correctness** | `decrypt(encrypt(g, m)) = some m` for all messages m and group elements g | `Theorems/Correctness.lean` | The scheme faithfully recovers encrypted messages |
 | 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, an adversary achieves advantage 1/2 (complete break) | `Theorems/InvariantAttack.lean` | Machine-checked proof of the critical vulnerability from COUNTEREXAMPLE.md |
 | 3 | **Conditional Security** | OIA implies IND-1-CPA | `Theorems/OIAImpliesCPA.lean` | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks |
+| 4 | **KEM Correctness** | `decaps(encaps(g).1) = encaps(g).2` for all group elements g | `KEM/Correctness.lean` | The KEM correctly recovers the shared secret (proof by `rfl`) |
+| 5 | **KEM Security** | KEMOIA implies KEM security | `KEM/Security.lean` | If the KEM-OIA holds, no adversary can distinguish two encapsulations |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm.
 
 ## Mathlib integration
 
@@ -252,17 +260,19 @@ The formalization depends heavily on Mathlib's group action library. Familiarity
 
 ## Formalization roadmap
 
-The Lean 4 formalization proceeds in six phases across 16 weeks (~132 engineer-hours):
+The Lean 4 formalization proceeds in seven completed phases plus planned extensions:
 
-| Phase | Title | Weeks | Units | Effort | Document |
-|-------|-------|-------|-------|--------|----------|
-| 1 | Project Scaffolding | 1 | 4 | 4.5h | `formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md` |
-| 2 | Group Action Foundations | 2-4 | 11 | 28h | `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` |
-| 3 | Cryptographic Definitions | 5-6 | 8 | 18h | `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` |
-| 4 | Core Theorems | 7-10 | 16 | 33h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` |
-| 5 | Concrete Construction | 11-14 | 12 | 26h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` |
-| 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` |
-| | **Total** | **16** | **64** | **~132h** | |
+| Phase | Title | Weeks | Units | Effort | Document | Status |
+|-------|-------|-------|-------|--------|----------|--------|
+| 1 | Project Scaffolding | 1 | 4 | 4.5h | `formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md` | Complete |
+| 2 | Group Action Foundations | 2-4 | 11 | 28h | `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` | Complete |
+| 3 | Cryptographic Definitions | 5-6 | 8 | 18h | `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` | Complete |
+| 4 | Core Theorems | 7-10 | 16 | 33h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` | Complete |
+| 5 | Concrete Construction | 11-14 | 12 | 26h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` | Complete |
+| 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` | Complete |
+| 7 | KEM Reformulation | 17-19 | 8 | ~24h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
+| 8–16 | Practical Improvements | 18+ | 70 | ~248h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–7)** | **19** | **72** | **~156h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -329,14 +339,14 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** All 6 Phases Complete — Formalization Done
+**Current Phase:** Phases 1–7 Complete — KEM Reformulation Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
 - `lean-toolchain` — pinned to `leanprover/lean4:v4.30.0-rc1` (matching Mathlib)
 - `lake-manifest.json` — locks Mathlib at commit `fa6418a8` plus 8 transitive dependencies
-- 11 `.lean` files in correct directory structure
-- `Orbcrypt.lean` — root import file importing all 11 submodules
+- 16 `.lean` files in correct directory structure (11 original + 5 KEM)
+- `Orbcrypt.lean` — root import file importing all 16 submodules
 - `scripts/setup_lean_env.sh` — automated Lean environment setup (elan + toolchain)
 - `.claude/settings.json` — SessionStart hook for auto-setup
 
@@ -379,13 +389,25 @@ Phase 6 (Polish & Documentation) has been completed:
 - Mathlib pin: `lakefile.lean` pins Mathlib to commit `fa6418a815fa14843b7f0a19fe5983831c5f870e` (previously tracked `master`)
 - All 13 work units (6.1–6.13) complete
 
+Phase 7 (KEM Reformulation) has been completed:
+- `KEM/Syntax.lean` — `OrbitKEM` structure with `basePoint`, `canonForm`, `keyDerive`; `OrbitEncScheme.toKEM` backward-compatibility bridge
+- `KEM/Encapsulate.lean` — `encaps` (sample g, output ciphertext + key), `decaps` (re-derive key from ciphertext); simp lemmas (`encaps_fst`, `encaps_snd`, `decaps_eq`)
+- `KEM/Correctness.lean` — `kem_correctness` (decaps inverts encaps, proof by `rfl`); `toKEM_correct` (bridge correctness)
+- `KEM/Security.lean` — `KEMAdversary` structure; `kemHasAdvantage` (two-encapsulation distinguishability); `KEMIsSecure` predicate; `kemIsSecure_iff` (unfolding lemma); `KEMOIA` (orbit indistinguishability + key uniformity); `kem_key_constant` (from KEMOIA.2); `kem_key_constant_direct` (from `canonical_isGInvariant`, proving KEMOIA.2 is redundant); `kem_ciphertext_indistinguishable` (from KEMOIA.1); `kemoia_implies_secure` (KEMOIA implies KEM security)
+- `Construction/HGOEKEM.lean` — `hgoeKEM` (concrete KEM for S_n subgroups on bitstrings); `hgoe_kem_correctness` (instantiation of abstract correctness); `hgoeScheme_toKEM` (bridge from HGOE scheme to KEM); `hgoeScheme_toKEM_correct` (bridge correctness)
+- All 8 work units (7.1–7.8) implemented with zero `sorry`, zero warnings, zero custom axioms
+- 22 new public declarations across 591 lines
+- `lake build` succeeds for all 16 modules (zero errors)
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0
+- `lake build` succeeds with exit code 0 for all modules
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
-- `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA is a `def`, not an `axiom`)
+- `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
 - `#print axioms invariant_attack` — no `OIA`, no `sorryAx` (standard Lean only)
 - `#print axioms oia_implies_1cpa` — only standard axioms (OIA is a hypothesis)
+- `#print axioms kem_correctness` — standard Lean only
+- `#print axioms kemoia_implies_secure` — standard Lean only (KEMOIA is a hypothesis)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

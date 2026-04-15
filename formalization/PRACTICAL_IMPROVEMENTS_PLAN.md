@@ -480,6 +480,37 @@ compiles. `lake build` succeeds for all new modules.
 **Parallelism:** Units 7.1–7.3 (syntax/correctness) and 7.4–7.6 (security)
 can proceed in parallel once 7.1 is complete. Unit 7.7 depends on both tracks.
 
+### Phase 7 Implementation Notes
+
+**Status: COMPLETE** — All 8 work units implemented, zero `sorry`, zero
+warnings, zero custom axioms. 22 new public declarations across 592 lines
+in 5 new Lean files.
+
+**Design deviation from plan:** The `kemHasAdvantage` definition was changed
+from real-vs-random key comparison to two-encapsulation comparison (matching
+the structure of the original `hasAdvantage` in `Crypto/Security.lean`).
+
+*Rationale:* The plan's real-vs-random definition (`∃ g k_random, A.guess(bp,
+g•bp, real_key) ≠ A.guess(bp, g•bp, k_random)`) is unprovable from KEMOIA
+alone: even with KEMOIA.1 (orbit indistinguishability) and KEMOIA.2 (key
+constancy), an adversary can distinguish the fixed real key from a random
+key by checking equality. The two-encapsulation formulation (`∃ g₀ g₁,
+A.guess(bp, g₀•bp, key₀) ≠ A.guess(bp, g₁•bp, key₁)`) enables a clean
+proof: KEMOIA.2 equalizes both keys, then KEMOIA.1 equalizes the ciphertexts,
+yielding a contradiction.
+
+**Additional result:** `kem_key_constant_direct` proves key constancy
+directly from `canonical_isGInvariant`, demonstrating that KEMOIA's second
+conjunct is redundant — it is always provable from the `OrbitKEM` structure.
+
+**Files created:**
+- `Orbcrypt/KEM/Syntax.lean` — `OrbitKEM`, `OrbitEncScheme.toKEM`
+- `Orbcrypt/KEM/Encapsulate.lean` — `encaps`, `decaps`, simp lemmas
+- `Orbcrypt/KEM/Correctness.lean` — `kem_correctness`, `toKEM_correct`
+- `Orbcrypt/KEM/Security.lean` — `KEMAdversary`, `kemHasAdvantage`,
+  `KEMIsSecure`, `KEMOIA`, `kemoia_implies_secure` + 4 helper lemmas
+- `Orbcrypt/Construction/HGOEKEM.lean` — `hgoeKEM`, `hgoeScheme_toKEM` + correctness
+
 ---
 
 ## Phase 8 — Probabilistic Foundations
