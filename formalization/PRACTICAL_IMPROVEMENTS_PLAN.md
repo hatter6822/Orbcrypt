@@ -292,35 +292,50 @@ shows only standard Lean axioms.
 
 **Effort:** 4h | **File:** `KEM/Security.lean` | **Deps:** 7.1
 
-Define the IND-CCA security game for KEMs. In the real game, the adversary
-receives `(c, K)` from an honest encapsulation. In the random game, K is
-replaced with a uniformly random key. Security means the adversary cannot
-distinguish the two.
+Define the IND-CCA security game for KEMs.
 
+**Sub-tasks:**
+
+**7.4a — KEMAdversary structure (1h).** Define the adversary type:
 ```lean
-/-- KEM adversary: given the base point, a ciphertext, and a candidate key,
-    output a bit guessing whether the key is real or random. -/
 structure KEMAdversary (X : Type*) (K : Type*) where
   guess : X → X → K → Bool
   -- Args: basePoint, ciphertext, candidate key
+```
+Exit: structure type-checks.
 
-/-- A KEM adversary has advantage if it can distinguish real from random keys. -/
+**7.4b — kemHasAdvantage definition (1.5h).** Define advantage as
+distinguishability between real and random keys:
+```lean
 def kemHasAdvantage (kem : OrbitKEM G X K) (A : KEMAdversary X K) : Prop :=
   ∃ g : G, ∃ k_random : K,
     A.guess kem.basePoint (g • kem.basePoint)
       (kem.keyDerive (kem.canonForm.canon (g • kem.basePoint))) ≠
     A.guess kem.basePoint (g • kem.basePoint) k_random
+```
+Exit: definition type-checks. Verify the existential correctly captures
+"there exists a scenario where the adversary's guess differs."
 
-/-- A KEM is IND-CCA secure if no adversary has advantage. -/
+**7.4c — KEMIsSecure definition and basic lemmas (1.5h).** Define security
+and prove unfolding lemma:
+```lean
 def KEMIsSecure (kem : OrbitKEM G X K) : Prop :=
   ∀ (A : KEMAdversary X K), ¬ kemHasAdvantage kem A
-```
 
-**Design note:** This is again a deterministic formulation. The random key
+theorem kemIsSecure_iff (kem : OrbitKEM G X K) :
+    KEMIsSecure kem ↔
+    ∀ (A : KEMAdversary X K) (g : G) (k_random : K),
+      A.guess kem.basePoint (g • kem.basePoint)
+        (kem.keyDerive (kem.canonForm.canon (g • kem.basePoint))) =
+      A.guess kem.basePoint (g • kem.basePoint) k_random
+```
+Exit: definition and iff-lemma both compile.
+
+**Design note:** This is a deterministic formulation. The random key
 `k_random` is existentially quantified rather than sampled from a distribution.
 Phase 8 upgrades this to a probabilistic model.
 
-**Exit criteria:** Definitions type-check; `lake build` succeeds.
+**Exit criteria:** All three sub-tasks pass `lake build`.
 
 ---
 
@@ -359,24 +374,46 @@ conjunct is confirmed via a lemma.
 
 Prove: KEM-OIA implies KEM security.
 
+**Sub-tasks:**
+
+**7.6a — Key constancy lemma (1.5h).** Prove that under KEMOIA, the derived
+key is the same regardless of which group element was used:
+```lean
+theorem kem_key_constant (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) (g : G) :
+    kem.keyDerive (kem.canonForm.canon (g • kem.basePoint)) =
+    kem.keyDerive (kem.canonForm.canon kem.basePoint) :=
+  hOIA.2 g
+```
+This is a direct extraction from the second KEMOIA conjunct.
+Exit: lemma compiles.
+
+**7.6b — Ciphertext indistinguishability lemma (1h).** Prove that under KEMOIA,
+the adversary's view of the ciphertext carries no information:
+```lean
+theorem kem_ciphertext_indistinguishable (kem : OrbitKEM G X K)
+    (hOIA : KEMOIA kem) (f : X → Bool) (g₀ g₁ : G) :
+    f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint) :=
+  hOIA.1 f g₀ g₁
+```
+Exit: lemma compiles.
+
+**7.6c — Main security theorem assembly (1.5h).** Combine 7.6a and 7.6b:
 ```lean
 theorem kemoia_implies_secure (kem : OrbitKEM G X K)
     (hOIA : KEMOIA kem) : KEMIsSecure kem
 ```
-
-**Proof sketch:**
-1. Introduce adversary A and assume `kemHasAdvantage kem A`.
+Proof strategy:
+1. Introduce adversary A, assume `kemHasAdvantage kem A`.
 2. Destructure to get `g`, `k_random`, and the inequality.
-3. The real key is `kem.keyDerive (kem.canonForm.canon (g • kem.basePoint))`.
-4. By the second conjunct of KEMOIA, this equals
-   `kem.keyDerive (kem.canonForm.canon kem.basePoint)` — a fixed value.
-5. The adversary's guess on the real key is therefore a fixed Boolean value
-   for all g, while k_random varies. The adversary succeeds only if it can
-   distinguish this fixed value from random — but the first conjunct of
-   KEMOIA says no function can distinguish orbit elements, so the adversary's
-   view of the ciphertext carries no information.
+3. Apply `kem_key_constant` (7.6a): the real key is a fixed value for all g.
+4. Apply `kem_ciphertext_indistinguishable` (7.6b): the adversary's guess
+   function on the ciphertext is constant across group elements.
+5. The adversary's guess with the real key is therefore a fixed Boolean —
+   but it must differ from its guess with k_random, contradiction since
+   the adversary cannot distinguish the ciphertext component.
+Exit: theorem compiles with zero `sorry`.
 
-**Exit criteria:** Theorem compiles with zero `sorry`.
+**Exit criteria:** All three sub-tasks pass `lake build`.
 
 ---
 
@@ -504,32 +541,63 @@ We use approach (A) unless blocked.
 
 **Effort:** 4h | **File:** `Probability/Monad.lean` | **Deps:** Mathlib
 
-Wrap Mathlib's `PMF` type with convenience definitions for cryptographic use:
+**Sub-tasks:**
 
+**8.1a — Mathlib PMF import validation (1h).** Before writing any code,
+verify that the required Mathlib modules exist and export the expected API:
+```bash
+# Check that these modules exist in the pinned Mathlib commit:
+grep -r "ProbabilityMassFunction" .lake/packages/mathlib/Mathlib/ --include="*.lean" -l
+```
+Verify: `PMF.uniformOfFintype`, `PMF.map`, `PMF.bind`, `PMF.pure` are all
+available. If any are missing, document the gap and decide: (a) prove locally,
+(b) switch to custom discrete distribution, or (c) use a simpler
+`Finset`-based approach.
+Exit: written note documenting available vs. needed API.
+
+**8.1b — uniformPMF and basic wrappers (1.5h).** Define:
 ```lean
-import Mathlib.Probability.ProbabilityMassFunction.Basic
-import Mathlib.Probability.ProbabilityMassFunction.Monad
-
-/-- Uniform distribution over a finite type. -/
 noncomputable def uniformPMF (α : Type*) [Fintype α] [Nonempty α] : PMF α :=
   PMF.uniformOfFintype α
 
-/-- Probability that a predicate holds under a distribution. -/
-noncomputable def probEvent (d : PMF α) (p : α → Prop) [DecidablePred p] : ℝ≥0∞ :=
+noncomputable def probEvent (d : PMF α) (p : α → Prop)
+    [DecidablePred p] : ℝ≥0∞ :=
   d.toOuterMeasure {x | p x}
-```
 
-**Required Mathlib imports:**
-- `Mathlib.Probability.ProbabilityMassFunction.Basic`
-- `Mathlib.Probability.ProbabilityMassFunction.Monad`
-- `Mathlib.MeasureTheory.Measure.MeasureSpace`
+noncomputable def probTrue (d : PMF α) (f : α → Bool) : ℝ≥0∞ :=
+  probEvent d (fun x => f x = true)
+```
+Exit: all three definitions compile.
+
+**8.1c — Sanity lemmas (1.5h).** Prove basic sanity checks:
+```lean
+theorem probTrue_uniformPMF_coin :
+    probTrue (uniformPMF (Fin 2)) (fun i => decide (i = 0)) = 1/2
+
+theorem probEvent_certain (d : PMF α) :
+    probEvent d (fun _ => True) = 1
+
+theorem probEvent_impossible (d : PMF α) :
+    probEvent d (fun _ => False) = 0
+```
+Exit: at least `probEvent_certain` and `probEvent_impossible` compile.
+The coin lemma may require PMF-specific Mathlib lemmas; mark as stretch
+goal if blocked.
 
 **Risk:** Mathlib's PMF API may not provide all needed lemmas (e.g., for
 `bind` distributing over `probEvent`). Mitigation: prove missing lemmas
 locally and contribute upstream.
 
-**Exit criteria:** `uniformPMF` and `probEvent` compile. Basic sanity lemma:
-`probEvent (uniformPMF (Fin 2)) (· = 0) = 1/2`.
+**Fallback:** If Mathlib PMF proves unworkable, define a minimal custom
+distribution type:
+```lean
+structure FinDist (α : Type*) [Fintype α] where
+  weights : α → ℚ≥0
+  sum_one : Finset.sum Finset.univ weights = 1
+```
+This is simpler but loses Mathlib integration.
+
+**Exit criteria:** All three sub-tasks pass or fallback is activated.
 
 ---
 
@@ -559,23 +627,42 @@ Prove closure properties:
 
 **Effort:** 4h | **File:** `Probability/Advantage.lean` | **Deps:** 8.1, 8.2
 
-Define the distinguishing advantage of an adversary between two distributions:
+**Sub-tasks:**
 
+**8.3a — Core advantage definition (1h).** Define:
 ```lean
-/-- The advantage of a distinguisher D between distributions d₀ and d₁.
-    Adv(D) = |Pr[D(x) = 1 | x ← d₀] - Pr[D(x) = 1 | x ← d₁]| -/
 noncomputable def advantage (D : α → Bool) (d₀ d₁ : PMF α) : ℝ :=
-  |(probEvent d₀ (fun x => D x = true)).toReal -
-   (probEvent d₁ (fun x => D x = true)).toReal|
+  |(probTrue d₀ D).toReal - (probTrue d₁ D).toReal|
 ```
+Exit: definition type-checks.
 
-Prove key properties:
-- `advantage_nonneg` — advantage is non-negative
-- `advantage_le_one` — advantage is at most 1
-- `advantage_symm` — advantage is symmetric in d₀, d₁
-- `advantage_triangle` — triangle inequality for hybrid arguments
+**8.3b — Basic properties: nonneg, le_one, symm (1.5h).** Prove:
+```lean
+theorem advantage_nonneg (D : α → Bool) (d₀ d₁ : PMF α) :
+    0 ≤ advantage D d₀ d₁ := abs_nonneg _
 
-**Exit criteria:** All four lemmas compile with zero `sorry`.
+theorem advantage_symm (D : α → Bool) (d₀ d₁ : PMF α) :
+    advantage D d₀ d₁ = advantage D d₁ d₀ := abs_sub_comm _ _
+
+theorem advantage_le_one (D : α → Bool) (d₀ d₁ : PMF α) :
+    advantage D d₀ d₁ ≤ 1
+```
+The first two are one-liners using `abs` properties. `advantage_le_one`
+requires showing `probTrue` values are in [0,1], which follows from PMF
+properties.
+Exit: all three compile.
+
+**8.3c — Triangle inequality (1.5h).** Prove:
+```lean
+theorem advantage_triangle (D : α → Bool) (d₀ d₁ d₂ : PMF α) :
+    advantage D d₀ d₂ ≤ advantage D d₀ d₁ + advantage D d₁ d₂
+```
+Proof: unfold `advantage` to absolute values of differences, then apply
+the standard triangle inequality `|a - c| ≤ |a - b| + |b - c|` from
+Mathlib (`abs_sub_abs_le_abs_sub`).
+Exit: lemma compiles.
+
+**Exit criteria:** All three sub-tasks pass `lake build`.
 
 ---
 
@@ -583,21 +670,47 @@ Prove key properties:
 
 **Effort:** 4h | **File:** `Crypto/CompOIA.lean` | **Deps:** 8.1
 
-Define the distribution of a random orbit element:
+**Sub-tasks:**
 
+**8.4a — orbitDist definition (1h).** Define:
 ```lean
-/-- The distribution of g • x for uniform g ∈ G. -/
 noncomputable def orbitDist [Fintype G] [Nonempty G]
-    [Group G] [MulAction G X]
-    (x : X) : PMF X :=
+    [Group G] [MulAction G X] (x : X) : PMF X :=
   PMF.map (fun g => g • x) (uniformPMF G)
 ```
+Exit: definition type-checks.
 
-Prove a key structural lemma: if the action is free (trivial stabilizer),
-then `orbitDist x` is uniform over the orbit of x.
+**8.4b — orbitDist basic properties (1.5h).** Prove:
+```lean
+/-- orbitDist assigns positive probability only to orbit elements. -/
+theorem orbitDist_support [Fintype G] [Nonempty G]
+    [Group G] [MulAction G X] [DecidableEq X] (x : X) (y : X) :
+    (orbitDist x) y ≠ 0 → y ∈ MulAction.orbit G x
 
-**Exit criteria:** `orbitDist` type-checks. The free-action uniformity
-lemma compiles or is marked as a stretch goal with `sorry`.
+/-- Every orbit element has positive probability. -/
+theorem orbitDist_pos_of_mem [Fintype G] [Nonempty G]
+    [Group G] [MulAction G X] [DecidableEq X] (x : X) (y : X)
+    (hy : y ∈ MulAction.orbit G x) :
+    (orbitDist x) y ≠ 0
+```
+Exit: at least `orbitDist_support` compiles (may require Mathlib lemmas
+about `PMF.map` support).
+
+**8.4c — Free-action uniformity (1.5h, stretch goal).** Prove that if
+the stabilizer is trivial, `orbitDist x` is uniform over the orbit:
+```lean
+theorem orbitDist_uniform_of_free [Fintype G] [Nonempty G]
+    [Group G] [MulAction G X] [DecidableEq X] (x : X)
+    (hFree : MulAction.stabilizer G x = ⊥) (y : X)
+    (hy : y ∈ MulAction.orbit G x) :
+    (orbitDist x) y = 1 / Fintype.card (MulAction.orbit G x)
+```
+This requires showing the map `g ↦ g • x` is injective when the stabilizer
+is trivial, making it a bijection onto the orbit. Then `PMF.map` of a
+uniform distribution through a bijection is uniform.
+Exit: compiles, or marked `sorry` with clear documentation.
+
+**Exit criteria:** 8.4a and 8.4b pass. 8.4c is a documented stretch goal.
 
 ---
 
@@ -605,41 +718,76 @@ lemma compiles or is marked as a stretch goal with `sorry`.
 
 **Effort:** 5h | **File:** `Crypto/CompOIA.lean` | **Deps:** 8.3, 8.4
 
-Define the probabilistic OIA as a family indexed by a security parameter:
+**Sub-tasks:**
 
+**8.5a — Asymptotic scheme family type (1h).** Define the type infrastructure
+for security-parameter-indexed scheme families. The challenge is that `G`, `X`,
+and `M` may themselves depend on the security parameter:
 ```lean
-/-- The computational OIA for a family of schemes indexed by security parameter.
-    For all efficient distinguishers, the advantage between orbit distributions
-    of any two messages is negligible. -/
-def CompOIA (schemeFamily : ℕ → OrbitEncScheme G X M)
-    [∀ λ, Fintype (G λ)] : Prop :=
-  ∀ (D : ℕ → X → Bool) (m₀ m₁ : ℕ → M),
-    IsNegligible (fun λ =>
-      advantage (D λ) (orbitDist (schemeFamily λ).reps (m₀ λ))
-                       (orbitDist (schemeFamily λ).reps (m₁ λ)))
+/-- A family of orbit encryption schemes indexed by security parameter. -/
+structure SchemeFamily where
+  /-- Group type at each security level. -/
+  G : ℕ → Type*
+  /-- Space type at each security level. -/
+  X : ℕ → Type*
+  /-- Message type at each security level. -/
+  M : ℕ → Type*
+  /-- Type class instances at each level. -/
+  instGroup : ∀ λ, Group (G λ)
+  instAction : ∀ λ, MulAction (G λ) (X λ)
+  instFintype : ∀ λ, Fintype (G λ)
+  instNonempty : ∀ λ, Nonempty (G λ)
+  instDecEq : ∀ λ, DecidableEq (X λ)
+  /-- The scheme at each level. -/
+  scheme : ∀ λ, @OrbitEncScheme (G λ) (X λ) (M λ) (instGroup λ) (instAction λ) (instDecEq λ)
 ```
+Exit: structure type-checks. (This is the trickiest part — Lean's universe
+polymorphism and instance synthesis may require manual `@` annotations.)
 
-**Design note:** The quantification is over ALL distinguishers `D : ℕ → X → Bool`,
-not just PPT ones. Modeling PPT requires a complexity-theoretic framework
-beyond current scope. This is a known limitation shared by CryptHOL and FCF.
-The improvement over the deterministic OIA is that we now work with
-*distributions* rather than individual elements, making the assumption
-satisfiable for non-trivial schemes.
-
-**Alternative approach (simpler but weaker):** If the full asymptotic framework
-proves too complex, define a "concrete security" version:
-
+**8.5b — Asymptotic CompOIA definition (1.5h).** Define:
 ```lean
-/-- Concrete OIA: the advantage of any specific distinguisher is bounded. -/
-def ConcreteOIA (scheme : OrbitEncScheme G X M) (ε : ℝ) : Prop :=
+def CompOIA (sf : SchemeFamily) : Prop :=
+  ∀ (D : ∀ λ, sf.X λ → Bool) (m₀ m₁ : ∀ λ, sf.M λ),
+    IsNegligible (fun λ =>
+      @advantage (sf.X λ) (D λ)
+        (@orbitDist (sf.G λ) (sf.X λ) (sf.instFintype λ) (sf.instNonempty λ)
+          (sf.instGroup λ) (sf.instAction λ) ((sf.scheme λ).reps (m₀ λ)))
+        (@orbitDist (sf.G λ) (sf.X λ) (sf.instFintype λ) (sf.instNonempty λ)
+          (sf.instGroup λ) (sf.instAction λ) ((sf.scheme λ).reps (m₁ λ))))
+```
+Exit: definition type-checks.
+
+**8.5c — ConcreteOIA fallback definition (1h).** If 8.5a/b prove too
+complex, define the simpler concrete-security alternative:
+```lean
+def ConcreteOIA [Fintype G] [Nonempty G] [Group G] [MulAction G X]
+    [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (ε : ℝ) : Prop :=
   ∀ (D : X → Bool) (m₀ m₁ : M),
     advantage D (orbitDist (scheme.reps m₀)) (orbitDist (scheme.reps m₁)) ≤ ε
 ```
+This avoids the `SchemeFamily` plumbing entirely. It says: "for this specific
+scheme, every distinguisher has advantage at most epsilon."
+Exit: definition type-checks.
 
-This is weaker (no negligibility) but sufficient for concrete security
-statements like "advantage ≤ 2^{-128}."
+**8.5d — ConcreteOIA basic lemmas (1.5h).** Prove:
+```lean
+theorem concreteOIA_zero_implies_perfect (scheme : OrbitEncScheme G X M)
+    (hOIA : ConcreteOIA scheme 0) (D : X → Bool) (m₀ m₁ : M) :
+    advantage D (orbitDist (scheme.reps m₀)) (orbitDist (scheme.reps m₁)) = 0
 
-**Exit criteria:** At least one OIA variant compiles.
+theorem concreteOIA_mono (scheme : OrbitEncScheme G X M) (ε₁ ε₂ : ℝ)
+    (hle : ε₁ ≤ ε₂) (hOIA : ConcreteOIA scheme ε₁) :
+    ConcreteOIA scheme ε₂
+```
+Exit: both lemmas compile.
+
+**Design note:** Both asymptotic and concrete formulations are defined.
+Phase 8.7 can target whichever compiles more cleanly. The concrete version
+is recommended as the primary target; the asymptotic version is a stretch goal.
+
+**Exit criteria:** At least ConcreteOIA (8.5c + 8.5d) compiles. CompOIA
+(8.5a + 8.5b) is a stretch goal.
 
 ---
 
@@ -647,11 +795,13 @@ statements like "advantage ≤ 2^{-128}."
 
 **Effort:** 5h | **File:** `Crypto/CompSecurity.lean` | **Deps:** 8.1, 8.3
 
-Define the probabilistic IND-1-CPA game:
+**Sub-tasks:**
 
+**8.6a — indCPAAdvantage definition (1.5h).** Define the probabilistic
+IND-1-CPA advantage using the existing `Adversary` structure from Phase 3:
 ```lean
-/-- The IND-1-CPA advantage of adversary A against scheme S. -/
 noncomputable def indCPAAdvantage [Fintype G] [Nonempty G]
+    [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
     (A : Adversary X M) : ℝ :=
   let (m₀, m₁) := A.choose scheme.reps
@@ -659,8 +809,36 @@ noncomputable def indCPAAdvantage [Fintype G] [Nonempty G]
     (orbitDist (scheme.reps m₀))
     (orbitDist (scheme.reps m₁))
 ```
+Exit: definition type-checks.
 
-**Exit criteria:** Definition type-checks.
+**8.6b — indCPAAdvantage unfolding lemma (1.5h).** Prove a clean
+characterization that exposes the structure for downstream proofs:
+```lean
+theorem indCPAAdvantage_eq [Fintype G] [Nonempty G]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    indCPAAdvantage scheme A =
+    advantage (fun x => A.guess scheme.reps x)
+      (orbitDist (scheme.reps (A.choose scheme.reps).1))
+      (orbitDist (scheme.reps (A.choose scheme.reps).2))
+```
+Exit: lemma compiles (may be `rfl` or require `Prod.mk.eta`).
+
+**8.6c — Relationship to deterministic hasAdvantage (2h).** Prove that
+the deterministic `hasAdvantage` (Phase 3) implies positive probabilistic
+advantage, connecting the old and new security models:
+```lean
+theorem hasAdvantage_implies_pos_indCPA [Fintype G] [Nonempty G]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M)
+    (hAdv : hasAdvantage scheme A) :
+    0 < indCPAAdvantage scheme A
+```
+Proof sketch: `hasAdvantage` gives specific g₀, g₁ with different guesses.
+These correspond to specific orbit elements with different `A.guess` values.
+Since `orbitDist` assigns positive probability to these elements, the
+expectation difference is positive.
+Exit: lemma compiles or is documented as requiring specific PMF properties.
+
+**Exit criteria:** 8.6a compiles. 8.6b and 8.6c are stretch goals.
 
 ---
 
@@ -668,27 +846,56 @@ noncomputable def indCPAAdvantage [Fintype G] [Nonempty G]
 
 **Effort:** 5h | **File:** `Crypto/CompSecurity.lean` | **Deps:** 8.5, 8.6
 
-Prove the probabilistic analogue of `oia_implies_1cpa`:
+**Sub-tasks:**
 
+**8.7a — Concrete security theorem (primary target, 2h).** Prove:
 ```lean
-/-- CompOIA implies negligible IND-1-CPA advantage for all adversaries. -/
-theorem comp_oia_implies_1cpa
-    (schemeFamily : ℕ → OrbitEncScheme G X M)
-    (hOIA : CompOIA schemeFamily)
-    (A : ℕ → Adversary X M) :
-    IsNegligible (fun λ => indCPAAdvantage (schemeFamily λ) (A λ))
+theorem concrete_oia_implies_1cpa [Fintype G] [Nonempty G]
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (hOIA : ConcreteOIA scheme ε) (A : Adversary X M) :
+    indCPAAdvantage scheme A ≤ ε
 ```
+Proof:
+1. Unfold `indCPAAdvantage` to `advantage D d₀ d₁`.
+2. The distinguisher `D` is `fun x => A.guess scheme.reps x`.
+3. Apply `ConcreteOIA` with `D`, `m₀ := (A.choose scheme.reps).1`,
+   `m₁ := (A.choose scheme.reps).2`.
+4. The bound follows directly.
+Exit: theorem compiles with zero `sorry`.
 
-**Proof sketch:**
-1. Unfold `indCPAAdvantage` to `advantage`.
-2. The adversary's guess function IS a distinguisher.
-3. Apply `CompOIA` with `D λ := fun x => (A λ).guess (schemeFamily λ).reps x`.
-4. The advantage bound follows directly.
+**8.7b — Concrete security is meaningful (1h).** Prove that ConcreteOIA
+is NOT vacuously true — it is satisfiable for non-trivial schemes (unlike
+the deterministic OIA):
+```lean
+/-- ConcreteOIA with ε = 1 is trivially true: advantage never exceeds 1. -/
+theorem concreteOIA_one (scheme : OrbitEncScheme G X M) :
+    ConcreteOIA scheme 1
 
-**Risk:** Lean elaboration may struggle with the type-level plumbing of
-families indexed by ℕ. Mitigation: simplify to concrete security if needed.
+/-- ConcreteOIA with ε = 0 is non-trivial: it requires all orbit
+    distributions to be identical under all distinguishers. -/
+-- This is a documentation lemma — the point is that ConcreteOIA 0
+-- is satisfiable (e.g., when G acts transitively on X with a single orbit).
+```
+Exit: `concreteOIA_one` compiles.
 
-**Exit criteria:** Theorem compiles, or a concrete-security variant compiles.
+**8.7c — Asymptotic security theorem (stretch goal, 2h).** If `CompOIA`
+(8.5a/b) compiled:
+```lean
+theorem comp_oia_implies_1cpa (sf : SchemeFamily)
+    (hOIA : CompOIA sf)
+    (A : ∀ λ, Adversary (sf.X λ) (sf.M λ)) :
+    IsNegligible (fun λ => indCPAAdvantage (sf.scheme λ) (A λ))
+```
+Proof: same structure as 8.7a but lifted to families.
+Exit: compiles, or documented as needing `SchemeFamily` infrastructure.
+
+**Risk mitigation:** The concrete theorem (8.7a) is the primary deliverable.
+The asymptotic version (8.7c) is attempted only if 8.5a/b succeeded. If
+neither compiles, fall back to stating the theorem with `sorry` and
+documenting the exact type-checking obstacle.
+
+**Exit criteria:** 8.7a compiles with zero `sorry`.
 
 ---
 
@@ -718,20 +925,38 @@ check on the definitions.
 
 **Effort:** 4h | **File:** `Probability/Advantage.lean` | **Deps:** 8.3
 
-Prove the standard hybrid argument used for multi-query security:
+**Sub-tasks:**
 
+**8.9a — Two-hybrid base case (1h).** Prove the n=1 case:
 ```lean
-/-- Hybrid argument: if each adjacent pair of hybrids has small advantage,
-    the overall advantage is bounded by the sum. -/
+theorem hybrid_two (d₀ d₁ d₂ : PMF α) (D : α → Bool) :
+    advantage D d₀ d₂ ≤ advantage D d₀ d₁ + advantage D d₁ d₂
+```
+This is exactly `advantage_triangle` from 8.3c, so it may be a direct alias.
+Exit: compiles.
+
+**8.9b — General hybrid statement (1.5h).** State the general theorem using
+`Fin (n+1)`:
+```lean
 theorem hybrid_argument (hybrids : Fin (n+1) → PMF α) (D : α → Bool) :
     advantage D (hybrids 0) (hybrids (Fin.last n)) ≤
     Finset.sum Finset.univ (fun i : Fin n =>
       advantage D (hybrids i.castSucc) (hybrids i.succ))
 ```
+Exit: statement type-checks (even before the proof is complete).
 
-**Proof:** By induction on n, using `advantage_triangle`.
+**8.9c — Inductive proof (1.5h).** Prove 8.9b by induction on n:
+- Base case (n=0): `advantage D (hybrids 0) (hybrids 0) = 0 ≤ 0`.
+  Follows from `advantage D d d = 0` (self-advantage is zero — prove this
+  as a helper lemma `advantage_self`).
+- Inductive step: Apply `advantage_triangle` to split the last hybrid,
+  then apply the inductive hypothesis to the prefix.
 
-**Exit criteria:** Theorem compiles with zero `sorry`.
+The `Fin` arithmetic (`castSucc`, `succ`, `Fin.last`) can be fiddly.
+Use `Fin.lastCases` or `Fin.snoc` if direct induction is awkward.
+Exit: full proof compiles with zero `sorry`.
+
+**Exit criteria:** All three sub-tasks pass `lake build`.
 
 ---
 
@@ -1263,36 +1488,58 @@ runs correctly.
 
 **Effort:** 5h | **File:** `implementation/gap/orbcrypt_keygen.g` | **Deps:** 11.1
 
-Implement the HGOE key generation pipeline from DEVELOPMENT.md Section 6.2.1:
+Implement the 7-stage HGOE key generation pipeline from DEVELOPMENT.md
+Section 6.2.1.
 
+**Sub-tasks:**
+
+**11.2a — Stage 1: Parameter derivation (0.5h).** Implement:
 ```gap
-# Stage 1: Parameter derivation
 HGOEParams := function(lambda)
   local b, ell, n, k, w;
-  b := 8;
-  ell := Int(Ceil(lambda / Log2(b)));
-  n := b * ell;
-  k := Int(n / 2);
-  w := Int(n / 2);
-  return rec(b := b, ell := ell, n := n, k := k, w := w);
-end;
-
-# Stage 2-3: QC code generation and automorphism computation
-HGOEKeygen := function(params)
-  # Generate random QC code via circulant blocks
-  # Compute PAut(C) using AutomorphismGroup
-  # Build Schreier-Sims SGS
-  # Return: group G, SGS, canonical image function
+  b := 8; ell := Int(Ceil(lambda / Log2(b)));
+  n := b * ell; k := Int(n / 2); w := Int(n / 2);
+  return rec(b := b, ell := ell, n := n, k := k, w := w, lambda := lambda);
 end;
 ```
+Exit: `HGOEParams(128)` returns correct record.
 
-Implement all 7 stages. Validate:
+**11.2b — Stages 2-3: QC code generation and PAut computation (2h).**
+Generate a random quasi-cyclic code over GF(2) with circulant blocks,
+then compute its permutation automorphism group using GAP's
+`AutomorphismGroup` or the `images` package. This is the most technically
+challenging sub-task — GAP's code-theoretic tools (GUAVA package) may
+need specific configuration for QC codes.
+```gap
+HGOEGenerateCode := function(params)
+  # For each of params.ell blocks, sample a random circulant b x b matrix
+  # Assemble into generator matrix
+  # Compute PAut via GUAVA or manual approach
+end;
+```
+Exit: function returns a permutation group G with `Size(G) >= 2^lambda`.
+If GUAVA is unavailable, fall back to generating a random permutation group
+directly (less cryptographically motivated but sufficient for benchmarking).
+
+**11.2c — Stage 4: Orbit representative harvesting (1.5h).** Sample
+weight-w bitstrings and compute canonical images to find distinct orbits:
+```gap
+HGOEHarvestReps := function(G, n, w, numReps)
+  # Sample random weight-w bitstring
+  # Compute CanonicalImage(G, x) via images package
+  # If canonical image is new, add to representative set
+  # Repeat until numReps distinct orbits found
+end;
+```
+Exit: function returns `numReps` distinct representatives, all with weight w.
+
+**11.2d — Stages 5-7: Assembly and validation (1h).** Combine the above
+into the complete `HGOEKeygen` function. Run validation checks:
 - `Size(G) >= 2^lambda`
-- All orbit representatives have the correct Hamming weight
-- `CanonicalImage(G, rep)` is distinct for each representative
-
-**Exit criteria:** `HGOEKeygen(HGOEParams(128))` produces a valid key
-in under 60 seconds.
+- All representatives have weight w
+- All canonical images are distinct
+- `CanonicalImage(G, rep_i) <> CanonicalImage(G, rep_j)` for i != j
+Exit: `HGOEKeygen(HGOEParams(128))` produces a valid key in under 60 seconds.
 
 ---
 
@@ -1300,28 +1547,51 @@ in under 60 seconds.
 
 **Effort:** 4h | **File:** `implementation/gap/orbcrypt_kem.g` | **Deps:** 11.2
 
-Implement the KEM operations:
+**Sub-tasks:**
 
+**11.3a — Bitstring permutation action (1h).** Implement the core group
+action `g . x` for bitstrings represented as GAP lists:
 ```gap
-HGOEEncaps := function(G, basePoint, keyDerive)
-  local g, c, canon_c, k;
-  g := PseudoRandom(G);          # Uniform group element via PRA
-  c := Permuted(basePoint, g);    # g . x_0
-  canon_c := CanonicalImage(G, c); # can_G(c)
-  k := keyDerive(canon_c);        # Hash to derive key
-  return rec(ciphertext := c, key := k);
-end;
-
-HGOEDecaps := function(G, c, keyDerive)
-  local canon_c, k;
-  canon_c := CanonicalImage(G, c);
-  k := keyDerive(canon_c);
-  return k;
+PermuteBitstring := function(x, sigma)
+  # Apply sigma^(-1) permutation to coordinates (left-action convention)
+  return Permuted(x, sigma^(-1));
 end;
 ```
+Validate: `PermuteBitstring(x, ())` = x (identity acts trivially).
+`PermuteBitstring(PermuteBitstring(x, sigma), tau)` =
+`PermuteBitstring(x, sigma * tau)` (composition law).
+Exit: function works for n=8 test case.
 
-**Exit criteria:** For 100 random group elements, `HGOEDecaps(HGOEEncaps(...))`
-recovers the same key.
+**11.3b — Encapsulation (1h).** Implement:
+```gap
+HGOEEncaps := function(sk, basePoint)
+  local g, c, canon_c, k;
+  g := PseudoRandom(sk.G);
+  c := PermuteBitstring(basePoint, g);
+  canon_c := CanonicalImage(sk.G, c, OnTuples);
+  k := sk.keyDerive(canon_c);
+  return rec(ciphertext := c, key := k);
+end;
+```
+Note: `OnTuples` is the GAP action function for permutations acting on
+lists — must match the `images` package API exactly.
+Exit: `HGOEEncaps` returns a record with ciphertext and key.
+
+**11.3c — Decapsulation (1h).** Implement:
+```gap
+HGOEDecaps := function(sk, c)
+  local canon_c;
+  canon_c := CanonicalImage(sk.G, c, OnTuples);
+  return sk.keyDerive(canon_c);
+end;
+```
+Exit: `HGOEDecaps(sk, HGOEEncaps(sk, bp).ciphertext)` = `HGOEEncaps(sk, bp).key`.
+
+**11.3d — Round-trip validation (1h).** Test 100 random encapsulations and
+verify decaps recovers the same key. Also test with different base points.
+Exit: 100% round-trip success rate.
+
+**Exit criteria:** All four sub-tasks pass.
 
 ---
 
@@ -1349,24 +1619,44 @@ Comprehensive correctness tests:
 
 **Effort:** 5h | **File:** `implementation/gap/orbcrypt_bench.g` | **Deps:** 11.3
 
-Time each operation at multiple parameter levels:
+**Sub-tasks:**
 
+**11.5a — Timing utility (1h).** Implement a reusable timing wrapper:
 ```gap
-BenchmarkHGOE := function(lambda, nTrials)
-  # Time key generation (average over 5 runs)
-  # Time encapsulation (average over nTrials runs)
-  # Time decapsulation (average over nTrials runs)
-  # Measure: key size, ciphertext size, public param size
-  # Output: structured record with all timings
+TimeOperation := function(op, nTrials)
+  # Run op() nTrials times, collect wall-clock timings
+  # Return: rec(mean, median, min, max, stddev)
 end;
 ```
+Exit: `TimeOperation(function() return 1; end, 100)` returns valid stats.
 
-Benchmark parameters: lambda in {80, 128, 192, 256}.
-Trials: 1000 for enc/dec, 5 for keygen.
+**11.5b — Key generation benchmark (1h).** Time `HGOEKeygen` for each
+lambda in {80, 128, 192, 256}. Run 5 trials per lambda (keygen is slow).
+Also measure: SGS size (number of generators), group order (log2), number
+of Schreier-Sims levels.
+Exit: CSV row per lambda with keygen timing and key metadata.
 
-Output format: CSV for easy comparison with other schemes.
+**11.5c — Encapsulation benchmark (1h).** Time `HGOEEncaps` with 1000
+trials per lambda. Separately measure: group element sampling time vs.
+permutation application time vs. canonical image time.
+Exit: CSV row per lambda with encaps timing breakdown.
 
-**Exit criteria:** Benchmarks complete without error. CSV output is generated.
+**11.5d — Decapsulation benchmark (1h).** Time `HGOEDecaps` with 1000
+trials per lambda. The dominant cost is `CanonicalImage` — measure it
+separately.
+Exit: CSV row per lambda with decaps timing and canonical image breakdown.
+
+**11.5e — CSV output and summary (1h).** Combine all timing data into
+a structured CSV:
+```
+lambda, n, log2_G, keygen_ms, encaps_ms, decaps_ms, ct_bits, key_bits
+80, 216, 81, ..., ..., ..., 216, 256
+128, 344, 129, ..., ..., ..., 344, 256
+```
+Also generate a human-readable summary table to stdout.
+Exit: CSV file is written and parseable.
+
+**Exit criteria:** All five sub-tasks produce valid output.
 
 ---
 
@@ -1374,7 +1664,10 @@ Output format: CSV for easy comparison with other schemes.
 
 **Effort:** 4h | **File:** `implementation/gap/orbcrypt_params.g` | **Deps:** 11.2
 
-Generate and validate parameter sets for multiple security levels:
+**Sub-tasks:**
+
+**11.6a — Parameter derivation for all levels (1h).** Implement
+`HGOEParams(lambda)` and run for lambda in {80, 128, 192, 256}:
 
 | Lambda | n | b | ell | k | w | Expected \|G\| |
 |--------|---|---|-----|---|---|---------------|
@@ -1383,9 +1676,19 @@ Generate and validate parameter sets for multiple security levels:
 | 192 | 520 | 8 | 65 | 260 | 260 | >= 2^195 |
 | 256 | 688 | 8 | 86 | 344 | 344 | >= 2^258 |
 
-For each parameter set, validate all DEVELOPMENT.md Section 6.2.1 constraints.
+Exit: table populated with derived values.
 
-**Exit criteria:** Parameter table generated with validated group orders.
+**11.6b — Group order validation (1.5h).** For each parameter set, generate
+a QC code and verify `Log2(Size(G)) >= lambda`. Record actual group orders.
+Exit: all four parameter sets pass validation.
+
+**11.6c — Orbit count estimation (1.5h).** For each parameter set, estimate
+the number of distinct weight-w orbits by sampling 1000 random weight-w
+bitstrings and counting distinct canonical images. Compare to the theoretical
+estimate C(n,w)/|G|.
+Exit: orbit count estimates match theoretical predictions within 10x.
+
+**Exit criteria:** All three sub-tasks complete.
 
 ---
 
@@ -1578,30 +1881,53 @@ comparisons, and references to LESS/MEDS NIST submissions.
 
 **Effort:** 5h | **File:** `Hardness/TensorAction.lean` | **Deps:** Phase 2
 
-Define a group action on 3-tensors, which generalizes the permutation action
-on bitstrings to a setting believed harder than GI:
+**Sub-tasks:**
 
+**12.4a — Tensor3 type definition (0.5h).** Define:
 ```lean
-/-- A 3-tensor over a finite field. -/
 def Tensor3 (n : ℕ) (F : Type*) := Fin n → Fin n → Fin n → F
+```
+Exit: type definition compiles.
 
-/-- GL(n,F)^3 acts on 3-tensors by simultaneous basis change. -/
-instance tensorAction (n : ℕ) (F : Type*) [Field F] :
+**12.4b — Tensor contraction operation (1.5h).** Define the explicit action
+of a triple of invertible matrices on a 3-tensor:
+```lean
+noncomputable def tensorSmul [Field F] [Fintype (Fin n)]
+    (A B C : Matrix (Fin n) (Fin n) F)
+    (T : Tensor3 n F) : Tensor3 n F :=
+  fun i j k => Finset.sum Finset.univ fun a =>
+    Finset.sum Finset.univ fun b =>
+      Finset.sum Finset.univ fun c =>
+        A i a * B j b * C k c * T a b c
+```
+Exit: `tensorSmul` type-checks (noncomputable due to `Finset.sum`).
+
+**12.4c — MulAction instance with sorry proofs (1.5h).** Define the
+instance using `tensorSmul`, with `sorry` for the two action laws:
+```lean
+instance tensorAction [Field F] [Fintype (Fin n)] :
     MulAction (GL (Fin n) F × GL (Fin n) F × GL (Fin n) F)
               (Tensor3 n F) where
-  smul := fun ⟨A, B, C⟩ T => fun i j k =>
-    -- T'_{ijk} = sum_{a,b,c} A_{ia} B_{jb} C_{kc} T_{abc}
-    sorry -- Tensor contraction (complex but standard)
-  one_smul := sorry
-  mul_smul := sorry
+  smul g T := tensorSmul g.1 g.2.1 g.2.2 T
+  one_smul T := by
+    -- Identity matrices act trivially: sum reduces to T_{ijk}
+    sorry -- Requires: Finset.sum of I_{ia} * ... = delta_{ia} * ...
+  mul_smul g h T := by
+    -- Composition of basis changes = basis change by product
+    sorry -- Requires: matrix multiplication distributes through sum
 ```
+Exit: instance type-checks (both `sorry`s are for arithmetic identities).
 
-**Design note:** The `sorry`s here are for the tensor contraction arithmetic,
-which is tedious but standard. The value is in establishing the type-level
-framework for tensor-based orbit encryption.
+**12.4d — Documentation of sorry obligations (1.5h).** For each `sorry`,
+write a detailed comment explaining:
+1. The mathematical identity being asserted
+2. The Mathlib lemmas that would likely be used to prove it
+   (`Matrix.one_apply`, `Finset.sum_comm`, `mul_assoc`, etc.)
+3. An estimated effort to fill the sorry (likely 2-3h each)
+Exit: both `sorry`s have comprehensive documentation comments.
 
-**Exit criteria:** Type signatures are correct. Action law `sorry`s are
-clearly documented as arithmetic obligations.
+**Exit criteria:** Type signatures are correct. Each `sorry` has a clear
+remediation path documented.
 
 ---
 
@@ -2176,32 +2502,46 @@ implementation/
 
 **Effort:** 4h | **File:** `implementation/gap/orbcrypt_fast_dec.g` | **Deps:** Phase 11
 
-Implement the fast cyclic-reduction phase in GAP:
+**Sub-tasks:**
 
+**15.1a — MinimalBlockRotation helper (1.5h).** Implement the core
+subroutine that finds the lexicographically minimal cyclic rotation of a
+single block of b bits:
 ```gap
-# For a QC code with block size b and index ell:
-# The cyclic subgroup C = (Z/bZ)^ell acts by shifting within each block.
-# Reduction: compute the lexicographic minimum over all C-shifts.
+MinimalBlockRotation := function(x, b, blockIndex)
+  # Extract block: x[(blockIndex-1)*b+1 .. blockIndex*b]
+  # Try all b cyclic rotations, find lex-minimum
+  # Return x with that block replaced by its minimum rotation
+end;
+```
+This is O(b^2) per block but since b=8 is constant, it's O(1) per block.
+Exit: function works for b=8, returns correct minimal rotation.
 
+**15.1b — Full QCCyclicReduce (1h).** Compose MinimalBlockRotation over
+all ell blocks:
+```gap
 QCCyclicReduce := function(x, b, ell)
-  local best, n, i, shift, candidate;
-  n := b * ell;
-  best := x;
-  # For each of b^ell cyclic shifts:
-  # (Optimization: process blocks independently)
+  local best, i;
+  best := ShallowCopy(x);
   for i in [1..ell] do
-    # Find the lexicographically minimal cyclic rotation of block i
     best := MinimalBlockRotation(best, b, i);
   od;
   return best;
 end;
 ```
+Exit: function produces consistent results (same input always gives same
+output). Verify: applying any cyclic shift to the output then re-reducing
+gives the same result (idempotence).
 
-**Optimization:** Process each block independently (O(b * ell) = O(n) total),
-rather than iterating over all b^ell combinations.
+**15.1c — Correctness validation (1.5h).** Test against full canonical
+image computation:
+- For 100 random bitstrings, verify that `QCCyclicReduce(g . x)` =
+  `QCCyclicReduce(h . x)` whenever g and h differ only by cyclic shifts.
+- Benchmark O(n) scaling: time QCCyclicReduce for n in {100, 200, 500, 1000}
+  and verify linear growth.
+Exit: 100% consistency; timing confirms O(n).
 
-**Exit criteria:** `QCCyclicReduce` produces the correct cyclic canonical
-form. Benchmark shows O(n) scaling.
+**Exit criteria:** All three sub-tasks pass.
 
 ---
 
@@ -2429,17 +2769,38 @@ Audit all Phase 10 modules:
 
 **Effort:** 5h | **File:** `Probability/*.lean` | **Deps:** Phase 8
 
-Audit Phase 8 modules. This is the most challenging verification because
-probability reasoning interacts with Mathlib's measure theory stack:
+**Sub-tasks:**
 
-- Verify `uniformPMF` and `probEvent` type-check
-- Verify negligible function closure lemmas compile
-- Verify `advantage_triangle` (hybrid argument) compiles
-- Audit any `sorry` placeholders and document them
+**16.3a — Monad.lean audit (1.5h).** Verify all Phase 8.1 definitions:
+- `uniformPMF` type-checks with correct Mathlib imports
+- `probEvent` / `probTrue` type-check
+- Sanity lemmas: `probEvent_certain`, `probEvent_impossible` compile
+- Run `#print axioms` on each definition
+Exit: audit checklist complete; any failures documented with root cause.
+
+**16.3b — Advantage.lean audit (1.5h).** Verify all Phase 8.3 + 8.9 results:
+- `advantage` definition type-checks
+- `advantage_nonneg`, `advantage_symm`, `advantage_le_one` compile
+- `advantage_triangle` compiles
+- `hybrid_argument` compiles
+- Run `#print axioms` on each theorem
+Exit: audit checklist complete.
+
+**16.3c — CompOIA and CompSecurity audit (2h).** Verify Phase 8.5–8.7:
+- `ConcreteOIA` definition type-checks
+- `concrete_oia_implies_1cpa` compiles (primary deliverable)
+- If `CompOIA` / `SchemeFamily` were attempted: verify or document failure
+- Classify every `sorry` in these modules:
+  - `multi_query_skeleton` (8.10): intentional, HSP is out of scope
+  - Any PMF-related `sorry`: document exact Mathlib gap
+  - Any type-elaboration `sorry`: document exact error message
+Exit: every `sorry` classified and documented.
 
 **Known `sorry` candidates:**
-- `comp_oia_implies_1cpa` may have `sorry` if PMF API is incomplete
-- `multi_query_skeleton` has intentional `sorry` (HSP formalization is out of scope)
+- `comp_oia_implies_1cpa` (asymptotic version) may have `sorry` if
+  SchemeFamily plumbing fails
+- `multi_query_skeleton` has intentional `sorry` (HSP out of scope)
+- `orbitDist_uniform_of_free` may have `sorry` (stretch goal in 8.4c)
 
 **Exit criteria:** All non-`sorry` theorems compile. Every `sorry` is
 documented with: (a) what it represents, (b) what would be needed to
@@ -2600,28 +2961,62 @@ dependencies are unchanged.
 
 **Effort:** 6h | **File:** `docs/VERIFICATION_REPORT.md` | **Deps:** 16.1–16.9
 
-Write a comprehensive verification report covering:
+**Sub-tasks:**
 
-1. **Summary statistics:**
-   - Total .lean files (original + new)
-   - Total lines of code
-   - Total theorems/lemmas
-   - Total `sorry` count (with justification for each)
-   - Total custom axiom count (should be zero)
+**16.10a — Automated statistics collection (1.5h).** Write a shell script
+or GAP script that automatically collects:
+```bash
+# Count .lean files
+find Orbcrypt/ -name "*.lean" | wc -l
+# Count lines of code
+find Orbcrypt/ -name "*.lean" -exec cat {} + | wc -l
+# Count theorems/lemmas
+grep -rn "^theorem\|^lemma" Orbcrypt/ --include="*.lean" | wc -l
+# Count sorry
+grep -rn "sorry" Orbcrypt/ --include="*.lean" | wc -l
+# Count axioms
+grep -rn "^axiom " Orbcrypt/ --include="*.lean" | wc -l
+# Count structures/defs
+grep -rn "^structure\|^def\|^noncomputable def\|^abbrev\|^instance" \
+  Orbcrypt/ --include="*.lean" | wc -l
+```
+Exit: script runs and produces correct counts.
 
-2. **Theorem inventory:** Every public theorem, its file, its axiom
-   dependencies, and whether it has any `sorry` in its dependency chain.
+**16.10b — Theorem inventory generation (1.5h).** For each public theorem,
+extract: name, file, line number, axiom dependencies (via `#print axioms`
+in a Lean scratch file), sorry dependency (via `#print axioms` checking
+for `sorryAx`). Format as a markdown table.
+Exit: table covers all public theorems.
 
-3. **Headline results update:** The original three plus new headline results:
-   - `kem_correctness` — KEM decapsulation recovers key
-   - `aead_correctness` — AEAD decryption recovers key on honest inputs
-   - `hybrid_correctness` — KEM+DEM composition is correct
-   - `kemoia_implies_secure` — KEM-OIA implies KEM security
-   - (conditional) `comp_oia_implies_1cpa` — probabilistic security
+**16.10c — Headline results section (1.5h).** Write the headline results
+section with the original three plus new ones:
 
-4. **Known limitations:** Explicitly list what is NOT verified and why.
+| # | Name | File | Status | Axioms |
+|---|------|------|--------|--------|
+| 1 | `correctness` | `Theorems/Correctness.lean` | Unconditional | Standard |
+| 2 | `invariant_attack` | `Theorems/InvariantAttack.lean` | Unconditional | `propext` |
+| 3 | `oia_implies_1cpa` | `Theorems/OIAImpliesCPA.lean` | Conditional (det OIA) | None |
+| 4 | `kem_correctness` | `KEM/Correctness.lean` | Unconditional | Standard |
+| 5 | `kemoia_implies_secure` | `KEM/Security.lean` | Conditional (KEM-OIA) | ? |
+| 6 | `aead_correctness` | `AEAD/AEAD.lean` | Unconditional | Standard |
+| 7 | `hybrid_correctness` | `AEAD/Modes.lean` | Unconditional | Standard |
+| 8 | `concrete_oia_implies_1cpa` | `Crypto/CompSecurity.lean` | Conditional (ConcreteOIA) | ? |
 
-**Exit criteria:** Report is complete and internally consistent.
+Exit: table filled with actual axiom data.
+
+**16.10d — Known limitations and sorry inventory (1.5h).** Explicitly
+list what is NOT verified:
+- Probabilistic OIA may have `sorry` in stretch-goal lemmas
+- Multi-query security skeleton has intentional `sorry` (HSP)
+- Tensor action laws have `sorry` (arithmetic obligations)
+- Any other `sorry` from Phase 12-13 (hardness/public-key)
+
+For each, state: (a) what it asserts, (b) why it's not proved, (c) whether
+filling it would strengthen the overall result or is merely cosmetic.
+
+Exit: limitations section complete.
+
+**Exit criteria:** All four sub-tasks produce the report sections.
 
 ---
 
