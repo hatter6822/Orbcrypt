@@ -15,6 +15,13 @@ import Orbcrypt.KEM.Encapsulate
 import Orbcrypt.KEM.Correctness
 import Orbcrypt.KEM.Security
 
+import Orbcrypt.Probability.Monad
+import Orbcrypt.Probability.Negligible
+import Orbcrypt.Probability.Advantage
+
+import Orbcrypt.Crypto.CompOIA
+import Orbcrypt.Crypto.CompSecurity
+
 import Orbcrypt.Construction.Permutation
 import Orbcrypt.Construction.HGOE
 import Orbcrypt.Construction.HGOEKEM
@@ -24,7 +31,8 @@ import Orbcrypt.Construction.HGOEKEM
 
 This is the root import file. Importing `Orbcrypt` gives access to the
 complete formalization: group action foundations, cryptographic definitions,
-core theorems, the concrete HGOE construction, and the KEM reformulation.
+core theorems, the concrete HGOE construction, the KEM reformulation,
+and the probabilistic security foundations (Phase 8).
 
 ## Module Dependency Graph
 
@@ -32,6 +40,9 @@ External dependencies (Mathlib):
 - `Mathlib.GroupTheory.GroupAction.Defs` — `MulAction`, `orbit`, `stabilizer`
 - `Mathlib.GroupTheory.GroupAction.Quotient` — orbit equivalence relation
 - `Mathlib.GroupTheory.Perm.Basic` — `Equiv.Perm` (symmetric group)
+- `Mathlib.Probability.ProbabilityMassFunction.*` — `PMF` type (Phase 8)
+- `Mathlib.Probability.Distributions.Uniform` — `PMF.uniformOfFintype` (Phase 8)
+- `Mathlib.Analysis.SpecificLimits.Basic` — negligible function bounds (Phase 8)
 
 Internal module imports:
 
@@ -75,6 +86,30 @@ Construction.HGOE              Construction.HGOEKEM
 ◄── Crypto.Security            ◄── Construction.HGOE
 ◄── Theorems.Correctness       ◄── KEM.Correctness
 ◄── Theorems.InvariantAttack   ◄── KEM.Security
+
+Mathlib.Probability.ProbabilityMassFunction.*
+Mathlib.Probability.Distributions.Uniform
+          │
+          ▼
+  Probability.Monad ◄── PMF wrappers (uniformPMF, probTrue)
+          │
+          ├────────────────────────┐
+          ▼                        ▼
+  Probability.Advantage    Probability.Negligible
+  ◄── advantage, triangle  ◄── IsNegligible
+  ◄── hybrid_argument      ◄── add closure
+          │                        │
+          ├────────────────────────┘
+          ▼
+  Crypto.CompOIA ◄── Crypto.OIA
+  ◄── orbitDist, ConcreteOIA, CompOIA
+  ◄── det_oia_implies_concrete_zero
+          │
+          ▼
+  Crypto.CompSecurity ◄── Crypto.Security
+  ◄── indCPAAdvantage
+  ◄── concrete_oia_implies_1cpa
+  ◄── comp_oia_implies_1cpa
 ```
 
 ## Headline Theorem Dependencies
@@ -104,6 +139,24 @@ kemoia_implies_secure (KEM/Security.lean)
   ├── kem_key_constant                — key constancy from KEMOIA.2 (7.6a)
   ├── kem_ciphertext_indistinguishable — orbit indist. from KEMOIA.1 (7.6b)
   └── KEMOIA (hypothesis)             — KEM Orbit Indist. Assumption
+
+concrete_oia_implies_1cpa (Crypto/CompSecurity.lean)
+  ├── ConcreteOIA (hypothesis)   — probabilistic orbit indistinguishability
+  ├── indCPAAdvantage            — probabilistic IND-1-CPA advantage (8.6)
+  ├── advantage                  — distinguishing advantage (8.3)
+  └── orbitDist                  — orbit sampling distribution (8.4)
+
+det_oia_implies_concrete_zero (Crypto/CompOIA.lean)
+  ├── OIA (hypothesis)           — deterministic OIA
+  └── ConcreteOIA                — probabilistic ConcreteOIA (bridge)
+
+comp_oia_implies_1cpa (Crypto/CompSecurity.lean)
+  ├── CompOIA (hypothesis)       — asymptotic computational OIA
+  ├── CompIsSecure               — computational security (8.7c)
+  └── IsNegligible               — negligible function framework (8.2)
+
+hybrid_argument (Probability/Advantage.lean)
+  └── advantage_triangle          — triangle inequality for advantage (8.3c)
 ```
 
 ## Axiom Transparency Report
@@ -127,13 +180,22 @@ These theorems depend only on Lean's standard axioms (`propext`,
   canonical form G-invariance (no KEMOIA needed)
 - All `GroupAction/` lemmas — orbit API, canonical forms, invariant functions
 - All `Construction/` proofs — S_n action, HGOE, HGOE-KEM, Hamming weight
+- All `Probability/` lemmas — advantage, negligible, hybrid argument
+- `concreteOIA_one` (`Crypto/CompOIA.lean`) — ConcreteOIA(1) is always true
 
 ### OIA-dependent results (conditional)
 
-These theorems carry `OIA` or `KEMOIA` as an explicit hypothesis:
+These theorems carry `OIA`, `KEMOIA`, `ConcreteOIA`, or `CompOIA` as an
+explicit hypothesis:
 
 - `oia_implies_1cpa` (`Theorems/OIAImpliesCPA.lean`) — OIA implies IND-1-CPA
 - `kemoia_implies_secure` (`KEM/Security.lean`) — KEMOIA implies KEM security
+- `concrete_oia_implies_1cpa` (`Crypto/CompSecurity.lean`) — ConcreteOIA(ε)
+  implies IND-1-CPA advantage ≤ ε (Phase 8, non-vacuous)
+- `comp_oia_implies_1cpa` (`Crypto/CompSecurity.lean`) — CompOIA implies
+  negligible IND-1-CPA advantage (Phase 8, asymptotic)
+- `det_oia_implies_concrete_zero` (`Crypto/CompOIA.lean`) — deterministic OIA
+  implies ConcreteOIA(0) (Phase 8, bridge/compatibility)
 
 ### Verification
 
@@ -154,6 +216,15 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.kemoia_implies_secure
 -- (standard Lean only — KEMOIA appears as a hypothesis, not an axiom)
+
+#print axioms Orbcrypt.concrete_oia_implies_1cpa
+-- (standard Lean only — ConcreteOIA appears as a hypothesis)
+
+#print axioms Orbcrypt.comp_oia_implies_1cpa
+-- (standard Lean only — CompOIA appears as a hypothesis)
+
+#print axioms Orbcrypt.det_oia_implies_concrete_zero
+-- (standard Lean only — OIA appears as a hypothesis)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden
