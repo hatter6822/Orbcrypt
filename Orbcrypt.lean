@@ -59,8 +59,8 @@ Theorems.       Theorems.       │
 Correctness     OIAImpliesCPA   ├─────────────────┐
 ◄── Crypto.Scheme               ▼                 ▼
 ◄── GroupAction.Invariant   KEM.Correctness    KEM.Security
-      │                     ◄── GroupAction.   ◄── GroupAction.
-      ▼                         Invariant          Invariant
+      │                                        ◄── GroupAction.
+      ▼                                            Invariant
 Theorems.InvariantAttack
 ◄── Crypto.Security
 ◄── GroupAction.Invariant

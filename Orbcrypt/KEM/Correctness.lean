@@ -1,5 +1,4 @@
 import Orbcrypt.KEM.Encapsulate
-import Orbcrypt.GroupAction.Invariant
 
 /-!
 # Orbcrypt.KEM.Correctness

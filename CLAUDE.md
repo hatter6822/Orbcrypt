@@ -396,8 +396,8 @@ Phase 7 (KEM Reformulation) has been completed:
 - `KEM/Security.lean` — `KEMAdversary` structure; `kemHasAdvantage` (two-encapsulation distinguishability); `KEMIsSecure` predicate; `kemIsSecure_iff` (unfolding lemma); `KEMOIA` (orbit indistinguishability + key uniformity); `kem_key_constant` (from KEMOIA.2); `kem_key_constant_direct` (from `canonical_isGInvariant`, proving KEMOIA.2 is redundant); `kem_ciphertext_indistinguishable` (from KEMOIA.1); `kemoia_implies_secure` (KEMOIA implies KEM security)
 - `Construction/HGOEKEM.lean` — `hgoeKEM` (concrete KEM for S_n subgroups on bitstrings); `hgoe_kem_correctness` (instantiation of abstract correctness); `hgoeScheme_toKEM` (bridge from HGOE scheme to KEM); `hgoeScheme_toKEM_correct` (bridge correctness)
 - All 8 work units (7.1–7.8) implemented with zero `sorry`, zero warnings, zero custom axioms
-- 22 new public declarations across 592 lines
-- `lake build` succeeds for all 16 modules (904 jobs, zero errors)
+- 22 new public declarations across 591 lines
+- `lake build` succeeds for all 16 modules (zero errors)
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules

@@ -7,7 +7,7 @@ import Orbcrypt.KEM.Security
 
 Concrete KEM instantiation for the Hidden-Group Orbit Encryption (HGOE)
 construction: `OrbitKEM` for a subgroup of S_n acting on bitstrings,
-correctness instantiation, and Hamming weight attack/defense bridges.
+correctness instantiation, and backward-compatibility bridge from scheme to KEM.
 
 ## Main definitions and results
 
