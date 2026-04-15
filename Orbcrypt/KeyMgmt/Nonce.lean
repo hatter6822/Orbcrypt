@@ -136,19 +136,22 @@ theorem nonce_encaps_correctness [Group G] [MulAction G X] [DecidableEq X]
 -- ============================================================================
 
 /--
-**Nonce Reuse Determinism.** Reusing a nonce with the same seed key and KEM
-produces identical (ciphertext, key) pairs.
+**Nonce Reuse Determinism.** Two seed keys with the same seed and sampling
+function produce identical encapsulations for the same nonce and KEM.
 
-This is the defining property of deterministic encryption: no new information
+This is the defining property of deterministic encryption: the output is
+fully determined by (seed, sampleGroup, kem, nonce). No new information
 leaks from a repeated nonce because the output is exactly the same. The
 adversary learns nothing beyond what the first encapsulation already revealed.
-
-**Proof:** Definitional equality — `nonceEncaps` is a pure function of its
-arguments.
 -/
 theorem nonce_reuse_deterministic [Group G] [MulAction G X] [DecidableEq X]
-    (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
-    nonceEncaps sk kem nonce = nonceEncaps sk kem nonce := rfl
+    (sk₁ sk₂ : SeedKey Seed G X)
+    (hSeed : sk₁.seed = sk₂.seed)
+    (hSample : sk₁.sampleGroup = sk₂.sampleGroup)
+    (kem : OrbitKEM G X K) (nonce : ℕ) :
+    nonceEncaps sk₁ kem nonce = nonceEncaps sk₂ kem nonce := by
+  -- Both encapsulations use the same group element when seeds and samplers match
+  simp only [nonceEncaps_eq, hSeed, hSample]
 
 /--
 **Distinct Nonces with Injective Sampling Produce Distinct Group Elements.**
@@ -198,16 +201,6 @@ theorem nonce_reuse_leaks_orbit [Group G] [MulAction G X] [DecidableEq X]
   rw [orbit_eq_of_smul, orbit_eq_of_smul]
   -- The base points are in different orbits by hypothesis
   exact hDiffOrbit
-
-/--
-**Same KEM, Same Nonce = Same Orbit.** When the same KEM is used, nonce
-reuse trivially produces ciphertexts in the same orbit (in fact, the same
-ciphertext). This is the safe case of nonce reuse.
--/
-theorem nonce_reuse_same_kem_same_orbit [Group G] [MulAction G X] [DecidableEq X]
-    (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
-    MulAction.orbit G (nonceEncaps sk kem nonce).1 =
-    MulAction.orbit G (nonceEncaps sk kem nonce).1 := rfl
 
 /--
 **Nonce-based encapsulation produces ciphertexts in the base point's orbit.**

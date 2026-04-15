@@ -1309,7 +1309,7 @@ the existing model.
 ### Phase 9 Implementation Notes
 
 **Status: COMPLETE** — All 7 work units implemented, zero `sorry`, zero
-warnings, zero custom axioms. ~20 new public declarations across ~370 lines
+warnings, zero custom axioms. 19 new public declarations across ~460 lines
 in 2 new Lean files.
 
 **Design decisions:**
@@ -1331,6 +1331,11 @@ in 2 new Lean files.
   distinct group elements), `nonceEncaps_mem_orbit` (ciphertext orbit membership),
   and simp lemmas for `nonceEncaps`/`nonceDecaps` were added for downstream
   usability. These strengthen the API without changing the plan's architecture.
+
+- **`nonce_reuse_deterministic` strengthened.** The plan specified a trivially
+  true `x = x` form (by `rfl`). The implementation was upgraded during audit to
+  compare two separate `SeedKey` instances with equal seeds and sampling
+  functions, making it a meaningful theorem about deterministic reproducibility.
 
 - **`HGOEKeyExpansion` parameterized by `M`.** The plan's specification referenced
   `reps m` without specifying `M`. The structure was parameterized by `(n : ℕ)

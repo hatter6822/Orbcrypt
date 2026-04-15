@@ -456,7 +456,7 @@ Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
 - `KeyMgmt/SeedKey.lean` — `SeedKey` structure (compact seed + deterministic expansion + PRF-based sampling); `seed_kem_correctness` (seed-based KEM correctness, follows from `kem_correctness`); `HGOEKeyExpansion` (7-stage QC code key expansion specification with weight uniformity); `seed_determines_key` (equal seeds → equal key material); `seed_determines_canon` (equal seeds → equal canonical forms); `OrbitEncScheme.toSeedKey` (backward compatibility bridge); `toSeedKey_expand` and `toSeedKey_sampleGroup` (bridge preservation lemmas)
 - `KeyMgmt/Nonce.lean` — `nonceEncaps` (nonce-based deterministic KEM encapsulation); `nonceDecaps` (nonce-based decapsulation); `nonce_encaps_correctness` (decaps recovers encapsulated key); `nonce_reuse_deterministic` (same nonce → same output, by `rfl`); `distinct_nonces_distinct_elements` (injective PRF → distinct group elements); `nonce_reuse_leaks_orbit` (cross-KEM nonce reuse leaks orbit membership — formal warning theorem); `nonceEncaps_mem_orbit` (ciphertext lies in base point's orbit); simp lemmas for unfolding
 - All 7 work units (9.1–9.7) implemented with zero `sorry`, zero warnings, zero custom axioms
-- 2 new Lean files, ~20 new public declarations across ~370 lines
+- 2 new Lean files, 19 new public declarations across 467 lines
 - `lake build` succeeds for all 23 modules (zero errors)
 
 **Formalization exit criteria (all met):**
