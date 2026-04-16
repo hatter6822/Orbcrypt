@@ -1074,6 +1074,30 @@ approaches:
   orbit elements) that the sender can combine to produce fresh orbit samples
   without learning G.
 
+**Status (Phase 13 — formalized).** The algebraic scaffolding for all three
+candidate paths is now machine-checked in
+`Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}.lean`:
+
+- `OrbitalRandomizers`, `obliviousSample`, `oblivious_sample_in_orbit`,
+  `refreshRandomizers`, `refresh_independent` — oblivious sampling with
+  per-epoch refresh. The orbit-preserving, G-hiding `combine` operation
+  is carried as a parameter with a closure hypothesis — finding a concrete
+  instance is an **open problem** (see §10.1 of
+  [`docs/PUBLIC_KEY_ANALYSIS.md`](docs/PUBLIC_KEY_ANALYSIS.md)).
+- `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness` — two-party
+  agreement via combined KEM keys. **Works, but is not true public-key**:
+  both parties still require symmetric KEM material
+  (`SymmetricKeyAgreementLimitation`).
+- `CommGroupAction`, `csidh_exchange`, `csidh_correctness`, `CommOrbitPKE`,
+  `comm_pke_correctness` — CSIDH-style framework. Unconditional correctness;
+  **concrete hardness requires an isogeny-like commutative action** outside
+  the S_n orbit setting.
+
+The **fundamental obstacle** is formalised: non-commutativity of `G ≤ S_n`
+is exactly what supports OIA hardness, but prevents DH-style exchange.
+See [`docs/PUBLIC_KEY_ANALYSIS.md`](docs/PUBLIC_KEY_ANALYSIS.md) for the
+full feasibility discussion and proof registry.
+
 ### 10.2 Tighter Reductions
 
 The CE-OIA provides security evidence but not a tight polynomial reduction to a
