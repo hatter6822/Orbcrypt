@@ -29,14 +29,19 @@ import Orbcrypt.Construction.HGOEKEM
 import Orbcrypt.KeyMgmt.SeedKey
 import Orbcrypt.KeyMgmt.Nonce
 
+import Orbcrypt.AEAD.MAC
+import Orbcrypt.AEAD.AEAD
+import Orbcrypt.AEAD.Modes
+
 /-!
 # Orbcrypt — Formal Verification of Permutation-Orbit Encryption
 
 This is the root import file. Importing `Orbcrypt` gives access to the
 complete formalization: group action foundations, cryptographic definitions,
 core theorems, the concrete HGOE construction, the KEM reformulation,
-the probabilistic security foundations (Phase 8), and the key compression
-and nonce-based encryption module (Phase 9).
+the probabilistic security foundations (Phase 8), the key compression
+and nonce-based encryption module (Phase 9), and the authenticated
+encryption and hybrid modes layer (Phase 10).
 
 ## Module Dependency Graph
 
@@ -128,6 +133,19 @@ KEM.Encapsulate + Construction.Permutation
   ◄── nonceEncaps, nonceDecaps
   ◄── nonce_encaps_correctness
   ◄── nonce_reuse_leaks_orbit
+
+AEAD.MAC ◄── Mathlib.Tactic
+  ◄── MAC structure (tag, verify, correct)
+          │
+          ▼
+  AEAD.AEAD ◄── AEAD.MAC, KEM.Syntax, KEM.Encapsulate, KEM.Correctness
+  ◄── AuthOrbitKEM, authEncaps, authDecaps
+  ◄── aead_correctness, INT_CTXT
+          │
+          ▼
+  AEAD.Modes ◄── AEAD.AEAD, KEM.Encapsulate, KEM.Correctness
+  ◄── DEM, hybridEncrypt, hybridDecrypt
+  ◄── hybrid_correctness
 ```
 
 ## Headline Theorem Dependencies
@@ -190,6 +208,14 @@ nonce_reuse_leaks_orbit (KeyMgmt/Nonce.lean)
 
 seed_determines_key (KeyMgmt/SeedKey.lean)
   └── (definitional — rw)
+
+aead_correctness (AEAD/AEAD.lean)
+  ├── kem_correctness             — KEM correctness (7.3)
+  └── MAC.correct                 — MAC correctness field (10.1)
+
+hybrid_correctness (AEAD/Modes.lean)
+  ├── kem_correctness             — KEM correctness (7.3)
+  └── DEM.correct                 — DEM correctness field (10.5)
 ```
 
 ## Axiom Transparency Report
@@ -221,6 +247,9 @@ These theorems depend only on Lean's standard axioms (`propext`,
 - `nonce_reuse_leaks_orbit` (`KeyMgmt/Nonce.lean`) — cross-KEM nonce reuse leaks
   orbit membership (unconditional warning theorem)
 - All `KeyMgmt/` lemmas — seed keys, nonce encapsulation, backward compatibility
+- `aead_correctness` (`AEAD/AEAD.lean`) — authenticated KEM correctness
+- `hybrid_correctness` (`AEAD/Modes.lean`) — KEM+DEM hybrid correctness
+- All `AEAD/` definitions and lemmas — MAC, AuthOrbitKEM, DEM, INT_CTXT
 
 ### OIA-dependent results (conditional)
 
@@ -276,6 +305,12 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.seed_determines_key
 -- (standard Lean only — definitional rewriting)
+
+#print axioms Orbcrypt.aead_correctness
+-- (standard Lean only — follows from kem_correctness + MAC.correct)
+
+#print axioms Orbcrypt.hybrid_correctness
+-- (standard Lean only — follows from kem_correctness + DEM.correct)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden

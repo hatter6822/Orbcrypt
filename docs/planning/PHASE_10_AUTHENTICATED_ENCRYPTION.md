@@ -612,48 +612,48 @@ All of the following must be satisfied before Phase 10 is considered complete:
 
 ### Build Verification
 
-- [ ] `lake build Orbcrypt.AEAD.MAC` succeeds with exit code 0.
-- [ ] `lake build Orbcrypt.AEAD.AEAD` succeeds with exit code 0.
-- [ ] `lake build Orbcrypt.AEAD.Modes` succeeds with exit code 0.
-- [ ] `lake build` (full project) succeeds with exit code 0.
+- [x] `lake build Orbcrypt.AEAD.MAC` succeeds with exit code 0.
+- [x] `lake build Orbcrypt.AEAD.AEAD` succeeds with exit code 0.
+- [x] `lake build Orbcrypt.AEAD.Modes` succeeds with exit code 0.
+- [x] `lake build` (full project) succeeds with exit code 0.
 
 ### Zero Sorry
 
-- [ ] `grep -rn "sorry" Orbcrypt/AEAD/ --include="*.lean"` returns empty.
+- [x] `grep -rn "sorry" Orbcrypt/AEAD/ --include="*.lean"` returns empty.
 
 ### Zero Custom Axioms
 
-- [ ] `grep -rn "^axiom " Orbcrypt/AEAD/ --include="*.lean"` returns empty.
-- [ ] `#print axioms aead_correctness` — only standard Lean axioms.
-- [ ] `#print axioms hybrid_correctness` — only standard Lean axioms.
+- [x] `grep -rn "^axiom " Orbcrypt/AEAD/ --include="*.lean"` returns empty.
+- [x] `#print axioms aead_correctness` — only standard Lean axioms.
+- [x] `#print axioms hybrid_correctness` — only standard Lean axioms.
 
 ### Theorem Compilation
 
-- [ ] `aead_correctness` compiles and type-checks (10.3).
-- [ ] `hybrid_correctness` compiles and type-checks (10.6).
-- [ ] `INT_CTXT` definition compiles and is well-typed (10.4).
+- [x] `aead_correctness` compiles and type-checks (10.3).
+- [x] `hybrid_correctness` compiles and type-checks (10.6).
+- [x] `INT_CTXT` definition compiles and is well-typed (10.4).
 
 ### Structure Verification
 
-- [ ] `MAC` structure type-checks with `correct` field (10.1).
-- [ ] `AuthOrbitKEM` structure type-checks with `extends OrbitKEM` (10.2).
-- [ ] `DEM` structure type-checks with `correct` field (10.5).
-- [ ] `authEncaps` and `authDecaps` functions type-check (10.2).
-- [ ] `hybridEncrypt` and `hybridDecrypt` functions type-check (10.5).
+- [x] `MAC` structure type-checks with `correct` field (10.1).
+- [x] `AuthOrbitKEM` structure type-checks with `kem : OrbitKEM` field (10.2, Risk 2 mitigation).
+- [x] `DEM` structure type-checks with `correct` field (10.5).
+- [x] `authEncaps` and `authDecaps` functions type-check (10.2).
+- [x] `hybridEncrypt` and `hybridDecrypt` functions type-check (10.5).
 
 ### Documentation
 
-- [ ] Every `.lean` file has a `/-! ... -/` module docstring.
-- [ ] Every public definition and theorem has a `/-- ... -/` docstring.
-- [ ] Proofs longer than 3 lines have strategy comments.
+- [x] Every `.lean` file has a `/-! ... -/` module docstring.
+- [x] Every public definition and theorem has a `/-- ... -/` docstring.
+- [x] Proofs longer than 3 lines have strategy comments.
 
 ### Integration
 
-- [ ] Root import file `Orbcrypt.lean` updated to include:
+- [x] Root import file `Orbcrypt.lean` updated to include:
   - `import Orbcrypt.AEAD.MAC`
   - `import Orbcrypt.AEAD.AEAD`
   - `import Orbcrypt.AEAD.Modes`
-- [ ] `PRACTICAL_IMPROVEMENTS_PLAN.md` updated with Phase 10 completion status.
+- [x] `PRACTICAL_IMPROVEMENTS_PLAN.md` updated with Phase 10 completion status.
 
 ---
 

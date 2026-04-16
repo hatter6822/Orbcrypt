@@ -75,6 +75,10 @@ Orbcrypt/
   KeyMgmt/
     SeedKey.lean                      Seed-based key compression, HGOEKeyExpansion spec, backward compat
     Nonce.lean                        Nonce-based deterministic encryption, misuse resistance properties
+  AEAD/
+    MAC.lean                          Message Authentication Code abstraction (tag, verify, correct)
+    AEAD.lean                         Authenticated KEM: Encrypt-then-MAC, aead_correctness, INT_CTXT
+    Modes.lean                        KEM+DEM hybrid encryption, DEM structure, hybrid_correctness
 ```
 
 ### Module dependency graph
@@ -125,6 +129,16 @@ Orbcrypt/
               |
               v
   KeyMgmt.Nonce ────── (nonceEncaps, nonce-misuse properties)
+
+  AEAD.MAC ◄── Mathlib.Tactic
+              |
+              v
+  AEAD.AEAD ◄── AEAD.MAC, KEM.Syntax, KEM.Encapsulate, KEM.Correctness
+  (AuthOrbitKEM, authEncaps, authDecaps, aead_correctness, INT_CTXT)
+              |
+              v
+  AEAD.Modes ◄── AEAD.AEAD, KEM.Encapsulate, KEM.Correctness
+  (DEM, hybridEncrypt, hybridDecrypt, hybrid_correctness)
 ```
 
 ## Document layout
@@ -268,8 +282,10 @@ The entire formalization exists to machine-check three results. Understand what 
 | 9 | **Seed-Key Correctness** | `decaps(encaps(sampleGroup(seed, n)).1) = encaps(sampleGroup(seed, n)).2` | `KeyMgmt/SeedKey.lean` | Seed-based key expansion preserves KEM correctness |
 | 10 | **Nonce Correctness** | `nonceDecaps(nonceEncaps(sk, kem, nonce).1) = nonceEncaps(sk, kem, nonce).2` | `KeyMgmt/Nonce.lean` | Nonce-based encryption preserves KEM correctness |
 | 11 | **Nonce Orbit Leakage** | Cross-KEM nonce reuse leaks orbit membership | `KeyMgmt/Nonce.lean` | Formal warning: nonce misuse breaks orbit indistinguishability |
+| 12 | **AEAD Correctness** | `authDecaps(authEncaps(g)) = some k` for honest pairs | `AEAD/AEAD.lean` | Authenticated KEM correctly recovers keys |
+| 13 | **Hybrid Correctness** | `hybridDecrypt(hybridEncrypt(m)) = some m` | `AEAD/Modes.lean` | KEM+DEM hybrid encryption preserves messages |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition.
 
 ## Mathlib integration
 
@@ -314,8 +330,9 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 | 7 | KEM Reformulation | 17-19 | 8 | ~24h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
 | 8 | Probabilistic Foundations | 18-22 | 10 | ~40h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
 | 9 | Key Compression & Nonce-Based Enc | 20-22 | 7 | ~18h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
-| 10–16 | Practical Improvements | 22+ | 53 | ~190h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–9)** | **22** | **89** | **~214h** | | |
+| 10 | Authenticated Encryption & Modes | 22-24 | 6 | ~16h | `docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md` | Complete |
+| 11–16 | Practical Improvements | 24+ | 47 | ~174h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–10)** | **24** | **95** | **~230h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -382,7 +399,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–9 Complete — Key Compression & Nonce-Based Encryption Done
+**Current Phase:** Phases 1–10 Complete — Authenticated Encryption & Modes Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -459,8 +476,16 @@ Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
 - 2 new Lean files, 19 new public declarations across 467 lines
 - `lake build` succeeds for all 23 modules (zero errors)
 
+Phase 10 (Authenticated Encryption & Modes) has been completed:
+- `AEAD/MAC.lean` — `MAC` structure with `tag`, `verify`, and `correct` fields; generic parameterization by key, message, and tag types
+- `AEAD/AEAD.lean` — `AuthOrbitKEM` structure composing `OrbitKEM` with `MAC` (Encrypt-then-MAC); `authEncaps` (authenticated encapsulation), `authDecaps` (verify-then-decrypt); `aead_correctness` theorem (authDecaps recovers key from honest pairs); `INT_CTXT` security definition (ciphertext integrity); simp lemmas for authEncaps components
+- `AEAD/Modes.lean` — `DEM` structure (symmetric encryption with correctness field); `hybridEncrypt` (KEM produces key, DEM encrypts data), `hybridDecrypt` (KEM recovers key, DEM decrypts); `hybrid_correctness` theorem (decrypt inverts encrypt); simp lemmas for hybrid components
+- All 6 work units (10.1–10.6) implemented with zero `sorry`, zero warnings, zero custom axioms
+- 3 new Lean files, 18 new public declarations across ~400 lines
+- `lake build` succeeds for all 26 modules (zero errors)
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules (23 total)
+- `lake build` succeeds with exit code 0 for all modules (26 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
 - `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
@@ -474,6 +499,8 @@ Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
 - `#print axioms seed_kem_correctness` — standard Lean only (follows from kem_correctness)
 - `#print axioms nonce_encaps_correctness` — standard Lean only (follows from kem_correctness)
 - `#print axioms nonce_reuse_leaks_orbit` — standard Lean only (follows from orbit_eq_of_smul)
+- `#print axioms aead_correctness` — standard Lean only (follows from kem_correctness + MAC.correct)
+- `#print axioms hybrid_correctness` — standard Lean only (follows from kem_correctness + DEM.correct)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
