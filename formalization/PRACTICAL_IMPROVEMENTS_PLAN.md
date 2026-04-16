@@ -60,7 +60,7 @@ components.
 | 7 | KEM Reformulation | 8 | ~24h | Phases 1–6 |
 | 8 | Probabilistic Foundations | 10 | ~40h | Phases 1–6 |
 | 9 | Key Compression & Nonce-Based Enc | 7 | ~18h | Phase 7 |
-| 10 | Authenticated Encryption & Modes | 6 | ~16h | Phase 9 |
+| 10 | Authenticated Encryption & Modes | 6 | ~16h | Phase 9 | **Complete** |
 | 11 | Reference Implementation (GAP) | 9 | ~36h | Phase 7 |
 | 12 | Hardness Alignment | 8 | ~32h | Phase 8 |
 | 13 | Public-Key Extension | 7 | ~28h | Phases 7, 12 |
@@ -1354,9 +1354,9 @@ in 2 new Lean files.
 
 ---
 
-## Phase 10 — Authenticated Encryption & Modes
+## Phase 10 — Authenticated Encryption & Modes ✓ COMPLETE
 
-### Weeks 22–24 | 6 Work Units | ~16 Hours
+### Weeks 22–24 | 6 Work Units | ~16 Hours | **Status: Complete**
 
 **Goal:** Add integrity protection (authentication) and define block modes
 for encrypting data longer than a single orbit element. Without authentication,
