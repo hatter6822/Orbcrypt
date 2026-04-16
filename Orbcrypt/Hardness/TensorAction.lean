@@ -283,9 +283,10 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
 /-- GI reduces to TI: graphs can be encoded as 3-tensors such that
     graph isomorphism corresponds to tensor isomorphism.
 
-    This well-known result (Grochow & Qiao, 2021) establishes TI as at
-    least as hard as GI. The encoding uses the structure tensor of a
-    graph's adjacency algebra.
+    A many-one (Karp) reduction: there exists a uniform encoding function
+    mapping graphs to 3-tensors such that graph isomorphism holds if and only
+    if the encoded tensors are GL³-isomorphic. The encoding uses the structure
+    tensor of a graph's adjacency algebra (Grochow & Qiao, 2021).
 
     **Key distinction:** While GI admits Babai's quasi-polynomial algorithm,
     no such algorithm is known for TI, making TI-based assumptions strictly
@@ -294,10 +295,11 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
     Stated as a `Prop`-valued definition following the OIA pattern.
     The encoding construction is beyond this formalization's scope. -/
 def GIReducesToTI : Prop :=
-  ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
-    (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) →
-    ∃ (k : ℕ) (T₁ T₂ : Tensor3 k F),
-      @AreTensorIsomorphic k F _ T₁ T₂
+  ∃ (dim : ℕ → ℕ)
+    (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) F),
+    ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
+      (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ↔
+      @AreTensorIsomorphic (dim m) F _ (encode m adj₁) (encode m adj₂)
 
 end TensorIsomorphism
 

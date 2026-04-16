@@ -137,13 +137,10 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
 
 /-- Graph Isomorphism reduces to Code Equivalence (GI ≤_p CE).
 
-    This well-known complexity result states that any graph isomorphism
-    instance can be efficiently encoded as a code equivalence instance:
-    graphs G₁, G₂ are isomorphic if and only if their associated codes
-    C₁, C₂ are permutation equivalent.
-
-    The encoding uses incidence matrices or CFI (Cai-Furer-Immerman) gadgets.
-    The full construction proof is beyond this formalization's scope.
+    A many-one (Karp) reduction: there exists a uniform encoding function
+    mapping graphs to codes such that graph isomorphism holds if and only if
+    the encoded codes are permutation equivalent. The encoding uses incidence
+    matrices or CFI (Cai-Furer-Immerman) gadgets.
 
     **Complexity implications:**
     - GI: best classical 2^O(√(n log n)) (Babai, 2015)
@@ -151,14 +148,14 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
     - CE-OIA is therefore a *weaker* assumption than GI-hardness
 
     Stated as a `Prop`-valued *definition* following the OIA pattern.
-    The structural content: for any pair of graphs (adjacency functions),
-    there exist codes whose permutation equivalence coincides with
-    graph isomorphism. Results carry this as an explicit hypothesis. -/
+    The encoding construction is beyond this formalization's scope.
+    Results carry this as an explicit hypothesis. -/
 def GIReducesToCE : Prop :=
-  ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
-    (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) →
-    ∃ (k : ℕ) (C₁ C₂ : Finset (Fin k → Bool)),
-      ArePermEquivalent C₁ C₂
+  ∃ (dim : ℕ → ℕ)
+    (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Finset (Fin (dim m) → Bool)),
+    ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
+      (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ↔
+      ArePermEquivalent (encode m adj₁) (encode m adj₂)
 
 end CEOIADefinition
 

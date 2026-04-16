@@ -339,6 +339,9 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.hybrid_correctness
 -- (standard Lean only — follows from kem_correctness + DEM.correct)
+
+#print axioms Orbcrypt.hardness_chain_implies_security
+-- (standard Lean only — HardnessChain appears as a hypothesis)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden

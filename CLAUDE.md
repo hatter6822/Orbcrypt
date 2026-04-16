@@ -542,7 +542,7 @@ Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
 - `Hardness/Reductions.lean` — `TensorOIA` (strongest OIA variant, GL³ action); `GIOIA` (graph isomorphism OIA); `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`, `GIOIAImpliesOIA` (reduction steps as Prop definitions); `HardnessChain` (full composite reduction); `oia_from_hardness_chain` (chain composition proof); `hardness_chain_implies_security` (TI-hardness → IND-1-CPA)
 - `docs/HARDNESS_ANALYSIS.md` — LESS/MEDS alignment analysis, reduction chain documentation, hardness comparison table (10 problems), literature references
 - All 8 work units (12.1–12.8) implemented with zero `sorry`, zero warnings, zero custom axioms
-- 3 new Lean files, ~30 new public declarations across ~650 lines
+- 3 new Lean files, 44 new public declarations across ~770 lines
 - `lake build` succeeds for all 29 modules (zero errors)
 
 **Formalization exit criteria (all met):**
