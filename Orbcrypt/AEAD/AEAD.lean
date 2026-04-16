@@ -133,7 +133,7 @@ from honestly generated (ciphertext, tag) pairs.
 4. The verification check becomes `mac.verify k c (mac.tag k c)`.
 5. By `mac.correct`, this is `true`, so `authDecaps` returns `some k`.
 
-**Axioms:** Only standard Lean axioms. No custom axioms, no `sorryAx`.
+**Axioms:** Only standard Lean axioms. No custom axioms, no placeholders.
 -/
 theorem aead_correctness (akem : AuthOrbitKEM G X K Tag) (g : G) :
     let (c, k, t) := authEncaps akem g

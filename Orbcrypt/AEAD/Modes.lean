@@ -133,7 +133,7 @@ recovers the original plaintext: `hybridDecrypt(hybridEncrypt(m)) = some m`.
 4. Therefore `dem.dec k (dem.enc k m)`.
 5. By `dem.correct`, this equals `some m`.
 
-**Axioms:** Only standard Lean axioms. No custom axioms, no `sorryAx`.
+**Axioms:** Only standard Lean axioms. No custom axioms, no placeholders.
 -/
 theorem hybrid_correctness (kem : OrbitKEM G X K)
     (dem : DEM K Plaintext Ciphertext) (g : G) (m : Plaintext) :
