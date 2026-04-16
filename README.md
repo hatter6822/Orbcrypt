@@ -12,11 +12,15 @@ group G <= S_n; a ciphertext is a uniformly random element of that orbit.
 The project includes machine-checked proofs in Lean 4 (using Mathlib) of
 correctness, the invariant attack theorem, conditional IND-1-CPA security
 under the Orbit Indistinguishability Assumption (OIA), KEM reformulation,
-probabilistic security foundations, and key compression with nonce-based encryption.
+probabilistic security foundations, key compression with nonce-based
+encryption, authenticated encryption (AEAD + KEM/DEM), hardness-chain
+alignment with NIST PQC candidates (LESS/MEDS/TI), and public-key extension
+scaffolding (oblivious sampling, KEM agreement, CSIDH-style commutative
+actions).
 
 ## Status
 
-**Formalization Complete — Phases 1–9 Done**
+**Formalization Complete — Phases 1–13 Done**
 
 All headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
 
@@ -30,6 +34,13 @@ All headline results are machine-checked with zero `sorry`, zero warnings, zero 
 | 6 | `concrete_oia_implies_1cpa` — ConcreteOIA(ε) implies advantage ≤ ε | `Crypto/CompSecurity.lean` | Zero custom axioms |
 | 7 | `seed_kem_correctness` — seed-based KEM is correct | `KeyMgmt/SeedKey.lean` | Standard Lean only |
 | 8 | `nonce_reuse_leaks_orbit` — cross-KEM nonce reuse leaks orbits | `KeyMgmt/Nonce.lean` | Standard Lean only |
+| 9 | `aead_correctness` — authenticated KEM correctness | `AEAD/AEAD.lean` | Standard Lean only |
+| 10 | `hybrid_correctness` — KEM+DEM hybrid correctness | `AEAD/Modes.lean` | Standard Lean only |
+| 11 | `hardness_chain_implies_security` — TI-hardness → IND-1-CPA | `Hardness/Reductions.lean` | Zero custom axioms (HardnessChain is a hypothesis) |
+| 12 | `oblivious_sample_in_orbit` — oblivious sampling preserves orbits | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
+| 13 | `kem_agreement_correctness` — two-party orbit-KEM agreement | `PublicKey/KEMAgreement.lean` | Standard Lean only |
+| 14 | `csidh_correctness` — `a • b • x = b • a • x` under `CommGroupAction` | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` (typeclass axiom) |
+| 15 | `comm_pke_correctness` — CSIDH-style public-key encryption correctness | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` + `pk_valid` |
 
 ### Axiom Transparency
 
@@ -48,11 +59,14 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 | Probability | `Probability/{Monad, Negligible, Advantage}` | PMF wrappers, negligible functions, hybrid argument |
 | Key Management | `KeyMgmt/{SeedKey, Nonce}` | Seed-based key compression, nonce-based encryption |
 | Concrete Construction | `Construction/{Permutation, HGOE, HGOEKEM}` | S_n on bitstrings, HGOE instance, HGOE-KEM |
+| AEAD | `AEAD/{MAC, AEAD, Modes}` | MAC, Encrypt-then-MAC authenticated KEM, KEM+DEM hybrid |
+| Hardness | `Hardness/{CodeEquivalence, TensorAction, Reductions}` | CE/TI problems, reduction chain to IND-1-CPA |
+| Public-Key Extension | `PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}` | Orbital randomizers, two-party KEM agreement, CSIDH-style `CommGroupAction` and `CommOrbitPKE` |
 
 ### Build Stats
 
-- 23 Lean source files + root import file
-- ~100 public definitions and theorems, all with docstrings
+- 32 Lean source files + root import file
+- ~130 public definitions and theorems, all with docstrings
 - Zero `sorry`, zero custom axioms, zero warnings
 - Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
 - GitHub Actions CI on every push
@@ -75,6 +89,8 @@ source ~/.elan/env && lake build
 | [COUNTEREXAMPLE.md](COUNTEREXAMPLE.md) | Invariant attack vulnerability analysis |
 | [POE.md](POE.md) | High-level concept exposition |
 | [formalization/FORMALIZATION_PLAN.md](formalization/FORMALIZATION_PLAN.md) | Lean 4 formalization roadmap |
+| [docs/HARDNESS_ANALYSIS.md](docs/HARDNESS_ANALYSIS.md) | Phase 12 — hardness reduction chain and NIST PQC alignment |
+| [docs/PUBLIC_KEY_ANALYSIS.md](docs/PUBLIC_KEY_ANALYSIS.md) | Phase 13 — public-key feasibility analysis |
 
 ## License
 

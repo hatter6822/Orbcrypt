@@ -37,6 +37,10 @@ import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Reductions
 
+import Orbcrypt.PublicKey.ObliviousSampling
+import Orbcrypt.PublicKey.KEMAgreement
+import Orbcrypt.PublicKey.CommutativeAction
+
 /-!
 # Orbcrypt — Formal Verification of Permutation-Orbit Encryption
 
@@ -45,8 +49,9 @@ complete formalization: group action foundations, cryptographic definitions,
 core theorems, the concrete HGOE construction, the KEM reformulation,
 the probabilistic security foundations (Phase 8), the key compression
 and nonce-based encryption module (Phase 9), the authenticated
-encryption and hybrid modes layer (Phase 10), and the hardness
-alignment with NIST PQC candidates (Phase 12).
+encryption and hybrid modes layer (Phase 10), the hardness
+alignment with NIST PQC candidates (Phase 12), and the public-key
+extension scaffolding (Phase 13).
 
 ## Module Dependency Graph
 
@@ -165,6 +170,26 @@ AEAD.MAC ◄── Mathlib.Tactic
   Hardness.Reductions ◄── CodeEquivalence, TensorAction, Crypto.OIA
   ◄── TensorOIA, GIOIA, HardnessChain
   ◄── hardness_chain_implies_security
+
+  KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
+          │
+          ▼
+  PublicKey.ObliviousSampling ◄── GroupAction.Basic
+  ◄── OrbitalRandomizers, obliviousSample
+  ◄── oblivious_sample_in_orbit
+  ◄── ObliviousSamplingHiding, oblivious_sampling_view_constant
+  ◄── refreshRandomizers, refreshRandomizers_in_orbit
+  ◄── RefreshIndependent, refresh_independent
+
+  PublicKey.KEMAgreement ◄── KEM.Encapsulate, KEM.Correctness
+  ◄── OrbitKeyAgreement, sessionKey
+  ◄── kem_agreement_correctness
+  ◄── SymmetricKeyAgreementLimitation
+
+  PublicKey.CommutativeAction ◄── GroupAction.Basic, GroupAction.Canonical
+  ◄── CommGroupAction (class), csidh_exchange
+  ◄── csidh_correctness
+  ◄── CommOrbitPKE, comm_pke_correctness
 ```
 
 ## Headline Theorem Dependencies
@@ -235,6 +260,22 @@ aead_correctness (AEAD/AEAD.lean)
 hybrid_correctness (AEAD/Modes.lean)
   ├── kem_correctness             — KEM correctness (7.3)
   └── DEM.correct                 — DEM correctness field (10.5)
+
+oblivious_sample_in_orbit (PublicKey/ObliviousSampling.lean)
+  └── OrbitalRandomizers.in_orbit — randomizer orbit certificate (13.1)
+
+refresh_independent (PublicKey/ObliviousSampling.lean)
+  └── (structural — `funext` + hypothesis)
+
+kem_agreement_correctness (PublicKey/KEMAgreement.lean)
+  └── kem_correctness             — KEM correctness (7.3)
+
+csidh_correctness (PublicKey/CommutativeAction.lean)
+  └── CommGroupAction.comm        — commutativity axiom of the class (13.5)
+
+comm_pke_correctness (PublicKey/CommutativeAction.lean)
+  ├── CommGroupAction.comm        — commutativity axiom of the class (13.5)
+  └── CommOrbitPKE.pk_valid       — public-key validity field (13.6)
 ```
 
 ## Axiom Transparency Report
@@ -293,6 +334,38 @@ explicit hypothesis:
   TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
   HardnessChain as hypothesis)
 
+### Phase 13 Public-Key Extension results (conditional on their own hypotheses)
+
+Phase 13 introduces three candidate paths from symmetric to public-key orbit
+encryption; each carries its assumption as an explicit hypothesis or
+typeclass axiom rather than a Lean `axiom`:
+
+- `oblivious_sample_in_orbit` (`PublicKey/ObliviousSampling.lean`) —
+  oblivious sampling preserves orbit membership, given the client-supplied
+  closure hypothesis `hClosed`.
+- `oblivious_sampling_view_constant` (`PublicKey/ObliviousSampling.lean`)
+  — carries `ObliviousSamplingHiding` as a hypothesis (a strong
+  deterministic hiding requirement; documented as pathological-strength
+  and not expected to hold for non-trivial bundles without a
+  probabilistic refinement).
+- `refresh_independent` (`PublicKey/ObliviousSampling.lean`) — structural
+  independence of epoch-refreshed randomizer bundles (unconditional; PRF
+  security remains a separate sampler-level assumption).
+- `kem_agreement_correctness` (`PublicKey/KEMAgreement.lean`) — follows
+  from `kem_correctness`; establishes that two formulations of the
+  session-key computation coincide.
+- `symmetric_key_agreement_limitation` (`PublicKey/KEMAgreement.lean`)
+  — an unconditional structural identity exhibiting the session-key
+  formula in terms of both parties' `keyDerive` and `canonForm.canon`,
+  making formal that the protocol is symmetric-setup.
+- `csidh_correctness` and `comm_pke_correctness`
+  (`PublicKey/CommutativeAction.lean`) — extract the `CommGroupAction.comm`
+  typeclass axiom (not a Lean `axiom`; each concrete instance discharges it
+  with a proof).
+- `selfAction_comm` (`PublicKey/CommutativeAction.lean`) — machine-checked
+  example witnessing that `CommGroupAction` is satisfiable for any
+  `CommGroup` acting on itself.
+
 ### Verification
 
 Users can verify axiom dependencies by running in a Lean file:
@@ -342,6 +415,21 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.hardness_chain_implies_security
 -- (standard Lean only — HardnessChain appears as a hypothesis)
+
+#print axioms Orbcrypt.oblivious_sample_in_orbit
+-- (standard Lean only — closure proof is a hypothesis)
+
+#print axioms Orbcrypt.refresh_independent
+-- (standard Lean only — structural)
+
+#print axioms Orbcrypt.kem_agreement_correctness
+-- (standard Lean only — follows from kem_correctness)
+
+#print axioms Orbcrypt.csidh_correctness
+-- (standard Lean only — extracts CommGroupAction.comm typeclass axiom)
+
+#print axioms Orbcrypt.comm_pke_correctness
+-- (standard Lean only — uses CommGroupAction.comm and pk_valid)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden

@@ -63,7 +63,7 @@ components.
 | 10 | Authenticated Encryption & Modes | 6 | ~16h | Phase 9 | **Complete** |
 | 11 | Reference Implementation (GAP) | 9 | ~36h | Phase 7 |
 | 12 | Hardness Alignment | 8 | ~32h | Phase 8 |
-| 13 | Public-Key Extension | 7 | ~28h | Phases 7, 12 |
+| 13 | Public-Key Extension | 7 | ~28h | Phases 7, 12 | **Complete** |
 | 14 | Parameter Selection & Benchmarks | 6 | ~20h | Phase 11 |
 | 15 | Decryption Optimization | 7 | ~22h | Phases 11, 14 |
 | 16 | Formal Verification of New Components | 10 | ~36h | Phases 7–10 |

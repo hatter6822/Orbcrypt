@@ -83,6 +83,10 @@ Orbcrypt/
     CodeEquivalence.lean              CE problem, PAut group, CEOIA, GI≤CE reduction
     TensorAction.lean                 Tensor3 type, GL³ MulAction, TI problem, GI≤TI reduction
     Reductions.lean                   TensorOIA, GIOIA, reduction chain, hardness_chain_implies_security
+  PublicKey/
+    ObliviousSampling.lean            OrbitalRandomizers, obliviousSample, refreshRandomizers (Phase 13)
+    KEMAgreement.lean                 Two-party OrbitKeyAgreement, kem_agreement_correctness (Phase 13)
+    CommutativeAction.lean            CommGroupAction class, csidh_exchange, CommOrbitPKE (Phase 13)
 implementation/
   gap/
     orbcrypt_keygen.g                 7-stage HGOE key generation pipeline (GAP)
@@ -164,6 +168,21 @@ implementation/
               Hardness.Reductions ◄── Crypto.OIA, Theorems.OIAImpliesCPA
               (TensorOIA, GIOIA, HardnessChain,
                hardness_chain_implies_security)
+
+  KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
+              |
+              v
+  PublicKey.ObliviousSampling ◄── KEM.Syntax, GroupAction.Basic
+  (OrbitalRandomizers, obliviousSample, oblivious_sample_in_orbit,
+   refreshRandomizers, refresh_independent)
+
+  PublicKey.KEMAgreement ◄── KEM.Encapsulate, KEM.Correctness
+  (OrbitKeyAgreement, sessionKey, kem_agreement_correctness,
+   SymmetricKeyAgreementLimitation)
+
+  PublicKey.CommutativeAction ◄── GroupAction.Basic, GroupAction.Canonical
+  (CommGroupAction class, csidh_exchange, csidh_correctness,
+   CommOrbitPKE, comm_pke_correctness)
 ```
 
 ## Document layout
@@ -202,6 +221,7 @@ docs/
     PHASE_16_FORMAL_VERIFICATION.md   Extended formal verification
 docs/
   HARDNESS_ANALYSIS.md                LESS/MEDS alignment, reduction chain, hardness comparison table
+  PUBLIC_KEY_ANALYSIS.md              Phase 13 public-key feasibility analysis (oblivious sampling, KEM agreement, CSIDH-style)
 implementation/
   README.md                           GAP prototype installation, usage, reproducibility guide
   gap/                                GAP source files for HGOE reference implementation
@@ -323,8 +343,12 @@ The entire formalization exists to machine-check three results. Understand what 
 | 12 | **AEAD Correctness** | `authDecaps(authEncaps(g)) = some k` for honest pairs | `AEAD/AEAD.lean` | Authenticated KEM correctly recovers keys |
 | 13 | **Hybrid Correctness** | `hybridDecrypt(hybridEncrypt(m)) = some m` | `AEAD/Modes.lean` | KEM+DEM hybrid encryption preserves messages |
 | 14 | **Hardness Chain** | HardnessChain(scheme) → IsSecure(scheme) | `Hardness/Reductions.lean` | TI-hardness + reductions → IND-1-CPA security |
+| 15 | **Oblivious Sample Correctness** | `obliviousSample ors combine hClosed i j ∈ orbit G ors.basePoint` | `PublicKey/ObliviousSampling.lean` | Oblivious sampling preserves orbit membership (Phase 13.2) |
+| 16 | **KEM Agreement Correctness** | Alice's post-decap view equals Bob's post-decap view (`= sessionKey a b`) | `PublicKey/KEMAgreement.lean` | Two-party KEM agreement recovers the same session key (Phase 13.4) |
+| 17 | **CSIDH Correctness** | `a • (b • x₀) = b • (a • x₀)` under `CommGroupAction` | `PublicKey/CommutativeAction.lean` | Commutative action supports Diffie–Hellman-style exchange (Phase 13.5) |
+| 18 | **Commutative PKE Correctness** | `decrypt(encrypt(r).1) = encrypt(r).2` | `PublicKey/CommutativeAction.lean` | CSIDH-style public-key orbit encryption is correct (Phase 13.6) |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open.
 
 ## Mathlib integration
 
@@ -372,8 +396,9 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 | 10 | Authenticated Encryption & Modes | 22-24 | 6 | ~16h | `docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md` | Complete |
 | 11 | Reference Implementation (GAP) | 24-26 | 9 | ~36h | `docs/planning/PHASE_11_GAP_PROTOTYPE.md` | Complete |
 | 12 | Hardness Alignment (LESS/MEDS/TI) | 26-28 | 8 | ~32h | `docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md` | Complete |
-| 13–16 | Practical Improvements | 28+ | 30 | ~106h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–12)** | **28** | **112** | **~298h** | | |
+| 13 | Public-Key Extension | 26-30 | 7 | ~28h | `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` | Complete |
+| 14–16 | Practical Improvements | 30+ | 23 | ~78h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–13)** | **30** | **119** | **~326h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -440,7 +465,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–12 Complete — Hardness Alignment Done
+**Current Phase:** Phases 1–13 Complete — Public-Key Extension Scaffolding Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -545,8 +570,17 @@ Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
 - 3 new Lean files, 44 new public declarations across ~770 lines
 - `lake build` succeeds for all 29 modules (zero errors)
 
+Phase 13 (Public-Key Extension) has been completed:
+- `PublicKey/ObliviousSampling.lean` — `OrbitalRandomizers` (bundle of orbit samples with membership certificate); `obliviousSample`, `obliviousSample_eq` (simp); `oblivious_sample_in_orbit` (orbit-membership theorem via closure hypothesis); `ObliviousSamplingHiding` (`Prop`-valued sender-privacy requirement, honest docstring about pathological-strength nature); `oblivious_sampling_view_constant` (immediate corollary carrying `ObliviousSamplingHiding` as hypothesis); `refreshRandomizers`, `refreshRandomizers_apply` (simp), `refreshRandomizers_in_orbit`, `refreshRandomizers_orbitalRandomizers` (epoch-indexed bundle constructor) with simp lemmas `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers`; `RefreshIndependent`, `refresh_independent` (structural independence of disjoint epochs)
+- `PublicKey/KEMAgreement.lean` — `OrbitKeyAgreement` (two-party KEM structure with combiner); `encapsA`, `encapsB`, `sessionKey`; `kem_agreement_correctness` (both decapsulation paths agree); `kem_agreement_alice_view`, `kem_agreement_bob_view` (each party's post-decap view equals `sessionKey`); `SymmetricKeyAgreementLimitation` Prop + unconditional `symmetric_key_agreement_limitation` structural identity exhibiting `sessionKey` in terms of both parties' secret `keyDerive` and `canonForm.canon` — the machine-checked formal handle on the symmetric-setup limitation
+- `PublicKey/CommutativeAction.lean` — `CommGroupAction` (typeclass extending `MulAction` with commutativity); `csidh_exchange` with simp lemmas `csidh_exchange_alice/bob/shared`; `csidh_correctness` (`a • b • x = b • a • x`); `csidh_views_agree`; `CommOrbitPKE` (public-key structure with `pk_valid` field); `encrypt`, `decrypt` + simp lemmas; `comm_pke_correctness` (CSIDH-style PKE correctness); `comm_pke_shared_secret` (sender/recipient views match); `CommGroupAction.selfAction` (`def`, not `instance`, for `CommGroup` acting on itself, to avoid typeclass diamonds); `selfAction_comm` theorem witnessing satisfiability
+- `docs/PUBLIC_KEY_ANALYSIS.md` — feasibility analysis document covering: (1) oblivious sampling viability with open `combine` problem, (2) KEM agreement limitation (symmetric setup), (3) CSIDH-style commutative action path with open concrete instantiation, (4) fundamental non-commutativity obstacle, (5) summary table and Phase 13 theorem registry
+- All 7 work units (13.1–13.7) implemented with zero `sorry`, zero warnings, zero custom axioms
+- 3 new Lean files, ~30 new public declarations across ~600 lines
+- `lake build` succeeds for all 32 modules (zero errors)
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules (29 total)
+- `lake build` succeeds with exit code 0 for all modules (32 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
 - `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
@@ -562,6 +596,12 @@ Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
 - `#print axioms nonce_reuse_leaks_orbit` — standard Lean only (follows from orbit_eq_of_smul)
 - `#print axioms aead_correctness` — standard Lean only (follows from kem_correctness + MAC.correct)
 - `#print axioms hybrid_correctness` — standard Lean only (follows from kem_correctness + DEM.correct)
+- `#print axioms hardness_chain_implies_security` — standard Lean only (HardnessChain is a hypothesis)
+- `#print axioms oblivious_sample_in_orbit` — standard Lean only (closure proof is a hypothesis)
+- `#print axioms refresh_independent` — standard Lean only (structural)
+- `#print axioms kem_agreement_correctness` — standard Lean only (follows from kem_correctness)
+- `#print axioms csidh_correctness` — standard Lean only (extracts `CommGroupAction.comm`)
+- `#print axioms comm_pke_correctness` — standard Lean only (uses `CommGroupAction.comm` and `pk_valid`)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

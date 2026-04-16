@@ -1,8 +1,13 @@
 # Phase 13 — Public-Key Extension
 
-## Weeks 26–30 | 7 Work Units | ~28 Hours
+## Weeks 26–30 | 7 Work Units | ~28 Hours | **Status: Complete**
 
 *Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+
+All seven work units have been implemented across three Lean modules
+(`Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}.lean`)
+plus a feasibility-analysis document (`docs/PUBLIC_KEY_ANALYSIS.md`).
+Zero `sorry`, zero custom axioms, all theorems machine-checked.
 
 ---
 
@@ -237,12 +242,34 @@ Track C: 13.5 (CommAction) → 13.6 (CommPKE)           → 13.7 (Analysis)
 
 ## Summary
 
-| Unit | Title | File | Effort | Deps |
-|------|-------|------|--------|------|
-| 13.1 | Oblivious Sampling Def | `PublicKey/ObliviousSampling.lean` | 4h | Phase 7 |
-| 13.2 | Oblivious Correctness | `PublicKey/ObliviousSampling.lean` | 4h | 13.1 |
-| 13.3 | Randomizer Refresh | `PublicKey/ObliviousSampling.lean` | 4h | 13.1 |
-| 13.4 | KEM Key Agreement | `PublicKey/KEMAgreement.lean` | 4h | Phase 7 |
-| 13.5 | Commutative Framework | `PublicKey/CommutativeAction.lean` | 4h | Phase 2 |
-| 13.6 | Commutative PKE | `PublicKey/CommutativeAction.lean` | 4h | 13.5 |
-| 13.7 | Public-Key Analysis | `docs/PUBLIC_KEY_ANALYSIS.md` | 4h | 13.1–13.6 |
+| Unit | Title | File | Effort | Deps | Status |
+|------|-------|------|--------|------|--------|
+| 13.1 | Oblivious Sampling Def | `PublicKey/ObliviousSampling.lean` | 4h | Phase 7 | Complete |
+| 13.2 | Oblivious Correctness | `PublicKey/ObliviousSampling.lean` | 4h | 13.1 | Complete |
+| 13.3 | Randomizer Refresh | `PublicKey/ObliviousSampling.lean` | 4h | 13.1 | Complete |
+| 13.4 | KEM Key Agreement | `PublicKey/KEMAgreement.lean` | 4h | Phase 7 | Complete |
+| 13.5 | Commutative Framework | `PublicKey/CommutativeAction.lean` | 4h | Phase 2 | Complete |
+| 13.6 | Commutative PKE | `PublicKey/CommutativeAction.lean` | 4h | 13.5 | Complete |
+| 13.7 | Public-Key Analysis | `docs/PUBLIC_KEY_ANALYSIS.md` | 4h | 13.1–13.6 | Complete |
+
+## Machine-checked deliverables
+
+| Deliverable | Module | Notes |
+|------|------|-------|
+| `OrbitalRandomizers` structure | `PublicKey/ObliviousSampling.lean` | Bundle of orbit samples with membership certificate |
+| `obliviousSample` | `PublicKey/ObliviousSampling.lean` | Client-side combiner, parameterised by closure proof |
+| `oblivious_sample_in_orbit` | `PublicKey/ObliviousSampling.lean` | Orbit-membership theorem (direct application of `hClosed`) |
+| `ObliviousSamplingHiding`, `oblivious_sampling_view_constant` | `PublicKey/ObliviousSampling.lean` | Sender-privacy predicate + corollary |
+| `refreshRandomizers`, `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Epoch-indexed bundle with orbit proof |
+| `RefreshIndependent`, `refresh_independent` | `PublicKey/ObliviousSampling.lean` | Structural independence of disjoint epochs |
+| `OrbitKeyAgreement` structure, `sessionKey` | `PublicKey/KEMAgreement.lean` | Two-party key agreement |
+| `kem_agreement_correctness`, `..._alice_view`, `..._bob_view` | `PublicKey/KEMAgreement.lean` | Both parties' views match |
+| `SymmetricKeyAgreementLimitation`, `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Unconditional structural identity exhibiting `sessionKey a b` as `combiner(k_A, k_B)` with each `k_x` = `kem_x.keyDerive(canon_x(x • bp_x))`, making formal that computing the session key requires both parties' secret `keyDerive` and `canonForm.canon` |
+| `refreshRandomizers_orbitalRandomizers_basePoint` / `..._randomizers` | `PublicKey/ObliviousSampling.lean` | Structural unfolding of the refreshed bundle's fields |
+| `selfAction_comm` | `PublicKey/CommutativeAction.lean` | Witness that `CommGroupAction` is satisfiable for every `CommGroup` |
+| `CommGroupAction` (typeclass) | `PublicKey/CommutativeAction.lean` | `MulAction` + commutativity |
+| `csidh_exchange`, `csidh_correctness`, `csidh_views_agree` | `PublicKey/CommutativeAction.lean` | CSIDH-style DH and correctness |
+| `CommOrbitPKE` structure, `encrypt`, `decrypt` | `PublicKey/CommutativeAction.lean` | Public-key encryption structure |
+| `comm_pke_correctness`, `comm_pke_shared_secret` | `PublicKey/CommutativeAction.lean` | Sender/recipient views match |
+| `CommGroupAction.selfAction` | `PublicKey/CommutativeAction.lean` | Toy self-action witness for `CommGroup` |
+| `docs/PUBLIC_KEY_ANALYSIS.md` | — | Feasibility analysis document (Track A/B/C + fundamental obstacle) |
