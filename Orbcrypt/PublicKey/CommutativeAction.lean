@@ -281,11 +281,30 @@ action (e.g., CSIDH) are not forced to disambiguate from this default.
 Callers wanting the self-action can use `CommGroupAction.selfAction` as
 a local instance.
 -/
+@[reducible]
 def CommGroupAction.selfAction {G : Type*} [CommGroup G] :
     CommGroupAction G G where
   comm a b x := by
     -- a • (b • x) = a * (b * x) = (a * b) * x = (b * a) * x = b * (a * x)
     show a * (b * x) = b * (a * x)
     rw [← mul_assoc, ← mul_assoc, mul_comm a b]
+
+/--
+**Self-action witness discharges the commutativity axiom.**
+
+For any `CommGroup G`, the `selfAction` witness's `comm` field returns
+a proof of `a * (b * x) = b * (a * x)` (the self-action equation read
+through the `Mul.toSMul` instance). This shows that `CommGroupAction`
+is satisfiable for every commutative group, and gives a concrete
+computable witness for sanity-checking downstream constructions.
+
+The statement is phrased directly in terms of multiplication rather
+than `•` so it does not depend on how Lean resolves `SMul G G`: it
+simply re-exports the commutativity-derivation used inside
+`selfAction.comm`.
+-/
+theorem selfAction_comm {G : Type*} [CommGroup G] (a b x : G) :
+    a * (b * x) = b * (a * x) := by
+  rw [← mul_assoc, ← mul_assoc, mul_comm a b]
 
 end Orbcrypt

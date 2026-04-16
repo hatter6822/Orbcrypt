@@ -230,7 +230,7 @@ Instantiation with S\_n acting on bitstrings.
 |--------|-------------|
 | `ObliviousSampling.lean` | `OrbitalRandomizers`, `obliviousSample`, `oblivious_sample_in_orbit`, `refreshRandomizers`, `refresh_independent`, `ObliviousSamplingHiding` |
 | `KEMAgreement.lean` | `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness`, `SymmetricKeyAgreementLimitation` |
-| `CommutativeAction.lean` | `CommGroupAction` (typeclass), `csidh_exchange`, `csidh_correctness`, `CommOrbitPKE`, `comm_pke_correctness`, `CommGroupAction.selfAction` |
+| `CommutativeAction.lean` | `CommGroupAction` (typeclass), `csidh_exchange`, `csidh_correctness`, `csidh_views_agree`, `CommOrbitPKE`, `comm_pke_correctness`, `comm_pke_shared_secret`, `CommGroupAction.selfAction` (def, not instance), `selfAction_comm` |
 
 ---
 

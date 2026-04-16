@@ -103,7 +103,7 @@ for the concrete HGOE construction. See `docs/PUBLIC_KEY_ANALYSIS.md`.
 -/
 def obliviousSample [Group G] [MulAction G X] {t : ℕ}
     (ors : OrbitalRandomizers G X t) (combine : X → X → X)
-    (hClosed : ∀ (x y : X), x ∈ MulAction.orbit G ors.basePoint →
+    (_hClosed : ∀ (x y : X), x ∈ MulAction.orbit G ors.basePoint →
       y ∈ MulAction.orbit G ors.basePoint →
       combine x y ∈ MulAction.orbit G ors.basePoint)
     (i j : Fin t) : X :=
@@ -148,14 +148,23 @@ The whole point of oblivious sampling is that the sender — who sees only the
 published randomizers `(ors.randomizers i)` and the public `combine` operation
 — learns *nothing* about the secret group `G`.
 
-We formalise this as: every function on the visible data (the bundle together
-with the chosen indices) factors through a function that does not mention any
-specific group element. Put differently, any two group presentations `G₁, G₂`
-with the same randomizer outputs yield the same sender view.
+We formalise this via index-indistinguishability of the sender's view: for
+any Boolean observation on `(r_i, r_j, combine r_i r_j)` and `(r_k, r_l,
+combine r_k r_l)`, the observations coincide. Equivalently, the sender's
+distribution over `(input_1, input_2, output)` is invariant under the choice
+of index pair.
 
-This is a **security conjecture**, not an unconditional theorem: its
-satisfiability depends on the concrete `combine` and the structure of the
-orbit. Theorems in this module carry it only as a hypothesis.
+**This is a strong deterministic hiding property and is *not* expected to
+hold unconditionally for concrete bundles.** It is the same kind of
+pathological-strength definition as the deterministic `OIA` in
+`Orbcrypt.Crypto.OIA` — for `t ≥ 2` with randomizers that are distinct
+orbit elements, a view that literally returns `decide (r = ors.randomizers 0)`
+witnesses that `ObliviousSamplingHiding` does not hold. Phase 8's
+probabilistic framework (`Crypto.CompOIA`) can be extended to give a
+satisfiable probabilistic analogue; we defer that to future work.
+
+Theorems in this module carry `ObliviousSamplingHiding` as a hypothesis
+rather than an axiom so no vacuous security claim is implied.
 -/
 def ObliviousSamplingHiding [Group G] [MulAction G X] {t : ℕ}
     (ors : OrbitalRandomizers G X t) (combine : X → X → X) : Prop :=
@@ -247,6 +256,24 @@ def refreshRandomizers_orbitalRandomizers [Group G] [MulAction G X]
   basePoint := basePoint
   randomizers := refreshRandomizers G_elem_sampler basePoint t epoch
   in_orbit := refreshRandomizers_in_orbit G_elem_sampler basePoint t epoch
+
+/-- The bundle's `basePoint` is the input `basePoint` (structural check). -/
+@[simp]
+theorem refreshRandomizers_orbitalRandomizers_basePoint
+    [Group G] [MulAction G X] (G_elem_sampler : ℕ → G) (basePoint : X)
+    (t : ℕ) (epoch : ℕ) :
+    (refreshRandomizers_orbitalRandomizers G_elem_sampler basePoint t epoch
+      : OrbitalRandomizers G X t).basePoint = basePoint := rfl
+
+/-- The bundle's `randomizers` function is the input sampler composed with
+`epoch * t + ·` applied to `basePoint`. -/
+@[simp]
+theorem refreshRandomizers_orbitalRandomizers_randomizers
+    [Group G] [MulAction G X] (G_elem_sampler : ℕ → G) (basePoint : X)
+    (t : ℕ) (epoch : ℕ) :
+    (refreshRandomizers_orbitalRandomizers G_elem_sampler basePoint t epoch
+      : OrbitalRandomizers G X t).randomizers =
+    refreshRandomizers G_elem_sampler basePoint t epoch := rfl
 
 /--
 **Refresh independence (as a Prop).**

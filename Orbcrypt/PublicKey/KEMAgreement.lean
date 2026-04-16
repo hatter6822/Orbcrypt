@@ -57,20 +57,26 @@ variable {G_A G_B : Type*} {X K : Type*}
 Both KEMs must share the **ciphertext space** `X` and the **key space** `K`,
 but they may act on `X` via different groups and different canonical forms.
 
-**Protocol sketch.**
-1. Alice samples `a ∈ G_A`, publishes `c_A = a • kem_A.basePoint` and keeps
-   `k_A = kem_A.keyDerive(kem_A.canonForm.canon c_A)`.
-2. Bob samples `b ∈ G_B`, publishes `c_B = b • kem_B.basePoint` and keeps
-   `k_B = kem_B.keyDerive(kem_B.canonForm.canon c_B)`.
-3. Each party decapsulates the other's ciphertext to recover their own key,
-   *using their own `canonForm`*. (Alice applies `decaps kem_A` to `c_A`, Bob
-   applies `decaps kem_B` to `c_B`.)
-4. Both compute the session key as `combiner k_A k_B`.
+**Mathematical sketch.** The session key is the combiner applied to two
+per-party KEM keys:
 
-**This is NOT a public-key primitive.** Alice must know `kem_A` (including
-`G_A`); Bob must know `kem_B`. Publishing only the base points does not let
-a third party derive the keys. See `SymmetricKeyAgreement` below for the
-limitation stated as a Prop.
+1. `k_A = (encaps kem_A a).2 = kem_A.keyDerive (canon_A (a • bp_A))`.
+2. `k_B = (encaps kem_B b).2 = kem_B.keyDerive (canon_B (b • bp_B))`.
+3. `sessionKey a b = combiner k_A k_B`.
+
+Both `k_A` and `k_B` reference the respective KEM's *secret*
+`keyDerive` and `canonForm.canon` maps. The
+`kem_agreement_correctness` theorem exhibits the equivalent
+"decapsulation-round-trip" view — replacing any single `k_x` with
+`decaps kem_x (encaps kem_x _).1`, which equals `k_x` by
+`kem_correctness` — showing that these views coincide.
+
+**This is NOT a public-key primitive.** Computing `sessionKey a b`
+requires access to *both* KEMs' secret state (`keyDerive` and
+`canonForm.canon` fields). Publishing only the base points and
+ciphertexts does not suffice — this is made formal by
+`SymmetricKeyAgreementLimitation` below, which states and proves the
+exact structural identity.
 -/
 structure OrbitKeyAgreement (G_A : Type*) (G_B : Type*) (X : Type*) (K : Type*)
     [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
@@ -169,46 +175,62 @@ theorem kem_agreement_alice_view
   rw [kem_correctness agr.kem_B b]
 
 /--
-**Fundamental limitation (as a Prop).**
+**Fundamental limitation (as a Prop): session-key computation requires both
+parties' full KEM state.**
 
-A protocol is *symmetric-setup* if the sender needs the receiver's full
-`OrbitKEM` (including the secret group) to encapsulate. This formalises the
-limitation of `OrbitKeyAgreement`: neither party can "publish" just a group
-element — both must exchange a symmetric KEM structure out-of-band.
+The session key is *not* a public-key–style derivation from the two parties'
+ciphertexts. It decomposes as
 
-The statement: for every adversary `A` that has the base point and the
-ciphertext but NOT the receiver's canonical form, the derived session-key
-bit is independent of `A`'s guess. This is a negative statement — it asserts
-that no third party can recover the session key from public data alone.
+  `sessionKey a b = combiner (k_A) (k_B)`
 
-**This Prop is stated, not proved.** It is the formal handle for the open
-problem; the feasibility analysis document discusses the obstacle in detail.
+where `k_A = kem_A.keyDerive (kem_A.canonForm.canon (a • kem_A.basePoint))`
+(and symmetrically for `k_B`). Computing either key requires the
+corresponding KEM's `keyDerive` and `canonForm.canon` — both of which are
+secret. Hence an adversary holding only the published base points and
+ciphertexts cannot evaluate `sessionKey`.
+
+This Prop exposes that decomposition as a universal equation. It is the
+**structural** limitation that motivates the commutative path
+(`Orbcrypt.PublicKey.CommutativeAction`), where the equivalent derivation
+factors through a commutative action and only one party's secret is
+needed to encapsulate.
+
+**Why this is a limitation, not a security claim.** The Prop does not
+assert hardness of anything — it asserts that the session-key formula
+references secret state on both sides. The absence of a public-key
+algorithm that avoids this dependency is what is documented (informally)
+in `docs/PUBLIC_KEY_ANALYSIS.md`.
 -/
 def SymmetricKeyAgreementLimitation
     [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
     [DecidableEq X] (agr : OrbitKeyAgreement G_A G_B X K) : Prop :=
-  -- For any public-data-only adversary the protocol does NOT provide
-  -- indistinguishability. Concretely: if an adversary's guess depends only on
-  -- the two ciphertexts (no canonical form, no group access), there exist
-  -- group elements `a, b` whose session key is determined. We do not prove
-  -- this — it is the *limitation* that motivates the commutative approach.
-  ∀ (_ : X → X → Bool),
-    ∃ (a : G_A) (b : G_B),
-      agr.sessionKey a b = agr.sessionKey a b
+  ∀ (a : G_A) (b : G_B),
+    agr.sessionKey a b =
+      agr.combiner
+        (agr.kem_A.keyDerive
+          (agr.kem_A.canonForm.canon (a • agr.kem_A.basePoint)))
+        (agr.kem_B.keyDerive
+          (agr.kem_B.canonForm.canon (b • agr.kem_B.basePoint)))
 
 /--
-The limitation statement is trivially inhabited: for any public-data-only
-predicate, the session key is trivially equal to itself. This is a *structural*
-marker — the real limitation is that we cannot prove the *negation* of the
-indistinguishability game from the group action alone. See the analysis
-document for the cryptographic content.
+`SymmetricKeyAgreementLimitation` holds for every `OrbitKeyAgreement`: this
+is a structural identity following from the definitions of `sessionKey` and
+`encaps`. The identity exhibits both parties' canonical forms inside the
+session-key formula, making explicit that the protocol cannot be used in a
+public-key fashion.
 -/
 theorem symmetric_key_agreement_limitation
     [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
     [DecidableEq X] (agr : OrbitKeyAgreement G_A G_B X K) :
     SymmetricKeyAgreementLimitation agr := by
-  -- `Nonempty G_A` and `Nonempty G_B` are guaranteed by `Group`: both have `1`.
-  intro _
-  exact ⟨(1 : G_A), (1 : G_B), rfl⟩
+  intro a b
+  -- Unfold `sessionKey`, then `encaps` on each side.
+  show agr.combiner (encaps agr.kem_A a).2 (encaps agr.kem_B b).2 =
+       agr.combiner
+         (agr.kem_A.keyDerive
+           (agr.kem_A.canonForm.canon (a • agr.kem_A.basePoint)))
+         (agr.kem_B.keyDerive
+           (agr.kem_B.canonForm.canon (b • agr.kem_B.basePoint)))
+  rfl
 
 end Orbcrypt

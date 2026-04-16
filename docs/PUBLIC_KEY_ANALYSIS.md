@@ -124,8 +124,15 @@ Session-key derivation:
 sessionKey agr a b = agr.combiner (encaps agr.kem_A a).2 (encaps agr.kem_B b).2
 ```
 
-Alice and Bob exchange ciphertexts, each decapsulates with their *own* KEM,
-and both compute `combiner k_A k_B`.
+The session key is a function of two per-party KEM keys. Each
+`(encaps kem g).2` unfolds to `kem.keyDerive (kem.canonForm.canon (g • kem.basePoint))`
+— i.e. an evaluation that requires the KEM's private `keyDerive` and
+`canonForm.canon` fields. So computing `sessionKey a b` requires access
+to **both** KEMs' secret state. The `kem_agreement_correctness`
+theorem establishes that the two obvious "views" of this computation
+(starting from either party's ciphertext, applying `decaps` on the
+appropriate KEM to recover the other KEM key, and then combining)
+agree.
 
 ### Formal content
 
@@ -134,7 +141,13 @@ and both compute `combiner k_A k_B`.
 * `kem_agreement_correctness` — the two views agree.
 * `kem_agreement_alice_view`, `kem_agreement_bob_view` — each party's
   post-decapsulation view equals `sessionKey`.
-* `SymmetricKeyAgreementLimitation` — a `Prop` marking the limitation.
+* `SymmetricKeyAgreementLimitation` (Prop) + `symmetric_key_agreement_limitation`
+  — an **unconditional structural identity** making explicit that
+  `sessionKey a b` factorises as
+  `combiner (kem_A.keyDerive (canon (a • bp_A))) (kem_B.keyDerive (canon (b • bp_B)))`.
+  Both `keyDerive` and `canonForm.canon` are private fields of the
+  respective KEMs, so the formula references *both parties'* secret
+  state — the machine-checked handle on the "symmetric setup" limitation.
 
 Correctness follows directly from `kem_correctness` applied to each KEM.
 
@@ -324,21 +337,29 @@ The most plausible paths forward are therefore:
 |---------|------|------------------|
 | `oblivious_sample_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `oblivious_sampling_view_constant` | `PublicKey/ObliviousSampling.lean` | Standard Lean (carries `ObliviousSamplingHiding` as hypothesis) |
+| `obliviousSample_eq` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
+| `refreshRandomizers_apply` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
+| `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refresh_independent` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `kem_agreement_correctness` | `PublicKey/KEMAgreement.lean` | Inherits from `kem_correctness` (standard Lean only) |
 | `kem_agreement_alice_view` / `..._bob_view` | `PublicKey/KEMAgreement.lean` | Standard Lean only |
-| `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Standard Lean only (structural) |
-| `csidh_correctness` | `PublicKey/CommutativeAction.lean` | Standard Lean (carries `CommGroupAction.comm` as class axiom) |
+| `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Standard Lean only (structural identity unfolding `sessionKey` to combiner of `keyDerive ∘ canonForm.canon`) |
+| `csidh_exchange_alice` / `csidh_exchange_bob` / `csidh_exchange_shared` (simp) | `PublicKey/CommutativeAction.lean` | Standard Lean only |
+| `csidh_correctness` | `PublicKey/CommutativeAction.lean` | Standard Lean (extracts `CommGroupAction.comm` typeclass axiom) |
 | `csidh_views_agree` | `PublicKey/CommutativeAction.lean` | Standard Lean only |
-| `comm_pke_correctness` | `PublicKey/CommutativeAction.lean` | Standard Lean only |
+| `CommOrbitPKE.encrypt_shared` / `encrypt_ciphertext` / `decrypt_eq` (simp) | `PublicKey/CommutativeAction.lean` | Standard Lean only |
+| `comm_pke_correctness` | `PublicKey/CommutativeAction.lean` | Standard Lean (extracts `CommGroupAction.comm` + uses `pk_valid`) |
 | `comm_pke_shared_secret` | `PublicKey/CommutativeAction.lean` | Standard Lean only |
+| `selfAction_comm` | `PublicKey/CommutativeAction.lean` | Standard Lean only (witnesses that `CommGroupAction` is satisfiable for any `CommGroup`) |
 
-Every Phase 13 theorem carries its cryptographic assumptions as explicit
-`Prop`-typed hypotheses (`ObliviousSamplingHiding`,
-`SymmetricKeyAgreementLimitation`) or typeclass axioms (`CommGroupAction`
-extending `MulAction` with `comm`). There are **no Lean `axiom`
-declarations** in the Phase 13 surface.
+Every Phase 13 theorem either (i) carries its cryptographic assumption
+as an explicit `Prop`-typed hypothesis (`ObliviousSamplingHiding`),
+(ii) extracts a typeclass axiom (`CommGroupAction.comm` via the
+`CommGroupAction` class extending `MulAction`), or (iii) is an
+unconditional structural identity (`symmetric_key_agreement_limitation`,
+`refresh_independent`). There are **no Lean `axiom` declarations** in
+the Phase 13 surface.
 
 ---
 

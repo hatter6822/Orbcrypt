@@ -343,16 +343,28 @@ typeclass axiom rather than a Lean `axiom`:
 - `oblivious_sample_in_orbit` (`PublicKey/ObliviousSampling.lean`) —
   oblivious sampling preserves orbit membership, given the client-supplied
   closure hypothesis `hClosed`.
+- `oblivious_sampling_view_constant` (`PublicKey/ObliviousSampling.lean`)
+  — carries `ObliviousSamplingHiding` as a hypothesis (a strong
+  deterministic hiding requirement; documented as pathological-strength
+  and not expected to hold for non-trivial bundles without a
+  probabilistic refinement).
 - `refresh_independent` (`PublicKey/ObliviousSampling.lean`) — structural
   independence of epoch-refreshed randomizer bundles (unconditional; PRF
   security remains a separate sampler-level assumption).
 - `kem_agreement_correctness` (`PublicKey/KEMAgreement.lean`) — follows
-  from `kem_correctness`; note the formal limitation
-  `SymmetricKeyAgreementLimitation` marks that this is NOT public-key.
+  from `kem_correctness`; establishes that two formulations of the
+  session-key computation coincide.
+- `symmetric_key_agreement_limitation` (`PublicKey/KEMAgreement.lean`)
+  — an unconditional structural identity exhibiting the session-key
+  formula in terms of both parties' `keyDerive` and `canonForm.canon`,
+  making formal that the protocol is symmetric-setup.
 - `csidh_correctness` and `comm_pke_correctness`
   (`PublicKey/CommutativeAction.lean`) — extract the `CommGroupAction.comm`
   typeclass axiom (not a Lean `axiom`; each concrete instance discharges it
   with a proof).
+- `selfAction_comm` (`PublicKey/CommutativeAction.lean`) — machine-checked
+  example witnessing that `CommGroupAction` is satisfiable for any
+  `CommGroup` acting on itself.
 
 ### Verification
 

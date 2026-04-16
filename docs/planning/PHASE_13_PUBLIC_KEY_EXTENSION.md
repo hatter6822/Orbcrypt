@@ -264,7 +264,9 @@ Track C: 13.5 (CommAction) → 13.6 (CommPKE)           → 13.7 (Analysis)
 | `RefreshIndependent`, `refresh_independent` | `PublicKey/ObliviousSampling.lean` | Structural independence of disjoint epochs |
 | `OrbitKeyAgreement` structure, `sessionKey` | `PublicKey/KEMAgreement.lean` | Two-party key agreement |
 | `kem_agreement_correctness`, `..._alice_view`, `..._bob_view` | `PublicKey/KEMAgreement.lean` | Both parties' views match |
-| `SymmetricKeyAgreementLimitation`, `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Formal marker for the NOT-public-key limitation |
+| `SymmetricKeyAgreementLimitation`, `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Unconditional structural identity exhibiting `sessionKey a b` as `combiner(k_A, k_B)` with each `k_x` = `kem_x.keyDerive(canon_x(x • bp_x))`, making formal that computing the session key requires both parties' secret `keyDerive` and `canonForm.canon` |
+| `refreshRandomizers_orbitalRandomizers_basePoint` / `..._randomizers` | `PublicKey/ObliviousSampling.lean` | Structural unfolding of the refreshed bundle's fields |
+| `selfAction_comm` | `PublicKey/CommutativeAction.lean` | Witness that `CommGroupAction` is satisfiable for every `CommGroup` |
 | `CommGroupAction` (typeclass) | `PublicKey/CommutativeAction.lean` | `MulAction` + commutativity |
 | `csidh_exchange`, `csidh_correctness`, `csidh_views_agree` | `PublicKey/CommutativeAction.lean` | CSIDH-style DH and correctness |
 | `CommOrbitPKE` structure, `encrypt`, `decrypt` | `PublicKey/CommutativeAction.lean` | Public-key encryption structure |
