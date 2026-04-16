@@ -335,25 +335,25 @@ PrintComparisonTable := function(results)
     Print("============================================================\n");
     Print(String("Scheme", -16), String("Type", -12),
           String("KeySize", -10), String("CTSize", -10),
-          String("Enc(us)", -10), String("Dec(us)", -10), "\n");
+          String("Enc(ms)", -10), String("Dec(ms)", -10), "\n");
     Print("------------------------------------------------------------\n");
     Print(String("AES-256-GCM", -16), String("Symmetric", -12),
           String("256b", -10), String("n+128b", -10),
-          String("~0.001", -10), String("~0.001", -10), "\n");
+          String("<0.001", -10), String("<0.001", -10), "\n");
     Print(String("Kyber-768", -16), String("KEM", -12),
           String("2400B", -10), String("1088B", -10),
-          String("~30", -10), String("~25", -10), "\n");
+          String("~0.03", -10), String("~0.025", -10), "\n");
     Print(String("BIKE-L3", -16), String("Code-KEM", -12),
           String("3114B", -10), String("3114B", -10),
-          String("~100", -10), String("~200", -10), "\n");
+          String("~0.1", -10), String("~0.2", -10), "\n");
     Print(String("HQC-256", -16), String("Code-KEM", -12),
           String("7245B", -10), String("14469B", -10),
-          String("~300", -10), String("~500", -10), "\n");
+          String("~0.3", -10), String("~0.5", -10), "\n");
     Print(String("HGOE-128", -16), String("Orbit-KEM", -12),
           String(Concatenation(String(hgoe128.n), "b"), -10),
           String(Concatenation(String(hgoe128.ctBits), "b"), -10),
-          String(Concatenation(String(hgoe128_enc * 1000), ""), -10),
-          String(Concatenation(String(hgoe128_dec * 1000), ""), -10), "\n");
+          String(Concatenation(String(hgoe128_enc), ""), -10),
+          String(Concatenation(String(hgoe128_dec), ""), -10), "\n");
     Print("============================================================\n");
     Print("Note: HGOE timings are from unoptimized GAP prototype.\n");
     Print("Production implementation would use C/C++ with optimized\n");

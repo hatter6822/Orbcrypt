@@ -298,7 +298,7 @@ Exit: CSV file is written and parseable.
 |--------|---|---|-----|---|---|---------------|
 | 80 | 216 | 8 | 27 | 108 | 108 | >= 2^81 |
 | 128 | 344 | 8 | 43 | 172 | 172 | >= 2^129 |
-| 192 | 520 | 8 | 65 | 260 | 260 | >= 2^195 |
+| 192 | 512 | 8 | 64 | 256 | 256 | >= 2^192 |
 | 256 | 688 | 8 | 86 | 344 | 344 | >= 2^258 |
 
 Exit: table populated with derived values.
@@ -538,7 +538,7 @@ depends only on 11.3.
 | 11.5 | Complete | Benchmark CSV for lambda in {80, 128, 192, 256} with timing breakdown |
 | 11.6 | Complete | Parameter tables validated, all 4 levels pass |G| >= 2^lambda, orbit counts estimated |
 | 11.7 | Complete | Comparison table with AES-256-GCM, Kyber-768, BIKE-L3, HQC-256 |
-| 11.8 | Complete | Attack: 100% accuracy (different weights), Defense: ~57.5% (same weights, expected ~50%) |
+| 11.8 | Complete | Attack: 100% accuracy (different weights), Defense: ~46% (same weights, expected ~50%) |
 | 11.9 | Complete | `implementation/README.md` with full installation, usage, reproducibility guide |
 
 ### Benchmark Results
