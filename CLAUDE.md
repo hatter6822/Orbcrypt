@@ -79,6 +79,15 @@ Orbcrypt/
     MAC.lean                          Message Authentication Code abstraction (tag, verify, correct)
     AEAD.lean                         Authenticated KEM: Encrypt-then-MAC, aead_correctness, INT_CTXT
     Modes.lean                        KEM+DEM hybrid encryption, DEM structure, hybrid_correctness
+implementation/
+  gap/
+    orbcrypt_keygen.g                 7-stage HGOE key generation pipeline (GAP)
+    orbcrypt_kem.g                    KEM encapsulation/decapsulation (GAP)
+    orbcrypt_params.g                 Parameter generation for all security levels (GAP)
+    orbcrypt_test.g                   Correctness test suite — 13 tests (GAP)
+    orbcrypt_bench.g                  Benchmark harness with CSV output (GAP)
+    orbcrypt_benchmarks.csv           Benchmark results (generated)
+  README.md                           Installation, usage, reproducibility guide
 ```
 
 ### Module dependency graph
@@ -166,6 +175,17 @@ formalization/
     PHASE_4_CORE_THEOREMS.md          Weeks 7-10: correctness, invariant attack, OIA implies CPA
     PHASE_5_CONCRETE_CONSTRUCTION.md  Weeks 11-14: S_n on bitstrings, HGOE instance, Hamming defense
     PHASE_6_POLISH_AND_DOCUMENTATION.md  Weeks 15-16: sorry audit, docstrings, Mathlib update, README
+docs/
+  planning/
+    PHASE_11_GAP_PROTOTYPE.md         Weeks 21-26: GAP reference implementation (9 work units)
+    PHASE_12_HARDNESS_ALIGNMENT.md    Hardness reduction alignment
+    PHASE_13_PUBLIC_KEY_EXTENSION.md  Public-key extension
+    PHASE_14_PARAMETER_SELECTION.md   Parameter selection optimization
+    PHASE_15_DECRYPTION_OPTIMIZATION.md  Decryption optimization (C/C++)
+    PHASE_16_FORMAL_VERIFICATION.md   Extended formal verification
+implementation/
+  README.md                           GAP prototype installation, usage, reproducibility guide
+  gap/                                GAP source files for HGOE reference implementation
 ```
 
 ## Reading large files
@@ -330,8 +350,9 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 | 8 | Probabilistic Foundations | 18-22 | 10 | ~40h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
 | 9 | Key Compression & Nonce-Based Enc | 20-22 | 7 | ~18h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
 | 10 | Authenticated Encryption & Modes | 22-24 | 6 | ~16h | `docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md` | Complete |
-| 11–16 | Practical Improvements | 24+ | 47 | ~174h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–10)** | **24** | **95** | **~230h** | | |
+| 11 | Reference Implementation (GAP) | 24-26 | 9 | ~36h | `docs/planning/PHASE_11_GAP_PROTOTYPE.md` | Complete |
+| 12–16 | Practical Improvements | 26+ | 38 | ~138h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–11)** | **26** | **104** | **~266h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -398,7 +419,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–10 Complete — Authenticated Encryption & Modes Done
+**Current Phase:** Phases 1–11 Complete — GAP Reference Implementation Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -482,6 +503,17 @@ Phase 10 (Authenticated Encryption & Modes) has been completed:
 - All 6 work units (10.1–10.6) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 3 new Lean files, 15 new public declarations across ~400 lines
 - `lake build` succeeds for all 26 modules (zero errors)
+
+Phase 11 (Reference Implementation — GAP Prototype) has been completed:
+- `implementation/gap/orbcrypt_keygen.g` — 7-stage HGOE key generation pipeline: parameter derivation, group construction (block-cyclic wreath product + optional QC code PAut), orbit representative harvesting via canonical images, lookup table construction, key assembly; `HGOEParams`, `HGOEGenerateCode`, `HGOEFallbackGroup`, `HGOEHarvestReps`, `HGOEKeygen`, `HGOEKEMKeygen`
+- `implementation/gap/orbcrypt_kem.g` — KEM encapsulation/decapsulation: `PermuteBitstring` (OnSets action), `HGOEEncaps` (sample g, compute c=g.bp, key=canon(c)), `HGOEDecaps` (key=canon(c)), `HGOEEncrypt`/`HGOEDecrypt` (AOE scheme), verification helpers
+- `implementation/gap/orbcrypt_params.g` — Parameter generation for lambda in {80, 128, 192, 256}: derivation tables, group order validation (all pass), orbit count estimation
+- `implementation/gap/orbcrypt_test.g` — 13 correctness tests across 4 sections: KEM round-trip, orbit membership, weight preservation, canonical form consistency, distinct orbits, AOE round-trip, larger parameters, invariant attack (100% accuracy on different-weight reps), weight defense (~50% on same-weight reps), higher-order invariants, edge cases
+- `implementation/gap/orbcrypt_bench.g` — Benchmark harness with timing breakdown (keygen, encaps, decaps, canonical image), CSV output, comparison table against AES-256-GCM/Kyber-768/BIKE-L3/HQC-256, go/no-go evaluation
+- `implementation/README.md` — Installation, usage, reproducibility guide, architecture overview, parameter tables, known limitations
+- All 9 work units (11.1–11.9) implemented; 13/13 tests pass; benchmarks for all 4 security levels
+- Go/No-Go: **GO** — keygen 1.4s, encaps 256ms, decaps 244ms at lambda=128
+- GAP 4.12.1 with packages: images v1.3.2, GUAVA 3.18, IO 4.8.2, ferret (optional)
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules (26 total)
