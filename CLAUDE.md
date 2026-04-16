@@ -79,6 +79,10 @@ Orbcrypt/
     MAC.lean                          Message Authentication Code abstraction (tag, verify, correct)
     AEAD.lean                         Authenticated KEM: Encrypt-then-MAC, aead_correctness, INT_CTXT
     Modes.lean                        KEM+DEM hybrid encryption, DEM structure, hybrid_correctness
+  Hardness/
+    CodeEquivalence.lean              CE problem, PAut group, CEOIA, GI≤CE reduction
+    TensorAction.lean                 Tensor3 type, GL³ MulAction, TI problem, GI≤TI reduction
+    Reductions.lean                   TensorOIA, GIOIA, reduction chain, hardness_chain_implies_security
 implementation/
   gap/
     orbcrypt_keygen.g                 7-stage HGOE key generation pipeline (GAP)
@@ -147,6 +151,19 @@ implementation/
 
   AEAD.Modes ◄── KEM.Syntax, KEM.Encapsulate
   (DEM, hybridEncrypt, hybridDecrypt, hybrid_correctness)
+
+  Mathlib.GroupTheory.Perm.Basic ──── Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup.Defs
+              |                                       |
+              v                                       v
+  Hardness.CodeEquivalence            Hardness.TensorAction
+  (ArePermEquivalent, PAut,           (Tensor3, tensorAction GL³,
+   CEOIA, GIReducesToCE)               AreTensorIsomorphic, GIReducesToTI)
+              \                                      /
+               \                                    /
+                v                                  v
+              Hardness.Reductions ◄── Crypto.OIA, Theorems.OIAImpliesCPA
+              (TensorOIA, GIOIA, HardnessChain,
+               hardness_chain_implies_security)
 ```
 
 ## Document layout
@@ -183,6 +200,8 @@ docs/
     PHASE_14_PARAMETER_SELECTION.md   Parameter selection optimization
     PHASE_15_DECRYPTION_OPTIMIZATION.md  Decryption optimization (C/C++)
     PHASE_16_FORMAL_VERIFICATION.md   Extended formal verification
+docs/
+  HARDNESS_ANALYSIS.md                LESS/MEDS alignment, reduction chain, hardness comparison table
 implementation/
   README.md                           GAP prototype installation, usage, reproducibility guide
   gap/                                GAP source files for HGOE reference implementation
@@ -303,6 +322,7 @@ The entire formalization exists to machine-check three results. Understand what 
 | 11 | **Nonce Orbit Leakage** | Cross-KEM nonce reuse leaks orbit membership | `KeyMgmt/Nonce.lean` | Formal warning: nonce misuse breaks orbit indistinguishability |
 | 12 | **AEAD Correctness** | `authDecaps(authEncaps(g)) = some k` for honest pairs | `AEAD/AEAD.lean` | Authenticated KEM correctly recovers keys |
 | 13 | **Hybrid Correctness** | `hybridDecrypt(hybridEncrypt(m)) = some m` | `AEAD/Modes.lean` | KEM+DEM hybrid encryption preserves messages |
+| 14 | **Hardness Chain** | HardnessChain(scheme) → IsSecure(scheme) | `Hardness/Reductions.lean` | TI-hardness + reductions → IND-1-CPA security |
 
 Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition.
 
@@ -351,8 +371,9 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 | 9 | Key Compression & Nonce-Based Enc | 20-22 | 7 | ~18h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
 | 10 | Authenticated Encryption & Modes | 22-24 | 6 | ~16h | `docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md` | Complete |
 | 11 | Reference Implementation (GAP) | 24-26 | 9 | ~36h | `docs/planning/PHASE_11_GAP_PROTOTYPE.md` | Complete |
-| 12–16 | Practical Improvements | 26+ | 38 | ~138h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–11)** | **26** | **104** | **~266h** | | |
+| 12 | Hardness Alignment (LESS/MEDS/TI) | 26-28 | 8 | ~32h | `docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md` | Complete |
+| 13–16 | Practical Improvements | 28+ | 30 | ~106h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–12)** | **28** | **112** | **~298h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -419,7 +440,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–11 Complete — GAP Reference Implementation Done
+**Current Phase:** Phases 1–12 Complete — Hardness Alignment Done
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -515,8 +536,17 @@ Phase 11 (Reference Implementation — GAP Prototype) has been completed:
 - Go/No-Go: **GO** — keygen 1.4s, encaps 256ms, decaps 244ms at lambda=128
 - GAP 4.12.1 with packages: images v1.3.2, GUAVA 3.18, IO 4.8.2, ferret (optional)
 
+Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
+- `Hardness/CodeEquivalence.lean` — `permuteCodeword` (coordinate permutation action on codewords), `ArePermEquivalent` (permutation code equivalence), `PAut` (permutation automorphism group), `CEOIA` (Code Equivalence OIA variant), `GIReducesToCE` (GI ≤_p CE as Prop); `permuteCodeword_one`, `permuteCodeword_mul` (action laws); `arePermEquivalent_refl`, `paut_contains_id`, `paut_mul_closed` (basic properties); `paut_compose_preserves_equivalence` (PAut coset structure); `paut_from_dual_equivalence` (dual equivalences yield automorphisms)
+- `Hardness/TensorAction.lean` — `Tensor3` (3-tensor type); `matMulTensor1`, `matMulTensor2`, `matMulTensor3` (single-axis contraction helpers); `tensorContract` (full trilinear contraction); `tensorAction` (MulAction instance for GL(n,F)³ with fully proved `one_smul` and `mul_smul`); `AreTensorIsomorphic` (tensor isomorphism relation); `areTensorIsomorphic_refl`, `areTensorIsomorphic_symm` (equivalence properties); `GIReducesToTI` (GI ≤ TI as Prop)
+- `Hardness/Reductions.lean` — `TensorOIA` (strongest OIA variant, GL³ action); `GIOIA` (graph isomorphism OIA); `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`, `GIOIAImpliesOIA` (reduction steps as Prop definitions); `HardnessChain` (full composite reduction); `oia_from_hardness_chain` (chain composition proof); `hardness_chain_implies_security` (TI-hardness → IND-1-CPA)
+- `docs/HARDNESS_ANALYSIS.md` — LESS/MEDS alignment analysis, reduction chain documentation, hardness comparison table (10 problems), literature references
+- All 8 work units (12.1–12.8) implemented with zero `sorry`, zero warnings, zero custom axioms
+- 3 new Lean files, 44 new public declarations across ~770 lines
+- `lake build` succeeds for all 29 modules (zero errors)
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules (26 total)
+- `lake build` succeeds with exit code 0 for all modules (29 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
 - `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)

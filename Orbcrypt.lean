@@ -33,6 +33,10 @@ import Orbcrypt.AEAD.MAC
 import Orbcrypt.AEAD.AEAD
 import Orbcrypt.AEAD.Modes
 
+import Orbcrypt.Hardness.CodeEquivalence
+import Orbcrypt.Hardness.TensorAction
+import Orbcrypt.Hardness.Reductions
+
 /-!
 # Orbcrypt — Formal Verification of Permutation-Orbit Encryption
 
@@ -40,8 +44,9 @@ This is the root import file. Importing `Orbcrypt` gives access to the
 complete formalization: group action foundations, cryptographic definitions,
 core theorems, the concrete HGOE construction, the KEM reformulation,
 the probabilistic security foundations (Phase 8), the key compression
-and nonce-based encryption module (Phase 9), and the authenticated
-encryption and hybrid modes layer (Phase 10).
+and nonce-based encryption module (Phase 9), the authenticated
+encryption and hybrid modes layer (Phase 10), and the hardness
+alignment with NIST PQC candidates (Phase 12).
 
 ## Module Dependency Graph
 
@@ -51,6 +56,7 @@ External dependencies (Mathlib):
 - `Mathlib.GroupTheory.Perm.Basic` — `Equiv.Perm` (symmetric group)
 - `Mathlib.Probability.ProbabilityMassFunction.*` — `PMF` type (Phase 8)
 - `Mathlib.Probability.Distributions.Uniform` — `PMF.uniformOfFintype` (Phase 8)
+- `Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup.Defs` — `GL` type (Phase 12)
 - `Mathlib.Analysis.SpecificLimits.Basic` — negligible function bounds (Phase 8)
 
 Internal module imports:
@@ -145,6 +151,20 @@ AEAD.MAC ◄── Mathlib.Tactic
   AEAD.Modes ◄── KEM.Syntax, KEM.Encapsulate
   ◄── DEM, hybridEncrypt, hybridDecrypt
   ◄── hybrid_correctness
+
+  Mathlib.GroupTheory.Perm.Basic
+  Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup.Defs
+          │
+          ▼
+  Hardness.CodeEquivalence ◄── Perm.Basic
+  ◄── ArePermEquivalent, PAut, CEOIA, GIReducesToCE
+
+  Hardness.TensorAction ◄── GeneralLinearGroup.Defs
+  ◄── Tensor3, tensorAction (MulAction GL³), AreTensorIsomorphic
+
+  Hardness.Reductions ◄── CodeEquivalence, TensorAction, Crypto.OIA
+  ◄── TensorOIA, GIOIA, HardnessChain
+  ◄── hardness_chain_implies_security
 ```
 
 ## Headline Theorem Dependencies
@@ -249,6 +269,12 @@ These theorems depend only on Lean's standard axioms (`propext`,
 - `aead_correctness` (`AEAD/AEAD.lean`) — authenticated KEM correctness
 - `hybrid_correctness` (`AEAD/Modes.lean`) — KEM+DEM hybrid correctness
 - All `AEAD/` definitions and lemmas — MAC, AuthOrbitKEM, DEM, INT_CTXT
+- All `Hardness/` definitions and lemmas — CE, TI, tensor action, reductions
+- `areTensorIsomorphic_refl` (`Hardness/TensorAction.lean`) — TI reflexivity
+- `areTensorIsomorphic_symm` (`Hardness/TensorAction.lean`) — TI symmetry
+- `arePermEquivalent_refl` (`Hardness/CodeEquivalence.lean`) — CE reflexivity
+- `paut_compose_preserves_equivalence` (`Hardness/CodeEquivalence.lean`) —
+  PAut coset structure
 
 ### OIA-dependent results (conditional)
 
@@ -263,6 +289,9 @@ explicit hypothesis:
   negligible IND-1-CPA advantage (Phase 8, asymptotic)
 - `det_oia_implies_concrete_zero` (`Crypto/CompOIA.lean`) — deterministic OIA
   implies ConcreteOIA(0) (Phase 8, bridge/compatibility)
+- `hardness_chain_implies_security` (`Hardness/Reductions.lean`) —
+  TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
+  HardnessChain as hypothesis)
 
 ### Verification
 
@@ -310,6 +339,9 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.hybrid_correctness
 -- (standard Lean only — follows from kem_correctness + DEM.correct)
+
+#print axioms Orbcrypt.hardness_chain_implies_security
+-- (standard Lean only — HardnessChain appears as a hypothesis)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden
