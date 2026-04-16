@@ -99,90 +99,144 @@ if [ -z "${MATHLIB_REV}" ]; then
 fi
 
 # -------- Lake / Mathlib cache configuration --------
-# The default cache endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
-# are blocked in some sandboxed / CI environments. We redirect both Lake's native
-# cache and Mathlib's legacy cache to raw.githubusercontent.com, which is accessible.
+# Mathlib ships precompiled `.olean` caches that can shave ~30 min off a fresh
+# build. They are hosted on Azure Blob Storage (`lakecache.blob.core.windows.net`)
+# with a Cloudflare R2 mirror (`*.r2.cloudflarestorage.com`), and Lake's native
+# cache service talks to `reservoir.lean-lang.org`. In sandboxed / CI environments
+# with an outbound-host allowlist, all three may be unreachable — in which case
+# every `lake exe cache get` attempt bursts out 8000+ 404s at zero throughput
+# and "downloads" nothing.
 #
-# Security model:
-#   - All URLs use HTTPS (transport security via TLS).
-#   - URLs are pinned to the exact Mathlib commit from lake-manifest.json
-#     (immutable reference — cannot be changed by pushes to master).
-#   - Mathlib's cache tool verifies downloaded .ltar files by content hash,
-#     providing integrity checking independent of the transport layer.
-#   - The config.toml is created once and not overwritten, respecting manual edits.
+# Strategy:
+#   1. Probe the real upstream hosts once per session to decide whether the
+#      cache is reachable.
+#   2. If reachable, delegate to `lake exe cache get` with default settings.
+#   3. If blocked, DON'T rewrite URLs to an accessible-but-empty bucket like
+#      raw.githubusercontent.com — that just produces confusing "0 KB/s"
+#      progress spam for files that will never exist there. Instead, skip the
+#      fetch, print one honest warning, and let Lake build Mathlib from source.
+#      The resulting local `.olean` files persist under
+#      `.lake/packages/mathlib/.lake/build/` and are reused on every subsequent
+#      build in the same workspace.
+#   4. Record the decision in a marker file so we don't re-probe on every
+#      session start. The marker records which outcome occurred.
 #
-# Two systems need configuration:
-#   1. ~/.lake/config.toml  — Lake's native cache service (used by `lake build --try-cache`)
-#   2. MATHLIB_CACHE_GET_URL — Mathlib's legacy cache tool (used by `lake exe cache get`)
-#
-# A marker file (.lake/.mathlib_cache_ok) tracks whether setup has been completed.
+# Notes:
+#   - Older revisions of this script wrote a `~/.lake/config.toml` redirecting
+#     Lake's native cache service to `raw.githubusercontent.com/...`. That file
+#     is now actively harmful: Lake queries it for every build and the 404s
+#     are indistinguishable from real misses. The script removes any stale
+#     copy of its own making.
+#   - `MATHLIB_CACHE_GET_URL` is intentionally left unset. The Mathlib cache
+#     tool already falls through Azure → Cloudflare automatically; a manual
+#     override to a 404-only host just makes failure less informative.
+
 MATHLIB_CACHE_MARKER="${ROOT_DIR}/.lake/.mathlib_cache_ok"
+MATHLIB_CACHE_NOFETCH_MARKER="${ROOT_DIR}/.lake/.mathlib_cache_unreachable"
 LAKE_CONFIG_DIR="${HOME}/.lake"
 LAKE_CONFIG_FILE="${LAKE_CONFIG_DIR}/config.toml"
-# Use the pinned commit for immutable URLs; fall back to 'master' only if parsing failed.
-CACHE_GIT_REF="${MATHLIB_REV:-master}"
-CACHE_BASE_URL="https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}"
 
-mathlib_cache_present() {
-  [ -f "${MATHLIB_CACHE_MARKER}" ]
+# Signature written at the top of any lake config this script previously
+# installed. Used to safely detect + remove the stale redirect without
+# clobbering a config the user hand-wrote for some other reason.
+LAKE_CONFIG_STALE_MARKER="# Lake cache configuration — redirects cache lookups to raw.githubusercontent.com"
+
+cache_host_reachable() {
+  # Return 0 iff at least one upstream cache host can actually serve a file.
+  # HEAD probes aren't enough: many firewalls proxy 4xx responses that look
+  # indistinguishable from legitimate "bucket root needs auth" errors, and
+  # Cloudflare's R2 edge returns 503 "DNS cache overflow" for egress IPs it
+  # can't route — both still leave `lake exe cache get` to fail on every file.
+  #
+  # The reliable test is a real GET: ask each endpoint for a small known-good
+  # file and see whether any bytes actually land. We use Mathlib's own
+  # `lookup` subcommand to pick a valid ltar hash for the current commit, then
+  # try to download it with a short timeout.
+
+  local probe_url probe_body sample_hash
+  probe_body="$(mktemp)"
+
+  # Find any one ltar hash the cache tool would fetch. If the tool isn't
+  # built yet or lookup fails, fall back to a hash that's been stable for
+  # months on the pinned Mathlib commit.
+  sample_hash=""
+  # Look up a real current-commit hash if the cache tool is already built
+  # AND can respond within 15s. Otherwise fall back to a previously-stable
+  # hash; the probe only needs SOME plausible .ltar URL to prove connectivity.
+  if command -v lake >/dev/null 2>&1 && command -v timeout >/dev/null 2>&1; then
+    sample_hash="$( (cd "${ROOT_DIR}" && timeout 15 lake exe cache lookup Mathlib.Init 2>/dev/null) \
+      | awk -F'/' '/\.ltar$/ {name=$NF; sub(/\.ltar$/, "", name); print name; exit}' )"
+  fi
+  [ -n "${sample_hash}" ] || sample_hash="9b9a4626d26ea70d"
+
+  for probe_url in \
+    "https://lakecache.blob.core.windows.net/mathlib4/f/${sample_hash}.ltar" \
+    "https://a09a7664adc082e00f294ac190827820.r2.cloudflarestorage.com/mathlib4/f/${sample_hash}.ltar"
+  do
+    local code bytes
+    code="$(curl -sSL -m 8 -o "${probe_body}" \
+      -w '%{http_code}' "${probe_url}" 2>/dev/null || echo "000")"
+    bytes="$(wc -c < "${probe_body}" 2>/dev/null || echo 0)"
+    if [ "${code}" = "200" ] && [ "${bytes:-0}" -gt 1024 ]; then
+      log_elapsed "cache host reachable and serving data: ${probe_url}"
+      rm -f "${probe_body}"
+      return 0
+    fi
+  done
+  rm -f "${probe_body}"
+  return 1
+}
+
+remove_stale_lake_config() {
+  # If ~/.lake/config.toml was written by an earlier version of this script
+  # and points at the broken raw.githubusercontent.com redirect, delete it.
+  # Leave user-authored configs untouched.
+  if [ -f "${LAKE_CONFIG_FILE}" ] && head -1 "${LAKE_CONFIG_FILE}" 2>/dev/null | grep -qF "${LAKE_CONFIG_STALE_MARKER}"; then
+    log_elapsed "removing stale ${LAKE_CONFIG_FILE} (broken raw.githubusercontent.com redirect)"
+    rm -f "${LAKE_CONFIG_FILE}"
+  fi
 }
 
 configure_lake_cache() {
-  if mathlib_cache_present; then
-    log_elapsed "Lake cache already configured (marker found)"
+  remove_stale_lake_config
+
+  # If we've already decided cache is unreachable, skip silently. User can
+  # force a re-probe by deleting both marker files.
+  if [ -f "${MATHLIB_CACHE_NOFETCH_MARKER}" ]; then
+    log_elapsed "Mathlib cache previously probed as unreachable; building from source"
+    return 1
+  fi
+
+  if [ -f "${MATHLIB_CACHE_MARKER}" ]; then
+    log_elapsed "Lake cache already populated (marker found)"
     return 0
   fi
 
-  # 1. Create ~/.lake/config.toml to redirect Lake's native cache service
-  #    away from blocked Reservoir to an accessible GitHub endpoint.
-  #    Uses SHA-pinned commit ref (not 'master') for immutable URLs.
-  if [ ! -f "${LAKE_CONFIG_FILE}" ]; then
-    log_elapsed "creating ${LAKE_CONFIG_FILE} (pinned to ${CACHE_GIT_REF})"
-    mkdir -p "${LAKE_CONFIG_DIR}"
-    cat > "${LAKE_CONFIG_FILE}" << CACHEEOF
-# Lake cache configuration — redirects cache lookups to raw.githubusercontent.com
-# because the default endpoints (reservoir.lean-lang.org, lakecache.blob.core.windows.net)
-# are not accessible in this environment.
-#
-# URLs are pinned to Mathlib commit ${CACHE_GIT_REF}
-# from lake-manifest.json for immutability.
-#
-# To restore default Reservoir behavior, delete this file.
-cache.defaultService = "github-raw"
+  mkdir -p "$(dirname "${MATHLIB_CACHE_MARKER}")"
 
-[[cache.service]]
-name = "github-raw"
-kind = "s3"
-artifactEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}/.lake/artifacts"
-revisionEndpoint = "https://raw.githubusercontent.com/leanprover-community/mathlib4/${CACHE_GIT_REF}/.lake/revisions"
-CACHEEOF
-    log_elapsed "Lake native cache redirected to raw.githubusercontent.com"
-  else
-    log_elapsed "~/.lake/config.toml already exists; skipping"
+  if ! cache_host_reachable; then
+    log_elapsed "warning: all Mathlib cache endpoints are blocked by the network allowlist"
+    log_elapsed "  (Azure Blob, Cloudflare R2, and Reservoir are all unreachable)"
+    log_elapsed "  skipping 'lake exe cache get' — it would 404 on every file"
+    log_elapsed "  builds will compile Mathlib from source once; the resulting .oleans"
+    log_elapsed "  persist under .lake/packages/mathlib/.lake/build/ and are reused"
+    log_elapsed "  on every subsequent build in this workspace"
+    touch "${MATHLIB_CACHE_NOFETCH_MARKER}"
+    return 1
   fi
 
-  # 2. Export MATHLIB_CACHE_GET_URL so Mathlib's legacy cache tool also
-  #    uses raw.githubusercontent.com instead of blocked Azure Blob Storage.
-  export MATHLIB_CACHE_GET_URL="${CACHE_BASE_URL}"
-  log_elapsed "MATHLIB_CACHE_GET_URL set to ${CACHE_BASE_URL}"
-
-  # 3. Attempt cache download (single try — `lake exe cache get` handles
-  #    per-file retries internally). With the redirected URL, files that
-  #    aren't hosted on raw.githubusercontent.com return fast 404s instead
-  #    of hanging on blocked hosts.
-  log_elapsed "attempting Mathlib cache download"
-  mkdir -p "$(dirname "${MATHLIB_CACHE_MARKER}")"
+  log_elapsed "Mathlib cache hosts reachable — attempting download"
+  # Unset any stale override left by older script versions so the cache tool
+  # uses its built-in Azure → Cloudflare fallback.
+  unset MATHLIB_CACHE_GET_URL
   if (cd "${ROOT_DIR}" && lake exe cache get 2>&1); then
     log_elapsed "Mathlib cache downloaded successfully"
     touch "${MATHLIB_CACHE_MARKER}"
     return 0
   fi
 
-  # Cache data not available at this endpoint, but config is in place —
-  # mark as configured so we don't re-attempt on every session start.
-  touch "${MATHLIB_CACHE_MARKER}"
-  log_elapsed "warning: Mathlib cache not available at ${CACHE_BASE_URL}"
-  log_elapsed "warning: builds will compile Mathlib from source (slow but functional)"
+  log_elapsed "warning: cache endpoints reachable but 'lake exe cache get' failed"
+  log_elapsed "  builds will fall back to compiling Mathlib from source"
   return 1
 }
 
