@@ -100,15 +100,22 @@ purely additive.
 **Module dependency within Phase 10:**
 
 ```
-AEAD/MAC.lean
+AEAD/MAC.lean  <--- Mathlib.Tactic
       |
       v
 AEAD/AEAD.lean  <--- KEM/Syntax.lean (Phase 7)
       |               KEM/Encapsulate.lean (Phase 7)
-      v
-AEAD/Modes.lean <--- KEM/Encapsulate.lean (Phase 7)
-                      KEM/Correctness.lean (Phase 7)
+      |               KEM/Correctness.lean (Phase 7)
+      |
+      (independent)
+      |
+AEAD/Modes.lean <--- KEM/Syntax.lean (Phase 7)
+                      KEM/Encapsulate.lean (Phase 7)
 ```
+
+**Note:** `AEAD/Modes.lean` is independent of `AEAD/AEAD.lean` at the import
+level. It only depends on the KEM modules directly. The conceptual dependency
+(Modes extends the AEAD layer) is architectural, not code-level.
 
 ---
 

@@ -141,9 +141,8 @@ AEAD.MAC ◄── Mathlib.Tactic
   AEAD.AEAD ◄── AEAD.MAC, KEM.Syntax, KEM.Encapsulate, KEM.Correctness
   ◄── AuthOrbitKEM, authEncaps, authDecaps
   ◄── aead_correctness, INT_CTXT
-          │
-          ▼
-  AEAD.Modes ◄── AEAD.AEAD, KEM.Encapsulate, KEM.Correctness
+
+  AEAD.Modes ◄── KEM.Syntax, KEM.Encapsulate
   ◄── DEM, hybridEncrypt, hybridDecrypt
   ◄── hybrid_correctness
 ```

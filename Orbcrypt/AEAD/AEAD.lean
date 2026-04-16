@@ -49,16 +49,17 @@ variable {G : Type*} {X : Type*} {K : Type*} {Tag : Type*}
 /--
 Authenticated Key Encapsulation Mechanism.
 
-Extends `OrbitKEM` with a MAC that authenticates ciphertexts under the
+Composes an `OrbitKEM` with a MAC that authenticates ciphertexts under the
 encapsulated key. The MAC's key type matches the KEM's key type `K`, and
 the MAC's message type matches the ciphertext space `X`.
 
-**Fields (inherited from `OrbitKEM`):**
-- `basePoint : X` — the KEM base point
-- `canonForm : CanonicalForm G X` — canonical form for orbit identification
-- `keyDerive : X → K` — key derivation function
+Uses explicit field inclusion rather than `extends` to avoid Lean 4 structure
+inheritance issues with 4+ type parameters (Risk 2 mitigation from Phase 10
+planning document).
 
-**New field:**
+**Fields:**
+- `kem : OrbitKEM G X K` — the underlying (unauthenticated) KEM, providing
+  `basePoint`, `canonForm`, and `keyDerive` via `akem.kem`
 - `mac : MAC K X Tag` — MAC for ciphertext authentication
 -/
 structure AuthOrbitKEM (G : Type*) (X : Type*) (K : Type*) (Tag : Type*)

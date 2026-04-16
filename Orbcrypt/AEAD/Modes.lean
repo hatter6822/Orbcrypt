@@ -1,6 +1,5 @@
-import Orbcrypt.AEAD.AEAD
+import Orbcrypt.KEM.Syntax
 import Orbcrypt.KEM.Encapsulate
-import Orbcrypt.KEM.Correctness
 
 /-!
 # Orbcrypt.AEAD.Modes

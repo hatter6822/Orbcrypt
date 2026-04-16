@@ -135,9 +135,8 @@ Orbcrypt/
               v
   AEAD.AEAD ◄── AEAD.MAC, KEM.Syntax, KEM.Encapsulate, KEM.Correctness
   (AuthOrbitKEM, authEncaps, authDecaps, aead_correctness, INT_CTXT)
-              |
-              v
-  AEAD.Modes ◄── AEAD.AEAD, KEM.Encapsulate, KEM.Correctness
+
+  AEAD.Modes ◄── KEM.Syntax, KEM.Encapsulate
   (DEM, hybridEncrypt, hybridDecrypt, hybrid_correctness)
 ```
 
@@ -481,7 +480,7 @@ Phase 10 (Authenticated Encryption & Modes) has been completed:
 - `AEAD/AEAD.lean` — `AuthOrbitKEM` structure composing `OrbitKEM` with `MAC` (Encrypt-then-MAC); `authEncaps` (authenticated encapsulation), `authDecaps` (verify-then-decrypt); `aead_correctness` theorem (authDecaps recovers key from honest pairs); `INT_CTXT` security definition (ciphertext integrity); simp lemmas for authEncaps components
 - `AEAD/Modes.lean` — `DEM` structure (symmetric encryption with correctness field); `hybridEncrypt` (KEM produces key, DEM encrypts data), `hybridDecrypt` (KEM recovers key, DEM decrypts); `hybrid_correctness` theorem (decrypt inverts encrypt); simp lemmas for hybrid components
 - All 6 work units (10.1–10.6) implemented with zero `sorry`, zero warnings, zero custom axioms
-- 3 new Lean files, 18 new public declarations across ~400 lines
+- 3 new Lean files, 15 new public declarations across ~400 lines
 - `lake build` succeeds for all 26 modules (zero errors)
 
 **Formalization exit criteria (all met):**
