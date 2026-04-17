@@ -306,9 +306,9 @@ theorem equivariant_combiner_breaks_oia [Group G] [MulAction G X] [DecidableEq X
   obtain ⟨g, hne⟩ := hND
   -- Assume OIA, derive False.
   intro hOIA
-  -- f (1 • reps m_bp) = f (reps m_bp) = true, since 1 • x = x and bp = reps m_bp.
+  -- f ((1 : G) • reps m_bp) = f (reps m_bp) = true, since 1 • x = x and bp = reps m_bp.
   have h_true :
-      combinerDistinguisher combiner (1 • scheme.reps m_bp) = true := by
+      combinerDistinguisher combiner ((1 : G) • scheme.reps m_bp) = true := by
     rw [one_smul]
     exact combinerDistinguisher_basePoint combiner
   -- f (g • reps m_bp) = false, directly from the witness `hne`.
@@ -317,7 +317,7 @@ theorem equivariant_combiner_breaks_oia [Group G] [MulAction G X] [DecidableEq X
     unfold combinerDistinguisher
     exact decide_eq_false hne
   -- OIA applied to (f, m_bp, m_bp, 1, g) forces equality of these two values.
-  have h_oia := hOIA (combinerDistinguisher combiner) m_bp m_bp 1 g
+  have h_oia := hOIA (combinerDistinguisher combiner) m_bp m_bp (1 : G) g
   rw [h_true, h_false] at h_oia
   -- `true = false` is absurd.
   exact Bool.noConfusion h_oia
@@ -419,23 +419,19 @@ theorem oblivious_sample_equivariant_obstruction
     (i j₁ j₂ : Fin t) (hi : ors.randomizers i = scheme.reps m_bp) :
     obliviousSample ors combiner.combine
         (fun x y hx hy => by
-          -- Reuse combiner.closed, translating orbit membership through `hBase`.
-          have hx' : x ∈ MulAction.orbit G (scheme.reps m_bp) := by
-            rw [← hBase]; exact hx
-          have hy' : y ∈ MulAction.orbit G (scheme.reps m_bp) := by
-            rw [← hBase]; exact hy
-          have := combiner.closed x y hx' hy'
-          rw [← hBase] at this
-          exact this) i j₁ =
+          -- Rewrite the goal's `ors.basePoint` to `scheme.reps m_bp` (only appears
+          -- in the `orbit G _` slot; `combiner.combine` does not mention it).
+          -- Then discharge via `combiner.closed` after rewriting each hypothesis.
+          rw [hBase]
+          exact combiner.closed x y
+            (by rw [← hBase]; exact hx)
+            (by rw [← hBase]; exact hy)) i j₁ =
       obliviousSample ors combiner.combine
         (fun x y hx hy => by
-          have hx' : x ∈ MulAction.orbit G (scheme.reps m_bp) := by
-            rw [← hBase]; exact hx
-          have hy' : y ∈ MulAction.orbit G (scheme.reps m_bp) := by
-            rw [← hBase]; exact hy
-          have := combiner.closed x y hx' hy'
-          rw [← hBase] at this
-          exact this) i j₂ := by
+          rw [hBase]
+          exact combiner.closed x y
+            (by rw [← hBase]; exact hx)
+            (by rw [← hBase]; exact hy)) i j₂ := by
   -- Unfold both sides; the proof reduces to `combine (reps m_bp) (r j₁) = combine (reps m_bp) (r j₂)`.
   simp only [obliviousSample_eq]
   -- Rewrite the first argument to `reps m_bp` using `hi`.
