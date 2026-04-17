@@ -1,16 +1,21 @@
 # Public-Key Extension — Feasibility Analysis
 
-**Phase 13 deliverable** — last updated 2026-04-16.
+**Phase 13 deliverable** — last updated 2026-04-17.
 
 This document synthesises the algebraic scaffolding introduced in
-`Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}.lean`
-and answers the question: *how close can Orbcrypt come to a public-key
-primitive, and what are the fundamental obstacles?*
+`Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction,
+CombineImpossibility}.lean` and answers the question: *how close can
+Orbcrypt come to a public-key primitive, and what are the fundamental
+obstacles?*
 
 The three tracks explored in Phase 13 correspond to three candidate paths:
 
 1. **Oblivious orbit sampling** — server publishes a bundle of orbit samples;
-   senders combine them to produce fresh ciphertexts.
+   senders combine them to produce fresh ciphertexts. An accompanying
+   **no-go theorem** (`Orbcrypt/PublicKey/CombineImpossibility.lean`,
+   added 2026-04-17) converts the open-combiner question into a
+   machine-checked impossibility result under the natural diagonal
+   `G`-equivariance hypothesis.
 2. **KEM-based key agreement** — each party runs an Orbcrypt KEM and mixes
    the keys.
 3. **Commutative group action (CSIDH-style)** — Diffie–Hellman in a
@@ -62,7 +67,7 @@ that the output is a bona fide orbit element — i.e. a valid ciphertext.
 
 All proofs go through with zero `sorry` and standard Lean axioms only.
 
-### Open problem
+### Open problem (historical framing)
 
 Finding a `combine : X → X → X` that **simultaneously**
 
@@ -79,21 +84,116 @@ is the *cryptographic obstacle*. Two natural candidates fail:
    (or similar), the sender must already know `g₁` and `g₂` — which is the
    exact secret we are trying to hide.
 
-**Possible avenues for future work:**
+### No-go theorem under equivariance
 
-* Orbit-preserving operations on quotient spaces (e.g., working in
-  `X / orbit G basePoint` quotiented out).
-* Homomorphic combiners for specific group-action families (e.g., isogeny
-  graphs under the class group action — see §3).
-* Probabilistic combiners whose failure probability is balanced against a
-  security loss.
+**Formalised in:** `Orbcrypt/PublicKey/CombineImpossibility.lean`
+(added 2026-04-17).
+
+The "open problem" above has been substantially tightened. Any candidate
+combiner that satisfies the natural **diagonal `G`-equivariance** property
+
+```
+combine (g • x) (g • y) = g • combine x y
+```
+
+— which is what makes the sender's output distribution independent of
+which orbit representative they happen to see — **cannot actually mix its
+second argument on the basepoint orbit** without refuting the
+deterministic `OIA`. Formally, the file introduces a bundled
+
+```lean
+structure GEquivariantCombiner (G X : Type*) [Group G] [MulAction G X]
+    (basePoint : X) where
+  combine     : X → X → X
+  closed      : ∀ x y, x ∈ orbit G basePoint → y ∈ orbit G basePoint →
+                  combine x y ∈ orbit G basePoint
+  equivariant : ∀ g x y, combine (g • x) (g • y) = g • combine x y
+```
+
+and proves the headline no-go **`equivariant_combiner_breaks_oia`**:
+
+```lean
+theorem equivariant_combiner_breaks_oia
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (combiner : GEquivariantCombiner G X (scheme.reps m_bp))
+    (hND : NonDegenerateCombiner combiner) :
+    ¬ OIA scheme
+```
+
+where `NonDegenerateCombiner combiner` merely asserts
+`∃ g, combine bp (g • bp) ≠ combine bp bp` — the *minimal* "actually
+mixes" property. The contrapositives
+
+* `oia_forces_combine_constant_in_snd` — under `OIA`, for every `g : G`,
+  `combine bp (g • bp) = combine bp bp`;
+* `oia_forces_combine_constant_on_orbit` — same statement for arbitrary
+  `y ∈ orbit G bp` (not only those presented as `g • bp`);
+
+show that any `OIA`-respecting equivariant combiner is constant in its
+second argument on the basepoint orbit. The bridge theorem
+**`oblivious_sample_equivariant_obstruction`** then promotes this
+into a statement about `obliviousSample`: with an equivariant `combine`,
+the second sender index contributes nothing to the output. A *fresh*
+ciphertext is impossible by this route.
+
+A further structural lemma, **`combine_section_form`**, records that
+equivariance already collapses the functional degrees of freedom of
+`combine` on `orbit G basePoint × orbit G basePoint` to the single
+section `y ↦ combine basePoint y`:
+
+```lean
+combine (g • bp) (h • bp) = g • combine bp ((g⁻¹ * h) • bp)
+```
+
+This is the *algebraic reason* the no-go holds: once equivariance forces
+combine to be determined by a section, the non-degenerate section
+immediately yields a within-orbit Boolean distinguisher, which the
+deterministic `OIA` forbids.
+
+**What remains open.** The result is stated against the deterministic
+`OIA`. The same structural obstruction is expected to translate to the
+probabilistic `ConcreteOIA` / `CompOIA` setting (Phase 8) with a
+quantitative loss; that quantitative refinement is deferred to future
+work. Combiners that *violate* equivariance (i.e., that behave
+differently on orbit-congruent input pairs) are outside the scope of
+this theorem — but they also violate the basic symmetry that makes the
+sender's output distribution well-defined, so they are of limited
+cryptographic interest.
+
+Quotient-space constructions (e.g., working in `X / orbit G basePoint`)
+do not evade this obstruction either. Any such construction falls into
+one of four cases:
+
+1. **Indicator quotient** (collapse every non-orbit element to a single
+   class): the quotient map itself is the `OIA` oracle, so publicly
+   computing it already refutes `OIA`.
+2. **Orbit-space quotient** `X / G`: the target orbit collapses to a
+   single point; lifting back to a concrete `X`-element requires a
+   section, which is precisely `CanonicalForm.canon` — the scheme's
+   secret.
+3. **Public-subgroup quotient** `X / H` for `H ≤ G` or `H ⊇ G`: the
+   former leaks partial structure of `G`; the latter (e.g. Hamming-weight
+   classes for `S_n`) is too coarse to pin down the `G`-orbit and
+   `combine` can slip between `G`-orbits within the same `H`-class.
+4. **Torsor quotient** (`O` as a torsor for `G / Stab`, when the
+   stabiliser is normal): non-trivial only when `G / Stab` is a
+   commutative *and* publicly computable group, which is exactly the
+   CSIDH-style instantiation in §3. For generic non-commutative
+   `G ≤ S_n`, no torsor structure is publicly available.
+
+In all four cases the quotient either exposes the structure that `OIA`
+is meant to hide, or reduces to §3. No new path is opened.
 
 ### Feasibility
 
-**Bounded-use / Open problem.** The formalisation can support any candidate
-`combine` by providing a closure proof. No such `combine` is known for the
-HGOE construction. Without an orbit-preserving combiner that does not leak
-`G`, the sender cannot produce fresh ciphertexts beyond the bundle.
+**Infeasible under equivariance.** The formalisation now machine-checks
+that no `G`-equivariant orbit-closed combiner can be non-degenerate for
+any scheme that satisfies the deterministic `OIA`. The only way to
+retain the bounded-use oblivious-sampling flow is to relax the
+equivariance hypothesis — but then the combiner's output distribution
+becomes non-uniform in a way that itself leaks information about `G`,
+and a quantitative analysis (against `ConcreteOIA`) is required. No
+such combiner is known.
 
 | Property | Status |
 |----------|--------|
@@ -101,7 +201,11 @@ HGOE construction. Without an orbit-preserving combiner that does not leak
 | Orbit-membership theorem | ✅ (`oblivious_sample_in_orbit`) |
 | Refresh protocol formalised | ✅ |
 | Structural refresh-independence | ✅ (`refresh_independent`) |
-| Concrete orbit-preserving, G-hiding `combine` | ❌ Open |
+| No-go for equivariant non-degenerate combiners | ✅ (`equivariant_combiner_breaks_oia`) |
+| OIA forces equivariant combiners to be constant in `snd` | ✅ (`oia_forces_combine_constant_on_orbit`) |
+| Collapse of the `obliviousSample` sender flow | ✅ (`oblivious_sample_equivariant_obstruction`) |
+| Concrete orbit-preserving, G-hiding `combine` (equivariant) | ❌ Infeasible under `OIA` |
+| Concrete orbit-preserving, G-hiding `combine` (non-equivariant) | ❓ Open — probabilistic analysis required |
 | Cryptographic sender privacy (`ObliviousSamplingHiding`) | ⚠️ Conditional |
 
 ---
@@ -316,7 +420,11 @@ The most plausible paths forward are therefore:
    server refreshes randomizer bundles per epoch (`refreshRandomizers`),
    and senders combine randomizers via a future orbit-preserving,
    G-hiding combiner. The formal framework is in place for when such a
-   combiner is discovered.
+   combiner is discovered — but the no-go theorem in §1 rules out the
+   entire *equivariant* sub-family under `OIA`, so any candidate must
+   abandon diagonal equivariance and instead be analysed against the
+   probabilistic `ConcreteOIA` / `CompOIA` with a quantitative bound.
+   This is a strictly harder open problem than §1 originally admitted.
 
 ---
 
@@ -324,7 +432,8 @@ The most plausible paths forward are therefore:
 
 | Approach | Formal content | Cryptographic status | Verdict |
 |----------|----------------|---------------------|---------|
-| Oblivious sampling (§1) | `OrbitalRandomizers`, `obliviousSample`, `refreshRandomizers`, all correctness theorems | `combine` is an open problem | Bounded-use / Open |
+| Oblivious sampling (§1) | `OrbitalRandomizers`, `obliviousSample`, `refreshRandomizers`, all correctness theorems | `combine` is an open problem | Bounded-use / Open (non-equivariant only) |
+| No-go for equivariant combiners (§1) | `GEquivariantCombiner`, `equivariant_combiner_breaks_oia`, `oia_forces_combine_constant_on_orbit`, `oblivious_sample_equivariant_obstruction` | Equivariant `combine` ⇒ ¬ `OIA` (machine-checked) | Infeasible under `OIA` |
 | KEM key agreement (§2) | `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness` | Requires symmetric keys on both sides | Works, NOT public-key |
 | Commutative action (§3) | `CommGroupAction`, `csidh_exchange`, `CommOrbitPKE`, `comm_pke_correctness` | Needs CSIDH-like concrete instantiation | Most promising path |
 | Fundamental obstacle (§4) | — | Non-commutativity is essential to hardness | Open research direction |
@@ -352,14 +461,23 @@ The most plausible paths forward are therefore:
 | `comm_pke_correctness` | `PublicKey/CommutativeAction.lean` | Standard Lean (extracts `CommGroupAction.comm` + uses `pk_valid`) |
 | `comm_pke_shared_secret` | `PublicKey/CommutativeAction.lean` | Standard Lean only |
 | `selfAction_comm` | `PublicKey/CommutativeAction.lean` | Standard Lean only (witnesses that `CommGroupAction` is satisfiable for any `CommGroup`) |
+| `GEquivariantCombiner.combine_diagonal_smul` | `PublicKey/CombineImpossibility.lean` | None |
+| `GEquivariantCombiner.combine_section_form` | `PublicKey/CombineImpossibility.lean` | `propext` only |
+| `combinerDistinguisher_eq` (simp) | `PublicKey/CombineImpossibility.lean` | None |
+| `combinerDistinguisher_basePoint` (simp) | `PublicKey/CombineImpossibility.lean` | None |
+| `combinerDistinguisher_witness` | `PublicKey/CombineImpossibility.lean` | None |
+| **`equivariant_combiner_breaks_oia`** | `PublicKey/CombineImpossibility.lean` | `propext` only (OIA is a hypothesis; theorem concludes `¬ OIA`) |
+| `oia_forces_combine_constant_in_snd` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
+| `oia_forces_combine_constant_on_orbit` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
+| `oblivious_sample_equivariant_obstruction` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
 
 Every Phase 13 theorem either (i) carries its cryptographic assumption
-as an explicit `Prop`-typed hypothesis (`ObliviousSamplingHiding`),
-(ii) extracts a typeclass axiom (`CommGroupAction.comm` via the
+as an explicit `Prop`-typed hypothesis (`ObliviousSamplingHiding`,
+`OIA`), (ii) extracts a typeclass axiom (`CommGroupAction.comm` via the
 `CommGroupAction` class extending `MulAction`), or (iii) is an
 unconditional structural identity (`symmetric_key_agreement_limitation`,
-`refresh_independent`). There are **no Lean `axiom` declarations** in
-the Phase 13 surface.
+`refresh_independent`, `combine_diagonal_smul`). There are **no Lean
+`axiom` declarations** in the Phase 13 surface.
 
 ---
 
@@ -369,7 +487,8 @@ the Phase 13 surface.
 * `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` — overall roadmap.
 * `Orbcrypt/PublicKey/ObliviousSampling.lean`,
   `Orbcrypt/PublicKey/KEMAgreement.lean`,
-  `Orbcrypt/PublicKey/CommutativeAction.lean` — formal content.
+  `Orbcrypt/PublicKey/CommutativeAction.lean`,
+  `Orbcrypt/PublicKey/CombineImpossibility.lean` — formal content.
 * Castryck, Lange, Martindale, Panny, Renes — *CSIDH: An Efficient
   Post-Quantum Commutative Group Action* (ASIACRYPT 2018).
 * Babai — *Graph Isomorphism in Quasipolynomial Time* (STOC 2016).
