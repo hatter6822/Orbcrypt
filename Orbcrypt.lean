@@ -40,6 +40,7 @@ import Orbcrypt.Hardness.Reductions
 import Orbcrypt.PublicKey.ObliviousSampling
 import Orbcrypt.PublicKey.KEMAgreement
 import Orbcrypt.PublicKey.CommutativeAction
+import Orbcrypt.PublicKey.CombineImpossibility
 
 /-!
 # Orbcrypt — Formal Verification of Permutation-Orbit Encryption
