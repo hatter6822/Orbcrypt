@@ -579,6 +579,56 @@ Phase 13 (Public-Key Extension) has been completed:
 - 3 new Lean files, ~30 new public declarations across ~600 lines
 - `lake build` succeeds for all 32 modules (zero errors)
 
+Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been completed:
+- `.github/workflows/lean4-build.yml` — (F-03) hardened `sorry` regex with
+  Perl word-boundary + comment filter so docstrings mentioning the word
+  "sorry" can no longer red-card CI; (F-22) elan installation delegated to
+  `scripts/setup_lean_env.sh`, which verifies a pinned SHA-256 of the
+  `elan-init.sh` archive before execution (single source of truth).
+- `Orbcrypt/Construction/Permutation.lean:92` — (F-04) **no change**.
+  The audit recommended `push Not at h → push_neg at h`, but the pinned
+  Mathlib (commit `fa6418a8`) has **deprecated** `push_neg` in favour of
+  `push Not`: invoking `push_neg` emits a `logWarning` at build time
+  (`Mathlib/Tactic/Push.lean:276–282`). The original `push Not at h` is
+  already the idiomatic form; switching to `push_neg` would introduce
+  a build warning and therefore violate the workstream's zero-warning
+  gate. The finding is marked "wontfix — recommendation reversed by
+  upstream deprecation" and tracked in the audit plan as A2's as-landed
+  note.
+- `Orbcrypt/Probability/Negligible.lean:90–95` — (F-18) shadowed outer
+  `hn_pos` renamed to `hn_pos_from_one`, eliminating binding ambiguity
+  across the `by_cases hC` branches.
+- `Orbcrypt/PublicKey/KEMAgreement.lean` — (F-19) `kem_agreement_correctness`
+  strengthened from a literal tautology (both sides reduced to
+  `combiner k_A k_B`) to a conjunction tying both views to
+  `sessionKey a b`. View lemmas `kem_agreement_bob_view` and
+  `kem_agreement_alice_view` reordered before the main theorem so they
+  can be reused as the two conjunction projections.
+- `Orbcrypt/Hardness/CodeEquivalence.lean` — (F-16) `paut_coset_is_equivalence_set`
+  renamed to `paut_compose_yields_equivalence`, which accurately describes
+  the proven content (right-multiplication by PAut element preserves a
+  witnessed equivalence). The full set-identity
+  `{ρ | ρ maps C₁ → C₂} = σ · PAut(C₁)` is tracked as optional follow-up
+  Workstream D3.
+- `Orbcrypt/Crypto/CompOIA.lean` and `Orbcrypt/Crypto/CompSecurity.lean`
+  — (F-13) added readability helpers `SchemeFamily.repsAt`,
+  `SchemeFamily.orbitDistAt`, `SchemeFamily.advantageAt`; `CompOIA` and
+  `CompIsSecure` now use the named helpers instead of inline
+  `@`-threaded expressions. All existing bridges and theorems preserved
+  definitionally.
+- `Orbcrypt/Hardness/CodeEquivalence.lean`, `Orbcrypt/Hardness/TensorAction.lean`,
+  and `Orbcrypt.lean` — (F-12) `GIReducesToCE` and `GIReducesToTI` each
+  gained an audit-note comment pointing at their scheduled Workstream E
+  consumer (`ConcreteHardnessChain`) and Workstream F concrete-witness
+  subtask (F3 / F4); the root file's axiom-transparency report gained a
+  new "Hardness parameter Props" section explaining that these are
+  *reduction claims*, not proofs, and listing them with their intended
+  usage.
+
+Traceability: every Workstream A finding is resolved by the edit above;
+see `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 4 for the
+specification and Appendix A for the finding-to-WU mapping.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules (32 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty

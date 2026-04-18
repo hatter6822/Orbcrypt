@@ -335,6 +335,31 @@ explicit hypothesis:
   TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
   HardnessChain as hypothesis)
 
+### Hardness parameter Props (reduction claims, not proofs)
+
+The following `Prop`-valued definitions state many-one (Karp) reductions
+between hardness problems. They are carried as *hypotheses* by downstream
+theorems (currently only by the Workstream E hardness-chain theorems, to
+be populated per `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+§ E3–E5). They are NOT proven within this formalization — a concrete
+witness would require formalising the CFI graph gadget (for `GIReducesToCE`)
+or the triangle-indicator tensor encoding (for `GIReducesToTI`). See
+`docs/HARDNESS_ANALYSIS.md` for the literature context and Phase 12
+scope note.
+
+- `GIReducesToCE` (`Hardness/CodeEquivalence.lean`) — Graph Isomorphism
+  reduces to Permutation Code Equivalence. (Consumer: Workstream E4
+  `ConcreteHardnessChain`; audit finding F-12.)
+- `GIReducesToTI` (`Hardness/TensorAction.lean`) — Graph Isomorphism
+  reduces to Tensor Isomorphism. (Consumer: Workstream E4
+  `ConcreteHardnessChain`; audit finding F-12.)
+
+Both are reduction *claims* that point at external research (LESS / MEDS
+/ Grochow–Qiao). Their function in the formalization is to document the
+intended hardness foundation and to give Workstream E's probabilistic
+hardness chain a Prop to attach to. They are audit-tracked rather than
+deleted; see audit finding F-12 for the rationale.
+
 ### Phase 13 Public-Key Extension results (conditional on their own hypotheses)
 
 Phase 13 introduces three candidate paths from symmetric to public-key orbit

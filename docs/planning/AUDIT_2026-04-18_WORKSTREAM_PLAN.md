@@ -234,10 +234,16 @@ A WU is complete iff:
 
 ## 4. Workstream A — Immediate CI & Style Fixes
 
+**Status:** **LANDED** (2026-04-18, branch `claude/workstream-a-fixes-6XlEP`).
+All eight atomic sub-units A1–A8 shipped in a single cluster of edits with
+zero `sorry`, zero new axioms, and zero regressions. See the
+"Workstream A" section of `CLAUDE.md` for the per-finding landing
+summary; see the per-sub-unit notes below for the as-landed resolution.
+
 **Goal:** dispatch the seven lowest-risk findings in a single afternoon.
 Every WU here is independent and can be landed in its own commit.
 
-### A1 — Harden the CI `sorry` regex (F-03) · XS · 10 min
+### A1 — Harden the CI `sorry` regex (F-03) · XS · 10 min · **LANDED**
 
 **Files:** `.github/workflows/lean4-build.yml`
 
@@ -268,7 +274,25 @@ temporarily inserting `-- this comment mentions sorry` and confirming it is
 **Risk:** regex typos turn CI red. Mitigate by running the exact regex
 locally against HEAD before pushing.
 
-### A2 — Fix `push Not at h` (F-04) · XS · 5 min
+### A2 — Fix `push Not at h` (F-04) · XS · 5 min · **LANDED** (wontfix — recommendation reversed by upstream deprecation)
+
+**As-landed note:** The audit's recommendation was based on an older
+Mathlib API where `push_neg` was the preferred spelling. The pinned
+Mathlib (commit `fa6418a8`, `Mathlib/Tactic/Push.lean:276–282`) has since
+**deprecated `push_neg`** in favour of `push Not`: the legacy elaborator
+emits a `logWarning` when invoked. Applying the audit's original fix
+would therefore turn `lake build Orbcrypt.Construction.Permutation`
+warning-dirty, which violates the workstream's zero-warning gate
+(§ 3.3 per-unit acceptance criterion 2 generalised to warnings).
+
+**Disposition:** the `push Not at h` spelling on line 92 is preserved.
+The finding is logged as a historical observation, and
+`CLAUDE.md`'s Workstream A summary records the reversal so future
+auditors do not regress. If Mathlib ever re-introduces `push_neg` as
+the canonical form, this line should be re-checked.
+
+**Verification:** `lake build Orbcrypt.Construction.Permutation` exits 0
+with zero warnings.
 
 **Files:** `Orbcrypt/Construction/Permutation.lean:92`
 
@@ -288,7 +312,7 @@ Mathlib form used everywhere else.
 
 **Risk:** none — `push_neg` is stable Mathlib surface.
 
-### A3 — Remove shadowed `have hn_pos` (F-18) · XS · 10 min
+### A3 — Remove shadowed `have hn_pos` (F-18) · XS · 10 min · **LANDED**
 
 **Files:** `Orbcrypt/Probability/Negligible.lean:90,101`
 
@@ -307,7 +331,7 @@ the simpler fix.
 
 **Risk:** none.
 
-### A4 — Pin elan SHA-256 in CI workflow (F-22) · S · 30 min
+### A4 — Pin elan SHA-256 in CI workflow (F-22) · S · 30 min · **LANDED**
 
 **Files:** `.github/workflows/lean4-build.yml`
 
@@ -333,7 +357,7 @@ without integrity verification. The corresponding `scripts/setup_lean_env.sh`
 **Risk:** upstream churn. Mitigate by leaving a comment linking to the
 upstream release where the SHA was captured.
 
-### A5 — Retire or strengthen `kem_agreement_correctness` (F-19) · S · 45 min
+### A5 — Retire or strengthen `kem_agreement_correctness` (F-19) · S · 45 min · **LANDED** (strengthen)
 
 **Files:** `Orbcrypt/PublicKey/KEMAgreement.lean`
 
@@ -383,7 +407,7 @@ identity.
 **Risk:** a downstream consumer might pattern-match on the old form. No
 such consumer exists in the tree (grep-verified).
 
-### A6 — Rename / strengthen `paut_coset_is_equivalence_set` (F-16) · S · 1 h
+### A6 — Rename / strengthen `paut_coset_is_equivalence_set` (F-16) · S · 1 h · **LANDED** (rename; set-identity strengthening deferred to D3)
 
 **Files:** `Orbcrypt/Hardness/CodeEquivalence.lean:220–227`
 
@@ -439,7 +463,7 @@ exists in this repo.
 permutation action (`σ⁻¹ ∘ σ = id` lifted to the code). Mathlib's
 `Equiv.Perm` supplies this; low risk.
 
-### A7 — Extract helper `def`s in Comp* modules (F-13) · S · 1 h
+### A7 — Extract helper `def`s in Comp* modules (F-13) · S · 1 h · **LANDED**
 
 **Files:** `Orbcrypt/Crypto/CompOIA.lean`, `Orbcrypt/Crypto/CompSecurity.lean`
 
@@ -486,7 +510,7 @@ keeping the inline expressions but wrap them in a single `let` in each
 definition to halve the repetition. The `@`-qualification itself is fine
 for Lean — the concern is readability, not correctness.
 
-### A8 — Delete or consume `GIReducesTo*` (F-12) · XS · 20 min
+### A8 — Delete or consume `GIReducesTo*` (F-12) · XS · 20 min · **LANDED** (document; deletion deferred — E4 will consume)
 
 **Files:** `Orbcrypt/Hardness/CodeEquivalence.lean:153–158`,
 `Orbcrypt/Hardness/TensorAction.lean:297–302`

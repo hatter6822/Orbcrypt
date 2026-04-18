@@ -293,7 +293,15 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
     stronger than GI-based ones.
 
     Stated as a `Prop`-valued definition following the OIA pattern.
-    The encoding construction is beyond this formalization's scope. -/
+    The encoding construction is beyond this formalization's scope.
+
+    **Audit note (F-12).** This definition has no in-tree consumer today;
+    Workstream E's probabilistic hardness chain
+    (`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3–E5) is
+    scheduled to consume it as an input to `ConcreteHardnessChain`. A
+    concrete witness via the triangle-indicator tensor encoding is
+    tracked as Workstream F4. Listed in the root-file "Hardness parameter
+    Props" section for transparency. -/
 def GIReducesToTI : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) F),
