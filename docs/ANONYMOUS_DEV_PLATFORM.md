@@ -70,16 +70,17 @@ that certify correctness or hiding for each.
 | Platform concept | Orbit primitive | Lean handle |
 |------------------|-----------------|-------------|
 | Per-project access tier | Subgroup action `G_P ≤ S_n` | `subgroupBitstringAction` |
-| Project identifier (what project a commit belongs to) | Orbit class `canon_{G_P}` | `canon_eq_of_mem_orbit`, Theorem 1 |
+| Project identifier (what project a commit belongs to) | Orbit class `canon_{G_P}` | `canon_eq_of_mem_orbit` (helper to Theorem 1) |
 | Pseudonymous contributor token | Bundle element from `OrbitalRandomizers G_C t` issued by the project | `oblivious_sample_in_orbit`, `refresh_independent` |
 | Session / ephemeral key for a DEM payload | KEM key `encaps(g).2` | Theorem 4 (`kem_correctness`) |
 | Coordinated vulnerability embargo | Batch-openable commitment (reveal `G_E`) | `canon_eq_implies_orbit_eq`, Theorem 6 |
 | Severity-class-private bug report | Orbit label under a triage-secret group | `concrete_oia_implies_1cpa`, Theorem 6 |
 | Reviewer capability (role) | Chain of nested subgroups | `subgroupBitstringAction` composed |
-| Per-hop LLM session key | CSIDH-style shared secret | Theorem 17, gated on open §1.3 instantiation |
+| Per-hop LLM session key | CSIDH-style shared secret | Theorem 17, gated on open `CommGroupAction` instantiation (`PUBLIC_KEY_ANALYSIS.md` §3) |
 | Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 (`seed_kem_correctness`) |
-| Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 + §1 caveat below |
-| Integrity of published artefact | AEAD with MAC | Theorem 12 (`aead_correctness`) |
+| Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 + nonce caveat below |
+| Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 (`aead_correctness`) |
+| Integrity of published artefact | `INT_CTXT` Prop on `AuthOrbitKEM` | `INT_CTXT` (`AEAD/AEAD.lean:172`) — definition, not a theorem |
 
 Two caveats recur and must be stated once:
 
@@ -192,6 +193,14 @@ communicates "this payload belongs to project P" to a `G_P` holder.
 * **G_P-holder view:** canonicalize `c_KEM` under `G_P`, derive the
   DEM key via `keyDerive`, decrypt. `hybrid_correctness` (Theorem 13)
   certifies round-trip correctness.
+* **Per-commit DEM key derivation is mandatory.** Because `canon` is
+  orbit-invariant, `encaps(g₁).2 = encaps(g₂).2` for any two `g_i`
+  under the same KEM structure — every commit under one project
+  KEM would share one DEM key, which is a cryptographic liability
+  under known-plaintext. Practical deployments must treat the KEM
+  output as a *master* key and derive per-commit DEM keys via a
+  PRF/KDF with the commit hash as context. The Lean layer does not
+  enforce this — it is an implementation discipline.
 * **Formalization handles:** Theorem 4 (KEM correctness), Theorem 12
   (AEAD), Theorem 13 (hybrid). The DEM's security is orthogonal and
   imported as a hypothesis on `DEM.correct`.
@@ -210,9 +219,15 @@ tags".
 
 ### 3.3 Branch and release disclosure via batch reveal
 
-A release branch is held as a sequence of commits encrypted under a
-release-specific subgroup `G_R ≤ G_P`. During development, the
-branch is readable only by maintainers holding `G_R`. At release
+A release branch is held as a sequence of commits each encrypted
+under a release-specific subgroup `G_R`. Each commit's KEM half
+uses a fresh `g_i ∈ G_R`; the DEM key for each commit is derived
+per-commit via a KDF (§3.1), so one leak does not compromise
+the rest. During development, the branch is readable only by
+parties who know `G_R` (i.e. hold its canonical-form definition);
+a maintainer who holds the enclosing project group `G_P` but not
+`G_R` can canonicalize under `G_P` — giving a coarser partition —
+but cannot recover per-commit DEM keys without `G_R`. At release
 time, `G_R` is published on-chain (or via a timelock VDF composed
 with a threshold share — the composability noted in `USE_CASES.md`
 §1.2). Every commit in the branch then canonicalizes atomically; the
@@ -226,6 +241,9 @@ a separate CVE embargo infrastructure.
   subgroup reveal; the branch opens atomically.
 * **Formalization handles:** `canon_idem`, `canon_eq_implies_orbit_eq`,
   Theorem 6.
+* **Open.** Threshold-sharing `G_R` across maintainers is the same
+  open primitive flagged in `USE_CASES.md` §6 bullet 2; without it,
+  a single-maintainer key leak opens the branch unilaterally.
 
 ### 3.4 Build and CI artifact binding
 
@@ -235,8 +253,10 @@ KEM. The build manifest records the list of commit canonical forms
 that went into the build; a verifier holding `G_P` can recompute the
 canonical forms of the commits and cross-check. An attacker who
 substitutes a binary without access to `G_P` cannot forge a
-canonicalization match — this is the `INT_CTXT` property (Theorem 12)
-applied to the supply chain.
+canonicalization match, and a substitution that breaks the AEAD
+tag is rejected by `INT_CTXT` (`AEAD/AEAD.lean:172`, a Prop
+definition, not a theorem). `aead_correctness` (Theorem 12) is the
+round-trip correctness complement, not the integrity statement.
 
 ### 3.5 Dependency-graph privacy
 
@@ -268,12 +288,16 @@ the still-live version.
 
 **Construction.** The bounty board's triage group `G_T` has orbits
 keyed to severity / category pairs — `(severity, subsystem)` for
-instance. A submitter encodes their submission as a message `m =
-(severity, subsystem, PoC_pointer)` and posts `c = g • reps m`. The
-triager (who holds `G_T`) canonicalizes to recover the severity /
-subsystem routing label; the PoC itself is hybrid-encrypted under a
-submitter-chosen KEM to a triager public key (classical PQ KEM — not
-orbit-based, because the submitter doesn't hold `G_T`).
+instance, drawn from a pre-agreed finite message space `M_T`. A
+submitter encodes the routing-sensitive metadata as a message
+`m = (severity, subsystem, PoC_handle) ∈ M_T` (where `PoC_handle`
+is a short per-submission identifier, not the PoC content) and
+posts `c = g • reps m`. The triager (who holds `G_T`)
+canonicalizes to recover `m`. The PoC content itself is a
+separate hybrid-encrypted blob, referenced by `PoC_handle`, sent
+to the triager via a classical PQ KEM (submitter does not hold
+`G_T` and therefore cannot produce an orbit-based KEM output for
+`G_T`).
 
 Observers see only orbit elements of uniformly distributed appearance
 (`ConcreteOIA(ε)`-bounded), so a public mirror of the bounty board
@@ -321,13 +345,21 @@ the reviewer's pseudonym; the signature is verifiable against the
 pseudonym's registered signing key. Review pseudonym-unlinkability
 across PRs follows from bundle-mediated rotation (§2.1).
 
-### 4.4 Quadratic or conviction-weighted bounty voting
+### 4.4 Bounty funding votes
 
 Who decides which bounties to fund? The same glass-ballot voting from
-`USE_CASES.md` §2.1 applies, with each token-weighted voter casting a
-sealed orbit ballot. At close, the funding group `G_V` is revealed
-and the tallies become public. For a contributor-run bounty DAO this
-collapses "vote privately, tally publicly" into one key-reveal.
+`USE_CASES.md` §2.1 applies: each voter casts a sealed orbit ballot;
+at close, the funding group `G_V` is revealed and the tallies become
+public. For a contributor-run bounty DAO this collapses "vote
+privately, tally publicly" into one key-reveal.
+
+* **Caveat — token-weighting is a deanonymization channel.** If
+  ballots are weighted by on-chain stake and the weight is public
+  per-ballot, each ballot's weight effectively fingerprints the
+  voter. Token-weighted orbit voting therefore needs an additional
+  layer (weight-hiding commitments à la Bulletproof range proofs,
+  or fixed-weight buckets). One-voter-one-vote governance does not
+  have this problem.
 
 ### 4.5 Reputation without deanonymization
 
@@ -436,7 +468,8 @@ central KDC. Orbit-element session keys double as access tokens for
 cached intermediate state.
 
 * **Gated on:** a concrete `CommGroupAction` instantiation. This is
-  the `PUBLIC_KEY_ANALYSIS.md` §3 open problem. Until it lands,
+  the `PUBLIC_KEY_ANALYSIS.md` §3 open problem, also used for
+  `USE_CASES.md` §3.4 cross-hop DEX routing. Until it lands,
   agent-pair session keys must come from a classical PQ KEM
   (Kyber/ML-KEM) and Orbcrypt handles only the orbit-labelling part.
 
@@ -508,12 +541,26 @@ access. The canonical-form-set membership check is a single
 
 Disputes (bounty payment contested, license violation claim, etc.)
 reference sealed artifacts. A resolver appointed by the DAO is
-issued a scoped delegation of `G_P` (or a subgroup) for the duration
-of the dispute; they canonicalize the relevant artefacts, render a
-judgement, and the delegation expires by the end of the refresh
-epoch (`refresh_independent` structural bound). Orbit-level
-capability scoping matches the natural legal scoping: the resolver
-sees only what the dispute requires, not the whole repo.
+handed a dispute-scoped subgroup `G_D ≤ G_P` — not `G_P` itself —
+whose orbits isolate the specific artefacts the dispute concerns.
+The resolver canonicalizes under `G_D`, renders a judgement, and
+loses access to future artefacts by construction: subsequent
+artefacts are encrypted under a rotated `G_D' ≠ G_D`, which the
+resolver does not hold.
+
+* **Honest caveat.** There is no cryptographic mechanism that
+  *revokes* a group once it has been handed out — a resolver who
+  keeps `G_D` in memory can canonicalize any past artefact
+  encrypted under it. Time-bounded access therefore requires
+  *rotating* the underlying group on a schedule and re-encrypting
+  future artefacts; old ciphertexts under the old `G_D` remain
+  readable by a cooperating resolver. The honest statement of the
+  capability bound: "delegation is scoped to artefacts already
+  encrypted under the handed-out subgroup."
+* `refresh_independent` is *not* the right formal handle here — it
+  concerns per-epoch bundle structural independence, not group
+  delegation. The right handle is subgroup rotation; no Lean
+  development addresses dispute-scoped rotation yet.
 
 ---
 
@@ -588,7 +635,7 @@ stack is:
 | Layer | Purpose | Primitive(s) |
 |-------|---------|--------------|
 | Network | Hide IP, timing, traffic patterns | Tor / I2P / Nym / Loopix mixnet |
-| Session | Establish forward-secret pairwise keys | Classical PQ KEM (ML-KEM) + Noise; CSIDH-style (§5.5) when instantiated |
+| Session | Establish forward-secret pairwise keys | Classical PQ KEM (ML-KEM) with a PQ-aware Noise variant or TLS 1.3 hybrid; CSIDH-style (§5.5) when instantiated. Stock Noise DH patterns are pre-quantum and must not be used. |
 | Authorship | Bind actions to a pseudonym; pseudonym-unlinkability across actions | Orbcrypt bundles (§2.1) + PQ signatures (SPHINCS+/ML-DSA) |
 | Content | Confidentiality of artefact payloads | AEAD hybrid (Orbcrypt KEM + ChaCha20-Poly1305 DEM; Theorem 13) |
 | Category | Hide which project / severity / role an action concerns | Orbcrypt orbit structure on the KEM (§§3.2, 4.1) |
@@ -631,11 +678,13 @@ Four adversary classes, in increasing capability:
    category leakage; network-layer mixnet mitigates timing.
 4. **Compromised maintainer key.** Holds `G_P` for one project. All
    §§3.1, 3.3, 4.3 guarantees for that project collapse; other
-   projects' `G_{P'}` remain independent. Rotation via subgroup
-   rotation (§2.4) re-establishes privacy for future actions but
-   does not retroactively seal past actions. No cryptographic layer
-   recovers from this kind of compromise; the mitigation is
-   capability-scoping and prompt revocation.
+   projects' `G_{P'}` remain independent. Rotation of the project
+   subgroup (the pattern in `USE_CASES.md` §2.4's delegation trees,
+   applied here to projects rather than DAO roles) re-establishes
+   privacy for future actions but does not retroactively seal past
+   actions. No cryptographic layer recovers from this kind of
+   compromise; the mitigation is capability-scoping at issuance
+   time and prompt rotation on detection.
 
 A fifth adversary class, **a CRQC (quantum)**, is the reason the
 platform chose Orbcrypt in the first place. All orbit-layer
@@ -722,3 +771,85 @@ disclosure-aware seed backup) are the concrete next-step work units
 for any deployment team, and each maps cleanly to either the
 `PRACTICAL_IMPROVEMENTS_PLAN.md` backlog or the `PHASE_14+` planning
 documents.
+
+---
+
+## 13. Audit changelog (2026-04-18)
+
+This document was audited against the Lean 4 formalization on
+2026-04-18. The following corrections were applied relative to the
+initial draft; recording them here so later readers can see what
+claims were weakened and why.
+
+* **§1 table (primitive map).** Dropped the incorrect "Theorem 1"
+  label from the `canon_eq_of_mem_orbit` row (Theorem 1 in
+  `CLAUDE.md`'s registry is the full correctness theorem, not this
+  helper lemma). Split the "Integrity of published artefact" row
+  into two rows: `aead_correctness` as Theorem 12 (round-trip
+  correctness) and `INT_CTXT` as a `Prop` definition in
+  `AEAD/AEAD.lean:172` (not a theorem). Tightened the CSIDH row to
+  cross-reference `PUBLIC_KEY_ANALYSIS.md` §3 explicitly.
+* **§3.1 (encrypted commit storage).** Added the mandatory
+  per-commit DEM key derivation caveat: because `canon` is
+  orbit-invariant, every `encaps` under one KEM produces the same
+  key (`encaps(g).2 = keyDerive(canon(g • basePoint)) =
+  keyDerive(canon(basePoint))`, verified in
+  `KEM/Encapsulate.lean:78`). Deployments must treat the KEM
+  output as a *master* key and derive per-commit DEM keys via a
+  PRF/KDF. The Lean layer does not enforce this.
+* **§3.3 (branch disclosure).** Corrected the "readable only by
+  maintainers holding `G_R`" claim: a `G_P` holder without `G_R`
+  can canonicalize under `G_P` (coarser partition) but cannot
+  recover per-commit DEM keys without `G_R`. Added an explicit
+  note that per-commit KDF discipline from §3.1 is required, and
+  that single-maintainer `G_R` is a unilateral-release risk that
+  threshold-`G` (`USE_CASES.md` §6 bullet 2) would mitigate.
+* **§3.4 (build binding).** Corrected the `INT_CTXT` labelling:
+  it is a `Prop` definition in `AEAD/AEAD.lean:172`, not Theorem
+  12. `aead_correctness` is Theorem 12 and is the round-trip
+  correctness complement, not the integrity statement.
+* **§4.1 (sealed bug bounty).** Clarified that the message space
+  `M_T` is finite (Orbcrypt's `reps` is a map from a finite `M`);
+  the PoC content is a separate hybrid-encrypted blob referenced
+  by a short `PoC_handle ∈ M_T`, not encoded into the orbit
+  message itself.
+* **§4.4 (bounty voting).** Removed the "quadratic or conviction-
+  weighted" qualifier from the heading; the original construction
+  did not address weight privacy. Added an explicit caveat that
+  token-weighted sealed voting deanonymizes by weight, and that
+  additional primitives (weight-hiding commitments or fixed-weight
+  buckets) are needed for weighted orbit voting.
+* **§5.5 (CSIDH agent messaging).** Added the cross-reference to
+  `USE_CASES.md` §3.4 (cross-hop DEX routing), which is gated on
+  the same open `CommGroupAction` instantiation problem.
+* **§6.5 (dispute resolution).** Rewrote the capability-expiry
+  claim: `refresh_independent` concerns per-epoch bundle
+  structural independence, not group-delegation expiry. A group
+  handed out cannot be cryptographically revoked; time-bounded
+  access requires subgroup rotation of the underlying `G_D` on
+  a schedule. The honest capability bound is: "delegation is
+  scoped to artefacts already encrypted under the handed-out
+  subgroup." No Lean development addresses dispute-scoped rotation
+  yet.
+* **§8 (anonymity stack).** Qualified the "Noise" entry: stock
+  Noise DH patterns are pre-quantum; only PQ-aware variants (or
+  TLS 1.3 hybrid modes with ML-KEM) are CRQC-safe.
+* **§9 (threat model, class 4).** Corrected the "rotation via
+  subgroup rotation (§2.4)" cross-reference: this document's §2.4
+  is the scope-limitation section, not a rotation construction.
+  The rotation pattern is `USE_CASES.md` §2.4 (delegation trees),
+  re-cast here to projects rather than DAO roles.
+
+All numbered theorem references (Theorems 4, 6, 9, 10, 11, 12, 13,
+17) and all named Lean identifiers
+(`canon_idem`, `canon_eq_of_mem_orbit`,
+`canon_eq_implies_orbit_eq`, `canonical_isGInvariant`,
+`invariant_const_on_orbit`, `concreteOIA_zero_implies_perfect`,
+`concrete_oia_implies_1cpa`, `seed_kem_correctness`,
+`nonce_reuse_leaks_orbit`, `aead_correctness`, `hybrid_correctness`,
+`csidh_correctness`, `subgroupBitstringAction`, `hgoeKEM`,
+`oblivious_sample_in_orbit`, `refresh_independent`, `INT_CTXT`)
+were cross-checked against their Lean sources and the theorem
+registry in `CLAUDE.md`. All exist with the stated meanings.
+Benchmark figures (canon: 172 / 320 / 1186 ms at λ=80/128/256)
+were cross-checked against `implementation/gap/orbcrypt_benchmarks.csv`.
