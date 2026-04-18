@@ -42,6 +42,15 @@ combiner impossibility theorem. Until that work lands, `oia_implies_1cpa`,
 ≥ 2 orbit representatives** — a fact the project already self-documents but
 has not yet remediated.
 
+**Decomposition discipline.** The original plan named 38 parent work units;
+the present revision decomposes every M/L/XL parent into atomic sub-WUs
+(B1 → B1a/b/c, C2 → C2a/b/c, D1 → D1a/b/c, D2 → D2a/b/c, E1 → E1a–d,
+E2 → E2a/b/c, E3 → E3-prep + E3a–d, E4 → E4a–c, E6 → E6a–c, E7 → E7a–c,
+E8 → E8a–d, F1 → F1a–d, F3 → F3a–d, F4 → F4a–d, F5 → F5a–c (tiered),
+F6 → F6a–c). The resulting **77 atomic units** are each: independently
+buildable, ≤ 16 h apiece, individually revertible. No remaining sub-WU
+is a multi-day monolith.
+
 ## 2. Finding Verification (non-erroneous)
 
 Every finding was spot-checked against the current source. Representative
@@ -69,6 +78,8 @@ affected by it and each is correctly filed.
 
 ## 3. Workstream Overview
 
+### Workstream-level dependencies
+
 ```
 A (quick fixes) ──┐
                   ├── independent, can land immediately
@@ -79,30 +90,109 @@ D (CE API)       ── independent, enables F-09 research later
 
 E (prob chain) ── depends on A2 (F-04 fix unblocks the Construction module),
                   builds on existing Phase 8 infrastructure
-                  ├── E1 (ConcreteKEMOIA)  ── needed before E6
-                  ├── E2 (Concrete*OIA family) ── independent leaves
-                  ├── E3 (probabilistic reductions) ── needs E2
-                  ├── E4 (ConcreteHardnessChain) ── needs E3
-                  ├── E5 (final → IND-1-CPA) ── needs E4
-                  ├── E6 (probabilistic combiner no-go) ── needs E1
-                  ├── E7 (product PMF) ── independent prereq for E8
-                  └── E8 (multi-query IND-Q-CPA) ── needs E7
 F (research)   ── long-term; F3/F4 strengthen E4; F5 strengthens Phase 13
 G (docs)       ── continuous; each workstream has a doc WU
 ```
 
+### Atomic sub-WU dependencies (key sequencing edges)
+
+```
+Workstream B intra:
+  B1a → B1b → B1c   (sequential: define → prove → docstring)
+  B2 (independent)
+  B3 (independent; required by E8)
+
+Workstream C intra:
+  C1 → C2a            (verify_inj field unblocks the false-branch lemma)
+  C1 → C2b → C2c      (key-uniqueness needs the field; assembly needs both)
+  C2c → C3            (headline listing follows landing the theorem)
+  C1 → C4             (witness MAC needs the field)
+
+Workstream D intra:
+  D1a → D1b           (helper unlocks _symm)
+  D1a → D2b           (helper also unlocks inv_mem')
+  D1c (independent)
+  D2a + D2b           (must commit together — structure-field sorry rule)
+  D2a/b → D2c         (carrier identity follows the structure)
+  D1+D2 → D3          (set identity needs both)
+  D1 → D4             (Setoid instance needs symm/trans)
+
+Workstream E intra (the critical path):
+  E1a → E1b → E1c → E1d                   (KEM probabilistic)
+  E2a, E2b, E2c                           (independent leaves)
+  E3-prep → {E3a, E3b, E3c} → E3d         (encoding interface gates the three)
+  E2c → E3c                               (GIOIA used by GIOIAImpliesOIA)
+  E3a–d → E4a → E4b                        (chain assembly)
+  E4a → E4c                               (tight constructor, parallel to E4b)
+  E4 → E5                                 (final theorem)
+  E1 → E6a → E6b → E6c                    (combiner, after E1's PMF infra)
+  E7a → E7b → E7c                         (product PMF foundations)
+  E7 + B3 → E8a → E8b → E8c → E8d         (multi-query)
+  All E* → E9                             (transparency report final)
+
+Workstream F intra:
+  F1a → F1b → F1c → F1d
+  F3a → {F3b, F3c} → F3d
+  F4a → {F4b, F4c} → F4d
+  F5a (Tier 1, standalone) → F5b → F5c
+  F6a, F6b, F6c (independent leaves)
+  F3, F4 (when complete) supply concrete witnesses for E4's Prop fields
+```
+
+The longest sequential chain (the *critical path*) is in Workstream E:
+**E7a → E7b → E7c → E8a → E8b → E8c** (≈ 12 h end to end, gated by
+B3). Workstream E sub-tracks E1 (KEM), E2 (OIA family), and E7 (PMF)
+can run in parallel.
+
 ### 3.1 Workstream summary
 
-| WS | Title | WUs | Findings covered | Horizon | Total effort |
-|----|-------|-----|------------------|---------|--------------|
-| A | Immediate CI & Style Fixes | 8 | F-03, F-04, F-12, F-13, F-16, F-18, F-19, F-22 | Hours | ~6 h |
-| B | Adversary & Family Type Refinements | 3 | F-02, F-15 | Hours–days | ~8 h |
-| C | MAC Integrity & INT_CTXT | 4 | F-07 | Days | ~12 h |
-| D | Code Equivalence API | 4 | F-08, F-16 (extension) | Days | ~14 h |
-| E | Probabilistic Refinement Chain | 9 | F-01, F-10, F-11, F-17, F-20 | Weeks | ~60 h |
-| F | Implementation Gaps (research) | 6 | F-05, F-06, F-09, F-14, F-21 | Months | ~180 h |
-| G | Documentation & Transparency | 4 | cross-cutting, all | Continuous | ~8 h |
-| — | **Total** | **38** | **22** | — | **~288 h** |
+After complex-WU decomposition (see §4–§10 for sub-units), the inventory is:
+
+| WS | Title | Parent WUs | Atomic sub-WUs | Findings covered | Horizon | Total effort |
+|----|-------|------------|----------------|------------------|---------|--------------|
+| A | Immediate CI & Style Fixes | 8 | 8 | F-03, F-04, F-12, F-13, F-16, F-18, F-19, F-22 | Hours | ~5 h |
+| B | Adversary & Family Type Refinements | 3 | 5 (B1×3 + B2 + B3) | F-02, F-15 | Hours–days | ~7 h |
+| C | MAC Integrity & INT_CTXT | 4 | 6 (C1 + C2×3 + C3 + C4) | F-07 | Days | ~10 h |
+| D | Code Equivalence API | 4 | 8 (D1×3 + D2×3 + D3 + D4) | F-08, F-16 (extension) | Days | ~12 h |
+| E | Probabilistic Refinement Chain | 9 | 27 (decomposed; see below) | F-01, F-10, F-11, F-17, F-20 | Weeks | ~62 h |
+| F | Implementation Gaps (research) | 6 | 19 (decomposed; see below) | F-05, F-06, F-09, F-14, F-21 | Months | ~165 h |
+| G | Documentation & Transparency | 4 | 4 | cross-cutting, all | Continuous | ~8 h |
+| — | **Total** | **38** | **77 atomic** | **22** | — | **~269 h** |
+
+#### Workstream E sub-WU count breakdown
+
+| Parent | Sub-WUs | Total |
+|--------|---------|-------|
+| E1 (ConcreteKEMOIA) | E1a, E1b, E1c, E1d | 4 |
+| E2 (Concrete{Tensor,CE,GI}OIA) | E2a, E2b, E2c | 3 |
+| E3 (probabilistic reductions) | E3-prep, E3a, E3b, E3c, E3d | 5 |
+| E4 (ConcreteHardnessChain) | E4a, E4b, E4c | 3 |
+| E5 (chain → IND-1-CPA) | (atomic) | 1 |
+| E6 (probabilistic combiner) | E6a, E6b, E6c | 3 |
+| E7 (product PMF) | E7a, E7b, E7c | 3 |
+| E8 (multi-query) | E8a, E8b, E8c, E8d | 4 |
+| E9 (axiom transparency) | (atomic) | 1 |
+| Total | | **27** |
+
+(`E3-prep` is included in the E3 row above as the first of its five
+sub-WUs.)
+
+#### Workstream F sub-WU count breakdown
+
+| Parent | Sub-WUs | Total |
+|--------|---------|-------|
+| F1 (HGOEKeyExpansion bridge) | F1a, F1b, F1c, F1d | 4 |
+| F2 (SampleGroupSpec) | (atomic) | 1 |
+| F3 (GI ≤_p CE) | F3a, F3b, F3c, F3d | 4 |
+| F4 (GI ≤ TI) | F4a, F4b, F4c, F4d | 4 |
+| F5 (CommGroupAction) | F5a, F5b, F5c | 3 |
+| F6 (separating invariants) | F6a, F6b, F6c | 3 |
+| Total | | **19** |
+
+**Why decompose:** every sub-WU is independently buildable, independently
+reviewable, and independently revertible. The largest (F3c, F4c, F1b)
+are still ~12–16 h each — research-grade — but are no longer
+single 30–40 h monoliths.
 
 ### 3.2 Sequencing principles
 
@@ -430,42 +520,68 @@ theorems (Workstream E) can consume them cleanly.
 
 ### B1 — Introduce `IsSecureDistinct` predicate (F-02) · M · 3 h
 
-**Files:** `Orbcrypt/Crypto/Security.lean`
+**Parent goal:** surface the `Adversary.choose` asymmetry (unconstrained,
+may return `(m, m)`) by adding a distinct-challenge variant that matches
+the classical IND-1-CPA game.
 
-**Problem:** `Adversary.choose` is unconstrained, so `(m, m)` is allowed.
-`IsSecure` is therefore *stronger* than the classical IND-1-CPA game
-(which requires `m₀ ≠ m₁`). Not a bug — but a documented asymmetry that
-should be surfaced and, optionally, alternatively framed.
+**Decomposition** into three sub-units:
+
+#### B1a — Define `hasAdvantageDistinct` and `IsSecureDistinct` · XS · 45 min
+
+**File:** `Orbcrypt/Crypto/Security.lean`
 
 **Approach:**
-1. Keep `Adversary` and `IsSecure` as-is (don't break existing theorems).
-2. Add:
-   ```lean
-   def hasAdvantageDistinct [...] (scheme : OrbitEncScheme G X M)
-       (A : Adversary X M) : Prop :=
-     let (m₀, m₁) := A.choose scheme.reps
-     m₀ ≠ m₁ ∧
-     ∃ g₀ g₁ : G,
-       A.guess scheme.reps (g₀ • scheme.reps m₀) ≠
-       A.guess scheme.reps (g₁ • scheme.reps m₁)
+```lean
+def hasAdvantageDistinct [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) : Prop :=
+  let (m₀, m₁) := A.choose scheme.reps
+  m₀ ≠ m₁ ∧ ∃ g₀ g₁ : G,
+    A.guess scheme.reps (g₀ • scheme.reps m₀) ≠
+    A.guess scheme.reps (g₁ • scheme.reps m₁)
 
-   def IsSecureDistinct [...] (scheme : OrbitEncScheme G X M) : Prop :=
-     ∀ A, ¬ hasAdvantageDistinct scheme A
-   ```
-3. Prove `IsSecure scheme → IsSecureDistinct scheme` as a one-liner
-   (weaker game inherits security from stronger definition).
-4. Update the docstring of `IsSecure` to cite the asymmetry.
+def IsSecureDistinct [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) : Prop :=
+  ∀ A, ¬ hasAdvantageDistinct scheme A
+```
 
 **Acceptance:**
 - `lake build Orbcrypt.Crypto.Security` exits 0.
-- New definitions have full docstrings.
-- `IsSecure_implies_IsSecureDistinct` theorem compiles (should be
-  `intro A h; exact h ⟨_, _⟩`-style, ≤ 3 lines).
-- `#print axioms IsSecure_implies_IsSecureDistinct` = standard Lean only.
+- Both definitions carry `/-- ... -/` docstrings citing IND-1-CPA literature.
+- No existing theorem is modified.
 
-**Risk:** the new definitions add API surface but do not change existing
-theorems. Downstream effect limited to Workstream E6 (combiner no-go
-refinement) which may prefer `IsSecureDistinct` for realism.
+#### B1b — Prove `IsSecure → IsSecureDistinct` · XS · 30 min
+
+**File:** same module (adjacent).
+
+**Approach:** one-liner — the weaker distinct-challenge game is implied
+by the stronger uniform game.
+```lean
+theorem isSecure_implies_isSecureDistinct [...] (scheme : ...) :
+    IsSecure scheme → IsSecureDistinct scheme := by
+  intro hSec A hAdv
+  exact hSec A ⟨_, _, hAdv.2.choose_spec.choose_spec⟩
+```
+
+**Acceptance:**
+- Theorem compiles.
+- `#print axioms isSecure_implies_isSecureDistinct` = standard Lean only.
+
+#### B1c — Update `IsSecure` docstring noting the asymmetry · XS · 30 min
+
+**Files:** `Orbcrypt/Crypto/Security.lean`, `DEVELOPMENT.md` (Security §).
+
+**Approach:** add a paragraph to `IsSecure`'s docstring:
+> *Note on game asymmetry (F-02):* `Adversary.choose` is unconstrained,
+> so `IsSecure` is strictly stronger than the classical IND-1-CPA game.
+> `IsSecureDistinct` (in this file) matches the classical game.
+> `isSecure_implies_isSecureDistinct` proves the weaker form follows from
+> the stronger.
+
+**Acceptance:**
+- Module still builds.
+- DEVELOPMENT.md references the three definitions.
+
+**Dependency:** none; B1a → B1b → B1c is strictly sequential.
 
 ### B2 — Explicit universes on `SchemeFamily` (F-15) · S · 1 h
 
@@ -580,52 +696,91 @@ none).
 
 ### C2 — Prove `INT_CTXT` from `verify_inj` (F-07 step 2) · M · 3 h
 
-**Files:** `Orbcrypt/AEAD/AEAD.lean`
+**Parent goal:** give `INT_CTXT` its first proof. The argument has two
+branches (`verify` succeeds vs. fails) and a subtle key-uniqueness
+requirement on the KEM side. Decompose into three sub-units so each
+branch is built and tested independently.
 
-**Problem:** INT_CTXT is currently a `Prop` definition with no proof for
-any concrete composition.
+#### C2a — Prove the `verify k c t = false` branch · S · 45 min
 
-**Approach:** prove
+**File:** `Orbcrypt/AEAD/AEAD.lean`
 
+**Approach:** extract the easy branch as its own lemma.
 ```lean
-theorem authEncrypt_is_int_ctxt
-    (akem : AuthOrbitKEM G X K Tag) :
-    INT_CTXT akem := by
-  intro c t hc_t_fresh
-  -- Show authDecaps returns none: we need verify (derived_key) c t = false.
-  -- Destructure authDecaps: if verify fails → none. If verify succeeds →
-  -- by verify_inj, t = tag k c. But then c = encaps.1 and t = tag k c =
-  -- (authEncaps akem g).2.2 for some g (the one that produced c), contradicting
-  -- hc_t_fresh with that g.
-  sorry
+private lemma authDecaps_none_of_verify_false
+    (akem : AuthOrbitKEM G X K Tag) (c : X) (t : Tag)
+    (hVerify : akem.mac.verify (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t = false) :
+    authDecaps akem c t = none := by
+  simp [authDecaps, hVerify]
 ```
 
-The full proof chain:
-1. Unfold `authDecaps`.
-2. `by_cases h : verify k c t = true`.
-3. In the `false` branch: `authDecaps` returns `none` by definition.
-4. In the `true` branch: by `verify_inj`, `t = tag k c`. Since `c` must
-   equal `(authEncaps akem g).1` for some `g` to produce `k` via
-   `decaps`, use `hc_t_fresh g` to derive `c ≠ (authEncaps akem g).1 ∨
-   t ≠ (authEncaps akem g).2.2` and get a contradiction.
+**Acceptance:** lemma compiles; unfold-only proof; no new hypothesis.
 
-**Subtlety:** step 4 assumes that the MAC key `k = keyDerive (canon c)` is
-unique per ciphertext. For a collision-free `canon` + `keyDerive`, this
-holds. The theorem may need a `keyDerive_inj`-style hypothesis — to be
-confirmed when the proof is written. **Must land with zero sorry.**
+#### C2b — Identify + prove the key-uniqueness hypothesis · M · 1 h 15 min
+
+**File:** same module; extend `AuthOrbitKEM` or thread as a hypothesis.
+
+**Approach:** the `verify k c t = true` branch needs that the key `k`
+computed via `keyDerive (canon c)` matches the MAC key that would have
+signed `c`. Choose ONE of:
+
+- **Option A (preferred):** add an `AuthOrbitKEM.key_unique` field
+  stating `∀ c, keyDerive (canon c)` depends only on the orbit of `c`.
+  This holds unconditionally by `canonical_isGInvariant` — so the field
+  is provable, not assumed. Add as a *proven* field, not a parameter.
+- **Option B:** thread `key_unique` as an explicit hypothesis to
+  `authEncrypt_is_int_ctxt`. Cleaner on the structure but forces every
+  caller to re-derive the obvious fact.
+
+Pick Option A. Add a `have : akem.kem.keyDerive (akem.kem.canonForm.canon c) = ...`
+rewriting lemma for use in C2c.
+
+**Acceptance:**
+- New field / lemma has a `/-- ... -/` docstring.
+- It is discharged via `canonical_isGInvariant`, zero sorry.
+- `lake build Orbcrypt.AEAD.AEAD` exits 0.
+
+#### C2c — Assemble the main theorem · M · 1 h
+
+**File:** same module.
+
+**Approach:** stitch C2a and C2b.
+
+```lean
+theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag) :
+    INT_CTXT akem := by
+  intro c t hFresh
+  by_cases hVerify :
+      akem.mac.verify (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t = true
+  · -- true branch: derive a collision with hFresh via verify_inj + C2b
+    exfalso
+    have htag := akem.mac.verify_inj _ c t hVerify
+    -- htag : t = tag k c, where k = keyDerive (canon c)
+    -- Need to exhibit a g ∈ G with c = (authEncaps akem g).1 and
+    -- t = (authEncaps akem g).2.2, contradicting hFresh g.
+    sorry  -- filled using C2b's key_unique rewriting
+  · -- false branch: use C2a
+    exact authDecaps_none_of_verify_false akem c t
+      (by simpa using hVerify)
+```
+
+**The `sorry` in the sketch is a planning artifact; the landed commit has zero sorry.**
+The true-branch proof closes by choosing any `g : G` (existence of a
+ciphertext generator is given by `Nonempty G`, which `AuthOrbitKEM`
+already requires for KEM operation) and using C2b to pin down the tag.
 
 **Acceptance:**
 - `lake build Orbcrypt.AEAD.AEAD` exits 0.
 - `#print axioms authEncrypt_is_int_ctxt` = standard Lean only.
-- The theorem takes only hypotheses that are already carried by a standard
-  honest `AuthOrbitKEM` (MAC.verify_inj + canon-keyDerive injectivity);
-  if a new hypothesis is needed, it is stated as an extra parameter, not
-  an axiom.
+- No new custom axiom.
+- Depends on: C1 (verify_inj field), C2a, C2b.
 
-**Risk:** canon/keyDerive injectivity is not currently a field of
-`AuthOrbitKEM`. May need to land as a hypothesis, or lift to a stronger
-`AuthOrbitKEM` with a `key_unique` field. Document the choice in the
-theorem docstring.
+**Risk:** the true-branch case depends on whether an honest generator `g`
+exists for *every* `c` — i.e., whether every ciphertext in `X` is in
+`orbit G basePoint`. The intended model says yes (the ciphertext space
+equals a single orbit). If the formalization doesn't yet enforce this,
+add `c_in_orbit : c ∈ orbit G akem.kem.basePoint` as a hypothesis or
+add `basepoint_orbit_univ` as a field. Decide at implementation time.
 
 ### C3 — Wire `authEncrypt_is_int_ctxt` into the headline theorem list · XS · 20 min
 
@@ -676,14 +831,55 @@ F-08 and unblocks Workstream E's probabilistic CE refinements.
 
 ### D1 — `ArePermEquivalent.symm` and `_trans` (F-08 step 1) · M · 4 h
 
-**Files:** `Orbcrypt/Hardness/CodeEquivalence.lean`
+**Parent goal:** prove symmetry and transitivity of `ArePermEquivalent`.
+Symmetry requires a finite-bijection helper that is also reused by D2;
+decompose so D1a lands first as a standalone lemma.
 
-**Problem:** only `_refl` is proved. Without `_symm` and `_trans`,
-equivalence-preserving reductions cannot be composed.
+#### D1a — Helper: `permuteCodeword_self_bij_of_self_preserving` · M · 1 h 30 min
 
-**Approach:** prove symmetry modulo the natural equal-cardinality side
-condition:
+**File:** `Orbcrypt/Hardness/CodeEquivalence.lean`
 
+**Purpose:** the shared inversion lemma used by both `_symm` and D2's
+`inv_mem'`.
+
+**Approach:**
+```lean
+lemma permuteCodeword_self_bij_of_self_preserving
+    [DecidableEq (Fin n → F)]
+    (C : Finset (Fin n → F)) (σ : Equiv.Perm (Fin n))
+    (hσ : ∀ c ∈ C, permuteCodeword σ c ∈ C) :
+    ∀ c ∈ C, permuteCodeword σ⁻¹ c ∈ C := by
+  -- `permuteCodeword σ` is injective on the finite set C and maps C → C.
+  -- Injective self-map of a finite set is a bijection, so σ⁻¹ also
+  -- preserves C by the bijection's inverse.
+  intro c hc
+  have hInjOnC : Function.Injective (fun x : C => ⟨permuteCodeword σ x.1,
+      hσ x.1 x.2⟩ : C → C) := by
+    rintro ⟨x, hx⟩ ⟨y, hy⟩ heq
+    simp [permuteCodeword] at heq
+    -- Equal images under a permutation → equal preimages.
+    ext i
+    exact congr_fun heq i  -- abbreviated; may need funext massaging
+  have hBij : Function.Bijective _ := hInjOnC.bijective_of_finite
+  obtain ⟨⟨pre, hpre⟩, hmap⟩ := hBij.2 ⟨c, hc⟩
+  -- pre is the σ-preimage of c inside C; therefore permuteCodeword σ⁻¹ c = pre ∈ C.
+  sorry  -- final rewriting step; zero sorry in landed commit
+```
+
+**Acceptance:**
+- Lemma compiles with zero sorry.
+- Re-usable by D1b and D2b.
+- Docstring explains the finite-bijection argument.
+
+**Risk:** Mathlib's `Function.Injective.bijective_of_finite` exists but
+has specific signature requirements. If the precise lemma is missing,
+compose via `Finset.card_image_of_injOn` + `Finset.eq_of_subset_of_card_le`.
+
+#### D1b — Prove `arePermEquivalent_symm` · S · 1 h
+
+**File:** same module.
+
+**Approach:** use D1a.
 ```lean
 theorem arePermEquivalent_symm
     [DecidableEq (Fin n → F)]
@@ -693,11 +889,22 @@ theorem arePermEquivalent_symm
   rintro ⟨σ, hσ⟩
   refine ⟨σ⁻¹, ?_⟩
   intro c hc
-  -- permuteCodeword σ⁻¹ c is in C₁ iff c = permuteCodeword σ (that preimage).
-  -- Use injectivity of permuteCodeword σ on the finite C₁ and card equality
-  -- to lift the one-sided map to a bijection.
-  sorry
+  -- c ∈ C₂. Need σ⁻¹ · c ∈ C₁.
+  -- hcard + hσ injective makes hσ a bijection C₁ → C₂, so σ⁻¹ maps C₂ → C₁.
+  -- Apply D1a reasoning with C = C₁ ∪ C₂, or directly via bijection.
+  sorry  -- full proof using D1a's bijection
+```
 
+**Acceptance:**
+- Theorem compiles; zero sorry.
+- Docstring cites `hcard` requirement.
+
+#### D1c — Prove `arePermEquivalent_trans` · XS · 30 min
+
+**File:** same module.
+
+**Approach:** unconditional composition.
+```lean
 theorem arePermEquivalent_trans
     (C₁ C₂ C₃ : Finset (Fin n → F)) :
     ArePermEquivalent C₁ C₂ → ArePermEquivalent C₂ C₃ →
@@ -710,69 +917,76 @@ theorem arePermEquivalent_trans
   exact hτ _ (hσ c hc)
 ```
 
-The `sorry` in `_symm` is intentional in the plan — the actual proof
-requires `Finset.card_image_of_injective` + `Finset.eq_of_subset_of_card_le`
-to lift the forward map to a bijection. **Must land with zero sorry.**
-
 **Acceptance:**
-- `lake build Orbcrypt.Hardness.CodeEquivalence` exits 0.
-- No `sorry`; full proofs.
-- Symm requires `hcard`; trans is unconditional.
-- Docstrings cite the cardinality hypothesis.
+- Theorem compiles; zero sorry.
+- No side condition.
 
-**Risk:** the `_symm` direction needs Mathlib's `Finset` injectivity
-machinery. Budget 4 h including research; fall-back is to state
-`_symm` with a `bijective` hypothesis on `permuteCodeword σ|_{C₁}`
-rather than deriving it from `hcard`.
+**Dependencies:** D1a must land before D1b. D1c is independent of D1a/D1b.
 
 ### D2 — Promote `PAut` to `Subgroup (Equiv.Perm (Fin n))` (F-08 step 2) · M · 3 h
 
-**Files:** `Orbcrypt/Hardness/CodeEquivalence.lean`
+**Parent goal:** expose PAut with the full `Subgroup` API so Mathlib's
+cosets/Lagrange/quotient tools become available for free.
 
-**Problem:** `PAut C` is a `Set`, not a `Subgroup`. Mathlib's subgroup
-machinery (`.carrier`, `.mul_mem`, `.inv_mem`, quotient group,
-Lagrange's theorem) is unavailable.
+**Dependency:** D1a (shared bijection helper).
 
-**Approach:**
+#### D2a — `PAutSubgroup` with `carrier`, `mul_mem'`, `one_mem'` · S · 1 h
 
+**File:** `Orbcrypt/Hardness/CodeEquivalence.lean`
+
+**Approach:** build the three easy fields.
 ```lean
-/-- PAut as a subgroup of the full permutation group. -/
-def PAutSubgroup (C : Finset (Fin n → F)) : Subgroup (Equiv.Perm (Fin n)) where
+def PAutSubgroup (C : Finset (Fin n → F)) :
+    Subgroup (Equiv.Perm (Fin n)) where
   carrier := PAut C
-  mul_mem' := by intro σ τ hσ hτ; exact paut_mul_closed C σ τ hσ hτ
+  mul_mem' := fun hσ hτ => paut_mul_closed C _ _ hσ hτ
   one_mem' := paut_contains_id C
+  inv_mem' := by intro σ hσ; sorry  -- filled by D2b
+```
+
+**Acceptance:** all three fields discharged from existing lemmas; the
+`inv_mem'` `sorry` is a *build-incomplete* placeholder and the module
+does NOT build at the end of D2a — D2a lands *together with* D2b in a
+single commit. Mark D2a as a planning checkpoint, not a standalone
+commit.
+
+**Rationale for non-independent commit:** Lean `structure`-field `sorry`
+poisons `lake build`. D2a + D2b must ship together; D2a is exposed here
+for effort accounting only.
+
+#### D2b — Discharge `inv_mem'` using D1a · S · 1 h
+
+**File:** same module.
+
+**Approach:** instantiate D1a at `C = C` (self-preserving permutations).
+```lean
   inv_mem' := by
     intro σ hσ
-    -- Need: σ ∈ PAut C → σ⁻¹ ∈ PAut C
-    -- Finset of fixed size, σ|_C is a bijection, so σ⁻¹|_C is too.
-    sorry
+    exact permuteCodeword_self_bij_of_self_preserving C σ hσ
 ```
-
-The `inv_mem'` direction needs the same finite-bijection argument as D1's
-`_symm`. Share the helper lemma:
-
-```lean
-lemma permuteCodeword_bijection_of_self_preserving
-    [DecidableEq (Fin n → F)]
-    (C : Finset (Fin n → F)) (σ : Equiv.Perm (Fin n))
-    (hσ : ∀ c ∈ C, permuteCodeword σ c ∈ C) :
-    ∀ c ∈ C, permuteCodeword σ⁻¹ c ∈ C := by
-  -- Standard finite set + injective self-map = bijection argument.
-  sorry
-```
-
-**Must land with zero sorry.**
 
 **Acceptance:**
+- `PAutSubgroup` fully defined, zero sorry.
 - `lake build Orbcrypt.Hardness.CodeEquivalence` exits 0.
-- `PAutSubgroup` definition + three field proofs land with no sorry.
-- Existing `paut_contains_id` / `paut_mul_closed` retained (used by the
-  field proofs).
-- A theorem `PAut_eq_PAutSubgroup_coe : PAut C = (PAutSubgroup C : Set _)`
-  exhibits the equivalence.
+- Commit D2a + D2b together.
 
-**Risk:** `inv_mem'` requires `[DecidableEq (Fin n → F)]` instance to be
-available — already present from module context. Otherwise low risk.
+#### D2c — Prove `PAut_eq_PAutSubgroup_carrier` · XS · 30 min
+
+**File:** same module.
+
+**Approach:**
+```lean
+theorem PAut_eq_PAutSubgroup_carrier (C : Finset (Fin n → F)) :
+    PAut C = (PAutSubgroup C : Set (Equiv.Perm (Fin n))) := rfl
+```
+
+**Acceptance:**
+- Theorem compiles (likely `rfl`).
+- Docstring notes the definitional match so downstream `simp` stays idiomatic.
+
+**Risk:** `PAut` is `Set`-valued; `PAutSubgroup.carrier` is also `Set`-valued
+via `SetLike.coe`. If `rfl` fails due to unfolds, use
+`Subgroup.ext fun _ => Iff.rfl` or `by rfl` with `simp [PAutSubgroup]`.
 
 ### D3 — Prove the actual coset set identity (F-16 step 2 — optional A6b) · M · 4 h
 
@@ -854,143 +1068,349 @@ After Workstream E:
 
 ### E1 — `ConcreteKEMOIA` + probabilistic `kemoia_implies_secure` (F-10 step 1) · L · 6 h
 
-**Files:** `Orbcrypt/KEM/Security.lean` (or new `Orbcrypt/KEM/CompSecurity.lean`)
+**Parent goal:** lift KEMOIA from a deterministic (vacuous) Prop to a
+probabilistic ε-bounded Prop. Decompose into four sub-units so the PMF
+push-forward, the deterministic bridge, and the security implication
+can each be tested in isolation.
 
-**Approach:**
-1. Define:
-   ```lean
-   def ConcreteKEMOIA [...] (kem : OrbitKEM G X K) (ε : ℝ) : Prop :=
-     ∀ (D : X → K → Bool) (g₀ g₁ : G),
-       advantage (fun p => D p.1 p.2)
-         (kemEncapsDist kem g₀) (kemEncapsDist kem g₁) ≤ ε
-   ```
-   where `kemEncapsDist kem g := PMF.pure (encaps kem g)` lifted to account
-   for the uniform group distribution (mirrors `orbitDist`).
-2. Prove `det_kemoia_implies_concrete_zero` paralleling
-   `det_oia_implies_concrete_zero`.
-3. Define `kemIndCPAAdvantage (kem, A)` via `advantage`.
-4. Prove `concrete_kemoia_implies_secure : ConcreteKEMOIA kem ε → ∀ A, kemIndCPAAdvantage kem A ≤ ε`.
+#### E1a — `kemEncapsDist` PMF push-forward · M · 1 h 30 min
 
-**Acceptance:**
-- New file / module builds.
-- Four new declarations, all with docstrings.
-- `#print axioms concrete_kemoia_implies_secure` = standard Lean only.
-- A concrete trivial witness (`concrete_kemoia_one : ConcreteKEMOIA kem 1`)
-  established.
+**File:** new `Orbcrypt/KEM/CompSecurity.lean`
 
-**Risk:** KEM distribution has a product structure `X × K`; the advantage
-definition must be precise about *which* function is being distinguished.
-Budget 6 h including debugging the PMF push-forward.
-
-### E2 — `ConcreteTensorOIA`, `ConcreteCEOIA`, `ConcreteGIOIA` (F-10 step 2) · L · 8 h
-
-**Files:** `Orbcrypt/Hardness/CodeEquivalence.lean`,
-`Orbcrypt/Hardness/TensorAction.lean`, `Orbcrypt/Hardness/Reductions.lean`
-
-**Approach:** replicate the `ConcreteOIA` pattern for each hardness
-variant. Each takes a `PMF` over the corresponding object (codes / tensors
-/ adjacency matrices) and bounds the advantage of every distinguisher.
-
+**Approach:** define the joint distribution of (ciphertext, key) under
+the uniform group distribution.
 ```lean
-/-- Concrete CE indistinguishability with advantage bound ε. -/
-def ConcreteCEOIA [...] (C₀ C₁ : Finset (Fin n → F)) (ε : ℝ) : Prop :=
-  ∀ (D : Finset (Fin n → F) → Bool),
-    advantage D (codeOrbitDist C₀) (codeOrbitDist C₁) ≤ ε
-
-/-- Concrete TI with advantage bound ε. -/
-def ConcreteTensorOIA [...] (T₀ T₁ : Tensor3 n F) (ε : ℝ) : Prop := ...
-
-/-- Concrete GI with advantage bound ε. -/
-def ConcreteGIOIA [...] (adj₀ adj₁ : ...) (ε : ℝ) : Prop := ...
+noncomputable def kemEncapsDist [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] (kem : OrbitKEM G X K) : PMF (X × K) :=
+  PMF.map (fun g => encaps kem g) (uniformPMF G)
 ```
 
-Each definition needs an orbit distribution (uniform over group action).
-Build three small helpers `codeOrbitDist`, `tensorOrbitDist`,
-`graphOrbitDist` mirroring `orbitDist`.
-
-**Acceptance:**
-- All three modules build.
-- Six new declarations (3 definitions + 3 trivial `_one` satisfiability
-  lemmas).
-- Docstrings cite LESS/MEDS/TI literature where applicable (reuse
-  `docs/HARDNESS_ANALYSIS.md` citations).
-
-**Risk:** tensor PMF handling is less standard in Mathlib. If push-forward
-via `PMF.map (tensorAction •)` over `uniformPMF GL³` proves too fiddly,
-fall back to a `Prop`-level definition quantifying over PMFs rather than
-deriving from group action — less clean but viable.
-
-### E3 — Probabilistic reduction steps (F-09 at the Prop level, F-20 step 1) · L · 10 h
-
-**Files:** `Orbcrypt/Hardness/Reductions.lean`
-
-**Approach:** state the three reductions as ε-preserving Props (still
-parameters, not proofs, paralleling the deterministic layer):
-
-```lean
-def ConcreteTensorOIAImpliesConcreteCEOIA
-    [...] (εT εC : ℝ) : Prop :=
-  ∀ T₀ T₁, ConcreteTensorOIA T₀ T₁ εT →
-    ∀ C₀ C₁ (_ : encodesTensorInCE T₀ C₀) (_ : encodesTensorInCE T₁ C₁),
-      ConcreteCEOIA C₀ C₁ εC
-
-def ConcreteCEOIAImpliesConcreteGIOIA (εC εG : ℝ) : Prop := ...
-
-def ConcreteGIOIAImpliesConcreteOIA (εG εS : ℝ) : Prop := ...
-```
-
-The ε parameters make the *advantage loss* at each reduction explicit.
-Whether `εT = εC` or `εT ≤ εC` depends on the reduction's tightness; the
-Prop formulation exposes this as a parameter to be filled in by Workstream
-F's concrete reductions.
+Plus three sanity lemmas mirroring `orbitDist_support` /
+`orbitDist_pos_of_mem`:
+- `kemEncapsDist_support` — support equals the image of `encaps kem`
+- `kemEncapsDist_pos_of_mem` — every reachable pair has positive measure
 
 **Acceptance:**
 - Module builds.
-- Three new Prop definitions with docstrings naming the advantage-loss
-  parameters.
-- Each cites the literature reduction it mirrors (e.g.
-  "Beullens–Persichetti 2023 for CE→GI" in docstring).
+- Three sanity lemmas, all with docstrings.
 
-**Risk:** deciding on the ε relationship (additive loss, multiplicative,
-preserving). Start with a generic `ConcreteXReducesToY εX εY` without
-enforcing `εX ≤ εY`; downstream composition can tighten.
+#### E1b — Define `ConcreteKEMOIA` and prove `_one` satisfiability · S · 1 h
+
+**File:** same.
+
+**Approach:**
+```lean
+def ConcreteKEMOIA [...] (kem : OrbitKEM G X K) (ε : ℝ) : Prop :=
+  ∀ (D : X × K → Bool) (g₀ g₁ : G),
+    advantage D (PMF.pure (encaps kem g₀)) (PMF.pure (encaps kem g₁)) ≤ ε
+
+theorem concreteKEMOIA_one (kem : OrbitKEM G X K) :
+    ConcreteKEMOIA kem 1 :=
+  fun D _ _ => advantage_le_one _ _ _
+```
+
+**Acceptance:**
+- Both compile.
+- `_one` lemma proves satisfiability (mirrors `concreteOIA_one`).
+
+#### E1c — Bridge: `det_kemoia_implies_concreteKEMOIA_zero` · M · 1 h 30 min
+
+**File:** same.
+
+**Approach:** mirror `det_oia_implies_concrete_zero` from `Crypto/CompOIA.lean`.
+Take `KEMOIA.1` (deterministic indistinguishability), specialise at the
+diagonal `g, g`, derive that `D` is constant on encapsulation outputs,
+hence advantage = 0 ≤ 0.
+
+**Acceptance:**
+- Theorem compiles, zero sorry.
+- `#print axioms det_kemoia_implies_concreteKEMOIA_zero` = standard Lean.
+
+#### E1d — Probabilistic `concrete_kemoia_implies_secure` · M · 2 h
+
+**File:** same.
+
+**Approach:** define `kemIndCPAAdvantage` and prove it is bounded by ε.
+```lean
+noncomputable def kemIndCPAAdvantage
+    (kem : OrbitKEM G X K) (A : KEMAdversary X K) : ℝ :=
+  -- Per-distinguisher advantage of A on encapsulation pairs
+  ⨆ g₀ g₁, advantage (fun p => A.guess kem.basePoint p.1 p.2)
+    (PMF.pure (encaps kem g₀)) (PMF.pure (encaps kem g₁))
+
+theorem concrete_kemoia_implies_secure
+    (kem : OrbitKEM G X K) (ε : ℝ)
+    (hOIA : ConcreteKEMOIA kem ε) (A : KEMAdversary X K) :
+    kemIndCPAAdvantage kem A ≤ ε := by
+  unfold kemIndCPAAdvantage
+  exact ciSup_le (fun g₀ => ciSup_le fun g₁ => hOIA _ g₀ g₁)
+```
+
+**Acceptance:**
+- Theorem compiles, zero sorry.
+- `#print axioms concrete_kemoia_implies_secure` = standard Lean only
+  (uses `Classical.choice` indirectly via `⨆` — acceptable; it is
+  already in the project's standard axiom set).
+
+**Dependencies:** E1a → E1b → E1c → E1d (strict). Each lands as its own
+commit; the file builds after every one.
+
+**Risk:** `⨆` over `G × G` requires a `BoundedAbove` instance on the set
+`{advantage ... | g₀ g₁}`. Bound by 1 (via `advantage_le_one`); supply
+explicitly if Mathlib's `ciSup_le` complains.
+
+### E2 — `ConcreteTensorOIA`, `ConcreteCEOIA`, `ConcreteGIOIA` (F-10 step 2) · L · 8 h
+
+**Parent goal:** add the three probabilistic OIA variants for the
+hardness-chain layer. They are independent — each can land in parallel.
+
+#### E2a — `ConcreteCEOIA` and `codeOrbitDist` · M · 2 h 30 min
+
+**File:** `Orbcrypt/Hardness/CodeEquivalence.lean`
+
+**Approach:**
+```lean
+noncomputable def codeOrbitDist [Fintype (Equiv.Perm (Fin n))]
+    (C : Finset (Fin n → F)) : PMF (Finset (Fin n → F)) :=
+  PMF.map (fun σ => C.image (permuteCodeword σ))
+    (uniformPMF (Equiv.Perm (Fin n)))
+
+def ConcreteCEOIA [Fintype (Equiv.Perm (Fin n))]
+    (C₀ C₁ : Finset (Fin n → F)) (ε : ℝ) : Prop :=
+  ∀ (D : Finset (Fin n → F) → Bool),
+    advantage D (codeOrbitDist C₀) (codeOrbitDist C₁) ≤ ε
+
+theorem concreteCEOIA_one (C₀ C₁ : Finset (Fin n → F)) :
+    ConcreteCEOIA C₀ C₁ 1 :=
+  fun D => advantage_le_one _ _ _
+```
+
+**Acceptance:**
+- Module builds.
+- Three declarations (helper + Prop + `_one`), all docstrings.
+
+#### E2b — `ConcreteTensorOIA` and `tensorOrbitDist` · M · 3 h
+
+**File:** `Orbcrypt/Hardness/TensorAction.lean`
+
+**Approach:** GL³ is large; the orbit distribution is over the action
+of `(GL n)³` on `Tensor3 n F`. PMF push-forward needs `Fintype (GL n F)`,
+which requires a finite field `F`. Add `[Fintype F] [DecidableEq F]`
+hypothesis throughout.
+
+```lean
+noncomputable def tensorOrbitDist [Fintype F] [DecidableEq F]
+    (T : Tensor3 n F) : PMF (Tensor3 n F) :=
+  PMF.map (fun (gh : (Matrix (Fin n) (Fin n) F)ˣ ×
+                     (Matrix (Fin n) (Fin n) F)ˣ ×
+                     (Matrix (Fin n) (Fin n) F)ˣ) =>
+              gh • T)
+    (uniformPMF _)  -- uniform over the GL³ product
+
+def ConcreteTensorOIA (T₀ T₁ : Tensor3 n F) (ε : ℝ) : Prop :=
+  ∀ (D : Tensor3 n F → Bool),
+    advantage D (tensorOrbitDist T₀) (tensorOrbitDist T₁) ≤ ε
+
+theorem concreteTensorOIA_one (T₀ T₁ : Tensor3 n F) :
+    ConcreteTensorOIA T₀ T₁ 1 :=
+  fun D => advantage_le_one _ _ _
+```
+
+**Acceptance:**
+- Module builds.
+- Same three-declaration shape as E2a.
+
+**Risk:** `Fintype (GL n F)` requires manual instance discovery. If
+absent, restate as parameterised over a `[Fintype G_TI]` where `G_TI` is
+an abstract Fintype group acting on `Tensor3` — defer the GL³ binding
+to Workstream F4.
+
+#### E2c — `ConcreteGIOIA` and `graphOrbitDist` · M · 2 h 30 min
+
+**File:** `Orbcrypt/Hardness/Reductions.lean`
+
+**Approach:**
+```lean
+noncomputable def graphOrbitDist (adj : Matrix (Fin n) (Fin n) Bool) :
+    PMF (Matrix (Fin n) (Fin n) Bool) :=
+  PMF.map (fun σ => permuteAdj σ adj) (uniformPMF (Equiv.Perm (Fin n)))
+
+def ConcreteGIOIA (adj₀ adj₁ : Matrix (Fin n) (Fin n) Bool) (ε : ℝ) : Prop :=
+  ∀ (D : Matrix (Fin n) (Fin n) Bool → Bool),
+    advantage D (graphOrbitDist adj₀) (graphOrbitDist adj₁) ≤ ε
+
+theorem concreteGIOIA_one (adj₀ adj₁ : Matrix (Fin n) (Fin n) Bool) :
+    ConcreteGIOIA adj₀ adj₁ 1 :=
+  fun D => advantage_le_one _ _ _
+```
+
+**Acceptance:** module builds, three declarations, all docstrings.
+
+**E2 dependencies:** none across sub-units; E2a/E2b/E2c are independent.
+
+### E3 — Probabilistic reduction steps (F-09 at the Prop level, F-20 step 1) · L · 10 h
+
+**Parent goal:** the three ε-preserving reductions, each as its own Prop.
+Independent leaves; can be parallelised.
+
+**Encoding interface (shared across E3a–E3c):** before the three
+reductions, land a small `EncodingInterface` predicate file
+(see E3-prep) that captures "object X is encoded as object Y, with the
+encoding preserving the relevant orbit structure." Without this, each
+reduction reinvents the encoding signature.
+
+#### E3-prep — `EncodingInterface` predicate · S · 1 h
+
+**File:** new `Orbcrypt/Hardness/Encoding.lean`
+
+**Approach:**
+```lean
+/-- An encoding from objects of type α (under group A action) to objects
+    of type β (under group B action) is *orbit-preserving* if it sends
+    A-orbits to B-orbits. Used to formalise reductions between hardness
+    problems. -/
+structure OrbitPreservingEncoding
+    (α β : Type*) [Group A] [Group B] [MulAction A α] [MulAction B β] where
+  encode : α → β
+  /-- Orbit preservation: A-equivalent inputs map to B-equivalent outputs. -/
+  preserves : ∀ x y, (∃ a : A, a • x = y) → (∃ b : B, b • encode x = encode y)
+  /-- Reflectivity: B-equivalent encodings come from A-equivalent inputs. -/
+  reflects : ∀ x y, (∃ b : B, b • encode x = encode y) → (∃ a : A, a • x = y)
+```
+
+**Acceptance:** module builds; structure has docstring; one trivial
+instance (`identityEncoding`) demonstrates satisfiability.
+
+#### E3a — `ConcreteTensorOIAImpliesConcreteCEOIA` Prop · M · 2 h 30 min
+
+**File:** `Orbcrypt/Hardness/Reductions.lean`
+
+**Approach:**
+```lean
+def ConcreteTensorOIAImpliesConcreteCEOIA
+    [Fintype F] [DecidableEq F] (εT εC : ℝ) : Prop :=
+  ∀ (T₀ T₁ : Tensor3 n F) (C₀ C₁ : Finset (Fin m → F))
+    (_enc : OrbitPreservingEncoding (Tensor3 n F) (Finset (Fin m → F))),
+    ConcreteTensorOIA T₀ T₁ εT → ConcreteCEOIA C₀ C₁ εC
+```
+
+**Acceptance:** module builds; docstring cites Beullens–Persichetti;
+`_one_one` trivial witness lemma.
+
+#### E3b — `ConcreteCEOIAImpliesConcreteGIOIA` Prop · M · 2 h 30 min
+
+**File:** same.
+
+**Approach:** symmetric to E3a using `OrbitPreservingEncoding` from
+codes to adjacency matrices.
+
+**Acceptance:** as E3a.
+
+#### E3c — `ConcreteGIOIAImpliesConcreteOIA` Prop · M · 2 h 30 min
+
+**File:** same.
+
+**Approach:** symmetric, but the target is `ConcreteOIA scheme` rather
+than `Concrete*OIA obj`. Carry an extra `OrbitEncSchemeFromGraph`
+encoding parameter.
+
+**Acceptance:** as E3a.
+
+#### E3d — Trivial composition lemma `_zero_zero_zero_zero` · S · 1 h
+
+**File:** same.
+
+**Approach:** prove that if all three reductions hold at ε = 0 and
+ConcreteTensorOIA holds at ε = 0, then ConcreteOIA holds at ε = 0.
+This is the algebraic sanity check for E4 and demonstrates that the
+ε-parameter machinery composes.
+
+```lean
+theorem concrete_chain_zero_compose
+    (h₁ : ConcreteTensorOIAImpliesConcreteCEOIA 0 0)
+    (h₂ : ConcreteCEOIAImpliesConcreteGIOIA 0 0)
+    (h₃ : ConcreteGIOIAImpliesConcreteOIA 0 0)
+    {scheme : OrbitEncScheme G X M} : ... := by
+  ...
+```
+
+**Acceptance:** theorem compiles; serves as a sanity sentry for E4.
+
+**Dependencies:** E3-prep before E3a/b/c. E3a/b/c are independent leaves
+and can ship in parallel. E3d depends on all of E3a/b/c.
 
 ### E4 — `ConcreteHardnessChain` (F-20 step 2) · L · 4 h
 
-**Files:** `Orbcrypt/Hardness/Reductions.lean`
+**Parent goal:** assemble the four-link chain into a single composable
+structure + proof.
 
-**Approach:** bundle the three reduction Props + the base hardness
-assumption into one structure:
+#### E4a — Define the `ConcreteHardnessChain` structure · S · 1 h
 
+**File:** `Orbcrypt/Hardness/Reductions.lean`
+
+**Approach:**
 ```lean
 structure ConcreteHardnessChain
     [...] (scheme : OrbitEncScheme G X M) (ε : ℝ) where
   εT : ℝ
   εC : ℝ
   εG : ℝ
+  /-- Bound on the per-pair tensor advantage (assumed hard). -/
   tensor_hard : ∀ T₀ T₁, ConcreteTensorOIA T₀ T₁ εT
+  /-- Tensor → CE reduction Prop. -/
   tensor_to_ce : ConcreteTensorOIAImpliesConcreteCEOIA εT εC
+  /-- CE → GI reduction Prop. -/
   ce_to_gi : ConcreteCEOIAImpliesConcreteGIOIA εC εG
+  /-- GI → OIA reduction Prop. -/
   gi_to_oia : ConcreteGIOIAImpliesConcreteOIA εG ε
 ```
 
-Then prove:
+**Acceptance:** structure compiles; every field has a docstring.
 
+#### E4b — Prove `concreteOIA_from_chain` · M · 2 h 30 min
+
+**File:** same.
+
+**Approach:** sequential application.
 ```lean
 theorem concreteOIA_from_chain
     (hc : ConcreteHardnessChain scheme ε) : ConcreteOIA scheme ε := by
-  -- Chain the four Props to get ConcreteOIA scheme ε.
-  sorry  -- full proof, zero sorry at commit
+  intro D m₀ m₁
+  -- 1. Pick tensors T₀ T₁ encoded from scheme.reps m₀, m₁ via E3-prep.
+  -- 2. Apply hc.tensor_hard at εT.
+  -- 3. Apply hc.tensor_to_ce to lift to ConcreteCEOIA at εC.
+  -- 4. Apply hc.ce_to_gi to lift to ConcreteGIOIA at εG.
+  -- 5. Apply hc.gi_to_oia to lift to ConcreteOIA at ε.
+  -- 6. Specialize at D, m₀, m₁.
+  sorry  -- planning placeholder; landed commit has zero sorry
 ```
 
 **Acceptance:**
-- Module builds.
+- Theorem compiles, zero sorry.
 - `#print axioms concreteOIA_from_chain` = standard Lean only.
-- Structure composes cleanly; no unused ε parameters.
 
-**Risk:** the advantage-loss composition may need `εT * coeff + const`
-arithmetic if the reductions are not tight. Start with the simplest
-additive model `ε = εT + εC + εG` and document; tighten later.
+#### E4c — Add an additive ε-loss helper lemma · S · 30 min
+
+**File:** same.
+
+**Approach:** when reductions are tight (`εT = εC = εG = ε`), the chain
+collapses. Provide a convenience constructor.
+```lean
+def ConcreteHardnessChain.tight
+    (h_tensor : ∀ T₀ T₁, ConcreteTensorOIA T₀ T₁ ε)
+    (h_tc : ConcreteTensorOIAImpliesConcreteCEOIA ε ε)
+    (h_cg : ConcreteCEOIAImpliesConcreteGIOIA ε ε)
+    (h_go : ConcreteGIOIAImpliesConcreteOIA ε ε) :
+    ConcreteHardnessChain scheme ε :=
+  { εT := ε, εC := ε, εG := ε,
+    tensor_hard := h_tensor, tensor_to_ce := h_tc,
+    ce_to_gi := h_cg, gi_to_oia := h_go }
+```
+
+**Acceptance:** definition compiles; docstring explains the tight case.
+
+**Dependencies:** E3a/b/c/d before E4. E4a → E4b strict. E4c independent
+of E4b.
 
 ### E5 — Probabilistic `hardness_chain_implies_security` (F-20 step 3) · M · 3 h
 
@@ -1023,91 +1443,238 @@ for the non-vacuous formulation."
 
 ### E6 — Probabilistic `equivariant_combiner_breaks_oia` (F-17) · L · 6 h
 
-**Files:** `Orbcrypt/PublicKey/CombineImpossibility.lean`
+**Parent goal:** turn the vacuous `false`-derivation into a quantitative
+advantage lower bound. Decompose into three sub-units: define the
+distinguisher distribution, derive the lower bound, then combine.
+
+#### E6a — Define `combinerOrbitDist` and `combinerDistinguisherAdvantage` · M · 2 h
+
+**File:** `Orbcrypt/PublicKey/CombineImpossibility.lean`
 
 **Approach:**
-1. Define `ConcreteEquivariantCombiner` as today, but the Prop statement
-   bounds advantage rather than proving `false`:
-   ```lean
-   theorem nondegenerate_equivariant_combiner_advantage_lower_bound
-       [...] (comb : GEquivariantCombiner G X)
-       (hND : NonDegenerateCombiner comb)
-       (ε : ℝ) (hOIA : ConcreteOIA scheme ε) :
-       ε ≥ nonDegenerateAdvantageLowerBound scheme comb hND
-   ```
-   where `nonDegenerateAdvantageLowerBound` is a computable (or
-   `noncomputable`) bound ≥ some positive real derived from the
-   non-degeneracy witness.
+```lean
+noncomputable def combinerOrbitDist [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (comb : GEquivariantCombiner G X)
+    (m : M) : PMF Bool :=
+  PMF.map (fun g => combinerDistinguisher comb (g • scheme.reps m))
+    (uniformPMF G)
 
-2. Derive: if `ε < nonDegenerateAdvantageLowerBound`, then `hOIA` is
-   **falsified** (not just that `false` is reached).
+noncomputable def combinerDistinguisherAdvantage
+    (scheme : OrbitEncScheme G X M) (comb : GEquivariantCombiner G X)
+    (m₀ m₁ : M) : ℝ :=
+  advantage id (combinerOrbitDist scheme comb m₀)
+              (combinerOrbitDist scheme comb m₁)
+```
+
+**Acceptance:** both compile; docstrings explain what they distinguish.
+
+#### E6b — Lower bound from non-degeneracy · M · 2 h
+
+**File:** same.
+
+**Approach:** the non-degeneracy witness exhibits a single `g` with
+`combinerDistinguisher (g • bp) = false`. Combined with
+`combinerDistinguisher_basePoint = true`, the empirical distribution under
+the uniform group law has support on both Booleans. Lower bound:
+`advantage ≥ 1/|G|` (one tick of probability mass differs).
+
+```lean
+theorem combinerDistinguisherAdvantage_lower_bound_of_nonDeg
+    (scheme : OrbitEncScheme G X M) (comb : GEquivariantCombiner G X)
+    (hND : NonDegenerateCombiner comb) (m₀ m₁ : M)
+    (hDistinct : scheme.reps m₀ ≠ scheme.reps m₁) :
+    combinerDistinguisherAdvantage scheme comb m₀ m₁ ≥ (1 : ℝ) / Fintype.card G := by
+  sorry  -- planning placeholder; landed commit has zero sorry
+```
+
+**Acceptance:** theorem compiles, zero sorry; bound is concrete (`1/|G|`).
+
+#### E6c — Combine into `nondegenerate_equivariant_combiner_advantage_lower_bound` · S · 1 h 30 min
+
+**File:** same.
+
+**Approach:**
+```lean
+theorem nondegenerate_equivariant_combiner_advantage_lower_bound
+    (scheme : OrbitEncScheme G X M) (comb : GEquivariantCombiner G X)
+    (hND : NonDegenerateCombiner comb)
+    (m₀ m₁ : M) (hDistinct : scheme.reps m₀ ≠ scheme.reps m₁)
+    (ε : ℝ) (hOIA : ConcreteOIA scheme ε) :
+    ε ≥ (1 : ℝ) / Fintype.card G := by
+  calc (1 : ℝ) / Fintype.card G
+      ≤ combinerDistinguisherAdvantage scheme comb m₀ m₁ :=
+        combinerDistinguisherAdvantage_lower_bound_of_nonDeg ..
+    _ ≤ ε := hOIA _ m₀ m₁
+```
 
 **Acceptance:**
-- Module builds.
-- The new theorem carries a concrete lower bound (not just `> 0`).
-- The original `equivariant_combiner_breaks_oia` remains, but its docstring
-  adds the pointer.
+- Theorem compiles, zero sorry.
+- Original `equivariant_combiner_breaks_oia` retained; its docstring
+  cross-references this new theorem.
 
-**Risk:** deriving a concrete lower bound may be fiddly. Acceptable fallback:
-a `Prop`-level "there exists a positive bound" statement with the
-quantitative refinement left for future work, *as long as* the theorem is
-no longer vacuously true under a realistic ConcreteOIA assumption.
+**Dependencies:** E1d's PMF infrastructure; otherwise self-contained.
+
+**Risk:** `1/|G|` may be too weak for the headline reading. If
+non-degeneracy can be strengthened to "many `g` distinguish", lift the
+bound to `Ω(1)`. Defer that strengthening to a follow-up; the present
+WU is "any positive lower bound suffices to refute the vacuity".
 
 ### E7 — Product PMF infrastructure (F-11 prereq) · M · 6 h
 
-**Files:** `Orbcrypt/Probability/Monad.lean` (extend)
+**Parent goal:** lift `uniformPMF` from single elements to Q-tuples so
+the hybrid argument can interpolate over Q queries.
 
-**Approach:** add / expose:
+#### E7a — `uniformPMFTuple` definition · M · 2 h
 
-```lean
-/-- Uniform PMF over Q-tuples. -/
-noncomputable def uniformPMFTuple (α : Type*) [Fintype α] [Nonempty α]
-    (Q : ℕ) : PMF (Fin Q → α) :=
-  PMF.bind (uniformPMF α) (fun _ => PMF.pure (fun _ => ...))
-  -- or use Mathlib's PMF.pi if available
+**File:** `Orbcrypt/Probability/Monad.lean`
+
+**Approach:** spike Mathlib first — does `PMF.pi` exist?
+```bash
+# Mathlib spike
+grep -r "PMF.pi\|PMF.prod\|PMF.fintype.*pi" path/to/mathlib
 ```
 
-Then `probEventTuple`, `advantageTuple` mirror single-query helpers.
+If `PMF.pi` exists: thin wrapper.
+If absent: build by `Fin.foldr` of `PMF.bind`.
+```lean
+noncomputable def uniformPMFTuple (α : Type*) [Fintype α] [Nonempty α]
+    (Q : ℕ) : PMF (Fin Q → α) :=
+  Fin.foldr Q (fun _ acc =>
+    PMF.bind (uniformPMF α) (fun a =>
+      PMF.bind acc (fun f =>
+        PMF.pure (fun i => if i.val = 0 then a else f i.castSucc))))
+    (PMF.pure (Fin.elim0 ·))
+  -- or simpler: noncomputable def via Fintype.fintypeOfPi
+```
 
 **Acceptance:**
 - Module builds.
-- Three new declarations with docstrings.
-- A sanity lemma `uniformPMFTuple_support = Set.univ`.
+- One sanity lemma `uniformPMFTuple_apply` showing pointwise mass = 1/|α|^Q.
 
-**Risk:** Mathlib's PMF doesn't directly support `PMF.pi` for arbitrary
-fintypes. If absent, construct via `PMF.bind` fold. Budget 6 h including
-Mathlib research.
+#### E7b — `probEventTuple`, `advantageTuple`, marginals · M · 2 h 30 min
+
+**File:** same.
+
+**Approach:**
+```lean
+noncomputable def probEventTuple (P : PMF (Fin Q → α)) (E : (Fin Q → α) → Bool) : ℝ≥0∞ := ...
+noncomputable def advantageTuple ... : ℝ := ...
+
+theorem uniformPMFTuple_marginal_uniform (i : Fin Q) :
+    PMF.map (fun f => f i) (uniformPMFTuple α Q) = uniformPMF α := by
+  ...  -- key fact for the hybrid argument
+```
+
+**Acceptance:** module builds; the marginal lemma is the building block
+needed by E8b. All declarations docstring'd.
+
+#### E7c — `i`-th hybrid distribution · M · 1 h 30 min
+
+**File:** same.
+
+**Approach:** define the `i`-th hybrid: first `i` queries from `m₀`, last
+`Q - i` from `m₁`. This is the canonical hybrid construction.
+```lean
+noncomputable def hybridDist (m₀ m₁ : M) (scheme : ...) (i : Fin (Q + 1)) :
+    PMF (Fin Q → X) := ...
+```
+
+**Acceptance:**
+- Definition compiles.
+- `hybridDist_zero = all-m₀`, `hybridDist_Q = all-m₁` lemmas.
+
+**Dependencies:** E7a → E7b → E7c sequential.
+
+**Risk:** if `PMF.pi` is absent in pinned Mathlib and `Fin.foldr`
+construction breaks definitional equality lemmas, fall back to `Fin Q → α`
+modeled by repeated `PMF.bind` over `List.range Q` and prove the
+required lemmas by hand.
 
 ### E8 — Multi-query IND-Q-CPA via hybrid argument (F-11) · L · 8 h
 
-**Files:** `Orbcrypt/Crypto/CompSecurity.lean`
+**Parent goal:** prove `indQCPAAdvantage A ≤ Q · ε` via the hybrid
+argument. Decompose into definition / single-step / telescoping / wrap.
 
-**Approach:** using E7's product PMF and the existing `hybrid_argument`:
+#### E8a — Define `indQCPAAdvantage` · S · 1 h
 
+**File:** `Orbcrypt/Crypto/CompSecurity.lean`
+
+**Approach:**
 ```lean
-theorem indQCPA_bound_via_hybrid
-    [...] (scheme : OrbitEncScheme G X M) (ε : ℝ) (Q : ℕ)
-    (hOIA : ConcreteOIA scheme ε)
-    (A : DistinctMultiQueryAdversary X M Q) :
-    indQCPAAdvantage scheme A ≤ Q * ε := by
-  -- Telescope via hybrid_argument
-  ...
+noncomputable def indQCPAAdvantage [...] {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (A : DistinctMultiQueryAdversary X M Q) : ℝ :=
+  advantage (A.guess scheme.reps)
+    (PMF.bind (uniformPMFTuple G Q) (fun gs =>
+       PMF.pure (fun i => gs i • scheme.reps (A.choose scheme.reps i).1)))
+    (PMF.bind (uniformPMFTuple G Q) (fun gs =>
+       PMF.pure (fun i => gs i • scheme.reps (A.choose scheme.reps i).2)))
 ```
 
-This upgrades `single_query_bound` from a trivial rename to a real building
-block. The `DistinctMultiQueryAdversary` type comes from B3.
+**Acceptance:** definition compiles; docstring explains the all-left vs.
+all-right framing.
+
+#### E8b — Single-step hybrid lemma · M · 2 h 30 min
+
+**File:** same.
+
+**Approach:** the core lemma — adjacent hybrids differ by at most ε.
+```lean
+theorem hybrid_step_bound
+    (scheme : ...) (A : DistinctMultiQueryAdversary X M Q) (ε : ℝ)
+    (hOIA : ConcreteOIA scheme ε) (i : Fin Q) :
+    advantage (A.guess scheme.reps) (hybridDist .. i.castSucc) (hybridDist .. i.succ) ≤ ε := by
+  -- Marginal at index i is uniform-G • reps m₀ vs uniform-G • reps m₁
+  -- which is exactly orbitDist m₀ vs orbitDist m₁. Apply hOIA.
+  sorry  -- planning placeholder; landed commit has zero sorry
+```
+
+**Acceptance:** theorem compiles, zero sorry; depends on E7b's marginal
+uniformity lemma and B3's `DistinctMultiQueryAdversary`.
+
+#### E8c — Telescope to `indQCPA_bound_via_hybrid` · M · 2 h 30 min
+
+**File:** same.
+
+**Approach:** apply E8b inside `hybrid_argument_nat`.
+```lean
+theorem indQCPA_bound_via_hybrid
+    (scheme : OrbitEncScheme G X M) (ε : ℝ) (Q : ℕ)
+    (hOIA : ConcreteOIA scheme ε) (A : DistinctMultiQueryAdversary X M Q) :
+    indQCPAAdvantage scheme A ≤ Q * ε := by
+  -- 1. Identify indQCPAAdvantage = advantage (... A.guess) (hybridDist 0) (hybridDist Q).
+  -- 2. Apply hybrid_argument_nat with per-step bound = ε via E8b.
+  -- 3. Sum bounds = Q * ε.
+  sorry  -- planning placeholder; landed commit has zero sorry
+```
 
 **Acceptance:**
-- Module builds.
-- `indQCPAAdvantage` defined.
-- `indQCPA_bound_via_hybrid` proved, zero sorry.
+- Theorem compiles, zero sorry.
 - `#print axioms indQCPA_bound_via_hybrid` = standard Lean only.
-- A regression test: when `Q = 1`, recovers `concrete_oia_implies_1cpa`.
 
-**Risk:** the hybrid argument requires a *sequence* of distributions that
-interpolate between all-left and all-right. Construction is standard but
-tedious. Use `Finset.sum_range_succ` + `advantage_triangle` telescoping
-as in `hybrid_argument_nat`.
+#### E8d — Q = 1 regression check · XS · 30 min
+
+**File:** same.
+
+**Approach:** prove a sanity corollary that recovers the existing
+single-query bound at Q = 1.
+```lean
+theorem indQCPA_bound_recovers_single_query
+    (scheme : ...) (ε : ℝ) (hOIA : ConcreteOIA scheme ε)
+    (A : DistinctMultiQueryAdversary X M 1) :
+    indQCPAAdvantage scheme A ≤ ε := by
+  simpa using indQCPA_bound_via_hybrid scheme ε 1 hOIA A
+```
+
+**Acceptance:** corollary compiles; serves as regression sentinel.
+
+**Dependencies:** B3 (DistinctMultiQueryAdversary), E7a/b/c (product PMF
++ hybrids). E8a–E8d strictly sequential.
+
+**Risk:** marginal-uniformity simplification (E8b) is the most subtle
+step. If the per-coordinate marginal does not simplify cleanly, change
+the hybrid definition to use independent samples per coordinate
+(E7c-style `PMF.pi`-based) rather than a single `Fin Q → G` tuple.
 
 ### E9 — Update axiom transparency report (cross-cutting) · S · 2 h
 
@@ -1145,29 +1712,90 @@ research-grade WU and **must not block** Workstreams A–E.
 
 ### F1 — HGOEKeyExpansion → SeedKey concrete bridge (F-05) · XL · 30 h
 
-**Files:** `Orbcrypt/KeyMgmt/SeedKey.lean` (extend), new
-`Orbcrypt/KeyMgmt/HGOEExpansion.lean`
+**Parent goal:** turn the `HGOEKeyExpansion` specification into a
+realised concrete `SeedKey` with full correctness theorems. This was
+formerly a "split later" plan note — broken out here into four sub-WUs
+totalling ~30 h.
 
-**Problem:** `HGOEKeyExpansion` is spec-only. No theorem links it to a
-computable `SeedKey` producing the 7-stage pipeline output.
+#### F1a — `PRF` abstraction · M · 6 h
+
+**Files:** new `Orbcrypt/KeyMgmt/PRF.lean`
 
 **Approach:**
-1. Formalize a PRF abstraction `PRF : Seed → ℕ → Bitstring n` with
-   correctness + (assumed) pseudorandomness.
-2. Define `hgoeKeyFromExpansion : HGOEKeyExpansion n M → PRF seed → SeedKey Seed G X`
-   producing the concrete key from the expansion specification.
-3. Prove `hgoeKeyFromExpansion_reps_same_weight`: the constructed key
-   produces representatives of uniform Hamming weight.
-4. Prove `hgoeKeyFromExpansion_kem_correctness` via `seed_kem_correctness`.
+```lean
+/-- A Pseudo-Random Function: deterministic seed → indexed output. -/
+structure PRF (Seed : Type*) (Out : Type*) where
+  eval : Seed → ℕ → Out
+  /-- Computational pseudorandomness — Prop, carried as hypothesis. -/
+  pseudorandom : Prop
+```
+
+Plus three trivial lemmas:
+- `PRF.eval_deterministic` — same seed + same index → same output (rfl).
+- `PRF.distinct_indices_distinct_outputs` (assuming injectivity).
+- `PRF.compose` — composing PRFs.
+
+**Acceptance:** module builds; structure docstring'd; `pseudorandom`
+field has a clear "this is an assumption, not a proof" note.
+
+#### F1b — `hgoeKeyFromExpansion` constructor · L · 8 h
+
+**Files:** new `Orbcrypt/KeyMgmt/HGOEExpansion.lean`
+
+**Approach:**
+```lean
+def hgoeKeyFromExpansion {n : ℕ} {M : Type*}
+    (exp : HGOEKeyExpansion n M) (prf : PRF Seed (Bitstring n)) :
+    SeedKey Seed (Equiv.Perm (Fin n)) (Bitstring n) where
+  seed := ...  -- PRF seed
+  expand := fun s => {
+    canon := fun x => ...,  -- canonical form within exp's group
+    mem_orbit := ...,
+    orbit_iff := ...
+  }
+  sampleGroup := fun s i => ...  -- derive permutation from prf.eval s i
+```
 
 **Acceptance:**
-- All four items proved.
-- `#print axioms hgoeKeyFromExpansion_kem_correctness` = standard Lean
-  only (or documents a single PRF pseudorandomness hypothesis).
-- `CLAUDE.md` table adds this as theorem #19 or subtype.
+- Module builds.
+- All `SeedKey` fields populated.
+- Each component cites its origin in the 7-stage pipeline (Stage 1: param,
+  Stage 2: code, Stage 3: group, Stage 4: representatives).
 
-**Risk:** XL — this is a phase-sized task. Split into three sub-WUs in a
-follow-up plan doc (`F1a`, `F1b`, `F1c`).
+#### F1c — Correctness: `hgoeKeyFromExpansion_reps_same_weight` · M · 6 h
+
+**Files:** same.
+
+**Approach:** show that the expansion's `reps_same_weight` field
+propagates to the concrete `SeedKey`'s representative-producing pipeline.
+```lean
+theorem hgoeKeyFromExpansion_reps_same_weight
+    (exp : HGOEKeyExpansion n M) (prf : PRF ..) (m : M) :
+    hammingWeight (exp.reps m) = exp.weight :=
+  exp.reps_same_weight m
+```
+
+Plus: prove `hgoeKeyFromExpansion_kem_correctness` via
+`seed_kem_correctness`.
+
+**Acceptance:** both theorems compile, zero sorry.
+
+#### F1d — Integration with `Construction/HGOEKEM.lean` · M · 6 h
+
+**Files:** `Orbcrypt/Construction/HGOEKEM.lean` (extend)
+
+**Approach:** add a constructor `hgoeKEMFromExpansion` that takes an
+`HGOEKeyExpansion` + `PRF` and produces a fully populated `OrbitKEM`.
+Prove `hgoeKEMFromExpansion_correctness` via `kem_correctness`.
+
+**Acceptance:**
+- Module builds.
+- New theorem listed in `CLAUDE.md` headline table as theorem #19.
+- Cross-link to `docs/HARDNESS_ANALYSIS.md` for the QC code parameter
+  basis.
+
+**Dependencies:** F1a → F1b → F1c → F1d sequential. Each sub-WU is its
+own commit. Total effort: 6 + 8 + 6 + 6 = 26 h (under 30 h budget).
 
 ### F2 — Seed secrecy interface `SampleGroupSpec` (F-06) · M · 6 h
 
@@ -1204,92 +1832,265 @@ indistinguishability Prop. Reuse `advantage` from Phase 8.
 
 ### F3 — Concrete GI ≤_p CE reduction (F-09 step 1) · XL · 40 h
 
-**Files:** new `Orbcrypt/Hardness/ReductionGIToCE.lean`
+**Parent goal:** prove `GIReducesToCE` concretely for the CFI gadget.
+Decompose into four sub-units; each is a substantial Lean proof.
 
-**Problem:** `GIReducesToCE` is a Prop parameter. Prove it concretely for
-CFI graphs.
+#### F3a — CFI gadget definition · L · 8 h
 
-**Approach:** follow Babai's CFI construction:
-1. Encode each vertex with 4 points, each edge with 2 additional points.
-2. Show the resulting code's permutation automorphism group equals the
-   graph's automorphism group.
-3. Lift GI distinguishers to CE distinguishers.
+**Files:** new `Orbcrypt/Hardness/CFIGadget.lean`
+
+**Approach:** following Cai–Fürer–Immerman 1992: define the CFI graph's
+encoding into a code. For each graph vertex `v` with degree `d`, attach
+`2^d` "configurations" via parity bits. Define
+`cfiCode : Graph → Finset (Fin N → F₂)`.
+
+**Acceptance:** module builds; `cfiCode` definition + 2 sanity lemmas
+(image cardinality, dimension).
+
+#### F3b — `cfiCode` PAut = graph Aut (forward) · L · 12 h
+
+**Files:** same.
+
+**Approach:** show every graph automorphism induces a code automorphism.
+```lean
+theorem graphAut_to_cfiCodeAut (G : Graph) (σ : G.Aut) :
+    permuteCodewordExtension σ ∈ PAut (cfiCode G) := ...
+```
+
+**Acceptance:** theorem compiles; uses helper lemmas about parity bit
+preservation under vertex permutation.
+
+#### F3c — `cfiCode` PAut = graph Aut (reverse) · L · 12 h
+
+**Files:** same.
+
+**Approach:** the harder direction — every code automorphism comes from
+a graph automorphism. This is the core CFI rigidity argument: parity-bit
+symmetries decouple from vertex permutations only via graph
+automorphisms.
+```lean
+theorem cfiCodeAut_to_graphAut (G : Graph) (π ∈ PAut (cfiCode G)) :
+    ∃ σ : G.Aut, π = liftToCode σ := ...
+```
+
+**Acceptance:** theorem compiles, zero sorry; proof is ≤ 200 lines.
+
+#### F3d — Wire into `GIReducesToCE` witness · M · 4 h
+
+**Files:** `Orbcrypt/Hardness/CodeEquivalence.lean` (extend), same.
+
+**Approach:** assemble F3b + F3c into the actual reduction.
+```lean
+theorem GIReducesToCE_proved : GIReducesToCE := by
+  intro G H
+  refine ⟨cfiCode G, cfiCode H, ?_, ?_, ?_⟩
+  · -- encoding is uniform / poly-time (Prop only)
+  · -- graph iso → code equivalence (F3b)
+  · -- code equivalence → graph iso (F3c)
+```
 
 **Acceptance:**
 - Module builds.
-- `GIReducesToCE_proved : GIReducesToCE` exhibited with zero sorry.
-- Cites Cai–Fürer–Immerman 1992.
-- Workstream E4's `ConcreteHardnessChain` can use this as the `ce_to_gi`
-  field's witness.
+- `GIReducesToCE_proved` compiles, zero sorry.
+- Cited in `docs/HARDNESS_ANALYSIS.md` as the formalised reduction.
+- E4 can swap its hypothesis for this concrete witness.
 
-**Risk:** XL — this is phase-sized research. Defer until after E lands.
+**Dependencies:** F3a → F3b, F3a → F3c (parallelisable), F3a/b/c → F3d.
+Total: 8 + 12 + 12 + 4 = 36 h (under 40 h budget).
+
+**Risk:** XL — this is phase-sized research. The CFI rigidity argument
+(F3c) is the bottleneck and has no Mathlib precedent. May need to
+abstract over the gadget and prove rigidity for a class.
 
 ### F4 — Concrete GI ≤ TI reduction (F-09 step 2) · XL · 40 h
 
-**Files:** new `Orbcrypt/Hardness/ReductionGIToTI.lean`
+**Parent goal:** prove `GIReducesToTI` concretely via the symmetric
+3-tensor encoding of graphs.
 
-**Approach:** encode adjacency matrices into 3-tensors (symmetric
-3-tensor encoding of graphs). Show that graph isomorphism implies tensor
-isomorphism and vice versa under this encoding.
+#### F4a — `adjacencyToTensor3` encoding · M · 6 h
 
-**Acceptance:** analogous to F3.
+**Files:** new `Orbcrypt/Hardness/AdjacencyToTensor.lean`
 
-**Risk:** XL, same as F3.
+**Approach:** define a symmetric 3-tensor `T_G[i][j][k] := if (i,j) ∈ E ∧ (j,k) ∈ E ∧ (i,k) ∈ E then 1 else 0`
+(triangle-indicator tensor). Standard graph-to-tensor encoding.
+
+**Acceptance:** module builds; encoding has docstring + sanity lemma
+(symmetry under index permutation).
+
+#### F4b — Forward direction: graph iso → tensor iso · L · 12 h
+
+**Files:** same.
+
+**Approach:** show every graph automorphism (vertex permutation
+preserving adjacency) induces the diagonal action `(σ, σ, σ)` on the
+triangle tensor.
+```lean
+theorem graphIso_implies_tensorIso (G H : Graph) :
+    G ≃g H → AreTensorIsomorphic (adjacencyToTensor3 G) (adjacencyToTensor3 H) := ...
+```
+
+**Acceptance:** theorem compiles, zero sorry.
+
+#### F4c — Reverse direction: tensor iso → graph iso · L · 16 h
+
+**Files:** same.
+
+**Approach:** the harder direction. From a tensor isomorphism
+`(g₁, g₂, g₃) • T_G = T_H`, recover a vertex permutation. The trick is to
+restrict to the diagonal: the triangle indicator's marginals encode the
+degree sequence, which constrains the GL action to be permutation-like.
+
+```lean
+theorem tensorIso_implies_graphIso (G H : Graph)
+    (h : AreTensorIsomorphic (adjacencyToTensor3 G) (adjacencyToTensor3 H)) :
+    G ≃g H := ...
+```
+
+**Acceptance:** theorem compiles, zero sorry; proof ≤ 250 lines.
+
+#### F4d — Wire into `GIReducesToTI` witness · M · 6 h
+
+**Files:** `Orbcrypt/Hardness/TensorAction.lean` (extend), same.
+
+**Approach:** assemble F4b + F4c into the actual reduction.
+```lean
+theorem GIReducesToTI_proved : GIReducesToTI := by
+  intro G H
+  exact ⟨adjacencyToTensor3 G, adjacencyToTensor3 H,
+         graphIso_implies_tensorIso, tensorIso_implies_graphIso⟩
+```
+
+**Acceptance:**
+- Module builds.
+- `GIReducesToTI_proved` compiles, zero sorry.
+- E4 can swap its hypothesis for this concrete witness.
+
+**Dependencies:** F4a → F4b, F4a → F4c (parallelisable), F4a/b/c → F4d.
+Total: 6 + 12 + 16 + 6 = 40 h.
+
+**Risk:** XL — F4c is the bottleneck. The "constrain GL to permutation"
+argument requires that the tensor's marginal structure determines the
+action up to permutation. May need a stronger encoding (e.g.,
+"colored" triangle tensor) if rigidity fails for the simple version.
 
 ### F5 — Non-trivial `CommGroupAction` witness (F-14) · XL · 30 h
 
-**Files:** new `Orbcrypt/PublicKey/EllipticCommAction.lean` or similar
+**Parent goal:** at least one cryptographically meaningful (or at least
+non-trivial) `CommGroupAction` instance. Decompose into tiered
+sub-units; only Tier 1 is practical without a Mathlib elliptic-curve
+API.
 
-**Problem:** only `selfAction` on a `CommGroup` acts on itself. No
-concrete elliptic curve isogeny action, no CSIDH witness.
+#### F5a — Tier 1: `ZMod N` acting on `ZMod N × ZMod N` · M · 4 h
 
-**Approach (tiered):**
-1. **Tier 1 (M, 4 h):** integer `ZMod N` action on itself — a
-   *non-trivial* instance that just serves as a concrete witness, even
-   though it provides no cryptographic hardness.
-2. **Tier 2 (XL, 30 h):** a formalization of a class-group action on a
-   set of supersingular elliptic curves, matching CSIDH's structure.
-   Prohibitively expensive without a Mathlib elliptic-curve API.
-3. **Tier 3 (XL, 60 h):** full CSIDH correctness + CSI-DLP hardness Prop.
+**Files:** new `Orbcrypt/PublicKey/ZModAction.lean`
 
-**Recommendation:** land Tier 1 as a quick win; defer Tier 2/3 to a
-dedicated future phase.
+**Approach:**
+```lean
+instance zModSelfAction (N : ℕ) [NeZero N] :
+    CommGroupAction (ZMod N) (ZMod N × ZMod N) where
+  smul a p := (a + p.1, a + p.2)
+  ...
+  comm := fun a b p => by simp [add_comm, add_left_comm]
+```
 
-**Acceptance (Tier 1):**
+**Acceptance:**
 - Module builds.
-- A `CommGroupAction` instance on `ZMod N × ZMod N` (or similar) is
-  exhibited.
-- `CommOrbitPKE` instantiated with this instance builds.
-- Documentation explicitly flags the instance as "structural witness,
-  not cryptographically hard."
+- Instance is a non-self-action witness.
+- `CommOrbitPKE` instantiated with it builds.
+- Docstring flags as "structural witness; offers no hardness."
 
-**Risk:** low for Tier 1; high for Tier 2/3.
+#### F5b — Tier 2: class-group action skeleton · XL · 16 h
+
+**Files:** new `Orbcrypt/PublicKey/ClassGroupAction.lean`
+
+**Approach:** stub the structure of a class-group `Cl(O)` acting on a
+set of supersingular elliptic curves over `F_p`. Without a full Mathlib
+elliptic-curve formalization, this remains a *signature*: the class
+group is given as an abstract `CommGroup`, the curve set as an abstract
+`Type`, and the action as a parameter satisfying `comm`. The structure
+matches CSIDH but without realising any specific curve.
+
+**Acceptance:**
+- Module builds.
+- Skeleton has docstring citing CSIDH (Castryck–Lange–Martindale–Panny–Renes 2018).
+- Marked as "abstract; concrete instance pending Mathlib elliptic-curve API."
+
+#### F5c — Tier 3: CSI-DLP hardness Prop · L · 10 h
+
+**Files:** same.
+
+**Approach:** define `CSIDLPHardness (Cl_O : CommGroup) (E : Type) [action] (ε : ℝ) : Prop`
+as the assumption that no PPT adversary, given `(E, a • E)`, can recover
+`a` with advantage > ε. Mirrors `ConcreteOIA` style.
+
+**Acceptance:**
+- Definition compiles.
+- Documented as a *cryptographic hardness assumption*, not a proof.
+
+**Dependencies:** F5a is independent; F5b extends it; F5c extends F5b.
+Tier 1 (F5a) is the only sub-unit budgeted on the critical path; F5b/c
+are explicitly research-grade.
+
+**Risk:** Tier 1 is low risk. Tier 2/3 require Mathlib elliptic-curve
+machinery that does not yet exist; treat as open research.
 
 ### F6 — Additional separating-invariant screening (F-21) · L · 12 h
 
-**Files:** `Orbcrypt/Construction/HGOE.lean` (extend), new
-`Orbcrypt/Construction/InvariantScreening.lean`
+**Parent goal:** add screening defenses for invariants beyond Hamming
+weight. Decompose into one sub-WU per invariant.
 
-**Problem:** `same_weight_not_separating` blocks the Hamming-weight
-attack, but other separating invariants (dual code weight enumerator,
-automorphism group signature, spectrum of adjacency matrix) are not
-screened.
+#### F6a — Weight enumerator screening · M · 4 h
 
-**Approach:** add negative theorems of the form "if all representatives
-have the same `X` invariant, then `X` does not separate them," for:
-- Weight enumerator polynomial.
-- Coset weight distribution.
-- Dual code minimum distance.
-- Automorphism group order (up to |PAut| equivalence).
+**Files:** new `Orbcrypt/Construction/InvariantScreening.lean`
 
-Each theorem is a straightforward extension of `same_weight_not_separating`.
+**Approach:**
+```lean
+def weightEnumerator (C : Finset (Bitstring n)) : Fin (n+1) → ℕ :=
+  fun w => (C.filter (fun x => hammingWeight x = w)).card
 
-**Acceptance:**
-- New module builds.
-- ≥ 3 new `not_separating` theorems.
-- `CLAUDE.md` threat-model coverage table extended.
+theorem weightEnumerator_invariant_subgroup
+    (G : Subgroup (Equiv.Perm (Fin n))) ... :
+    IsGInvariant (weightEnumerator ...) := ...
 
-**Risk:** low. The theorems are structural analogues.
+theorem same_weight_enumerator_not_separating
+    (scheme : OrbitEncScheme G ...)
+    (hAll : ∀ m, weightEnumerator ... = weightEnumerator ...) :
+    ¬ IsSeparating (weightEnumerator ∘ ...) ... := ...
+```
+
+**Acceptance:** module builds; three declarations; docstring cites
+Singleton bound and weight-enumerator literature.
+
+#### F6b — Dual code minimum distance screening · M · 4 h
+
+**Files:** same.
+
+**Approach:** mirror F6a for the dual code's minimum distance.
+```lean
+def dualMinDistance (C : Finset (Bitstring n)) : ℕ := ...
+theorem same_dualMinDistance_not_separating ... := ...
+```
+
+**Acceptance:** as F6a.
+
+#### F6c — Automorphism-group order signature screening · M · 4 h
+
+**Files:** same.
+
+**Approach:**
+```lean
+def autGroupOrder (C : Finset (Bitstring n)) : ℕ := (PAut C).toFinset.card
+theorem same_autGroupOrder_not_separating ... := ...
+```
+
+**Acceptance:** as F6a; `CLAUDE.md` threat-model coverage table extended
+with the three new defenses.
+
+**Dependencies:** F6a/b/c are independent and can ship in parallel.
+Total: 4 + 4 + 4 = 12 h.
+
+**Risk:** low. The theorems are structural analogues of
+`same_weight_not_separating`.
 
 ---
 
@@ -1558,19 +2359,34 @@ D1 → D2 → D4 → D3 (~14 h). D3 is optional; stop at D4 if time-boxed.
 
 ### 14.4 Days 7–20 — "the big lift" (Workstream E)
 
-This is the critical path. Recommended ordering:
+This is the critical path. The following sub-WU ordering reflects the
+decomposition in §8.
 
-1. E7 (product PMF, ~6 h) — do first; it's a general building block.
-2. E1 (ConcreteKEMOIA, ~6 h) — independent of E2/E3.
-3. E2 (ConcreteTensorOIA / CEOIA / GIOIA, ~8 h) — independent leaves.
-4. E3 (probabilistic reductions, ~10 h) — needs E2.
-5. E4 (ConcreteHardnessChain, ~4 h) — needs E3.
-6. E5 (final → IND-1-CPA, ~3 h) — needs E4.
-7. E6 (probabilistic combiner no-go, ~6 h) — needs E1.
-8. E8 (IND-Q-CPA via hybrid, ~8 h) — needs E7 + B3.
-9. E9 (axiom transparency update + G2 vacuity-map doc, ~4 h).
+**Track 1 (PMF foundations) — sequential:**
+1. E7a → E7b → E7c (product PMF, hybrids — 6 h)
 
-Total: ~55 h sequential, ~35–40 h with E1/E2/E7 parallelised.
+**Track 2 (KEM probabilistic security) — sequential:**
+2. E1a → E1b → E1c → E1d (ConcreteKEMOIA — 6 h)
+
+**Track 3 (Concrete OIA family) — three parallel leaves:**
+3. E2a, E2b, E2c (Concrete{CE,Tensor,GI}OIA — 8 h, parallelisable to ~3 h)
+
+**Track 4 (Reductions + chain) — sequential after Track 3:**
+4. E3-prep (encoding interface — 1 h)
+5. E3a, E3b, E3c parallel (≤ 3 h with parallel)
+6. E3d (composition sanity — 1 h)
+7. E4a → E4b → E4c (ConcreteHardnessChain — 4 h)
+8. E5 (chain → IND-1-CPA — 3 h)
+
+**Track 5 (Combiner + multi-query) — needs Tracks 1, 2:**
+9. E6a → E6b → E6c (probabilistic combiner no-go — 6 h)
+10. E8a → E8b → E8c → E8d (multi-query, needs E7 + B3 — 8 h)
+
+**Track 6 (Transparency closure):**
+11. E9 + G2 (axiom transparency + vacuity-map doc — 4 h)
+
+Total: ~55 h sequential, ~30 h with Tracks 1/2/3 parallelised across
+~2 engineering streams.
 
 ### 14.5 After Workstream E — close out G2, G3
 
@@ -1656,49 +2472,100 @@ F-22 → A4                         (SHA pin)
 
 No finding is orphaned; no WU addresses a non-existent finding.
 
-### 15.2 Inverse map: WU → findings
+### 15.2 Inverse map: atomic WU → findings (post-decomposition)
 
-| WU | Covers | One-line purpose |
-|----|--------|------------------|
-| A1 | F-03 | Harden CI `sorry` regex |
-| A2 | F-04 | `push Not` → `push_neg` |
-| A3 | F-18 | Remove shadowed `hn_pos` |
-| A4 | F-22 | Pin elan SHA-256 in CI |
-| A5 | F-19 | Strengthen `kem_agreement_correctness` to bi-view identity |
-| A6a | F-16 | Rename `paut_coset_is_equivalence_set` |
-| A6b | F-16 (extended) | Prove actual set identity (optional) |
-| A7 | F-13 | Helper `def`s in CompOIA/CompSecurity |
-| A8 | F-12 | Document hardness-parameter Props |
-| B1 | F-02 | `IsSecureDistinct` predicate |
-| B2 | F-15 | Explicit universes on `SchemeFamily` |
-| B3 | prereq for E8 | Per-query distinct adversary wrapper |
-| C1 | F-07 step 1 | Add `verify_inj` to MAC |
-| C2 | F-07 step 2 | Prove `INT_CTXT` from `verify_inj` |
-| C3 | F-07 step 3 | Wire into headline theorem list |
-| C4 | F-07 witness | Concrete MAC instance |
-| D1 | F-08 step 1 | `ArePermEquivalent.symm` / `_trans` |
-| D2 | F-08 step 2 | Promote `PAut` to `Subgroup` |
-| D3 | F-16 step 2 | Coset set identity (optional, uses D1+D2) |
-| D4 | F-08 step 3 | `Setoid` instance |
-| E1 | F-10 step 1 | `ConcreteKEMOIA` + secure bound |
-| E2 | F-10 step 2 | `Concrete{Tensor,CE,GI}OIA` |
-| E3 | F-09 (Prop), F-20 prep | Probabilistic reductions as Props |
-| E4 | F-20 step 2 | `ConcreteHardnessChain` bundle |
-| E5 | F-20 step 3 | Chain → IND-1-CPA advantage bound |
-| E6 | F-17 | Probabilistic combiner no-go |
-| E7 | F-11 prereq | Product PMF infrastructure |
-| E8 | F-11 | IND-Q-CPA via hybrid argument |
-| E9 | cross-cutting | Axiom transparency + vacuity map |
-| F1 | F-05 | HGOEKeyExpansion → SeedKey (XL) |
-| F2 | F-06 | `SampleGroupSpec` |
-| F3 | F-09 step 1 | Concrete GI ≤_p CE (XL) |
-| F4 | F-09 step 2 | Concrete GI ≤ TI (XL) |
-| F5 | F-14 | Non-trivial `CommGroupAction` (tiered) |
-| F6 | F-21 | Additional separating-invariant screening |
-| G1 | documentation | Add `CombineImpossibility.lean` to `CLAUDE.md` |
-| G2 | documentation | DEVELOPMENT.md Vacuity Map section |
-| G3 | documentation | `PHASE_14_AUDIT_RESOLUTION.md` status file |
-| G4 | documentation | Axiom-transparency hardness-Props section |
+| WU | Effort | Covers | One-line purpose |
+|----|--------|--------|------------------|
+| **A — Immediate fixes (8 atomic)** | | | |
+| A1 | 10 m | F-03 | Harden CI `sorry` regex |
+| A2 | 5 m | F-04 | `push Not` → `push_neg` |
+| A3 | 10 m | F-18 | Remove shadowed `hn_pos` |
+| A4 | 30 m | F-22 | Pin elan SHA-256 in CI |
+| A5 | 45 m | F-19 | Strengthen `kem_agreement_correctness` to bi-view identity |
+| A6 | 1 h | F-16 | Rename `paut_coset_is_equivalence_set` (+ optional set identity) |
+| A7 | 1 h | F-13 | Helper `def`s in CompOIA/CompSecurity |
+| A8 | 20 m | F-12 | Document hardness-parameter Props |
+| **B — Adversary refinements (5 atomic)** | | | |
+| B1a | 45 m | F-02 | Define `hasAdvantageDistinct`/`IsSecureDistinct` |
+| B1b | 30 m | F-02 | Prove `IsSecure → IsSecureDistinct` |
+| B1c | 30 m | F-02 | Docstring + `DEVELOPMENT.md` note |
+| B2 | 1 h | F-15 | Explicit universes on `SchemeFamily` |
+| B3 | 4 h | E8 prereq | Per-query distinct adversary wrapper |
+| **C — MAC INT_CTXT (6 atomic)** | | | |
+| C1 | 2 h | F-07 step 1 | Add `verify_inj` to MAC |
+| C2a | 45 m | F-07 step 2a | `verify` false branch lemma |
+| C2b | 1 h 15 m | F-07 step 2b | Key-uniqueness field/lemma |
+| C2c | 1 h | F-07 step 2c | Assemble `authEncrypt_is_int_ctxt` |
+| C3 | 20 m | F-07 step 3 | Wire into headline theorem list |
+| C4 | 3 h | F-07 witness | Concrete MAC instance |
+| **D — CE API (7 atomic)** | | | |
+| D1a | 1 h 30 m | F-08 helper | `permuteCodeword` self-bijection lemma |
+| D1b | 1 h | F-08 | `arePermEquivalent_symm` |
+| D1c | 30 m | F-08 | `arePermEquivalent_trans` |
+| D2a | 1 h | F-08 | `PAutSubgroup` skeleton (+ partial fields) |
+| D2b | 1 h | F-08 | `inv_mem'` from D1a |
+| D2c | 30 m | F-08 | `PAut = PAutSubgroup.carrier` |
+| D3 | 4 h | F-16 (extended) | Prove coset set identity (optional) |
+| D4 | 1 h | F-08 | `Setoid` instance |
+| **E — Probabilistic chain (28 atomic)** | | | |
+| E1a | 1 h 30 m | F-10 | `kemEncapsDist` PMF push-forward |
+| E1b | 1 h | F-10 | `ConcreteKEMOIA` + `_one` lemma |
+| E1c | 1 h 30 m | F-10 | `det_kemoia_implies_concreteKEMOIA_zero` bridge |
+| E1d | 2 h | F-10 | `concrete_kemoia_implies_secure` |
+| E2a | 2 h 30 m | F-10 | `ConcreteCEOIA` + `codeOrbitDist` |
+| E2b | 3 h | F-10 | `ConcreteTensorOIA` + `tensorOrbitDist` |
+| E2c | 2 h 30 m | F-10 | `ConcreteGIOIA` + `graphOrbitDist` |
+| E3-prep | 1 h | F-09 | `OrbitPreservingEncoding` interface |
+| E3a | 2 h 30 m | F-09, F-20 | `ConcreteTensorOIAImpliesConcreteCEOIA` Prop |
+| E3b | 2 h 30 m | F-09, F-20 | `ConcreteCEOIAImpliesConcreteGIOIA` Prop |
+| E3c | 2 h 30 m | F-09, F-20 | `ConcreteGIOIAImpliesConcreteOIA` Prop |
+| E3d | 1 h | F-20 | Sanity composition `_zero_*` lemma |
+| E4a | 1 h | F-20 | `ConcreteHardnessChain` structure |
+| E4b | 2 h 30 m | F-20 | `concreteOIA_from_chain` proof |
+| E4c | 30 m | F-20 | `ConcreteHardnessChain.tight` constructor |
+| E5 | 3 h | F-20 | `concrete_hardness_chain_implies_1cpa_advantage_bound` |
+| E6a | 2 h | F-17 | `combinerOrbitDist`, `combinerDistinguisherAdvantage` |
+| E6b | 2 h | F-17 | Lower bound from non-degeneracy |
+| E6c | 1 h 30 m | F-17 | Combine into headline theorem |
+| E7a | 2 h | F-11 prereq | `uniformPMFTuple` |
+| E7b | 2 h 30 m | F-11 prereq | `probEventTuple`, `advantageTuple`, marginals |
+| E7c | 1 h 30 m | F-11 prereq | `hybridDist` interpolation |
+| E8a | 1 h | F-11 | `indQCPAAdvantage` definition |
+| E8b | 2 h 30 m | F-11 | Single-step hybrid lemma |
+| E8c | 2 h 30 m | F-11 | Telescope to `indQCPA_bound_via_hybrid` |
+| E8d | 30 m | F-11 | Q = 1 regression check |
+| E9 | 2 h | F-01, F-10, F-17, F-20 | Axiom transparency + vacuity map |
+| **F — Implementation gaps (19 atomic)** | | | |
+| F1a | 6 h | F-05 | `PRF` abstraction |
+| F1b | 8 h | F-05 | `hgoeKeyFromExpansion` constructor |
+| F1c | 6 h | F-05 | Correctness theorems |
+| F1d | 6 h | F-05 | Integration with HGOEKEM |
+| F2 | 6 h | F-06 | `SampleGroupSpec` interface |
+| F3a | 8 h | F-09 | CFI gadget definition |
+| F3b | 12 h | F-09 | `cfiCode` PAut = graph Aut (forward) |
+| F3c | 12 h | F-09 | `cfiCode` PAut = graph Aut (reverse) |
+| F3d | 4 h | F-09 | Wire into `GIReducesToCE` witness |
+| F4a | 6 h | F-09 | `adjacencyToTensor3` encoding |
+| F4b | 12 h | F-09 | Forward direction |
+| F4c | 16 h | F-09 | Reverse direction |
+| F4d | 6 h | F-09 | Wire into `GIReducesToTI` witness |
+| F5a | 4 h | F-14 | Tier 1: `ZMod N` action witness |
+| F5b | 16 h | F-14 | Tier 2: class-group skeleton |
+| F5c | 10 h | F-14 | Tier 3: CSI-DLP hardness Prop |
+| F6a | 4 h | F-21 | Weight enumerator screening |
+| F6b | 4 h | F-21 | Dual code minimum distance screening |
+| F6c | 4 h | F-21 | Automorphism-group order screening |
+| **G — Documentation (4 atomic)** | | | |
+| G1 | 10 m | meta | `CLAUDE.md`: add `CombineImpossibility.lean` |
+| G2 | 2 h | meta | `DEVELOPMENT.md` Vacuity Map section |
+| G3 | 2 h | meta | `PHASE_14_AUDIT_RESOLUTION.md` status file |
+| G4 | 1 h | meta | Axiom-transparency hardness-Props section |
+
+**Atomic-WU total: 8 + 5 + 6 + 8 + 27 + 19 + 4 = 77** (matches §3.1).
+Note that `A6` and `D3` are jointly-optional sub-WUs (A6 has both A6a
+and A6b alternatives; D3 is the optional set-identity proof). The
+mandatory-only count is `A6a` + 8 elsewhere = also 77 with A6b counted
+once for either landing.
 
 ---
 
