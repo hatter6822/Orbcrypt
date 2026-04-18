@@ -26,6 +26,9 @@ and establishes the PAut (Permutation Automorphism group) framework.
 * `Orbcrypt.paut_mul_closed` — PAut is closed under composition
 * `Orbcrypt.paut_compose_preserves_equivalence` — PAut coset property
 * `Orbcrypt.paut_from_dual_equivalence` — dual equivalences yield automorphisms
+* `Orbcrypt.paut_compose_yields_equivalence` — right-multiplication by PAut
+  element preserves a witnessed equivalence (renamed from
+  `paut_coset_is_equivalence_set` per audit finding F-16)
 
 ## References
 
@@ -149,7 +152,15 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
 
     Stated as a `Prop`-valued *definition* following the OIA pattern.
     The encoding construction is beyond this formalization's scope.
-    Results carry this as an explicit hypothesis. -/
+    Results carry this as an explicit hypothesis.
+
+    **Audit note (F-12).** This definition has no in-tree consumer today;
+    Workstream E's probabilistic hardness chain
+    (`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3–E5) is
+    scheduled to consume it as an input to `ConcreteHardnessChain`. A
+    concrete witness (e.g. via the CFI gadget) is tracked as Workstream F3.
+    Listed in the root-file "Hardness parameter Props" section for
+    transparency. -/
 def GIReducesToCE : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Finset (Fin (dim m) → Bool)),
@@ -205,19 +216,27 @@ theorem paut_from_dual_equivalence
   rw [permuteCodeword_mul]
   exact hτ _ (hσ c hc)
 
-/-- PAut recovery enables CE: if σ establishes equivalence C₁ ~ C₂, then
-    the full equivalence relation decomposes as ArePermEquivalent.
+/-- Right-multiplication by a PAut element yields another CE witness:
+    if σ establishes equivalence C₁ ~ C₂ and τ ∈ PAut(C₁), then σ·τ also
+    witnesses C₁ ~ C₂ via `ArePermEquivalent`.
 
-    Combined with `paut_compose_preserves_equivalence`, this shows that
-    the set of all permutations mapping C₁ to C₂ forms a coset σ · PAut(C₁).
-    Therefore, knowing PAut(C₁) reduces CE to searching among |S_n|/|PAut(C₁)|
-    coset representatives — a potentially exponential speedup for codes with
-    large automorphism groups.
+    **Audit note (F-16).** This theorem was previously named
+    `paut_coset_is_equivalence_set`, which promised the stronger *set
+    identity* `{ρ | ρ maps C₁ → C₂} = σ · PAut(C₁)`. The body only proves
+    the inclusion `σ · PAut(C₁) ⊆ {ρ | ρ maps C₁ → C₂}` (packaged as
+    `ArePermEquivalent C₁ C₂`). The rename restores accuracy; the full
+    set-identity strengthening is tracked as optional WU A6b
+    (→ `paut_equivalence_set_eq_coset`, Workstream D3).
 
-    This structural result underlies the LESS signature scheme's security:
-    LESS's hardness relies on the difficulty of recovering PAut for random codes,
-    where |PAut| is typically small (often trivial). -/
-theorem paut_coset_is_equivalence_set
+    **Cryptographic interpretation.** Combined with
+    `paut_compose_preserves_equivalence`, this shows that the set of all
+    permutations mapping C₁ to C₂ *contains* a coset of PAut(C₁). (The
+    full set identity — showing this coset is exactly the set — is the
+    structural claim underlying the LESS signature scheme's security
+    argument; see Workstream D.) Knowing PAut(C₁) reduces the effective
+    CE search space by |PAut(C₁)|, and LESS's hardness relies on |PAut|
+    being typically small (often trivial) for random codes. -/
+theorem paut_compose_yields_equivalence
     (C₁ C₂ : Finset (Fin n → F))
     (σ : Equiv.Perm (Fin n))
     (hσ : ∀ c ∈ C₁, permuteCodeword σ c ∈ C₂)

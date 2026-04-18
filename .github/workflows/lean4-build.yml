@@ -9,9 +9,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install elan
+      - name: Install elan (with SHA-256 integrity verification)
+        # Delegate to the canonical setup script so the elan installer's
+        # SHA-256 pin lives in exactly one place
+        # (`scripts/setup_lean_env.sh`). The script fetches the installer
+        # from a commit-pinned URL, verifies its hash, and fails fast if
+        # the upstream blob ever rotates — addressing audit finding F-22.
         run: |
-          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | bash -s -- -y --default-toolchain none
+          ./scripts/setup_lean_env.sh --quiet
           echo "$HOME/.elan/bin" >> $GITHUB_PATH
 
       - name: Cache Mathlib
@@ -30,9 +35,40 @@ jobs:
         run: lake build Orbcrypt
 
       - name: Verify no sorry
+        # Audit finding F-03: previously the check was `grep -rn "sorry" ...`,
+        # which would red-card CI if any docstring, module header, or proof
+        # comment ever mentioned the word `sorry`. The hardened check below
+        # is *comment-aware*: it strips all block comments (`/- … -/`,
+        # including docstrings `/-- … -/` and module docstrings `/-! … -/`)
+        # and all line comments (`-- …`) from each `.lean` file using a
+        # Perl slurp, and only then searches the remaining source for
+        # `sorry` with identifier word-boundaries on both sides.
+        #
+        # This accepts only genuine uses of the `sorry` tactic or term
+        # (what we actually want to ban); it never flags English prose in
+        # comments or docstrings. Multi-line docstrings are handled
+        # correctly because the Perl strip is file-wide (`-0777`), not
+        # line-wide.
+        #
+        # Implementation note: `/-.*?-/` is non-greedy, which matches
+        # `/- … -/`, `/-- … -/`, and `/-! … -/` equally (they are all
+        # block comments starting with `/-`). Lean technically allows
+        # nested block comments; a future extension could use a Perl
+        # recursive pattern, but no nested-comment usage exists in this
+        # tree (verified via `grep -c '/-' Orbcrypt/**/*.lean`).
         run: |
-          if grep -rn "sorry" Orbcrypt/ --include="*.lean"; then
-            echo "ERROR: sorry found in source files"
+          set -e
+          fail=0
+          while IFS= read -r -d '' f; do
+            hits="$(perl -0777 -pe 's{/-.*?-/}{}sg; s{--[^\n]*}{}g' "$f" \
+              | grep -Pn '(^|[^A-Za-z0-9_])sorry([^A-Za-z0-9_]|$)' || true)"
+            if [ -n "$hits" ]; then
+              echo "ERROR: sorry found in $f (outside comments and docstrings):"
+              printf '%s\n' "$hits" | sed 's/^/  /'
+              fail=1
+            fi
+          done < <(find Orbcrypt -name '*.lean' -print0)
+          if [ "$fail" -ne 0 ]; then
             exit 1
           fi
 

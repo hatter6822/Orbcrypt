@@ -119,28 +119,6 @@ def OrbitKeyAgreement.sessionKey
   agr.combiner (encaps agr.kem_A a).2 (encaps agr.kem_B b).2
 
 /--
-**KEM agreement correctness.**
-
-Alice's and Bob's views of the session key agree: both parties, after
-decapsulating their partner's ciphertext and mixing, obtain
-`combiner k_A k_B`.
-
-The proof is definitional: `decaps kem_A (encaps kem_A a).1 = (encaps kem_A a).2`
-by `kem_correctness`, and symmetrically for Bob. The combiner is applied to
-the same pair of keys in both views.
--/
-theorem kem_agreement_correctness
-    [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
-    [DecidableEq X] (agr : OrbitKeyAgreement G_A G_B X K)
-    (a : G_A) (b : G_B) :
-    agr.combiner (decaps agr.kem_A (encaps agr.kem_A a).1)
-                 (encaps agr.kem_B b).2 =
-    agr.combiner (encaps agr.kem_A a).2
-                 (decaps agr.kem_B (encaps agr.kem_B b).1) := by
-  -- Rewrite both sides using KEM correctness on each party's own KEM.
-  rw [kem_correctness agr.kem_A a, kem_correctness agr.kem_B b]
-
-/--
 **Bob's view equals the canonical session key.** After Bob decapsulates
 Alice's ciphertext, mixing with his own `(encaps kem_B b).2` yields exactly
 `sessionKey a b`.
@@ -173,6 +151,36 @@ theorem kem_agreement_alice_view
                     (decaps agr.kem_B (encaps agr.kem_B b).1) =
        agr.combiner (encaps agr.kem_A a).2 (encaps agr.kem_B b).2
   rw [kem_correctness agr.kem_B b]
+
+/--
+**KEM agreement correctness.**
+
+Alice's and Bob's decapsulated views of the session key both reduce to
+`sessionKey a b`. This is the headline correctness statement: the two
+operational paths (Bob decapsulates Alice's ciphertext and mixes with his
+own key, vs. Alice decapsulates Bob's ciphertext and mixes with her own
+key) both evaluate to the *same* canonical `sessionKey`, not merely to
+each other.
+
+The theorem was strengthened per audit finding F-19: previously the
+statement was a literal tautology (both sides reduced to
+`combiner k_A k_B`), derived by two `rw [kem_correctness …]` rewrites
+that left `rfl`. The new conjunction explicitly ties both views to
+`sessionKey`, giving the theorem genuine content. The per-view lemmas
+`kem_agreement_alice_view` and `kem_agreement_bob_view` carry the same
+information and are re-used here as the two projections.
+-/
+theorem kem_agreement_correctness
+    [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
+    [DecidableEq X] (agr : OrbitKeyAgreement G_A G_B X K)
+    (a : G_A) (b : G_B) :
+    agr.combiner (decaps agr.kem_A (encaps agr.kem_A a).1)
+                 (encaps agr.kem_B b).2 =
+      agr.sessionKey a b ∧
+    agr.combiner (encaps agr.kem_A a).2
+                 (decaps agr.kem_B (encaps agr.kem_B b).1) =
+      agr.sessionKey a b :=
+  ⟨kem_agreement_bob_view agr a b, kem_agreement_alice_view agr a b⟩
 
 /--
 **Fundamental limitation (as a Prop): session-key computation requires both

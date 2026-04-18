@@ -87,11 +87,12 @@ theorem IsNegligible.mul_const {f : ℕ → ℝ} (hf : IsNegligible f) (C : ℝ)
   have hn₁ : n₁ ≤ n := le_trans (le_trans (le_max_left n₁ _) (le_max_left _ 1)) hn
   have hfn := h₁ n hn₁
   have hn_ge_one : 1 ≤ n := le_trans (le_max_right _ 1) hn
-  have hn_pos : (0 : ℝ) < n := by exact_mod_cast Nat.one_pos.trans_le hn_ge_one
+  have hn_pos_from_one : (0 : ℝ) < n := by
+    exact_mod_cast Nat.one_pos.trans_le hn_ge_one
   by_cases hC : C = 0
   · -- When C = 0, |f n * 0| = 0 < n⁻ᶜ
     simp only [hC, mul_zero, abs_zero]
-    exact pow_pos (inv_pos.mpr hn_pos) _
+    exact pow_pos (inv_pos.mpr hn_pos_from_one) _
   · have hC_pos : (0 : ℝ) < |C| := abs_pos.mpr hC
     have hn_ge_C : |C| < (n : ℝ) := by
       calc |C| < |C| + 1 := lt_add_one _

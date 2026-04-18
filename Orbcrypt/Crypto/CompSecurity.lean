@@ -142,26 +142,20 @@ theorem indCPAAdvantage_nonneg {G : Type*} {X : Type*} {M : Type*}
 -- Work Unit 8.7c: Asymptotic security theorem (stretch goal)
 -- ============================================================================
 
-/-- Computational security: every adversary family has negligible advantage. -/
+/-- Computational security: every adversary family has negligible advantage.
+
+    After F-13 cleanup, this is stated via `sf.advantageAt` / `sf.repsAt`
+    helpers rather than a ~20-line inline `@`-threaded expression. The
+    unfolded form is definitionally equal; use `simp
+    [SchemeFamily.advantageAt, SchemeFamily.orbitDistAt,
+    SchemeFamily.repsAt]` to recover it. -/
 def CompIsSecure (sf : SchemeFamily) : Prop :=
   ∀ (A : ∀ n, @Adversary (sf.X n) (sf.M n)),
-    IsNegligible (fun n =>
-      @advantage (sf.X n)
-        (fun x => (A n).guess
-          (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-            (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n)) x)
-        (@orbitDist (sf.G n) (sf.X n) (sf.instGroup n) (sf.instFintype n)
-          (sf.instNonempty n) (sf.instAction n)
-          (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-            (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n)
-            ((A n).choose (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-              (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n))).1))
-        (@orbitDist (sf.G n) (sf.X n) (sf.instGroup n) (sf.instFintype n)
-          (sf.instNonempty n) (sf.instAction n)
-          (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-            (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n)
-            ((A n).choose (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-              (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n))).2)))
+    IsNegligible
+      (sf.advantageAt
+        (fun n x => (A n).guess (fun m => sf.repsAt n m) x)
+        (fun n => ((A n).choose (fun m => sf.repsAt n m)).1)
+        (fun n => ((A n).choose (fun m => sf.repsAt n m)).2))
 
 /-- CompOIA implies computational IND-1-CPA security: every adversary family
     has negligible advantage.
@@ -172,17 +166,11 @@ theorem comp_oia_implies_1cpa (sf : SchemeFamily)
     (hOIA : CompOIA sf) :
     CompIsSecure sf := by
   intro A
-  -- Directly instantiate CompOIA with the adversary's distinguisher and messages
+  -- Directly instantiate CompOIA with the adversary's distinguisher and messages.
   exact hOIA
-    (fun n x => (A n).guess
-      (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-        (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n)) x)
-    (fun n => ((A n).choose
-      (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-        (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n))).1)
-    (fun n => ((A n).choose
-      (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-        (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n))).2)
+    (fun n x => (A n).guess (fun m => sf.repsAt n m) x)
+    (fun n => ((A n).choose (fun m => sf.repsAt n m)).1)
+    (fun n => ((A n).choose (fun m => sf.repsAt n m)).2)
 
 -- ============================================================================
 -- Work Unit 8.10: Multi-Query Security Skeleton

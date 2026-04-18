@@ -16,6 +16,12 @@ cryptographic assumption.
 * `Orbcrypt.ConcreteOIA` — concrete-security OIA with explicit bound `ε`
 * `Orbcrypt.CompOIA` — asymptotic OIA with negligible advantage
 * `Orbcrypt.SchemeFamily` — security-parameter-indexed scheme family
+* `Orbcrypt.SchemeFamily.repsAt` — per-level representative under the
+  family (readability helper, F-13)
+* `Orbcrypt.SchemeFamily.orbitDistAt` — per-level orbit distribution under
+  the family (readability helper, F-13)
+* `Orbcrypt.SchemeFamily.advantageAt` — per-level distinguishing advantage
+  under the family (readability helper, F-13)
 
 ## Main results
 
@@ -141,23 +147,56 @@ structure SchemeFamily where
     (instGroup n) (instAction n) (instDecEq n)
 
 -- ============================================================================
+-- Readability helpers (audit finding F-13)
+-- ============================================================================
+--
+-- Before these helpers, `CompOIA`, `CompIsSecure`, and the forthcoming
+-- Workstream E hardness-chain definitions embedded ~10-token
+-- `@`-qualified expressions inline. Those expressions are fragile under
+-- Mathlib renames and make proof scripts hard to read. The three
+-- definitions below centralise the explicit instance threading and let
+-- downstream callers work in the named forms
+-- `sf.repsAt`, `sf.orbitDistAt`, `sf.advantageAt`.
+
+/-- Per-level representative embedding of message `m` at security level
+    `n` under the scheme family `sf`. Equal by `rfl` to
+    `(sf.scheme n).reps m`; introduced as a named helper so higher-level
+    definitions avoid the `@`-threaded explicit-instance forms. -/
+def SchemeFamily.repsAt (sf : SchemeFamily) (n : ℕ) (m : sf.M n) : sf.X n :=
+  @OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
+    (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n) m
+
+/-- Per-level orbit distribution of `sf.repsAt n m` at security level `n`.
+    Push-forward of the uniform distribution on `sf.G n` through the
+    group action — the concrete ciphertext distribution sampled by
+    `encaps` on message `m`. -/
+noncomputable def SchemeFamily.orbitDistAt (sf : SchemeFamily) (n : ℕ)
+    (m : sf.M n) : PMF (sf.X n) :=
+  @orbitDist (sf.G n) (sf.X n) (sf.instGroup n) (sf.instFintype n)
+    (sf.instNonempty n) (sf.instAction n) (sf.repsAt n m)
+
+/-- Per-level distinguishing advantage of the Boolean distinguisher `D n`
+    between the two orbit distributions of `m₀ n` and `m₁ n`. -/
+noncomputable def SchemeFamily.advantageAt (sf : SchemeFamily)
+    (D : ∀ n, sf.X n → Bool) (m₀ m₁ : ∀ n, sf.M n) (n : ℕ) : ℝ :=
+  @advantage (sf.X n) (D n) (sf.orbitDistAt n (m₀ n)) (sf.orbitDistAt n (m₁ n))
+
+-- ============================================================================
 -- Work Unit 8.5b: Asymptotic CompOIA definition (stretch goal)
 -- ============================================================================
 
 /-- **Asymptotic Computational OIA**: every family of distinguishers has
-    negligible advantage between orbit distributions of different messages. -/
+    negligible advantage between orbit distributions of different
+    messages.
+
+    After F-13 cleanup, the definition is stated in terms of
+    `sf.advantageAt D m₀ m₁` rather than an inline `@`-threaded
+    expression. The unfolded form is definitionally equal and is
+    recovered by `simp [SchemeFamily.advantageAt, SchemeFamily.orbitDistAt,
+    SchemeFamily.repsAt]` when needed. -/
 def CompOIA (sf : SchemeFamily) : Prop :=
   ∀ (D : ∀ n, sf.X n → Bool) (m₀ m₁ : ∀ n, sf.M n),
-    IsNegligible (fun n =>
-      @advantage (sf.X n) (D n)
-        (@orbitDist (sf.G n) (sf.X n) (sf.instGroup n) (sf.instFintype n)
-          (sf.instNonempty n) (sf.instAction n)
-          (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-            (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n) (m₀ n)))
-        (@orbitDist (sf.G n) (sf.X n) (sf.instGroup n) (sf.instFintype n)
-          (sf.instNonempty n) (sf.instAction n)
-          (@OrbitEncScheme.reps (sf.G n) (sf.X n) (sf.M n)
-            (sf.instGroup n) (sf.instAction n) (sf.instDecEq n) (sf.scheme n) (m₁ n))))
+    IsNegligible (sf.advantageAt D m₀ m₁)
 
 -- ============================================================================
 -- Work Unit 8.8: Bridge — Deterministic OIA implies Probabilistic OIA

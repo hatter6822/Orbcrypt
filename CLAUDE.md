@@ -529,7 +529,7 @@ Phase 8 (Probabilistic Foundations) has been completed:
 - `Probability/Monad.lean` — `uniformPMF` (wraps `PMF.uniformOfFintype`); `probEvent` and `probTrue` (event probability under PMF); `probEvent_certain`, `probEvent_impossible`, `probTrue_le_one` (sanity lemmas)
 - `Probability/Negligible.lean` — `IsNegligible` (standard crypto negligible function definition); `isNegligible_zero`, `IsNegligible.add`, `IsNegligible.mul_const` (closure properties)
 - `Probability/Advantage.lean` — `advantage` (distinguishing advantage `|Pr[D=1|d₀] - Pr[D=1|d₁]|`); `advantage_nonneg`, `advantage_symm`, `advantage_self`, `advantage_le_one` (basic properties); `advantage_triangle` (triangle inequality); `hybrid_argument` (general n-hybrid argument by induction)
-- `Crypto/CompOIA.lean` — `orbitDist` (orbit distribution via PMF.map); `orbitDist_support`, `orbitDist_pos_of_mem` (support characterization); `ConcreteOIA` (concrete-security OIA with explicit bound ε); `concreteOIA_zero_implies_perfect`, `concreteOIA_mono`, `concreteOIA_one` (basic lemmas); `SchemeFamily` (security-parameter-indexed families); `CompOIA` (asymptotic computational OIA); `det_oia_implies_concrete_zero` (bridge: deterministic OIA → ConcreteOIA(0))
+- `Crypto/CompOIA.lean` — `orbitDist` (orbit distribution via PMF.map); `orbitDist_support`, `orbitDist_pos_of_mem` (support characterization); `ConcreteOIA` (concrete-security OIA with explicit bound ε); `concreteOIA_zero_implies_perfect`, `concreteOIA_mono`, `concreteOIA_one` (basic lemmas); `SchemeFamily` (security-parameter-indexed families); `SchemeFamily.repsAt` / `SchemeFamily.orbitDistAt` / `SchemeFamily.advantageAt` (readability helpers, Workstream A7 / F-13 — definitionally equal to the pre-refactor `@`-threaded forms, recoverable via `simp [SchemeFamily.advantageAt, SchemeFamily.orbitDistAt, SchemeFamily.repsAt]`); `CompOIA` (asymptotic computational OIA, now phrased via `advantageAt`); `det_oia_implies_concrete_zero` (bridge: deterministic OIA → ConcreteOIA(0))
 - `Crypto/CompSecurity.lean` — `indCPAAdvantage` (probabilistic IND-1-CPA advantage); `indCPAAdvantage_eq` (unfolding lemma); `concrete_oia_implies_1cpa` (ConcreteOIA(ε) → advantage ≤ ε); `concreteOIA_one_meaningful` (ConcreteOIA(1) is trivially satisfied); `CompIsSecure` (asymptotic security); `comp_oia_implies_1cpa` (CompOIA → computational security); `MultiQueryAdversary` structure; `single_query_bound` (per-query advantage ≤ ε, building block for multi-query)
 - All 10 work units (8.1–8.10) implemented with zero `sorry`, zero custom axioms
 - 5 new Lean files, ~30 new public declarations
@@ -572,12 +572,62 @@ Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
 
 Phase 13 (Public-Key Extension) has been completed:
 - `PublicKey/ObliviousSampling.lean` — `OrbitalRandomizers` (bundle of orbit samples with membership certificate); `obliviousSample`, `obliviousSample_eq` (simp); `oblivious_sample_in_orbit` (orbit-membership theorem via closure hypothesis); `ObliviousSamplingHiding` (`Prop`-valued sender-privacy requirement, honest docstring about pathological-strength nature); `oblivious_sampling_view_constant` (immediate corollary carrying `ObliviousSamplingHiding` as hypothesis); `refreshRandomizers`, `refreshRandomizers_apply` (simp), `refreshRandomizers_in_orbit`, `refreshRandomizers_orbitalRandomizers` (epoch-indexed bundle constructor) with simp lemmas `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers`; `RefreshIndependent`, `refresh_independent` (structural independence of disjoint epochs)
-- `PublicKey/KEMAgreement.lean` — `OrbitKeyAgreement` (two-party KEM structure with combiner); `encapsA`, `encapsB`, `sessionKey`; `kem_agreement_correctness` (both decapsulation paths agree); `kem_agreement_alice_view`, `kem_agreement_bob_view` (each party's post-decap view equals `sessionKey`); `SymmetricKeyAgreementLimitation` Prop + unconditional `symmetric_key_agreement_limitation` structural identity exhibiting `sessionKey` in terms of both parties' secret `keyDerive` and `canonForm.canon` — the machine-checked formal handle on the symmetric-setup limitation
+- `PublicKey/KEMAgreement.lean` — `OrbitKeyAgreement` (two-party KEM structure with combiner); `encapsA`, `encapsB`, `sessionKey`; `kem_agreement_correctness` (bi-view identity: both decapsulation paths reduce to `sessionKey a b`, strengthened in Workstream A5 / F-19); `kem_agreement_alice_view`, `kem_agreement_bob_view` (each party's post-decap view equals `sessionKey`); `SymmetricKeyAgreementLimitation` Prop + unconditional `symmetric_key_agreement_limitation` structural identity exhibiting `sessionKey` in terms of both parties' secret `keyDerive` and `canonForm.canon` — the machine-checked formal handle on the symmetric-setup limitation
 - `PublicKey/CommutativeAction.lean` — `CommGroupAction` (typeclass extending `MulAction` with commutativity); `csidh_exchange` with simp lemmas `csidh_exchange_alice/bob/shared`; `csidh_correctness` (`a • b • x = b • a • x`); `csidh_views_agree`; `CommOrbitPKE` (public-key structure with `pk_valid` field); `encrypt`, `decrypt` + simp lemmas; `comm_pke_correctness` (CSIDH-style PKE correctness); `comm_pke_shared_secret` (sender/recipient views match); `CommGroupAction.selfAction` (`def`, not `instance`, for `CommGroup` acting on itself, to avoid typeclass diamonds); `selfAction_comm` theorem witnessing satisfiability
 - `docs/PUBLIC_KEY_ANALYSIS.md` — feasibility analysis document covering: (1) oblivious sampling viability with open `combine` problem, (2) KEM agreement limitation (symmetric setup), (3) CSIDH-style commutative action path with open concrete instantiation, (4) fundamental non-commutativity obstacle, (5) summary table and Phase 13 theorem registry
 - All 7 work units (13.1–13.7) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 3 new Lean files, ~30 new public declarations across ~600 lines
 - `lake build` succeeds for all 32 modules (zero errors)
+
+Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been completed:
+- `.github/workflows/lean4-build.yml` — (F-03) hardened `sorry` regex with
+  Perl word-boundary + comment filter so docstrings mentioning the word
+  "sorry" can no longer red-card CI; (F-22) elan installation delegated to
+  `scripts/setup_lean_env.sh`, which verifies a pinned SHA-256 of the
+  `elan-init.sh` archive before execution (single source of truth).
+- `Orbcrypt/Construction/Permutation.lean:92` — (F-04) **no change**.
+  The audit recommended `push Not at h → push_neg at h`, but the pinned
+  Mathlib (commit `fa6418a8`) has **deprecated** `push_neg` in favour of
+  `push Not`: invoking `push_neg` emits a `logWarning` at build time
+  (`Mathlib/Tactic/Push.lean:276–282`). The original `push Not at h` is
+  already the idiomatic form; switching to `push_neg` would introduce
+  a build warning and therefore violate the workstream's zero-warning
+  gate. The finding is marked "wontfix — recommendation reversed by
+  upstream deprecation" and tracked in the audit plan as A2's as-landed
+  note.
+- `Orbcrypt/Probability/Negligible.lean:90–95` — (F-18) shadowed outer
+  `hn_pos` renamed to `hn_pos_from_one`, eliminating binding ambiguity
+  across the `by_cases hC` branches.
+- `Orbcrypt/PublicKey/KEMAgreement.lean` — (F-19) `kem_agreement_correctness`
+  strengthened from a literal tautology (both sides reduced to
+  `combiner k_A k_B`) to a conjunction tying both views to
+  `sessionKey a b`. View lemmas `kem_agreement_bob_view` and
+  `kem_agreement_alice_view` reordered before the main theorem so they
+  can be reused as the two conjunction projections.
+- `Orbcrypt/Hardness/CodeEquivalence.lean` — (F-16) `paut_coset_is_equivalence_set`
+  renamed to `paut_compose_yields_equivalence`, which accurately describes
+  the proven content (right-multiplication by PAut element preserves a
+  witnessed equivalence). The full set-identity
+  `{ρ | ρ maps C₁ → C₂} = σ · PAut(C₁)` is tracked as optional follow-up
+  Workstream D3.
+- `Orbcrypt/Crypto/CompOIA.lean` and `Orbcrypt/Crypto/CompSecurity.lean`
+  — (F-13) added readability helpers `SchemeFamily.repsAt`,
+  `SchemeFamily.orbitDistAt`, `SchemeFamily.advantageAt`; `CompOIA` and
+  `CompIsSecure` now use the named helpers instead of inline
+  `@`-threaded expressions. All existing bridges and theorems preserved
+  definitionally.
+- `Orbcrypt/Hardness/CodeEquivalence.lean`, `Orbcrypt/Hardness/TensorAction.lean`,
+  and `Orbcrypt.lean` — (F-12) `GIReducesToCE` and `GIReducesToTI` each
+  gained an audit-note comment pointing at their scheduled Workstream E
+  consumer (`ConcreteHardnessChain`) and Workstream F concrete-witness
+  subtask (F3 / F4); the root file's axiom-transparency report gained a
+  new "Hardness parameter Props" section explaining that these are
+  *reduction claims*, not proofs, and listing them with their intended
+  usage.
+
+Traceability: every Workstream A finding is resolved by the edit above;
+see `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 4 for the
+specification and Appendix A for the finding-to-WU mapping.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules (32 total)
