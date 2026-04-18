@@ -242,7 +242,14 @@ agree.
 
 * `OrbitKeyAgreement` — the two-KEM structure.
 * `encapsA` / `encapsB` / `sessionKey` — functional API.
-* `kem_agreement_correctness` — the two views agree.
+* `kem_agreement_correctness` — bi-view identity asserting that
+  *both* decapsulation paths (Bob decaps Alice's ciphertext; Alice decaps
+  Bob's) reduce to `sessionKey a b`. After Workstream A5 (2026-04-18
+  audit, finding F-19), the theorem carries genuine content — previously
+  it was a literal tautology whose proof reduced both sides to the same
+  term. The new conjunction ties each view to the canonical `sessionKey`,
+  and is proved by pairing `kem_agreement_bob_view` with
+  `kem_agreement_alice_view`.
 * `kem_agreement_alice_view`, `kem_agreement_bob_view` — each party's
   post-decapsulation view equals `sessionKey`.
 * `SymmetricKeyAgreementLimitation` (Prop) + `symmetric_key_agreement_limitation`
@@ -278,7 +285,7 @@ hard step from encryption to setup.
 | Property | Status |
 |----------|--------|
 | Two-party structure formalised | ✅ |
-| Correctness (both views agree) | ✅ (`kem_agreement_correctness`) |
+| Correctness (both views reduce to `sessionKey`) | ✅ (`kem_agreement_correctness`) |
 | Public-key distribution | ❌ Setup is symmetric |
 | Formal limitation statement | ✅ (`SymmetricKeyAgreementLimitation`) |
 

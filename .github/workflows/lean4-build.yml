@@ -35,26 +35,40 @@ jobs:
         run: lake build Orbcrypt
 
       - name: Verify no sorry
-        # Match `sorry` only when used as an identifier (both boundaries are
-        # non-identifier characters). Incidental mentions inside docstrings
-        # or comments (e.g. a proof-strategy note) are filtered out so they
-        # do not turn CI red. Hardened per audit finding F-03.
+        # Audit finding F-03: previously the check was `grep -rn "sorry" ...`,
+        # which would red-card CI if any docstring, module header, or proof
+        # comment ever mentioned the word `sorry`. The hardened check below
+        # is *comment-aware*: it strips all block comments (`/- … -/`,
+        # including docstrings `/-- … -/` and module docstrings `/-! … -/`)
+        # and all line comments (`-- …`) from each `.lean` file using a
+        # Perl slurp, and only then searches the remaining source for
+        # `sorry` with identifier word-boundaries on both sides.
+        #
+        # This accepts only genuine uses of the `sorry` tactic or term
+        # (what we actually want to ban); it never flags English prose in
+        # comments or docstrings. Multi-line docstrings are handled
+        # correctly because the Perl strip is file-wide (`-0777`), not
+        # line-wide.
+        #
+        # Implementation note: `/-.*?-/` is non-greedy, which matches
+        # `/- … -/`, `/-- … -/`, and `/-! … -/` equally (they are all
+        # block comments starting with `/-`). Lean technically allows
+        # nested block comments; a future extension could use a Perl
+        # recursive pattern, but no nested-comment usage exists in this
+        # tree (verified via `grep -c '/-' Orbcrypt/**/*.lean`).
         run: |
           set -e
-          matches="$(grep -Prn '(^|[^A-Za-z0-9_])sorry([^A-Za-z0-9_]|$)' \
-            Orbcrypt/ --include='*.lean' || true)"
-          # Strip lines where the match occurs inside a comment: either a
-          # line comment (`--`) or a single-line block comment containing
-          # the word `sorry`. Multi-line docstrings that legitimately use
-          # the word would need to be handled by convention; none exist
-          # today.
-          filtered="$(printf '%s\n' "$matches" \
-            | grep -v -E '^[^:]*:[0-9]+:[[:space:]]*--' \
-            | grep -v -E '^[^:]*:[0-9]+:[[:space:]]*/-.*sorry.*-/' \
-            || true)"
-          if [ -n "$filtered" ]; then
-            echo "ERROR: sorry found in source files"
-            echo "$filtered"
+          fail=0
+          while IFS= read -r -d '' f; do
+            hits="$(perl -0777 -pe 's{/-.*?-/}{}sg; s{--[^\n]*}{}g' "$f" \
+              | grep -Pn '(^|[^A-Za-z0-9_])sorry([^A-Za-z0-9_]|$)' || true)"
+            if [ -n "$hits" ]; then
+              echo "ERROR: sorry found in $f (outside comments and docstrings):"
+              printf '%s\n' "$hits" | sed 's/^/  /'
+              fail=1
+            fi
+          done < <(find Orbcrypt -name '*.lean' -print0)
+          if [ "$fail" -ne 0 ]; then
             exit 1
           fi
 
