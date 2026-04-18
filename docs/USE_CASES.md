@@ -23,27 +23,42 @@ enough to enable applications that are awkward with AEAD or lattice KEMs:
 
 | Primitive | Signature | What makes it unusual |
 |-----------|-----------|-----------------------|
-| **Orbit sampling** | `encaps : G → X × K` | Ciphertext is a *uniformly random element* of a message's orbit; any orbit member is an equally valid ciphertext. |
+| **Orbit sampling** | `encaps : G → X × K` (takes `g : G`) | Ciphertext is a uniformly random element of a message's orbit when `g` is sampled uniformly from `G`; any orbit member is an equally valid ciphertext. Sampling requires holding `G`. |
 | **Canonical form** | `canon : X → X` | Deterministic fingerprint of an orbit. Two ciphertexts carry the same meaning iff their canonical forms match. Computable by anyone who knows `G`. |
-| **Owner re-randomization** | `g • c` for any `g ∈ G` | The key holder can freshen a ciphertext trivially; this is a group action, not a new encryption. |
-| **Invariant-freedom** | (no efficient `f` constant on orbits) | The OIA assumption — without `G`, no public function separates orbits. |
+| **`G`-holder re-randomization** | `g • c` for any `g ∈ G` | A `G`-holder can freshen a ciphertext trivially; this is a group action, not a new encryption. |
+| **Bundle-mediated rotation** | `OrbitalRandomizers G X t` | A `G`-holder issues a non-holder a bounded-size list of orbit elements; the non-holder consumes these one at a time and requests refresh. The only way a non-`G`-holder gets multiple orbit elements in the symmetric scheme. |
+| **Invariant-freedom** | (no efficient `f` separating different orbits) | The OIA assumption — without `G`, no efficient function separates messages. Non-*separating* invariants (e.g. Hamming weight on HGOE) may still be publicly computable and must be designed around. |
 
 Three observations drive the designs below:
 
-1. `canon` is a post-quantum *commitment* with unique openings: binding
-   comes from idempotence (`canon_idem`), hiding from OIA.
-2. Owner re-randomization converts "send the same message twice" from a
-   correlation leak into a structural non-event — every resend looks
-   independent to observers.
-3. There is a **public-verifier / private-structurer asymmetry**: holders
-   of `G` see a partition of the universe; non-holders see uniform noise.
-   Many blockchain/social designs need exactly this split.
+1. `canon` is a post-quantum *commitment* with unique openings on the
+   ambient space: binding comes from idempotence (`canon_idem`), hiding
+   comes from OIA and is conditional on the computational assumption.
+2. A `G`-holder can refresh ciphertext representatives freely; a
+   non-`G`-holder rotates only within a provisioned bundle of size
+   `t`, after which a refresh is required.
+3. There is a **key-holder / observer asymmetry**: holders of `G` see
+   a partition of the ambient space; observers see
+   OIA-indistinguishable ciphertexts (up to public non-separating
+   invariants). Many blockchain / social designs need exactly this
+   split.
 
-A caveat from Phase 13: *no efficient combiner is known that lets a
-non-holder randomize ciphertexts* (`CombineImpossibility.lean`). So
-designs that need public re-randomization must either (i) use the
-commutative CSIDH-style variant, or (ii) route randomization through an
-authorized party. We flag this explicitly in each sketch.
+Two caveats from Phase 13 recur throughout the sketches:
+
+* **Public re-randomization is blocked.** `CombineImpossibility.lean`
+  shows that no `G`-equivariant, orbit-closed, non-degenerate combiner
+  exists under deterministic OIA. Designs that need fresh orbit
+  elements from a non-`G`-holder must therefore either (i) use the
+  commutative CSIDH-style variant (§1.3), or (ii) route randomization
+  through a `G`-holder who issues signed `OrbitalRandomizers` bundles
+  consumed one element at a time with `refreshRandomizers` rotation.
+  A participant holding only *one* orbit element cannot mint fresh
+  ones without one of these routes.
+* **Sampling from `G` requires holding `G`.** `encaps g` takes
+  `g : G` as input; sampling `g` uniformly requires knowing `G`'s
+  structure. Anywhere a sketch says "party X presents a fresh orbit
+  element", the sketch must specify how: via `G`-possession, a
+  bundle, or a commutative action.
 
 ---
 
@@ -59,25 +74,38 @@ commitment. The recipient, scanning the chain, canonicalizes every new
 UTXO under their `G`: hits collapse to `canon(bp)`, misses do not.
 
 **Why orbit-based wins.** CryptoNote's stealth addresses rest on ECDH and
-break under a CRQC. Lattice-based stealth variants exist but require
-each output to carry a full KEM ciphertext. An orbit output is a
-*single group element* — on bitstring-HGOE that is `n` bits, matching
-the size of the canonical form. Scanning cost is one `canon` call per
-candidate, which is the same work the recipient already does to spend.
+break under a CRQC. An orbit output is a single element of the ambient
+space `X` — on bitstring-HGOE that is `n` bits (e.g. 344 bits at
+λ=128 per `implementation/gap/orbcrypt_benchmarks.csv`), which is
+substantially smaller than a lattice-KEM ciphertext (Kyber-768 is
+≈8.7 kbit). On the scanner side, each candidate UTXO requires one
+`canon` call.
 
 **Formalization handle.** `kem_correctness` (Theorem 4) plus
 `encrypt_mem_orbit` and `canon_encrypt` (from `Correctness.lean`)
 together guarantee that a correctly posted payment canonicalizes to the
-recipient's advertised `canon(bp)`. Unlinkability is conditional on
-`ConcreteOIA(ε)` (Theorem 6) for the bitstring action.
+recipient's advertised `canon(bp)`. Unlinkability reduces to
+`ConcreteOIA(ε)` via `concrete_oia_implies_1cpa` (Theorem 6) for the
+bitstring action.
 
-**Open.** Sender-side sampling without knowledge of `G` is exactly the
-oblivious-sampling problem. In the symmetric setting this forces the
-sender to hold `G` (shared-wallet model) or to rely on the CSIDH-style
-variant (§1.3). A viable intermediate: the recipient issues a sender
-an `OrbitalRandomizers` bundle signed with a one-time key, used for at
-most `t` deposits before rotation — `refreshRandomizers` already models
-this epoch discipline.
+**Open — sender sampling.** Sender-side sampling without knowledge of
+`G` is exactly the oblivious-sampling problem. `CombineImpossibility`
+rules out public `G`-equivariant orbit-closed combiners under
+deterministic OIA, so three workable routes remain: (i) the recipient
+issues the sender a signed `OrbitalRandomizers` bundle, rotated via
+`refreshRandomizers` every `t` deposits; (ii) the sender holds `G`
+(shared-wallet model); (iii) move to the CSIDH-style variant (§1.3),
+which sidesteps the impossibility because the commutative public
+operation is itself the combiner.
+
+**Open — scanning cost.** At the GAP reference parameters, one `canon`
+call costs ≈172 ms (λ=80), ≈320 ms (λ=128), and ≈1.2 s (λ=256). That
+makes the naive "scan every chain UTXO" pattern impractical at
+anything approaching modern chain throughput. Viable deployments need
+either (a) view tags that pre-filter candidates before running `canon`
+(standard CryptoNote technique, applies here unchanged), (b) payment
+indexing via a delegated canonicalizer, or (c) parameter reduction via
+Phase 14's planned parameter-selection work.
 
 ### 1.2 Orbit commitments with batched reveal (timelock primitive)
 
@@ -87,12 +115,15 @@ a threshold share of it) is published; canonicalization then yields
 `canon(m)`, which is deterministic and thus binding. Before the reveal,
 OIA makes `c` indistinguishable from any other orbit element.
 
-**Why orbit-based wins.** Hash commitments need a per-commitment opener;
-VDF/time-lock puzzles give only soft timing guarantees. An orbit
-commitment gives *batch openability*: one `G` reveal simultaneously
-opens every commitment made under it. For sealed-bid auctions, staged
-DAO budget disclosure, and coordinated on-chain reveals this is
-precisely the semantics wanted.
+**Why orbit-based wins.** Hash commitments require a per-commitment
+opener transmitted at reveal time; time-lock puzzles give only a soft
+parallelism-dependent delay. An orbit commitment gives *batch
+openability*: one `G` reveal simultaneously opens every commitment
+made under it, with no per-commitment opening data. For sealed-bid
+auctions, staged DAO budget disclosure, and coordinated on-chain
+reveals this is precisely the semantics wanted. VDFs give strong
+timing bounds but are a timing primitive, not a batch-opener — the
+two are composable (VDF-gate the `G` reveal) rather than substitutes.
 
 **Formalization handle.** Binding follows from `canon_eq_implies_orbit_eq`;
 hiding from `concreteOIA_zero_implies_perfect` (perfect at ε=0) and
@@ -102,43 +133,65 @@ hiding from `concreteOIA_zero_implies_perfect` (perfect at ε=0) and
 over the permutation representation — is natural but not yet
 formalized. Phase 13's `refresh_independent` is a partial step.
 
-### 1.3 CSIDH-style atomic swaps on the commutative variant
+### 1.3 CSIDH-style pair-keys for post-quantum DH on-chain
 
-**Construction.** Two chains each run `CommOrbitPKE` from
-`Orbcrypt/PublicKey/CommutativeAction.lean` with a shared commutative
-action `• : H × X → X`. Alice posts `a • x₀`, Bob posts `b • x₀`. Each
-applies their secret to the other's post, arriving at
-`a • b • x₀ = b • a • x₀` by `csidh_correctness` (Theorem 17). The
-shared orbit element keys an HTLC-free atomic swap: the "hash preimage"
-is replaced by "know `a` such that you produced `a • x₀`", which both
-parties can verify by re-running the action.
+**Construction.** Two parties, each with a secret `a`, `b : G`, use the
+commutative action on a shared base point: Alice posts `a • x₀`, Bob
+posts `b • x₀`, and each applies their own secret to the other's post,
+arriving at `a • (b • x₀) = b • (a • x₀)` by `csidh_correctness`
+(Theorem 17). The common orbit element is a post-quantum
+Diffie–Hellman shared secret; `CommOrbitPKE` (Theorem 18) wraps this
+into a KEM-style PKE interface.
 
-**Why orbit-based wins.** HTLCs leak the preimage once claimed, linking
-the two legs of a swap across chains. An orbit swap reveals only
-`a • b • x₀`, structurally a fresh orbit element — no cross-chain
-linkage beyond what the parties voluntarily expose. Post-quantum
-security rides on the tensor-isomorphism reduction (Theorem 14).
+**Why orbit-based wins.** Pre-quantum DH is broken by Shor; CSIDH is
+an established small-key post-quantum replacement. Orbcrypt's
+`CommGroupAction` is an *abstract* interface that admits CSIDH as its
+canonical (but not sole) instantiation — any concrete commutative
+action satisfying the hardness hypothesis can plug in.
+
+**What this gives and does not give on-chain.** A shared orbit element
+is *key agreement*, not *atomic-swap*. The natural blockchain uses are:
+(i) deriving a per-pair session key for a private payment channel;
+(ii) instantiating the "scalar secret" of an adaptor-signature-style
+lock, where an on-chain spend reveals a scalar the counterparty needs
+for the other chain. Claims that orbit key agreement by itself replaces
+an HTLC are **not** correct: atomic-swap semantics require a further
+construction (adaptor signatures, or a dual-locked smart contract that
+verifies the algebraic relation). Orbit key agreement is the *DH
+analogue*, not the *hashlock analogue*.
 
 **Formalization handle.** `csidh_correctness`, `csidh_views_agree`,
-`comm_pke_correctness` are machine-checked. What's missing is a
+`comm_pke_correctness` are machine-checked. The missing piece is a
 concrete `CommGroupAction` with a plausible hardness assumption;
-`docs/PUBLIC_KEY_ANALYSIS.md` §3 records the open instantiation.
+`docs/PUBLIC_KEY_ANALYSIS.md` §3 records the open instantiation. The
+OIA/TI hardness chain (Theorem 14) does *not* directly underwrite the
+commutative variant — CSIDH-style security is a *separate* hypothesis
+on the commutative structure, not a consequence of tensor-isomorphism
+hardness.
 
 ### 1.4 Confidential asset tags with public equivalence
 
 **Construction.** Each asset class is an orbit. A UTXO carries a random
-orbit element of its class. Anyone holding `G` can canonicalize and
-verify "these two UTXOs are the same asset"; without `G`, two UTXOs of
-the same class look as unrelated as two UTXOs of different classes. A
-regulator with `G` can aggregate class totals without learning
-per-UTXO linkages — the sum of canonical forms is a public quantity
-while individual histories remain private.
+orbit element of its class. Anyone holding `G` can canonicalize to
+*identify the class* (not the per-UTXO history); without `G`, two
+UTXOs of the same class look as unrelated as two UTXOs of different
+classes. A regulator with `G` computes the class histogram
+`(class, count)` directly: group UTXOs by canonical form, count.
+Per-UTXO sender/receiver linkages remain private to the holders.
+
+Note that `canon(c)` is a *bitstring*, not a scalar — there is no
+meaningful arithmetic "sum of canonical forms". The public aggregate
+is a multiset of canonical forms (equivalently: the class-count
+histogram), not a sum. Tag-only privacy is weaker than full CT: it
+hides class-equality across anonymous outputs but does not hide amount,
+sender, or receiver unless additional machinery (payment channels,
+ring signatures, etc.) is layered on.
 
 **Why orbit-based wins.** Confidential Transactions use Pedersen
 commitments and Bulletproofs — effective but heavy on verifier cost
 and discrete-log-broken under a CRQC. Orbit tags give class-equality
-comparison at one `canon` call and inherit the GI/TI hardness
-argument.
+comparison at one `canon` call, inherit GI/TI hardness, and add a
+scalar's worth of state per output.
 
 **Formalization handle.** `canon_eq_implies_orbit_eq` gives asset-class
 equality; `invariant_const_on_orbit` guarantees class-aggregate
@@ -170,10 +223,10 @@ forms (rejected as spoiled).
 
 **Formalization handle.** Correctness of tally = `canon_eq_of_mem_orbit`
 (any ciphertext canonicalizes to its representative's canonical form);
-privacy = `concrete_oia_implies_1cpa`. The three-option case reduces to
-three pairwise IND-1-CPA instances with per-pair advantage ≤ ε; a
-hybrid argument (`hybrid_argument` in `Probability/Advantage.lean`)
-bounds the overall distinguishing advantage by `3ε`.
+privacy = `concrete_oia_implies_1cpa`. For `k` options the hybrid chain
+has `k − 1` adjacent transitions, each with advantage ≤ ε;
+`hybrid_argument` in `Probability/Advantage.lean` bounds the overall
+distinguishing advantage by `(k − 1)·ε` (so `2ε` at `k = 3`).
 
 **Open.** Coercion resistance: a voter who later reveals their `g_i` can
 prove how they voted. Standard remedies (receipt-freeness via
@@ -185,24 +238,35 @@ forecasting markets) rather than general retail governance.
 ### 2.2 Anonymous members with revocable pseudonyms
 
 **Construction.** The DAO's membership roster is the orbit of a base
-point under a DAO-secret `G`. Each member receives an orbit element
-`m_i = g_i • bp` as their credential. When a member posts an action,
-they publish a fresh `h • m_i` (owner re-randomization — trivially
-computable because the member is the owner of `g_i`). The contract,
-which holds `G`, canonicalizes the action: all of a member's posts
-collapse to the same canonical form, so "same user" is detectable, but
-the specific identity behind a pseudonym is not revealed unless the
-contract discloses `canon(g_i • bp) ↦ identity`. Revocation is the
-partial reveal of the map for a single user.
+point under a DAO-secret `G`. Each member is provisioned with a *signed
+`OrbitalRandomizers` bundle* — a list of `t` orbit elements
+`{g_1 • bp, …, g_t • bp}` along with refresh metadata. To post an
+action, the member publishes the next bundle element (or a public
+combiner output — subject to the `CombineImpossibility` constraint,
+see §0); after exhausting the bundle, the member requests a refresh
+via `refreshRandomizers`, which `refresh_independent` shows is
+structurally independent of prior epochs. The DAO contract, which holds
+`G`, canonicalizes each post to recover the member's class. "Same user"
+is detectable inside the DAO (by canonical form); outside observers
+see only uniform orbit elements. A member holding *only one* orbit
+element `g_i • bp` cannot produce fresh pseudonyms without such a
+bundle; the naive "member rotates their credential" is blocked by the
+`CombineImpossibility` no-go.
 
 **Why orbit-based wins.** Compared to BBS+ or anonymous credentials,
-this avoids pairing-based machinery and makes the revocation primitive
-a single public canonicalization rather than an accumulator proof.
+this avoids pairing-based machinery and makes the "same user?" check
+a single `canon` call rather than a ZK proof. Compared to a plain
+hashed pseudonym, the member's posts are unlinkable to outside
+observers even after collecting many.
 
 **Formalization handle.** `canon_idem` and `canon_eq_of_mem_orbit`
-establish pseudonym consistency; `invariant_const_on_orbit` ensures
-any invariant the DAO cares about (e.g. reputation score) is a
-well-defined function of the pseudonym.
+establish pseudonym consistency on canonical forms;
+`invariant_const_on_orbit` ensures any DAO-computed invariant
+(e.g. reputation score) is a well-defined function of the pseudonym
+class. `refresh_independent` certifies that refreshed bundles do not
+correlate across epochs. Revocation is the DAO contract removing the
+member's canonical form from its authorized set — `G` does not need to
+rotate.
 
 ### 2.3 Staged budget disclosure
 
@@ -263,16 +327,20 @@ batch close, a threshold-held `G` is reconstructed (or a pre-committed
 Flashbots / SUAVE, encrypted mempools (Shutter Network), Cowswap batch
 auctions — all combine an encryption layer with a reveal authority.
 Orbit sealing gives a cleaner guarantee at the primitive layer:
-without `G`, orders are information-theoretically close to uniform;
-with `G`, the sequencer receives *exactly* the plaintext tuple, not a
-noisy decryption. Compared to threshold decryption of arbitrary
-ciphertexts, orbit batch reveal is one canonicalization per order, not
-one MPC decryption per order.
+without `G`, orders are uniformly distributed on their orbit and
+computationally indistinguishable across different orders by OIA; with
+`G`, the sequencer canonicalizes to the exact plaintext tuple. The
+batch reveal is one `canon` call per order, vs. one MPC decryption
+per order in threshold-decrypt designs. Non-separating invariants on
+the ambient space (e.g. Hamming weight on the bitstring HGOE) remain
+publicly computable and must be designed around — the scheme's
+`same_weight_not_separating` discipline applies here unchanged.
 
 **Formalization handle.** `concreteOIA_zero_implies_perfect` certifies
-that without the key the sequencer's view is orbit-distribution
-only; `canon_encrypt` certifies post-reveal plaintext recovery. The
-clearing algorithm itself is outside the formal model.
+the perfect-hiding limit (ε = 0); `concrete_oia_implies_1cpa` bounds
+the computational gap at ε > 0. `canon_encrypt` certifies post-reveal
+plaintext recovery. The clearing algorithm itself is outside the
+formal model.
 
 **Open.** Coercion by the sequencer (refusing to include a given
 order) is orthogonal and standard cryptography cannot solve it —
@@ -295,42 +363,63 @@ operator to hold plaintext orders (a trust liability) or use FHE
 primitives. Other market participants, observers, and even other
 exchanges running their own orbit pool see no structure.
 
-**Formalization handle.** Order-price ordering on canonical forms is an
-example of a `G_p`-invariant function — which is precisely what
-`IsSeparating` forbids in the *outer* security argument. The design
-insight is that the *operator's* ability to compute this invariant is
-exactly their holding of `G_p`; an adversary without `G_p` cannot
-compute it, which is OIA. `invariant_const_on_orbit` guarantees that
-"same canonical form ⇒ same match result" is well-posed.
+**Formalization handle.** Matching is a function of canonical forms —
+`invariant_const_on_orbit` certifies it is a well-defined function on
+equivalence classes. The subtlety worth being explicit about:
+functions computed from `canon` *are* separating invariants of `G_p`
+across distinct orbits (they typically take distinct values on
+distinct orbits). `IsSeparating` is only a security threat when the
+invariant is **efficiently computable without the key**; when it
+factors through `canon` and `canon` itself requires `G_p`, the
+invariant is intrinsically gated by key possession and OIA is not
+violated. This is exactly the operator–adversary split the scheme
+provides: operator holds `G_p` and computes match predicates;
+observers without `G_p` see OIA-indistinguishable orbit elements.
 
-### 3.3 Unlinkable LP positions with owner-side rotation
+**Price-ordering embedding — caveat.** For the match predicate to
+encode "buy ≥ sell price", `reps` must embed price in a way that
+survives canonicalization under a chosen `G_p`. This is not automatic:
+a random `G_p` with large orbits can collapse price-distinct orders
+into the same canonical class. Designers must choose the subgroup
+structure so that the equivalence relation "same (side, price, size)"
+is exactly the orbit relation. The scheme's formalization does not
+pick this `G_p` for you; `docs/planning/PHASE_14_PARAMETER_SELECTION.md`
+is the right place to expand concrete subgroup choices.
 
-**Construction.** An LP deposits into a pool; the pool contract issues
-an orbit element `c = g • reps (positionParams)` as the LP token. The
-LP rotates `c` at will by producing `h • c` (owner re-randomization).
-Each rotation is a fresh on-chain token that settles exactly like the
-previous one but cannot be linked to it by observers. Withdrawal
-requires producing any orbit element whose canonical form matches the
-pool's recorded `canon(reps p)`.
+### 3.3 Unlinkable LP positions via bundled token rotation
+
+**Construction.** An LP deposits into a pool; the pool contract holds
+`G` and issues the LP a *rotation bundle* — a signed
+`OrbitalRandomizers` list of `t` position tokens `{g_i • reps(p)}`.
+The LP presents the next bundle element on each interaction; after
+exhaustion, the LP requests a fresh bundle (one `refreshRandomizers`
+call from the pool, which knows `G`). Withdrawal requires producing an
+orbit element whose canonical form matches `canon(reps p)`.
+Un-bundled "free self-rotation" by an LP holding only one orbit
+element is blocked by `CombineImpossibility`.
 
 **Why orbit-based wins.** Uniswap v3 positions are publicly linkable by
 position parameters; LPs cannot rotate identifiers without forgoing
-fee accrual. Orbit-token rotation is free and does not touch the
-position's fee state — the pool sees only `canon`, which is invariant
-under the rotation.
+fee accrual. Orbit-bundled tokens let the LP present a fresh token
+per action; the pool's accounting runs on `canon`, which is invariant
+across the bundle. Compared to FHE-based private DeFi, the on-chain
+cost is one canonicalization per withdrawal, not one FHE evaluation.
 
-**Formalization handle.** Trivially from `orbit_eq_of_smul` and
-`canon_eq_of_mem_orbit`: rotation stays in the same orbit and
-canonicalizes to the same value.
+**Formalization handle.** `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`
+(rotation preserves orbit and canonical form); `refresh_independent`
+(bundle rotation preserves epoch independence).
 
-### 3.4 CSIDH-style swap routing
+### 3.4 CSIDH-style session keys for cross-hop privacy
 
-Chaining §1.3 into a DEX: a router contract composes several
-`CommOrbitPKE` instances to produce multi-hop swaps where each hop's
-intermediate orbit element carries no routing metadata beyond what the
-receiving hop can canonicalize. Useful for privacy-preserving
-Thorchain-like designs; gated on the same open instantiation problem
-in `docs/PUBLIC_KEY_ANALYSIS.md` §3.
+Chaining §1.3 into a DEX: a router sets up pairwise CSIDH-style
+session keys with each hop, allowing intermediate routing instructions
+to be protected under per-hop keys rather than shared among the whole
+path. This reduces the leakage an intermediate hop sees from "the
+whole routing plan" to "the next hop only". It is *not* an atomic
+multi-hop swap primitive on its own (see §1.3 caveat); it reduces
+metadata leakage along an already-composed swap path. Gated on the
+same concrete `CommGroupAction` instantiation problem
+(`docs/PUBLIC_KEY_ANALYSIS.md` §3).
 
 ---
 
@@ -338,45 +427,68 @@ in `docs/PUBLIC_KEY_ANALYSIS.md` §3.
 
 ### 4.1 Orbit-follow graphs
 
-**Construction.** Each user `u` has a secret group `G_u`. Their public
-profile advertises `canon_u(bp_u)`. To express "I follow v", user `u`
-stores locally a pointer to `bp_v` under `G_v` that `v` has handed out.
-When `u` requests `v`'s content, `u` submits a proof of possession —
-an orbit element `h • bp_v` — which `v`'s node canonicalizes to
-check membership. Revocation is removing one orbit element from `v`'s
-list of authorized canonical forms; `G_v` does not need to change.
+**Construction.** Each user `v` has a secret group `G_v`. To authorise
+`u` to follow, `v` hands `u` a signed `OrbitalRandomizers` bundle
+under `G_v`. To access `v`'s content, `u` presents the next element
+of the bundle; `v`'s server canonicalizes under `G_v` to check
+membership. When the bundle is exhausted, `v` issues `u` a fresh one
+(epoch-rotated via `refreshRandomizers`). Revocation is removing `u`'s
+canonical form from `v`'s authorised set; `G_v` does not need to
+change.
 
 **Why orbit-based wins.** Current private-follow systems rely on
 capability URLs (unguessable links) which are fragile, or on PKI which
 exposes the social graph to any intermediary. Orbit follows give
-*forward-private* links: once the server canonicalizes, it knows only
-that someone authorized accessed the content, not who.
+*post-access unlinkability*: each bundle element is an independent
+random-looking orbit point, so an adversarial server that later logs
+all access tokens cannot link them to a single follower (by OIA). The
+server sees only canonical forms, which are a per-user constant.
 
 **Formalization handle.** The follow relation is the orbit of `bp_v`
 under `G_v`; `canon_eq_of_mem_orbit` checks membership; an
 adversarial server without `G_v` learns nothing by OIA.
 
+**Caveat.** Without the bundle, the follower would be forced to replay
+one orbit element, which an adversarial observer could match across
+sessions. `CombineImpossibility` blocks free client-side re-rotation
+under the symmetric scheme; the bundle is what buys you unlinkability
+across accesses.
+
 ### 4.2 Per-message orbit freshness (deniable messaging)
 
-**Construction.** Alice and Bob share `G_{AB}`. To send, Alice picks a
-fresh `g` and sends `c = g • m`. Bob canonicalizes under `G_{AB}` to
-recover `canon(m)`, which is the agreed plaintext. An observer — or
-a judge presented with `c` — cannot distinguish `c` from a random
-orbit element of *any* orbit in the ambient space. Every `c` is
-therefore deniable: Alice can assert any plaintext `m'` and claim `c`
-was the corresponding encryption under some alternative `G_{AB}'`.
+**Construction.** Alice and Bob share `G_{AB}` (both hold `G_{AB}`, so
+both can sample and canonicalize). To send, Alice picks a fresh
+`g ∈ G_{AB}` and sends `c = g • m`. Bob canonicalizes under `G_{AB}`
+to recover `canon(m)`, which is the agreed plaintext. An observer —
+or a judge presented with `c` — cannot distinguish `c` from a random
+orbit element of *any orbit with the same values on all publicly
+computable invariants*. For the bitstring-HGOE instance that means
+Alice can later claim `c` was the encryption of any plaintext `m'`
+whose representative `reps(m')` shares Hamming weight (and any other
+publicly computable non-separating invariant) with the true plaintext.
 
 **Why orbit-based wins.** Signal's deniable deniability relies on MACs
 constructed so that either party could have forged them. Orbit
-messaging is *structurally* deniable because the ciphertext carries no
-plaintext-specific information at all — it is a random point in the
-ambient space. This matters for whistleblower channels, corporate
-leak-proofing, and any setting where the mere existence of a
-ciphertext-to-plaintext mapping is the liability.
+messaging is *structurally* deniable within the public-invariant
+equivalence class: the ciphertext carries no plaintext-specific
+information beyond invariants an observer could compute. This matters
+for whistleblower channels, corporate leak-proofing, and settings
+where the mere existence of a ciphertext-to-plaintext mapping is the
+liability.
 
-**Formalization handle.** Deniability follows from `concreteOIA_zero_
-implies_perfect` (perfect case) — the ciphertext distribution is
-exactly the orbit distribution, regardless of plaintext.
+**Scope bound.** Deniability is *not* unbounded over the entire
+message space — it is bounded by the public-invariant class of the
+ciphertext. If the message encoding is designed so that all messages
+share the same public invariants (see
+`Construction/HGOE.lean:same_weight_not_separating` for the canonical
+example), then deniability is effectively universal; otherwise it is
+bounded. Designers must audit public invariants.
+
+**Formalization handle.** Deniability within an orbit follows from
+`concreteOIA_zero_implies_perfect` (perfect case); the bound on the
+deniability class is the conjunction of publicly computable
+non-separating invariants, which is exactly what the
+invariant-freedom discipline already catalogues.
 
 ### 4.3 Private recommendations via orbit proximity
 
@@ -432,24 +544,29 @@ All the designs above reduce to a single abstract primitive: a
 "lies in the same orbit"; the label is `canon`. The design patterns
 fall into three families:
 
-1. **Commit → batch-open** (§§1.2, 2.1, 2.3, 3.1). Submitter posts
+1. **Commit → batch-open** (§§1.2, 2.1, 2.3, 3.1). Submitter posts an
    orbit element; authority later reveals `G`; everything opens
-   atomically.
-2. **Owner re-randomize** (§§2.2, 3.3, 4.2). Key holder refreshes
-   ciphertexts to obscure repetition, without any impact on semantic
-   content.
-3. **Canonicalize-as-query** (§§1.4, 3.2, 4.1, 4.3, 4.4). Key holder
-   operates on canonical forms as if on plaintexts, exposing exactly
-   the equivalence structure and nothing else.
+   atomically via `canon`.
+2. **Bundle-mediated rotation** (§§2.2, 3.3, 4.1). A `G`-holder issues
+   a non-holder a signed `OrbitalRandomizers` bundle, refreshed per
+   epoch, allowing the non-holder to present fresh representatives.
+   (§4.2 is distinct: both parties hold `G_{AB}`, so no bundle is
+   needed — Alice can sample directly.)
+3. **Canonicalize-as-query** (§§1.4, 3.2, 4.1, 4.3, 4.4). The
+   `G`-holder operates on canonical forms as a function of
+   equivalence class, exposing exactly the orbit structure and
+   nothing more to itself, and nothing at all to observers.
 
 This decomposition makes clear what the primitive does and does not
-give. It gives *privacy by equivalence*: observers cannot distinguish
-orbit elements. It does *not* give arbitrary homomorphic computation,
-MPC, or non-interactive zero-knowledge over rich predicates — those
-remain the province of FHE, MPC, and SNARKs respectively. The place
-Orbcrypt earns its keep is where the needed functionality is exactly
-"detect equivalence" or "rotate representation", and where
-post-quantum hardness matters.
+give. It gives *privacy by equivalence*: observers cannot
+computationally distinguish ciphertexts encoding different messages
+(by OIA), up to any publicly computable non-separating invariants of
+the ambient space. It does *not* give arbitrary homomorphic
+computation, MPC, or non-interactive zero-knowledge over rich
+predicates — those remain the province of FHE, MPC, and SNARKs
+respectively. The place Orbcrypt earns its keep is where the needed
+functionality is exactly "detect equivalence" or "present a fresh
+representative", and where post-quantum hardness matters.
 
 ---
 
@@ -462,18 +579,18 @@ to the open problems that currently block a full deployment.
 |-------------|----------------------|--------------|
 | 1.1 stealth addresses | 4, 6 | sender-side sampling without `G` |
 | 1.2 batched commitments | `canon_idem`, 6, 7 | threshold share of `G` |
-| 1.3 CSIDH swaps | 17, 18 | concrete `CommGroupAction` instance |
+| 1.3 CSIDH pair-keys | 17, 18 | concrete `CommGroupAction` instance; atomic-swap needs adaptor-signature layer |
 | 1.4 asset tags | 1, `canon_eq_implies_orbit_eq` | regulator trust model |
 | 2.1 glass-ballot voting | `canon_eq_of_mem_orbit`, 6, hybrid arg | coercion resistance |
-| 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit` | revocation accumulator |
+| 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit`, `refresh_independent` | bundle provisioning discipline |
 | 2.3 staged budgets | same as 1.2 | threshold share of `G_p` |
 | 2.4 delegation trees | `subgroupBitstringAction`, `canon_eq_of_mem_orbit` | subgroup rotation UX |
 | 3.1 MEV-sealed auctions | `concreteOIA_zero_implies_perfect`, `canon_encrypt` | sequencer censorship |
 | 3.2 dark pools | `invariant_const_on_orbit`, OIA | operator trust model |
-| 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit` | none — directly deployable |
+| 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`, `refresh_independent` | bundle provisioning / refresh economics |
 | 3.4 swap routing | 17, 18 | same as 1.3 |
-| 4.1 orbit follows | `canon_eq_of_mem_orbit`, OIA | graph-level metadata protection |
-| 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` | key-distribution out of scope |
+| 4.1 orbit follows | `canon_eq_of_mem_orbit`, `refresh_independent`, OIA | bundle distribution; graph-level metadata |
+| 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` | deniability class bounded by public invariants; key distribution out of scope |
 | 4.3 private recs | `canonical_isGInvariant` | service must be invariant-free |
 | 4.4 group PSI | `canon_eq_implies_orbit_eq` | delegated canonicalization model |
 
@@ -511,9 +628,15 @@ For completeness, a few applications *not* to reach for:
 * **Signatures.** Canonical form gives equivalence but not
   authentication; pair with a standard post-quantum signature (e.g.
   the AEAD layer's MAC, instantiated with a PQ-secure MAC).
-* **Key exchange between strangers without a trusted setup.** The
-  symmetric-key limitation (`SymmetricKeyAgreementLimitation`) is a
-  formal theorem in Phase 13, not a temporary gap.
+* **Key exchange between strangers without a trusted setup.** In the
+  symmetric-orbit setting, `OrbitKeyAgreement` requires both parties to
+  hold their respective KEMs' canonicalization capability; the
+  structural identity `symmetric_key_agreement_limitation` exhibits
+  this dependency as a machine-checked equation. The CSIDH-style
+  variant (§1.3) can bypass the limitation *if* a concrete
+  `CommGroupAction` with a plausible hardness assumption is
+  instantiated — an open problem per `docs/PUBLIC_KEY_ANALYSIS.md` §3.
+  This is a structural observation, not a lower bound.
 * **Password-equivalent low-entropy secrets.** OIA is a
   computational assumption over a large orbit structure; encoding a
   6-digit PIN leaks it to brute-force canonicalization.
@@ -524,12 +647,99 @@ For completeness, a few applications *not* to reach for:
 
 Orbcrypt's value to cryptocurrency, DAOs, DEXes, and social networks is
 not "another encryption scheme" but three specific, composable
-capabilities: *batch-openable commitments*, *free owner-side
-re-randomization*, and *canonical-form-as-query*. The applications
-that exploit one or more of these — stealth addresses, batched
-sealed-bid auctions, MEV-resistant batch DEXes, orbit-follow social
-graphs, deniable messaging, orbit-structured DAO delegation — give
-post-quantum security from GI / tensor-isomorphism hardness, and in
-several cases strictly better functionality than the existing
+capabilities: *batch-openable commitments*, *bundle-mediated
+representative rotation*, and *canonical-form-as-query*. The
+applications that exploit one or more of these — stealth addresses,
+batched sealed-bid auctions, MEV-resistant batch DEXes, orbit-follow
+social graphs, deniable messaging, orbit-structured DAO delegation —
+give post-quantum security from GI / tensor-isomorphism hardness
+(for the base OIA-gated designs) or from CSIDH-style hardness (for the
+commutative variant), and in several cases give strictly better
+functionality than the existing
 primitives. The open questions (sender-side sampling, threshold `G`,
 invariant hygiene) are tractable next steps for Phases 14+.
+
+---
+
+## 9. Audit changelog (2026-04-18)
+
+This document was audited against the Lean 4 formalization on
+2026-04-18. The following corrections were applied relative to the
+initial draft; recording them here so later readers can see what
+claims were weakened and why.
+
+* **§0.** Replaced the single "combiner is missing" caveat with two
+  explicit caveats that also cover the implicit "sampling from `G`
+  requires `G`" dependency. Both arise structurally and affect most
+  designs.
+* **§1.1 (stealth addresses).** Corrected "single group element" to
+  "single orbit element" (the ciphertext lives in `X`, not `G`). Added
+  concrete GAP benchmark figures for `canon` cost (172 / 320 / 1186 ms
+  at λ=80/128/256), noting that full-chain scanning is impractical
+  without view tags or parameter reduction.
+* **§1.2 (batched commitments).** Corrected the VDF characterisation:
+  VDFs give strong parallelism-bounded timing guarantees (only
+  time-lock puzzles give "soft" guarantees). Clarified that VDFs and
+  orbit commitments are composable rather than competing.
+* **§1.3 (CSIDH).** Renamed from "atomic swaps" to "pair-keys for DH on-
+  chain". CSIDH-style actions give key agreement, not an atomic-swap
+  primitive by themselves; atomic semantics require adaptor
+  signatures or equivalent. Also noted that TI hardness (Theorem 14)
+  does *not* directly underwrite the commutative variant — CSIDH-style
+  hardness is a separate hypothesis.
+* **§1.4 (asset tags).** Replaced "sum of canonical forms" (canon is a
+  bitstring, not a scalar) with "histogram of canonical-form classes".
+  Added scope note that tag-only privacy is weaker than full CT.
+* **§2.1 (glass-ballot voting).** Corrected the hybrid-argument bound
+  for `k` options from `3ε` to `(k−1)·ε` (so `2ε` at `k = 3`).
+* **§2.2 (pseudonyms).** Replaced the "member owns their `g_i` and
+  freely rotates" claim with bundle-mediated rotation: a single orbit
+  element cannot be freely re-randomised by its holder, per
+  `CombineImpossibility`. Members receive signed
+  `OrbitalRandomizers` bundles consumed via `refreshRandomizers`.
+* **§3.1 (MEV-sealed auctions).** Replaced "information-theoretically
+  close to uniform" with the accurate statement: uniform on the orbit,
+  computationally indistinguishable across messages by OIA. Noted
+  that non-separating public invariants (e.g. Hamming weight) remain
+  public.
+* **§3.2 (dark pools).** Rewrote the `IsSeparating` discussion: the
+  operator's match predicate *is* a separating invariant across
+  orbits, and this is OIA-safe precisely because it factors through
+  `canon`, which the adversary cannot compute without `G_p`. Added a
+  caveat that embedding order-price ordering into canonical forms is
+  a parameter-selection problem the formalization does not solve.
+* **§3.3 (LP rotation).** Same fix as §2.2 — client-side rotation
+  requires a bundle, not free `h • c` re-randomization.
+* **§4.1 (orbit follows).** Same fix — followers consume bundle
+  elements; free client rotation is blocked.
+* **§4.2 (deniable messaging).** Tightened the deniability scope:
+  deniability is bounded to the public-invariant equivalence class of
+  the ciphertext, not the whole ambient space. For bitstring HGOE
+  this is the Hamming-weight class; the
+  `same_weight_not_separating` discipline makes the bound effectively
+  universal when respected.
+* **§7 (anti-use cases).** Corrected the claim that
+  `SymmetricKeyAgreementLimitation` is a formal no-go theorem —
+  actually it is a structural identity documenting that `sessionKey`
+  references both parties' secrets, not a lower bound. The true no-go
+  in Phase 13 is `CombineImpossibility`, which bounds the oblivious
+  sampler, not key exchange.
+* **Summary table.** Updated rows §1.3, §2.2, §3.3, §4.1, §4.2 to
+  reflect the corrections above; removed the misleading "directly
+  deployable" tag on §3.3.
+* **§8 (summary).** Renamed "free owner-side re-randomization" to
+  "bundle-mediated representative rotation" in line with the
+  `CombineImpossibility` constraint.
+
+All numbered theorem references (Theorems 1, 2, 4, 6, 14, 17, 18)
+were cross-checked against `CLAUDE.md`'s theorem registry and the
+corresponding Lean sources; all exist with the stated meanings. Named
+lemmas (`canon_idem`, `canon_eq_implies_orbit_eq`,
+`canon_eq_of_mem_orbit`, `orbit_eq_of_smul`,
+`canonical_isGInvariant`, `invariant_const_on_orbit`,
+`concreteOIA_zero_implies_perfect`, `concrete_oia_implies_1cpa`,
+`csidh_correctness`, `csidh_views_agree`, `comm_pke_correctness`,
+`symmetric_key_agreement_limitation`, `refresh_independent`,
+`oblivious_sample_in_orbit`, `hybrid_argument`,
+`subgroupBitstringAction`, `same_weight_not_separating`) are all
+present in the sources at the locations cited.
