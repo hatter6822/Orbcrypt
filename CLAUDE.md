@@ -705,9 +705,77 @@ also re-runs the A7 def-eq `rfl` checks so the universe-polymorphic
 Patch version: `lakefile.lean` bumped from `0.1.0` to `0.1.1` for this
 workstream.
 
+Workstream C (Audit 2026-04-18 — MAC Integrity & INT_CTXT, F-07) has
+been completed:
+- `Orbcrypt/AEAD/MAC.lean` — (F-07 step 1 / C1) `MAC` gains a
+  `verify_inj` field: `∀ k m t, verify k m t = true → t = tag k m`.
+  This is the information-theoretic SUF-CMA analogue; without it the
+  abstract `INT_CTXT` predicate cannot be discharged because an adversary
+  could produce a different tag that also verifies. Docstring covers
+  SUF-CMA semantics, `decide`-based satisfiability, and the (future)
+  probabilistic refinement required for HMAC/Poly1305.
+- `Orbcrypt/AEAD/AEAD.lean` — (F-07 step 2 / C2) three new results in
+  the new `INT_CTXT_Proof` section:
+  * `authDecaps_none_of_verify_false` (private, C2a) — unfold-only
+    discharge of the `verify = false` branch of `authDecaps`.
+  * `keyDerive_canon_eq_of_mem_orbit` (private, C2b) — the
+    decapsulation key depends only on the orbit of the ciphertext;
+    chosen as a hypothesis-threaded lemma (Option B) rather than a
+    structure field on `AuthOrbitKEM` to keep the structure reusable
+    for ciphertext spaces that exceed the orbit.
+  * `authEncrypt_is_int_ctxt` (C2c) — the main theorem. `by_cases` on
+    the MAC `verify` Bool; the `true` branch uses `verify_inj` (C1),
+    the bridge lemma (C2b), and the explicit hypothesis
+    `hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` to derive a
+    contradiction with `hFresh`. Zero custom axioms, zero `sorry`.
+- `Orbcrypt/AEAD/CarterWegmanMAC.lean` — (F-07 step 3 / C4) concrete
+  `MAC` witness (new file). `deterministicTagMAC` is a generic template
+  over independent `K`, `Msg`, `Tag` types whose `verify` is
+  definitionally `decide (t = f k m)`; both `correct` and `verify_inj`
+  discharge by `decide_eq_true rfl` / `of_decide_eq_true` respectively.
+  `carterWegmanHash` + `carterWegmanMAC` specialise this to
+  `(ZMod p × ZMod p) → ZMod p → ZMod p`. `carterWegman_authKEM`
+  composes with any `OrbitKEM G (ZMod p) (ZMod p × ZMod p)`, and
+  `carterWegmanMAC_int_ctxt` is the direct specialisation of
+  `authEncrypt_is_int_ctxt` to that composition. Documented as the
+  simplest-possible witness (deterministic, tag space = `ZMod p`);
+  not production-grade.
+- `Orbcrypt.lean` + `CLAUDE.md` + `DEVELOPMENT.md §8.5` — (C3) new
+  headline theorems #19 (`authEncrypt_is_int_ctxt`) and #20
+  (`carterWegmanMAC_int_ctxt`); axiom-transparency entries listing
+  their dependencies as `[propext, Quot.sound]`; §8.5 in
+  `DEVELOPMENT.md` describing the MAC obligations, proof pipeline, and
+  orbit-cover rationale.
+
+Traceability: finding F-07 is now resolved. The composition gap that
+previously made `INT_CTXT` unprovable (only `MAC.correct` was
+available) is closed at the abstraction level; any new concrete MAC
+must discharge `verify_inj` to inhabit the structure. See
+`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 6 for the
+specification and Appendix A for the finding-to-WU mapping.
+
+Verification: `scripts/audit_c_workstream.lean` exercises every
+Workstream C headline result with `#print axioms`, destructures a
+`MAC` to prove `verify_inj` is a real proof obligation, instantiates
+`deterministicTagMAC` at three distinct `(K, Msg, Tag)` triples to
+confirm type-polymorphism, and materialises `INT_CTXT` end-to-end on
+a singleton (`ZMod 1`) ciphertext space to prove the theorem is
+non-vacuously applicable. Running
+`lake env lean scripts/audit_c_workstream.lean` should produce only
+standard-Lean-axiom or `does not depend on any axioms` outputs —
+never `sorryAx` or a custom axiom.
+
+Patch version: `lakefile.lean` bumped from `0.1.1` to `0.1.2` for this
+workstream.
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules (32 total)
-- `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
+- `lake build` succeeds with exit code 0 for all 34 `Orbcrypt/**/*.lean`
+  modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, bringing the
+  total from 33 to 34)
+- `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty (the CI
+  uses a comment-aware Perl strip so prose mentioning the word "sorry"
+  in docstrings does not trigger a false positive; see
+  `.github/workflows/lean4-build.yml`)
 - `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
 - `#print axioms invariant_attack` — no `OIA`, no `sorryAx` (standard Lean only)
@@ -721,6 +789,8 @@ workstream.
 - `#print axioms nonce_encaps_correctness` — standard Lean only (follows from kem_correctness)
 - `#print axioms nonce_reuse_leaks_orbit` — standard Lean only (follows from orbit_eq_of_smul)
 - `#print axioms aead_correctness` — standard Lean only (follows from kem_correctness + MAC.correct)
+- `#print axioms authEncrypt_is_int_ctxt` — standard Lean only (uses `MAC.verify_inj` and `canon_eq_of_mem_orbit`; the orbit-cover condition is a hypothesis, audit F-07, Workstream C2)
+- `#print axioms carterWegmanMAC_int_ctxt` — standard Lean only (direct specialisation of `authEncrypt_is_int_ctxt`, Workstream C4)
 - `#print axioms hybrid_correctness` — standard Lean only (follows from kem_correctness + DEM.correct)
 - `#print axioms hardness_chain_implies_security` — standard Lean only (HardnessChain is a hypothesis)
 - `#print axioms oblivious_sample_in_orbit` — standard Lean only (closure proof is a hypothesis)

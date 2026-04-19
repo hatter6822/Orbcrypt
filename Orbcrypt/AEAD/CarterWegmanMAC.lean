@@ -71,12 +71,11 @@ def deterministicTagMAC [DecidableEq Tag] (f : K → Msg → Tag) :
     MAC K Msg Tag where
   tag := f
   verify := fun k m t => decide (t = f k m)
-  correct := fun k m => by
-    -- `decide (f k m = f k m) = true` holds by reflexivity of equality.
-    exact decide_eq_true rfl
-  verify_inj := fun k m t hv => by
-    -- `decide (t = f k m) = true` unfolds to `t = f k m`.
-    exact of_decide_eq_true hv
+  -- `decide (f k m = f k m) = true` holds by reflexivity of equality;
+  -- `rfl` inhabits `f k m = f k m` and `decide_eq_true` lifts it.
+  correct := fun _ _ => decide_eq_true rfl
+  -- `decide (t = f k m) = true` unfolds to `t = f k m`.
+  verify_inj := fun _ _ _ hv => of_decide_eq_true hv
 
 -- ============================================================================
 -- Carter–Wegman instance over `ZMod p`
@@ -109,9 +108,12 @@ def carterWegmanMAC (p : ℕ) :
 -- ============================================================================
 -- Composition into an AuthOrbitKEM + `INT_CTXT` instantiation
 -- ============================================================================
-
-variable {G : Type*}
-  [Group G] [MulAction G (ZMod 0)]
+--
+-- The composition bridge specialises the ciphertext type to `ZMod p`
+-- because the MAC's `Msg` field must equal the KEM's `X`. `G` and `p`
+-- vary per invocation; we declare them explicitly per-definition rather
+-- than as section `variable`s so that the `MulAction G (ZMod p)` instance
+-- can be threaded with the right `p`.
 
 /--
 Compose an `OrbitKEM` whose ciphertext space is `ZMod p` and key type is
