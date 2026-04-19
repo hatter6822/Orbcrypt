@@ -43,3 +43,10 @@ open Orbcrypt
 #print axioms csidh_correctness
 #print axioms comm_pke_correctness
 #print axioms paut_compose_yields_equivalence
+
+-- Workstream B (audit 2026-04-18, F-02 + F-15):
+#print axioms isSecure_implies_isSecureDistinct
+#print axioms hasAdvantageDistinct_iff
+#print axioms perQueryAdvantage_nonneg
+#print axioms perQueryAdvantage_le_one
+#print axioms perQueryAdvantage_bound_of_concreteOIA

@@ -848,6 +848,26 @@ Adv^{1-CPA}_A(λ) = |Pr[A(params, g · x_{m₀}) = 1] − Pr[A(params, g · x_{m
 
 which is exactly (1/2) · Adv^{OIA}\_A(λ) ≤ negl(λ) by the OIA. ∎
 
+**Note on game asymmetry (audit F-02 / Workstream B1).** The classical
+IND-1-CPA game presumed above requires the adversary to submit two
+**distinct** challenge messages `m₀ ≠ m₁`. In the Lean formalization
+(`Orbcrypt/Crypto/Security.lean`), the `Adversary.choose` field is
+structurally unconstrained and may return a collision `(m, m)`. Two
+security predicates coexist in the codebase:
+
+- `IsSecure scheme` — quantifies over *all* adversaries, including the
+  degenerate ones that return `(m, m)`. This is strictly stronger than
+  the literature game.
+- `IsSecureDistinct scheme` — quantifies only over adversaries whose
+  `choose` yields `m₀ ≠ m₁`. This matches the game described above.
+
+The one-way implication `isSecure_implies_isSecureDistinct : IsSecure
+scheme → IsSecureDistinct scheme` is proved unconditionally; the
+converse is false in general, since the stronger game accepts
+collisions that the classical game rejects. Downstream probabilistic
+theorems (Phase 8) use the advantage-bounded formulation
+`indCPAAdvantage ≤ ε`, which is independent of this structural choice.
+
 ### 8.2 Multi-Query Security (Full IND-CPA)
 
 In the full IND-CPA game, the adversary has adaptive access to an encryption

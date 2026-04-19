@@ -300,6 +300,13 @@ These theorems depend only on Lean's standard axioms (`propext`,
   canonical form G-invariance (no KEMOIA needed)
 - All `GroupAction/` lemmas — orbit API, canonical forms, invariant functions
 - All `Construction/` proofs — S_n action, HGOE, HGOE-KEM, Hamming weight
+- `isSecure_implies_isSecureDistinct` (`Crypto/Security.lean`) — the
+  stronger uniform IND-1-CPA game implies the classical distinct-challenge
+  game (audit F-02, Workstream B1)
+- `perQueryAdvantage_nonneg`, `perQueryAdvantage_le_one`,
+  `perQueryAdvantage_bound_of_concreteOIA` (`Crypto/CompSecurity.lean`) —
+  per-query advantage properties; the `ConcreteOIA` bound is carried as
+  a hypothesis on the last theorem (audit F-02, Workstream B3)
 - All `Probability/` lemmas — advantage, negligible, hybrid argument
 - `concreteOIA_one` (`Crypto/CompOIA.lean`) — ConcreteOIA(1) is always true
 - `seed_kem_correctness` (`KeyMgmt/SeedKey.lean`) — seed-based KEM correctness
@@ -456,6 +463,24 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.comm_pke_correctness
 -- (standard Lean only — uses CommGroupAction.comm and pk_valid)
+
+-- Workstream B (audit 2026-04-18, F-02 + F-15):
+
+#print axioms Orbcrypt.isSecure_implies_isSecureDistinct
+-- (does not depend on any axioms — strictly axiom-free direction
+--  of the distinct-challenge implication)
+
+#print axioms Orbcrypt.hasAdvantageDistinct_iff
+-- (does not depend on any axioms — `Iff.rfl`-trivial decomposition)
+
+#print axioms Orbcrypt.perQueryAdvantage_nonneg
+-- (standard Lean only — one-line `advantage_nonneg` corollary)
+
+#print axioms Orbcrypt.perQueryAdvantage_le_one
+-- (standard Lean only — one-line `advantage_le_one` corollary)
+
+#print axioms Orbcrypt.perQueryAdvantage_bound_of_concreteOIA
+-- (standard Lean only — `ConcreteOIA` carried as a hypothesis)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden

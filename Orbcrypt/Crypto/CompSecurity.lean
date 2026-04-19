@@ -25,6 +25,12 @@ meaningful probabilistic result.
 * `Orbcrypt.concreteOIA_one_meaningful` — ConcreteOIA(1) is trivially true,
   demonstrating the definition is satisfiable
 * `Orbcrypt.indCPAAdvantage_eq` — unfolding lemma for IND-1-CPA advantage
+* `Orbcrypt.DistinctMultiQueryAdversary` — multi-query adversary wrapper
+  with per-query distinctness obligation (audit F-02 / Workstream B3)
+* `Orbcrypt.perQueryAdvantage` — per-query distinguishing advantage for a
+  multi-query adversary (Workstream B3, prereq for E8)
+* `Orbcrypt.perQueryAdvantage_bound_of_concreteOIA` — per-query
+  ConcreteOIA bound: each query's advantage is at most `ε`
 
 ## Design
 
@@ -204,5 +210,83 @@ theorem single_query_bound {G : Type*} {X : Type*} {M : Type*}
     advantage D (orbitDist (G := G) (scheme.reps m₀))
       (orbitDist (G := G) (scheme.reps m₁)) ≤ ε :=
   hOIA D m₀ m₁
+
+-- ============================================================================
+-- Audit F-02 / Workstream B3: Per-query advantage groundwork (prereq for E8)
+-- ============================================================================
+
+/-- Distinct-challenge refinement of `MultiQueryAdversary` (audit F-02 +
+    Workstream B3).
+
+    Wraps a `MultiQueryAdversary` with a per-query distinctness obligation:
+    for every public representative map `reps : M → X` and every query
+    index `i : Fin Q`, the two chosen messages must differ. This matches
+    the classical IND-Q-CPA game, where each query's challenge pair must
+    satisfy `m₀ ≠ m₁`.
+
+    This is the multi-query analogue of `IsSecureDistinct`'s single-query
+    distinctness obligation. Workstream E8 (multi-query security) consumes
+    this wrapper so every hybrid step can invoke the single-query
+    distinct-challenge game without re-proving per-query distinctness. -/
+structure DistinctMultiQueryAdversary (X : Type*) (M : Type*) (Q : ℕ)
+    extends MultiQueryAdversary X M Q where
+  /-- Every query picks two distinct messages. The quantification runs
+      over all public `reps` so the wrapper is usable before the scheme
+      fixes a specific representative map. -/
+  choose_distinct : ∀ (reps : M → X) (i : Fin Q),
+    (choose reps i).1 ≠ (choose reps i).2
+
+/-- Per-query advantage: treating query `i : Fin Q` as a single-query
+    game, measure the distinguishing advantage of an arbitrary
+    single-query Boolean test `D : X → Bool` between the two orbit
+    distributions induced by the adversary's choices at that query
+    (audit F-02 + Workstream B3).
+
+    This definition is the unit cell of the hybrid argument. In a full
+    multi-query reduction, `D` is constructed by fixing the other Q-1
+    ciphertexts (to any hybrid completion) and calling the multi-query
+    guess oracle; the per-query advantage is then bounded by the
+    single-query `ConcreteOIA` bound (see `single_query_bound` above).
+    The product-distribution infrastructure needed to glue the Q per-query
+    bounds into a Q·ε multi-query bound is Workstream E7's deliverable. -/
+noncomputable def perQueryAdvantage {G : Type*} {X : Type*} {M : Type*} {Q : ℕ}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q)
+    (D : X → Bool) (i : Fin Q) : ℝ :=
+  advantage D
+    (orbitDist (G := G) (scheme.reps (A.choose scheme.reps i).1))
+    (orbitDist (G := G) (scheme.reps (A.choose scheme.reps i).2))
+
+/-- Per-query advantage is non-negative — immediate from
+    `advantage_nonneg` (audit F-02 + Workstream B3). -/
+theorem perQueryAdvantage_nonneg {G : Type*} {X : Type*} {M : Type*} {Q : ℕ}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q)
+    (D : X → Bool) (i : Fin Q) :
+    0 ≤ perQueryAdvantage scheme A D i :=
+  advantage_nonneg _ _ _
+
+/-- Per-query advantage is at most 1 — immediate from `advantage_le_one`
+    (audit F-02 + Workstream B3). -/
+theorem perQueryAdvantage_le_one {G : Type*} {X : Type*} {M : Type*} {Q : ℕ}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q)
+    (D : X → Bool) (i : Fin Q) :
+    perQueryAdvantage scheme A D i ≤ 1 :=
+  advantage_le_one _ _ _
+
+/-- Per-query bound from `ConcreteOIA`: each query's advantage is at most
+    `ε`. Specialises `single_query_bound` at the i-th challenge pair of a
+    multi-query adversary — this is the atom that Workstream E8's hybrid
+    argument will chain Q times to produce a `Q · ε` multi-query bound
+    (audit F-02 + Workstream B3). -/
+theorem perQueryAdvantage_bound_of_concreteOIA
+    {G : Type*} {X : Type*} {M : Type*} {Q : ℕ}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q)
+    (ε : ℝ) (hOIA : ConcreteOIA scheme ε)
+    (D : X → Bool) (i : Fin Q) :
+    perQueryAdvantage scheme A D i ≤ ε :=
+  hOIA D (A.choose scheme.reps i).1 (A.choose scheme.reps i).2
 
 end Orbcrypt

@@ -175,7 +175,7 @@ These modules define the abstract encryption scheme and security notions.
 | Module | Key Definitions | Purpose |
 |--------|----------------|---------|
 | `Scheme.lean` | `OrbitEncScheme`, `encrypt`, `decrypt` | Formalizes AOE syntax from DEVELOPMENT.md §4.1 |
-| `Security.lean` | `Adversary`, `hasAdvantage`, `IsSecure` | Deterministic abstraction of IND-CPA from §4.3 |
+| `Security.lean` | `Adversary`, `hasAdvantage`, `IsSecure`, `hasAdvantageDistinct`, `IsSecureDistinct`, `isSecure_implies_isSecureDistinct` (B1) | Deterministic abstraction of IND-CPA from §4.3; distinct-challenge variant formalises the classical game (audit F-02) |
 | `OIA.lean` | `OIA` (`Prop` definition) | Formalizes §5.2 as a `Prop`-valued definition (not `axiom`) |
 
 ### Layer 3: Theorems (`Theorems/`)

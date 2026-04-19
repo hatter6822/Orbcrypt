@@ -310,6 +310,28 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
   - Type variables: capital letters by role — `G` (groups), `X` (spaces), `M` (messages)
   - Type class instances: bracket notation — `[Group G]`, `[MulAction G X]`
   - Hypothesis names: `h`-prefixed descriptors — `hInv`, `hSep`, `hDistinct`
+  - **Names describe content, never provenance.** A declaration's identifier (name of a `def` / `theorem` / `structure` / `class` / `instance` / `abbrev` / `lemma` / namespace) must describe *what the declaration is or proves*, never *where in the development process it was added*. Forbidden tokens in declaration names include, non-exhaustively:
+    - workstream labels: `workstream`, `ws`, `wu`, and workstream-letter prefixes like `a1`, `b1c`, `e8a` (even when lowercased or embedded, e.g. `workstreamB_perQueryBound`, `ws_e8_hybrid`)
+    - phase labels: `phase`, `phase1`, `phase_12`, `stretch` (as in "stretch goal")
+    - audit finding ids: `audit`, `f02`, `f_15`, `finding`, `cve`
+    - sub-task / work-unit numbers: `3_4`, `step1`, `task2`, `wu4a`
+    - session / PR / branch references: `pr23`, `claude_`, `session_`, `revision2`
+    - temporal markers: `old`, `new`, `v2`, `legacy`, `deprecated`, `temp`, `tmp`, `tmp_`, `foo`, `bar`, `baz`, `todo`, `fixme`
+    This rule applies to the full identifier, including any namespace qualifier. `WorkstreamB.perQueryAdvantage`, `Phase4.correctness`, and `Audit2026.hasAdvantageDistinct` are all disallowed even though their last component reads normally. A declaration that should be private to a scope uses `private` / `section`, not a process-marker prefix.
+
+    **Rationale.** Process markers rot: workstreams close, audits are superseded, phases get renumbered, but the declarations persist. Downstream users reading `perQueryAdvantage_bound_of_concreteOIA` learn what the theorem proves; reading `b3_e8_bound_f02` they learn nothing useful and must chase a changelog to decode it. Mathlib enforces the same discipline — there is no `phaseXYZ_foo` in Mathlib's name space, even though Mathlib is developed in coordinated pull-request batches.
+
+    **Where process references *are* allowed.** Process markers may appear in prose that lives *outside* the declaration identifier: (a) in `/-- … -/` docstrings as traceability notes ("`audit F-02 / Workstream B1`" is fine in a docstring); (b) in `-- ============================================================================` section banners that group a block of related declarations; (c) in commit messages, branch names, PR titles, and planning documents under `docs/planning/`; (d) in `CLAUDE.md` / `formalization/FORMALIZATION_PLAN.md` / `docs/audits/` change logs. The boundary is sharp: the docstring may say "added in Workstream B3," the identifier may not.
+
+    **Enforcement at review time.** Before landing any new `def` / `theorem` / `structure`, grep the diff for the forbidden tokens above against the set of added declarations:
+
+    ```bash
+    git diff --cached -U0 -- '*.lean' \
+      | grep -E '^\+(def|theorem|structure|class|instance|abbrev|lemma|noncomputable)' \
+      | grep -iE 'workstream|\bws[0-9_a-z]*|\bwu[0-9_a-z]*|\bphase[0-9_]|audit|\bf[0-9]{2}\b|\bstep[0-9]|\btmp\b|\btodo\b|\bfixme\b|claude_|session_'
+    ```
+
+    A non-empty result is a review-blocking naming violation.
 - **Proof style**:
   - Prefer tactic mode for non-trivial proofs
   - Use `calc` blocks for equational reasoning chains
@@ -628,6 +650,56 @@ Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been complete
 Traceability: every Workstream A finding is resolved by the edit above;
 see `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 4 for the
 specification and Appendix A for the finding-to-WU mapping.
+
+Workstream B (Audit 2026-04-18 — Adversary & Family Type Refinements) has
+been completed:
+- `Orbcrypt/Crypto/Security.lean` — (F-02, B1) introduced
+  `hasAdvantageDistinct` and `IsSecureDistinct`, the distinct-challenge
+  variants matching the classical IND-1-CPA game (the challenger rejects
+  `(m, m)` before sampling). Proved `isSecure_implies_isSecureDistinct`
+  showing the unconstrained `IsSecure` game (which still accepts the
+  degenerate collision choice) strictly implies the classical
+  distinct-challenge game. Added `hasAdvantageDistinct_iff` — the
+  `Iff.rfl`-trivial decomposition `hasAdvantageDistinct ↔ distinct ∧
+  hasAdvantage`, useful for downstream rewrites. Updated module and
+  `IsSecure` docstrings with a "Game asymmetry (audit F-02)" note
+  explaining the one-way implication and the unsatisfiability of the
+  converse.
+- `Orbcrypt/Crypto/CompOIA.lean` — (F-15, B2) `SchemeFamily` is now
+  explicitly universe-polymorphic. Added a module-level
+  `universe u v w` declaration and changed the `G`/`X`/`M` fields from
+  `ℕ → Type*` to `ℕ → Type u|v|w`, so consumers can thread universe
+  parameters by name (`@SchemeFamily.{u, v, w} ...`) rather than relying
+  on implicit inference. Downstream helpers (`repsAt`, `orbitDistAt`,
+  `advantageAt`, `CompOIA`) inherit the universe parameters transparently.
+- `Orbcrypt/Crypto/CompSecurity.lean` — (F-02, B3) added the
+  multi-query groundwork needed for Workstream E8: the
+  `DistinctMultiQueryAdversary` wrapper extends `MultiQueryAdversary`
+  with a `choose_distinct` obligation (per-query `m₀ ≠ m₁`);
+  `perQueryAdvantage` extracts the single-query advantage at a given
+  query index; `perQueryAdvantage_nonneg`,
+  `perQueryAdvantage_le_one`, and `perQueryAdvantage_bound_of_concreteOIA`
+  are one-liners from `advantage_nonneg`, `advantage_le_one`, and
+  `ConcreteOIA` respectively.
+
+Traceability: findings F-02 and F-15 are now resolved; Workstream E8
+(multi-query security) inherits `DistinctMultiQueryAdversary`,
+`perQueryAdvantage`, and the `ConcreteOIA` per-query bound as ready
+building blocks. See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+§ 5 for the specification and Appendix A for the finding-to-WU mapping.
+
+Verification: `scripts/audit_b_workstream.lean` exercises every
+Workstream B headline result with `#print axioms` and exhibits a
+concrete `DistinctMultiQueryAdversary` instance (over the two-element
+message space `Bool`) to prove the wrapper is non-vacuous. Running
+`lake env lean scripts/audit_b_workstream.lean` should produce only
+"does not depend on any axioms" or `[propext, Classical.choice,
+Quot.sound]` outputs — never `sorryAx` or a custom axiom. The script
+also re-runs the A7 def-eq `rfl` checks so the universe-polymorphic
+`SchemeFamily` regression is caught locally.
+
+Patch version: `lakefile.lean` bumped from `0.1.0` to `0.1.1` for this
+workstream.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules (32 total)
