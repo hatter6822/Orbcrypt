@@ -1,4 +1,5 @@
 import Orbcrypt.AEAD.MAC
+import Orbcrypt.GroupAction.Invariant
 import Orbcrypt.KEM.Syntax
 import Orbcrypt.KEM.Encapsulate
 import Orbcrypt.KEM.Correctness
@@ -22,6 +23,9 @@ the key.
 * `Orbcrypt.authDecaps` — Verify-then-Decrypt decapsulation
 * `Orbcrypt.aead_correctness` — `authDecaps` recovers the key from honest pairs
 * `Orbcrypt.INT_CTXT` — ciphertext integrity: forgeries are always rejected
+* `Orbcrypt.authEncrypt_is_int_ctxt` — INT_CTXT holds for every honestly
+  composed `AuthOrbitKEM` with transitive ciphertext space (audit F-07,
+  Workstream C2)
 
 ## Composition order
 
@@ -32,6 +36,7 @@ in certain settings.
 ## References
 
 * docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work units 10.2–10.4
+* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C (F-07)
 * KEM/Syntax.lean, KEM/Encapsulate.lean — base KEM infrastructure
 -/
 
@@ -174,5 +179,141 @@ def INT_CTXT (akem : AuthOrbitKEM G X K Tag) : Prop :=
     (∀ g : G, c ≠ (authEncaps akem g).1 ∨
               t ≠ (authEncaps akem g).2.2) →
     authDecaps akem c t = none
+
+-- ============================================================================
+-- Workstream C (audit F-07): INT_CTXT proof for honestly-composed AuthOrbitKEMs
+-- ============================================================================
+--
+-- The definition of `INT_CTXT` above is an unconditional Prop; without a
+-- structural uniqueness property on the MAC it cannot be discharged.
+-- Workstream C1 added `MAC.verify_inj` (tag uniqueness / SUF-CMA in the
+-- information-theoretic sense). Workstream C2 now produces the first
+-- concrete proof, decomposed as:
+--
+-- * C2a — `authDecaps_none_of_verify_false`: the easy `verify = false`
+--   branch (unfold + rfl).
+-- * C2b — `keyDerive_canon_eq_of_mem_orbit`: keys depend only on the
+--   orbit of the ciphertext (unconditional, discharged via
+--   `canon_eq_of_mem_orbit` / `canonical_isGInvariant`).
+-- * C2c — `authEncrypt_is_int_ctxt`: stitches (a) and (b) together, using
+--   the explicit hypothesis `hOrbitCover` that the ciphertext space equals
+--   a single orbit of the base point (the intended model; see the risk
+--   note in `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 6.C2c).
+
+section INT_CTXT_Proof
+
+/-- **C2a — easy branch.** If MAC verification fails on `(c, t)` then
+    `authDecaps` returns `none` directly. No new hypothesis beyond
+    `verify … = false`; used by the main theorem as the `¬ verify` branch
+    of a `by_cases`. -/
+private theorem authDecaps_none_of_verify_false
+    (akem : AuthOrbitKEM G X K Tag) (c : X) (t : Tag)
+    (hVerify : akem.mac.verify
+        (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t = false) :
+    authDecaps akem c t = none := by
+  -- `authDecaps` unfolds to `if verify … then some _ else none`; the false
+  -- branch evaluates to `none`.
+  simp [authDecaps, decaps, hVerify]
+
+/-- **C2b — key uniqueness.** The decapsulation key
+    `keyDerive (canon c)` depends only on the orbit of `c`: if `c` lies in
+    the orbit of the base point, both sides reduce to
+    `keyDerive (canon basePoint)`.
+
+    This is unconditional — it is an immediate consequence of
+    `canon_eq_of_mem_orbit` (which in turn uses `canonical_isGInvariant`).
+    We expose it as a private lemma because the `authEncrypt_is_int_ctxt`
+    true-branch argument needs to rewrite the honestly-computed MAC key
+    against the key produced by `decaps`. -/
+private theorem keyDerive_canon_eq_of_mem_orbit
+    (akem : AuthOrbitKEM G X K Tag) {c : X}
+    (hc : c ∈ MulAction.orbit G akem.kem.basePoint) :
+    akem.kem.keyDerive (akem.kem.canonForm.canon c) =
+    akem.kem.keyDerive (akem.kem.canonForm.canon akem.kem.basePoint) := by
+  -- `canon_eq_of_mem_orbit` : `canon c = canon basePoint` whenever
+  -- `c ∈ orbit G basePoint`; lift through `keyDerive`.
+  have h : akem.kem.canonForm.canon c =
+      akem.kem.canonForm.canon akem.kem.basePoint :=
+    canon_eq_of_mem_orbit akem.kem.canonForm _ _ hc
+  rw [h]
+
+/-- **C2c — ciphertext integrity for honestly-composed AuthOrbitKEMs.**
+
+    Every `AuthOrbitKEM` whose ciphertext space is a single orbit of the
+    base point satisfies `INT_CTXT`. "Single orbit" is captured by the
+    explicit hypothesis
+    `hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G akem.kem.basePoint`;
+    this matches the intended security model (the ciphertext space equals
+    `orbit G basePoint`, DEVELOPMENT.md §7) and makes the proof unconditional
+    on any additional cryptographic assumption.
+
+    **Proof sketch (audit F-07, Workstream C2c).**
+    Let `k := keyDerive (canon c)` be the decapsulation key. Case-split on
+    `akem.mac.verify k c t`:
+
+    * `false`: `authDecaps` returns `none` directly (C2a).
+    * `true`: by `MAC.verify_inj` (Workstream C1), `t = tag k c`. By
+      `hOrbitCover`, some `g : G` witnesses `c = g • basePoint`. Then
+      `(authEncaps akem g).1 = c` and, via C2b,
+      `(authEncaps akem g).2.2 = tag k c = t` — a contradiction with
+      `hFresh g`.
+
+    **Axioms.** Only standard Lean (`propext`, `Classical.choice`,
+    `Quot.sound`). No custom axiom, no `sorry`. -/
+theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
+    (hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G akem.kem.basePoint) :
+    INT_CTXT akem := by
+  intro c t hFresh
+  -- Case-split on whether MAC verification accepts `(c, t)` under the
+  -- decapsulation key `keyDerive (canon c)`.
+  by_cases hVerify :
+      akem.mac.verify (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t = true
+  case neg =>
+    -- `verify` returns `Bool`, so `¬ (verify = true)` forces `verify = false`.
+    have hFalse :
+        akem.mac.verify
+          (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t = false := by
+      cases hv :
+          akem.mac.verify
+            (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t with
+      | false => rfl
+      | true  => exact absurd hv hVerify
+    exact authDecaps_none_of_verify_false akem c t hFalse
+  case pos =>
+    -- `t = tag k c` by MAC tag-uniqueness (`verify_inj`, Workstream C1).
+    have htag :
+        t = akem.mac.tag
+              (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c :=
+      akem.mac.verify_inj
+        (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t hVerify
+    -- `hOrbitCover` witnesses a `g` with `g • basePoint = c`.
+    obtain ⟨g, hg⟩ := hOrbitCover c
+    -- Specialise `hFresh` at that `g` and derive a contradiction.
+    rcases hFresh g with hNeCt | hNeTag
+    · -- `c ≠ (authEncaps akem g).1 = g • basePoint`, but `hg : g • basePoint = c`.
+      apply hNeCt
+      simp [authEncaps, encaps, hg]
+    · -- `t ≠ (authEncaps akem g).2.2`; via C2b this equals `tag (keyDerive (canon c)) c`.
+      apply hNeTag
+      -- Bridge key: `keyDerive (canon (g • basePoint)) = keyDerive (canon c)`.
+      have hgc : g • akem.kem.basePoint ∈
+          MulAction.orbit G akem.kem.basePoint :=
+        MulAction.mem_orbit _ _
+      have hEqKey :
+          akem.kem.keyDerive
+              (akem.kem.canonForm.canon (g • akem.kem.basePoint)) =
+          akem.kem.keyDerive (akem.kem.canonForm.canon c) := by
+        -- Both sides reduce to `keyDerive (canon basePoint)` via C2b.
+        calc akem.kem.keyDerive
+              (akem.kem.canonForm.canon (g • akem.kem.basePoint))
+            = akem.kem.keyDerive
+                (akem.kem.canonForm.canon akem.kem.basePoint) :=
+              keyDerive_canon_eq_of_mem_orbit akem hgc
+          _ = akem.kem.keyDerive (akem.kem.canonForm.canon c) :=
+              (keyDerive_canon_eq_of_mem_orbit akem (hOrbitCover c)).symm
+      -- Now compute `(authEncaps akem g).2.2` and close by `htag`.
+      simp [authEncaps, encaps, hg, hEqKey, htag]
+
+end INT_CTXT_Proof
 
 end Orbcrypt
