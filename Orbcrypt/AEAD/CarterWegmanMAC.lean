@@ -64,13 +64,11 @@ def deterministicTagMAC [DecidableEq K] (f : K → Msg → K) :
     MAC K Msg K where
   tag := f
   verify := fun k m t => decide (t = f k m)
-  correct := by
-    intro k m
-    -- `decide (f k m = f k m)` reduces to `true` by reflexivity.
-    simp
-  verify_inj := by
-    intro k m t hv
-    -- `decide (t = f k m) = true` is equivalent to `t = f k m`.
+  correct := fun k m => by
+    -- `decide (f k m = f k m) = true` holds by reflexivity of equality.
+    exact decide_eq_true rfl
+  verify_inj := fun k m t hv => by
+    -- `decide (t = f k m) = true` unfolds to `t = f k m`.
     exact of_decide_eq_true hv
 
 -- ============================================================================

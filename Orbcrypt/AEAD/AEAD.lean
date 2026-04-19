@@ -287,15 +287,20 @@ theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
       akem.mac.verify_inj
         (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t hVerify
     -- `hOrbitCover` witnesses a `g` with `g • basePoint = c`.
-    obtain ⟨g, hg⟩ := hOrbitCover c
+    obtain ⟨g, hg⟩ := MulAction.mem_orbit_iff.mp (hOrbitCover c)
     -- Specialise `hFresh` at that `g` and derive a contradiction.
     rcases hFresh g with hNeCt | hNeTag
     · -- `c ≠ (authEncaps akem g).1 = g • basePoint`, but `hg : g • basePoint = c`.
       apply hNeCt
-      simp [authEncaps, encaps, hg]
+      -- `(authEncaps akem g).1` reduces to `g • basePoint` by `authEncaps_fst`
+      -- (simp lemma) and `encaps_fst`.
+      rw [authEncaps_fst, encaps_fst, hg]
     · -- `t ≠ (authEncaps akem g).2.2`; via C2b this equals `tag (keyDerive (canon c)) c`.
       apply hNeTag
-      -- Bridge key: `keyDerive (canon (g • basePoint)) = keyDerive (canon c)`.
+      -- Reduce `(authEncaps akem g).2.2` to its canonical form via the existing
+      -- simp lemmas on `authEncaps` + `encaps`.
+      rw [authEncaps_snd_snd, encaps_fst, encaps_snd]
+      -- Bridge: `keyDerive (canon (g • basePoint)) = keyDerive (canon c)`.
       have hgc : g • akem.kem.basePoint ∈
           MulAction.orbit G akem.kem.basePoint :=
         MulAction.mem_orbit _ _
@@ -311,8 +316,11 @@ theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
               keyDerive_canon_eq_of_mem_orbit akem hgc
           _ = akem.kem.keyDerive (akem.kem.canonForm.canon c) :=
               (keyDerive_canon_eq_of_mem_orbit akem (hOrbitCover c)).symm
-      -- Now compute `(authEncaps akem g).2.2` and close by `htag`.
-      simp [authEncaps, encaps, hg, hEqKey, htag]
+      -- Goal: t = mac.tag (keyDerive (canon (g • basePoint))) (g • basePoint)
+      -- Rewriting with `hEqKey` and `hg` gives `t = mac.tag (keyDerive (canon c)) c`,
+      -- which is exactly `htag`.
+      rw [hEqKey, hg]
+      exact htag
 
 end INT_CTXT_Proof
 
