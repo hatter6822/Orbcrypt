@@ -288,6 +288,10 @@ theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
         (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t hVerify
     -- `hOrbitCover` witnesses a `g` with `g • basePoint = c`.
     obtain ⟨g, hg⟩ := MulAction.mem_orbit_iff.mp (hOrbitCover c)
+    -- The honest-encapsulation equality `(c, t) = (authEncaps akem g).1, .2.2`
+    -- will contradict `hFresh g`; flip the goal to `False` before proving either
+    -- side of the honest-equality disjunction.
+    exfalso
     -- Specialise `hFresh` at that `g` and derive a contradiction.
     rcases hFresh g with hNeCt | hNeTag
     · -- `c ≠ (authEncaps akem g).1 = g • basePoint`, but `hg : g • basePoint = c`.

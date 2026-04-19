@@ -17,10 +17,12 @@ obligation introduced in Workstream C1.
   `decide`-equality against a user-supplied tagging function. Any such MAC
   satisfies `verify_inj` by `of_decide_eq_true`, and `correct` by `decide`-
   reflexivity.
-* `Orbcrypt.carterWegmanMAC` — a concrete instance over `ZMod p`: the
-  Carter–Wegman universal hash `tag (k₁, k₂) m = k₁ * m + k₂`.
-* `Orbcrypt.carterWegman_authKEM` — the AEAD composition of an arbitrary
-  `OrbitKEM` with `carterWegmanMAC`.
+* `Orbcrypt.carterWegmanHash` — the Carter–Wegman universal hash function
+  `(k₁, k₂) ↦ k₁ * m + k₂` over `ZMod p`.
+* `Orbcrypt.carterWegmanMAC` — a concrete `MAC (ZMod p × ZMod p) (ZMod p)
+  (ZMod p)` built from `carterWegmanHash` via `deterministicTagMAC`.
+* `Orbcrypt.carterWegman_authKEM` — the AEAD composition of an `OrbitKEM`
+  whose ciphertext space is `ZMod p` with `carterWegmanMAC`.
 * `Orbcrypt.carterWegmanMAC_int_ctxt` — specialisation of
   `authEncrypt_is_int_ctxt` to the Carter–Wegman composition.
 
@@ -29,9 +31,15 @@ obligation introduced in Workstream C1.
 This is the *simplest-possible* Lean-level witness demonstrating that
 `MAC.verify_inj` is satisfiable and that `INT_CTXT` is therefore inhabited.
 The construction is information-theoretically weak — it is deterministic
-and the tag space coincides with the key space — and is **not** intended
-for production use. Real-world instantiations (HMAC, Poly1305) would
-require a probabilistic refinement of the MAC interface.
+and the tag space coincides with `ZMod p` — and is **not** intended for
+production use. Real-world instantiations (HMAC, Poly1305) would require
+a probabilistic refinement of the MAC interface.
+
+The composition `carterWegman_authKEM` specialises the ciphertext type to
+`ZMod p`; in the concrete Orbcrypt use-case the ciphertext space is a
+permutation orbit on `Bitstring n`, so this MAC witness is not a drop-in
+replacement for the production AEAD composition. Its purpose is purely to
+show that the `MAC` + `AuthOrbitKEM` + `INT_CTXT` chain is inhabitable.
 
 ## References
 
@@ -48,20 +56,19 @@ namespace Orbcrypt
 -- Generic `decide`-equality MAC template
 -- ============================================================================
 
-variable {K : Type*} {Msg : Type*}
+variable {K : Type*} {Msg : Type*} {Tag : Type*}
 
 /--
-A deterministic MAC constructed from any tagging function `f : K → Msg → K`
-whose tag space coincides with its key space. Verification tests
-`t = f k m` by `decide` — which discharges both the `correct` and
-`verify_inj` fields of `MAC` by reflexivity.
+A deterministic MAC constructed from any tagging function `f : K → Msg → Tag`.
+Verification tests `t = f k m` by `decide` — which discharges both the
+`correct` and `verify_inj` fields of `MAC` by reflexivity.
 
 This is the canonical "simplest non-trivial MAC" and the intended reading of
 the Workstream C4 witness obligation: a Carter–Wegman universal-hash MAC is
 an instance obtained by supplying the universal-hash function as `f`.
 -/
-def deterministicTagMAC [DecidableEq K] (f : K → Msg → K) :
-    MAC K Msg K where
+def deterministicTagMAC [DecidableEq Tag] (f : K → Msg → Tag) :
+    MAC K Msg Tag where
   tag := f
   verify := fun k m t => decide (t = f k m)
   correct := fun k m => by
@@ -95,7 +102,7 @@ obligation at this layer.
 requirement introduced in Workstream C1 and therefore shows it is not
 vacuous.
 -/
-def carterWegmanMAC (p : ℕ) [NeZero p] :
+def carterWegmanMAC (p : ℕ) :
     MAC (ZMod p × ZMod p) (ZMod p) (ZMod p) :=
   deterministicTagMAC (carterWegmanHash p)
 
@@ -103,19 +110,22 @@ def carterWegmanMAC (p : ℕ) [NeZero p] :
 -- Composition into an AuthOrbitKEM + `INT_CTXT` instantiation
 -- ============================================================================
 
-variable {G : Type*} {X : Type*}
-  [Group G] [MulAction G X] [DecidableEq X]
+variable {G : Type*}
+  [Group G] [MulAction G (ZMod 0)]
 
 /--
-Compose an `OrbitKEM` whose key type is `ZMod p × ZMod p` with the
-Carter–Wegman MAC, yielding an `AuthOrbitKEM` whose tag type is `ZMod p`.
+Compose an `OrbitKEM` whose ciphertext space is `ZMod p` and key type is
+`ZMod p × ZMod p` with the Carter–Wegman MAC, yielding an `AuthOrbitKEM`
+whose tag type is `ZMod p`.
 
-Users supply the KEM; this wrapper fixes the MAC component so that the
-`INT_CTXT` proof becomes a direct application of `authEncrypt_is_int_ctxt`.
+The ciphertext type is fixed to `ZMod p` because the MAC's `Msg` type
+must equal the KEM's `X`. Consumers must therefore supply a KEM whose
+ciphertext space is literally `ZMod p` — typically via an explicit
+`MulAction G (ZMod p)` instance.
 -/
-def carterWegman_authKEM (p : ℕ) [NeZero p]
-    (kem : OrbitKEM G X (ZMod p × ZMod p)) :
-    AuthOrbitKEM G X (ZMod p × ZMod p) (ZMod p) where
+def carterWegman_authKEM {G : Type*} [Group G] (p : ℕ) [MulAction G (ZMod p)]
+    (kem : OrbitKEM G (ZMod p) (ZMod p × ZMod p)) :
+    AuthOrbitKEM G (ZMod p) (ZMod p × ZMod p) (ZMod p) where
   kem := kem
   mac := carterWegmanMAC p
 
@@ -123,16 +133,18 @@ def carterWegman_authKEM (p : ℕ) [NeZero p]
 **INT-CTXT for the Carter–Wegman composition.**
 
 Direct application of `authEncrypt_is_int_ctxt` (Workstream C2) to the
-AEAD composed from any `OrbitKEM` and the Carter–Wegman MAC. The only
-remaining hypothesis is the orbit-cover assumption `hOrbitCover` on the
-underlying KEM — i.e., that the ciphertext space equals `orbit G basePoint`.
+AEAD composed from any `OrbitKEM` on ciphertext space `ZMod p` and the
+Carter–Wegman MAC. The only remaining hypothesis is the orbit-cover
+assumption `hOrbitCover` on the underlying KEM — i.e., that every
+`c : ZMod p` lies in `orbit G kem.basePoint`.
 
 This is the concrete witness completing Workstream C4: `INT_CTXT` is
 non-vacuously inhabited for the intended model.
 -/
-theorem carterWegmanMAC_int_ctxt
-    (p : ℕ) [NeZero p] (kem : OrbitKEM G X (ZMod p × ZMod p))
-    (hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G kem.basePoint) :
+theorem carterWegmanMAC_int_ctxt {G : Type*} [Group G]
+    (p : ℕ) [MulAction G (ZMod p)]
+    (kem : OrbitKEM G (ZMod p) (ZMod p × ZMod p))
+    (hOrbitCover : ∀ c : ZMod p, c ∈ MulAction.orbit G kem.basePoint) :
     INT_CTXT (carterWegman_authKEM p kem) :=
   -- The base-point of the composed AuthOrbitKEM is the base-point of `kem`;
   -- pass `hOrbitCover` through unchanged.
