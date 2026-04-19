@@ -736,9 +736,53 @@ existing consumers of `MultiQueryAdversary` see no change.
 
 ## 6. Workstream C — MAC Integrity & INT_CTXT (F-07)
 
-**Goal:** discharge F-07 — INT_CTXT is currently defined but unprovable
-from the existing `MAC` abstraction. Add the missing uniqueness
-requirement and prove INT_CTXT for an honestly-composed AuthOrbitKEM.
+**Status (2026-04-19): COMPLETE.** All four work units (C1, C2a/b/c, C3,
+C4) have landed. Headline deliverables:
+
+- `Orbcrypt/AEAD/MAC.lean` — `MAC` gains a `verify_inj` field (C1).
+- `Orbcrypt/AEAD/AEAD.lean` — `authDecaps_none_of_verify_false` (C2a,
+  private), `keyDerive_canon_eq_of_mem_orbit` (C2b, private),
+  `authEncrypt_is_int_ctxt` (C2c, main theorem).
+- `Orbcrypt/AEAD/CarterWegmanMAC.lean` — `deterministicTagMAC`,
+  `carterWegmanHash`, `carterWegmanMAC`, `carterWegman_authKEM`,
+  `carterWegmanMAC_int_ctxt` (C4). Concrete witness showing `verify_inj`
+  is satisfiable.
+- `Orbcrypt.lean`, `CLAUDE.md`, `DEVELOPMENT.md` — new headline theorems
+  (#19, #20), axiom-transparency report entries, §8.5 AEAD + INT-CTXT
+  section (C3).
+
+**As-landed implementation notes.**
+
+- **C2b — chose hypothesis-threaded form (Option B).** The plan preferred
+  Option A (add a proven field to `AuthOrbitKEM`), but in the landed
+  implementation C2b is a *private lemma* (`keyDerive_canon_eq_of_mem_orbit`)
+  rather than a structure field. Rationale: keeping `AuthOrbitKEM` free
+  of derived data makes the structure easier to re-use and leaves the
+  decision of *when* to invoke the lemma in the theorem writer's hands.
+  The lemma itself is unconditional and discharges via
+  `canon_eq_of_mem_orbit` (which in turn uses `canonical_isGInvariant`),
+  matching Option A's proven-not-assumed character.
+- **C2c — orbit-cover carried as explicit hypothesis.** Per the risk
+  note, ciphertext space `X` may be larger than `orbit G basePoint` for
+  general `AuthOrbitKEM` instances (e.g. `X = Bitstring n` with a strict
+  subgroup of `S_n`). Adding `basepoint_orbit_univ` as a structural field
+  would break realistic instances, so the theorem carries
+  `hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G akem.kem.basePoint` as
+  an explicit hypothesis. Concrete witnesses discharge it when their
+  action is transitive (regular action on `G`, quotient actions, etc.).
+- **C4 — generalised via `deterministicTagMAC` template.** The plan
+  proposed a single Carter–Wegman instance. The landed file factors the
+  boilerplate into a `deterministicTagMAC` combinator: any MAC whose
+  verification is definitionally `decide (t = f k m)` inherits `correct`
+  (by `decide` reflexivity) and `verify_inj` (by `of_decide_eq_true`).
+  `carterWegmanMAC` is then a one-line instance over `ZMod p × ZMod p`.
+  This makes future witnesses (different hash families, HMAC-style once
+  probabilistic refinement lands) cheaper to add.
+
+**Goal (original spec):** discharge F-07 — INT_CTXT is currently defined
+but unprovable from the existing `MAC` abstraction. Add the missing
+uniqueness requirement and prove INT_CTXT for an honestly-composed
+AuthOrbitKEM.
 
 ### C1 — Augment the `MAC` structure with `verify_inj` (F-07 step 1) · S · 2 h
 
@@ -2513,7 +2557,7 @@ sorted by finding id for direct audit traceability.
 | F-04 | Low | A2 (`push_neg`) | — | Idiomatic Mathlib style |
 | F-05 | Info | F1 (concrete HGOE expansion) | F2 (seed secrecy) | Open (research); honest gap flagged in docs |
 | F-06 | Low | F2 (SampleGroupSpec) | — | Secrecy obligation surfaced |
-| F-07 | Medium | C1 (verify_inj), C2 (INT_CTXT proof) | C3 (headline listing), C4 (witness) | INT_CTXT proved for honest composition |
+| F-07 · **LANDED** | Medium | C1 (verify_inj) · **LANDED**, C2 (INT_CTXT proof) · **LANDED** | C3 (headline listing) · **LANDED**, C4 (witness) · **LANDED** | INT_CTXT proved for honest composition (given orbit-cover hypothesis); Carter–Wegman witness provided |
 | F-08 | Info | D1 (symm/trans), D2 (Subgroup) | D3, D4 | Full equivalence API + Mathlib integration |
 | F-09 | High | E3 (probabilistic reductions as Props) | F3, F4 (concrete proofs, research) | Prop-level sharp; concrete proofs as research deliverable |
 | F-10 | High | E1 (ConcreteKEMOIA), E2 (concrete hardness OIAs) | E6, E9 | Every OIA variant has probabilistic companion |
@@ -2578,13 +2622,13 @@ No finding is orphaned; no WU addresses a non-existent finding.
 | B1c · **LANDED** | 30 m | F-02 | Docstring + audit traceability |
 | B2 · **LANDED** | 1 h | F-15 | Explicit universes on `SchemeFamily` |
 | B3 · **LANDED** | 4 h | E8 prereq (F-02 multi-query) | Per-query distinct adversary wrapper + `perQueryAdvantage` |
-| **C — MAC INT_CTXT (6 atomic)** | | | |
-| C1 | 2 h | F-07 step 1 | Add `verify_inj` to MAC |
-| C2a | 45 m | F-07 step 2a | `verify` false branch lemma |
-| C2b | 1 h 15 m | F-07 step 2b | Key-uniqueness field/lemma |
-| C2c | 1 h | F-07 step 2c | Assemble `authEncrypt_is_int_ctxt` |
-| C3 | 20 m | F-07 step 3 | Wire into headline theorem list |
-| C4 | 3 h | F-07 witness | Concrete MAC instance |
+| **C — MAC INT_CTXT (6 atomic)** · **ALL LANDED** | | | |
+| C1 · **LANDED** | 2 h | F-07 step 1 | Add `verify_inj` to MAC |
+| C2a · **LANDED** | 45 m | F-07 step 2a | `verify` false branch lemma (`authDecaps_none_of_verify_false`) |
+| C2b · **LANDED** | 1 h 15 m | F-07 step 2b | Key-uniqueness lemma (`keyDerive_canon_eq_of_mem_orbit`) — chose Option B (hypothesis-threaded) rather than structure field |
+| C2c · **LANDED** | 1 h | F-07 step 2c | Assemble `authEncrypt_is_int_ctxt` — carries `hOrbitCover` hypothesis |
+| C3 · **LANDED** | 20 m | F-07 step 3 | Wire into headline theorem list (#19, #20) and axiom transparency report |
+| C4 · **LANDED** | 3 h | F-07 witness | Concrete MAC instance (`deterministicTagMAC` + `carterWegmanMAC` + `carterWegmanMAC_int_ctxt`) |
 | **D — CE API (7 atomic)** | | | |
 | D1a | 1 h 30 m | F-08 helper | `permuteCodeword` self-bijection lemma |
 | D1b | 1 h | F-08 | `arePermEquivalent_symm` |

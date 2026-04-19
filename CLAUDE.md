@@ -76,9 +76,10 @@ Orbcrypt/
     SeedKey.lean                      Seed-based key compression, HGOEKeyExpansion spec, backward compat
     Nonce.lean                        Nonce-based deterministic encryption, misuse resistance properties
   AEAD/
-    MAC.lean                          Message Authentication Code abstraction (tag, verify, correct)
-    AEAD.lean                         Authenticated KEM: Encrypt-then-MAC, aead_correctness, INT_CTXT
+    MAC.lean                          Message Authentication Code abstraction (tag, verify, correct, verify_inj)
+    AEAD.lean                         Authenticated KEM: Encrypt-then-MAC, aead_correctness, INT_CTXT, authEncrypt_is_int_ctxt
     Modes.lean                        KEM+DEM hybrid encryption, DEM structure, hybrid_correctness
+    CarterWegmanMAC.lean              Deterministic Carter–Wegman MAC witness, carterWegmanMAC_int_ctxt (Workstream C4)
   Hardness/
     CodeEquivalence.lean              CE problem, PAut group, CEOIA, GI≤CE reduction
     TensorAction.lean                 Tensor3 type, GL³ MulAction, TI problem, GI≤TI reduction
@@ -369,8 +370,10 @@ The entire formalization exists to machine-check three results. Understand what 
 | 16 | **KEM Agreement Correctness** | Alice's post-decap view equals Bob's post-decap view (`= sessionKey a b`) | `PublicKey/KEMAgreement.lean` | Two-party KEM agreement recovers the same session key (Phase 13.4) |
 | 17 | **CSIDH Correctness** | `a • (b • x₀) = b • (a • x₀)` under `CommGroupAction` | `PublicKey/CommutativeAction.lean` | Commutative action supports Diffie–Hellman-style exchange (Phase 13.5) |
 | 18 | **Commutative PKE Correctness** | `decrypt(encrypt(r).1) = encrypt(r).2` | `PublicKey/CommutativeAction.lean` | CSIDH-style public-key orbit encryption is correct (Phase 13.6) |
+| 19 | **INT-CTXT for AuthOrbitKEM** | `authEncrypt_is_int_ctxt : INT_CTXT akem` (given `MAC.verify_inj` and orbit-cover hypothesis) | `AEAD/AEAD.lean` | Ciphertext integrity: no adversary can forge a (c, t) pair that decapsulates (audit F-07, Workstream C2) |
+| 20 | **Carter–Wegman INT-CTXT witness** | `carterWegmanMAC_int_ctxt : INT_CTXT (carterWegman_authKEM …)` | `AEAD/CarterWegmanMAC.lean` | Concrete instance showing `verify_inj` is satisfiable and `INT_CTXT` non-vacuous (audit F-07, Workstream C4) |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open.
 
 ## Mathlib integration
 
@@ -565,9 +568,10 @@ Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
 - `lake build` succeeds for all 23 modules (zero errors)
 
 Phase 10 (Authenticated Encryption & Modes) has been completed:
-- `AEAD/MAC.lean` — `MAC` structure with `tag`, `verify`, and `correct` fields; generic parameterization by key, message, and tag types
-- `AEAD/AEAD.lean` — `AuthOrbitKEM` structure composing `OrbitKEM` with `MAC` (Encrypt-then-MAC); `authEncaps` (authenticated encapsulation), `authDecaps` (verify-then-decrypt); `aead_correctness` theorem (authDecaps recovers key from honest pairs); `INT_CTXT` security definition (ciphertext integrity); simp lemmas for authEncaps components
+- `AEAD/MAC.lean` — `MAC` structure with `tag`, `verify`, `correct`, and `verify_inj` fields; generic parameterization by key, message, and tag types. `verify_inj` (added in Workstream C1, audit F-07) is the information-theoretic SUF-CMA analogue required for `INT_CTXT` proofs.
+- `AEAD/AEAD.lean` — `AuthOrbitKEM` structure composing `OrbitKEM` with `MAC` (Encrypt-then-MAC); `authEncaps` (authenticated encapsulation), `authDecaps` (verify-then-decrypt); `aead_correctness` theorem (authDecaps recovers key from honest pairs); `INT_CTXT` security definition (ciphertext integrity); `authDecaps_none_of_verify_false` (C2a, private helper); `keyDerive_canon_eq_of_mem_orbit` (C2b, private key-uniqueness lemma); `authEncrypt_is_int_ctxt` (C2c, main theorem: INT_CTXT holds for any AuthOrbitKEM whose ciphertext space is a single orbit of the base point); simp lemmas for authEncaps components
 - `AEAD/Modes.lean` — `DEM` structure (symmetric encryption with correctness field); `hybridEncrypt` (KEM produces key, DEM encrypts data), `hybridDecrypt` (KEM recovers key, DEM decrypts); `hybrid_correctness` theorem (decrypt inverts encrypt); simp lemmas for hybrid components
+- `AEAD/CarterWegmanMAC.lean` — (Workstream C4, audit F-07) concrete `MAC` witness demonstrating that `verify_inj` is satisfiable: `deterministicTagMAC` (generic template whose `verify` is `decide (t = f k m)`), `carterWegmanHash` + `carterWegmanMAC p` (Carter–Wegman universal-hash instance over `ZMod p × ZMod p`), `carterWegman_authKEM` (composes with an arbitrary `OrbitKEM`), `carterWegmanMAC_int_ctxt` (direct specialisation of `authEncrypt_is_int_ctxt`). Information-theoretically weak; documented as not production-grade.
 - All 6 work units (10.1–10.6) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 3 new Lean files, 15 new public declarations across ~400 lines
 - `lake build` succeeds for all 26 modules (zero errors)
@@ -701,9 +705,77 @@ also re-runs the A7 def-eq `rfl` checks so the universe-polymorphic
 Patch version: `lakefile.lean` bumped from `0.1.0` to `0.1.1` for this
 workstream.
 
+Workstream C (Audit 2026-04-18 — MAC Integrity & INT_CTXT, F-07) has
+been completed:
+- `Orbcrypt/AEAD/MAC.lean` — (F-07 step 1 / C1) `MAC` gains a
+  `verify_inj` field: `∀ k m t, verify k m t = true → t = tag k m`.
+  This is the information-theoretic SUF-CMA analogue; without it the
+  abstract `INT_CTXT` predicate cannot be discharged because an adversary
+  could produce a different tag that also verifies. Docstring covers
+  SUF-CMA semantics, `decide`-based satisfiability, and the (future)
+  probabilistic refinement required for HMAC/Poly1305.
+- `Orbcrypt/AEAD/AEAD.lean` — (F-07 step 2 / C2) three new results in
+  the new `INT_CTXT_Proof` section:
+  * `authDecaps_none_of_verify_false` (private, C2a) — unfold-only
+    discharge of the `verify = false` branch of `authDecaps`.
+  * `keyDerive_canon_eq_of_mem_orbit` (private, C2b) — the
+    decapsulation key depends only on the orbit of the ciphertext;
+    chosen as a hypothesis-threaded lemma (Option B) rather than a
+    structure field on `AuthOrbitKEM` to keep the structure reusable
+    for ciphertext spaces that exceed the orbit.
+  * `authEncrypt_is_int_ctxt` (C2c) — the main theorem. `by_cases` on
+    the MAC `verify` Bool; the `true` branch uses `verify_inj` (C1),
+    the bridge lemma (C2b), and the explicit hypothesis
+    `hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` to derive a
+    contradiction with `hFresh`. Zero custom axioms, zero `sorry`.
+- `Orbcrypt/AEAD/CarterWegmanMAC.lean` — (F-07 step 3 / C4) concrete
+  `MAC` witness (new file). `deterministicTagMAC` is a generic template
+  over independent `K`, `Msg`, `Tag` types whose `verify` is
+  definitionally `decide (t = f k m)`; both `correct` and `verify_inj`
+  discharge by `decide_eq_true rfl` / `of_decide_eq_true` respectively.
+  `carterWegmanHash` + `carterWegmanMAC` specialise this to
+  `(ZMod p × ZMod p) → ZMod p → ZMod p`. `carterWegman_authKEM`
+  composes with any `OrbitKEM G (ZMod p) (ZMod p × ZMod p)`, and
+  `carterWegmanMAC_int_ctxt` is the direct specialisation of
+  `authEncrypt_is_int_ctxt` to that composition. Documented as the
+  simplest-possible witness (deterministic, tag space = `ZMod p`);
+  not production-grade.
+- `Orbcrypt.lean` + `CLAUDE.md` + `DEVELOPMENT.md §8.5` — (C3) new
+  headline theorems #19 (`authEncrypt_is_int_ctxt`) and #20
+  (`carterWegmanMAC_int_ctxt`); axiom-transparency entries listing
+  their dependencies as `[propext, Quot.sound]`; §8.5 in
+  `DEVELOPMENT.md` describing the MAC obligations, proof pipeline, and
+  orbit-cover rationale.
+
+Traceability: finding F-07 is now resolved. The composition gap that
+previously made `INT_CTXT` unprovable (only `MAC.correct` was
+available) is closed at the abstraction level; any new concrete MAC
+must discharge `verify_inj` to inhabit the structure. See
+`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 6 for the
+specification and Appendix A for the finding-to-WU mapping.
+
+Verification: `scripts/audit_c_workstream.lean` exercises every
+Workstream C headline result with `#print axioms`, destructures a
+`MAC` to prove `verify_inj` is a real proof obligation, instantiates
+`deterministicTagMAC` at three distinct `(K, Msg, Tag)` triples to
+confirm type-polymorphism, and materialises `INT_CTXT` end-to-end on
+a singleton (`ZMod 1`) ciphertext space to prove the theorem is
+non-vacuously applicable. Running
+`lake env lean scripts/audit_c_workstream.lean` should produce only
+standard-Lean-axiom or `does not depend on any axioms` outputs —
+never `sorryAx` or a custom axiom.
+
+Patch version: `lakefile.lean` bumped from `0.1.1` to `0.1.2` for this
+workstream.
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all modules (32 total)
-- `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty
+- `lake build` succeeds with exit code 0 for all 34 `Orbcrypt/**/*.lean`
+  modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, bringing the
+  total from 33 to 34)
+- `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty (the CI
+  uses a comment-aware Perl strip so prose mentioning the word "sorry"
+  in docstrings does not trigger a false positive; see
+  `.github/workflows/lean4-build.yml`)
 - `grep -rn "^axiom " Orbcrypt/ --include="*.lean"` returns empty (OIA/KEMOIA/ConcreteOIA/CompOIA are `def`s, not `axiom`s)
 - `#print axioms correctness` — no `OIA`, no `sorryAx` (standard Lean only)
 - `#print axioms invariant_attack` — no `OIA`, no `sorryAx` (standard Lean only)
@@ -717,6 +789,8 @@ workstream.
 - `#print axioms nonce_encaps_correctness` — standard Lean only (follows from kem_correctness)
 - `#print axioms nonce_reuse_leaks_orbit` — standard Lean only (follows from orbit_eq_of_smul)
 - `#print axioms aead_correctness` — standard Lean only (follows from kem_correctness + MAC.correct)
+- `#print axioms authEncrypt_is_int_ctxt` — standard Lean only (uses `MAC.verify_inj` and `canon_eq_of_mem_orbit`; the orbit-cover condition is a hypothesis, audit F-07, Workstream C2)
+- `#print axioms carterWegmanMAC_int_ctxt` — standard Lean only (direct specialisation of `authEncrypt_is_int_ctxt`, Workstream C4)
 - `#print axioms hybrid_correctness` — standard Lean only (follows from kem_correctness + DEM.correct)
 - `#print axioms hardness_chain_implies_security` — standard Lean only (HardnessChain is a hypothesis)
 - `#print axioms oblivious_sample_in_orbit` — standard Lean only (closure proof is a hypothesis)

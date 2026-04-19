@@ -32,6 +32,7 @@ import Orbcrypt.KeyMgmt.Nonce
 import Orbcrypt.AEAD.MAC
 import Orbcrypt.AEAD.AEAD
 import Orbcrypt.AEAD.Modes
+import Orbcrypt.AEAD.CarterWegmanMAC
 
 import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
@@ -147,16 +148,21 @@ KEM.Encapsulate + Construction.Permutation
   ◄── nonce_reuse_leaks_orbit
 
 AEAD.MAC ◄── Mathlib.Tactic
-  ◄── MAC structure (tag, verify, correct)
+  ◄── MAC structure (tag, verify, correct, verify_inj)
           │
           ▼
   AEAD.AEAD ◄── AEAD.MAC, KEM.Syntax, KEM.Encapsulate, KEM.Correctness
   ◄── AuthOrbitKEM, authEncaps, authDecaps
   ◄── aead_correctness, INT_CTXT
+  ◄── authEncrypt_is_int_ctxt (Workstream C2)
 
   AEAD.Modes ◄── KEM.Syntax, KEM.Encapsulate
   ◄── DEM, hybridEncrypt, hybridDecrypt
   ◄── hybrid_correctness
+
+  AEAD.CarterWegmanMAC ◄── AEAD.MAC, AEAD.AEAD, Mathlib.Data.ZMod.Basic
+  ◄── deterministicTagMAC, carterWegmanMAC
+  ◄── carterWegman_authKEM, carterWegmanMAC_int_ctxt (Workstream C4)
 
   Mathlib.GroupTheory.Perm.Basic
   Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup.Defs
@@ -258,6 +264,15 @@ aead_correctness (AEAD/AEAD.lean)
   ├── kem_correctness             — KEM correctness (7.3)
   └── MAC.correct                 — MAC correctness field (10.1)
 
+authEncrypt_is_int_ctxt (AEAD/AEAD.lean)     ◄── Workstream C2 (audit F-07)
+  ├── MAC.verify_inj              — tag uniqueness (Workstream C1)
+  ├── canon_eq_of_mem_orbit       — canonical form invariance (2.6)
+  └── hOrbitCover (hypothesis)    — ciphertext space = orbit G basePoint
+
+carterWegmanMAC_int_ctxt (AEAD/CarterWegmanMAC.lean) ◄── Workstream C4
+  ├── authEncrypt_is_int_ctxt     — composed INT_CTXT proof
+  └── carterWegmanMAC             — concrete `verify_inj` witness
+
 hybrid_correctness (AEAD/Modes.lean)
   ├── kem_correctness             — KEM correctness (7.3)
   └── DEM.correct                 — DEM correctness field (10.5)
@@ -316,6 +331,13 @@ These theorems depend only on Lean's standard axioms (`propext`,
   orbit membership (unconditional warning theorem)
 - All `KeyMgmt/` lemmas — seed keys, nonce encapsulation, backward compatibility
 - `aead_correctness` (`AEAD/AEAD.lean`) — authenticated KEM correctness
+- `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`) — INT_CTXT proof for
+  honestly-composed AuthOrbitKEMs; carries the orbit-cover hypothesis
+  (`∀ c, c ∈ orbit G basePoint`) as an explicit hypothesis on the
+  ciphertext space (audit finding F-07, Workstream C2).
+- `carterWegmanMAC_int_ctxt` (`AEAD/CarterWegmanMAC.lean`) — concrete
+  INT_CTXT witness via the Carter–Wegman universal-hash MAC; carries the
+  orbit-cover hypothesis identically (audit finding F-07, Workstream C4).
 - `hybrid_correctness` (`AEAD/Modes.lean`) — KEM+DEM hybrid correctness
 - All `AEAD/` definitions and lemmas — MAC, AuthOrbitKEM, DEM, INT_CTXT
 - All `Hardness/` definitions and lemmas — CE, TI, tensor action, reductions
@@ -442,6 +464,13 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.aead_correctness
 -- (standard Lean only — follows from kem_correctness + MAC.correct)
+
+#print axioms Orbcrypt.authEncrypt_is_int_ctxt
+-- (standard Lean only — uses MAC.verify_inj + canon_eq_of_mem_orbit;
+--  the `hOrbitCover` orbit-cover condition is carried as a hypothesis)
+
+#print axioms Orbcrypt.carterWegmanMAC_int_ctxt
+-- (standard Lean only — direct specialisation of authEncrypt_is_int_ctxt)
 
 #print axioms Orbcrypt.hybrid_correctness
 -- (standard Lean only — follows from kem_correctness + DEM.correct)

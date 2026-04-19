@@ -1045,6 +1045,63 @@ The post-quantum security of HGOE rests on three pillars:
    breaks RSA/DLP-based systems, no analogous quantum algorithm is known for
    code equivalence or permutation group problems.
 
+### 8.5 AEAD and Ciphertext Integrity (INT-CTXT)
+
+The Phase 10 AEAD layer composes the Orbit-KEM with a Message Authentication
+Code (MAC) following the Encrypt-then-MAC paradigm. The `MAC` abstraction
+(`Orbcrypt/AEAD/MAC.lean`) carries **four** proof obligations — three
+correctness conditions and one tag-uniqueness condition:
+
+| Field | Obligation | Role |
+|-------|------------|------|
+| `tag : K → Msg → Tag` | — | MAC tagging function |
+| `verify : K → Msg → Tag → Bool` | — | decidable verification |
+| `correct` | `verify k m (tag k m) = true` | completeness |
+| `verify_inj` | `verify k m t = true → t = tag k m` | **tag uniqueness** (Workstream C1, audit F-07) |
+
+The `verify_inj` field is the information-theoretic analogue of strong
+unforgeability (SUF-CMA) in the no-query setting: only the honestly
+computed tag verifies. Without it, the abstract `INT_CTXT` predicate
+
+```lean
+def INT_CTXT (akem : AuthOrbitKEM G X K Tag) : Prop :=
+  ∀ (c : X) (t : Tag),
+    (∀ g : G, c ≠ (authEncaps akem g).1 ∨ t ≠ (authEncaps akem g).2.2) →
+    authDecaps akem c t = none
+```
+
+cannot be discharged — an adversary could simply produce a distinct tag
+that still verifies.
+
+The Workstream C proof pipeline is:
+
+1. **C2a (easy branch).** `authDecaps_none_of_verify_false`: if `verify`
+   fails, `authDecaps` returns `none` by unfolding.
+2. **C2b (key uniqueness).** `keyDerive_canon_eq_of_mem_orbit`: the
+   decapsulation key depends only on the orbit of the ciphertext
+   (unconditional — consequence of `canon_eq_of_mem_orbit`).
+3. **C2c (main theorem).** `authEncrypt_is_int_ctxt`: a case split on
+   `verify k c t`. The `false` branch uses C2a; the `true` branch uses
+   `verify_inj` plus a hypothesis
+   `hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` to derive a contradiction
+   with `hFresh`.
+
+The orbit-cover hypothesis `hOrbitCover` encodes the semantic requirement
+that **the ciphertext space equals a single orbit** — the intended model
+throughout this document. It is carried as an explicit hypothesis rather
+than a structural field on `AuthOrbitKEM` so that the KEM structure
+remains maximally general; concrete instances (e.g. the Carter–Wegman
+witness in `Orbcrypt/AEAD/CarterWegmanMAC.lean`) discharge it when their
+ciphertext space is naturally transitive.
+
+The concrete `MAC` witness (Workstream C4) is a Carter–Wegman
+universal-hash MAC over `ZMod p × ZMod p`: `tag (k₁, k₂) m = k₁ * m + k₂`
+with `verify k m t := decide (t = tag k m)`. `verify_inj` holds
+by `of_decide_eq_true`. The witness is deliberately the
+**simplest-possible** satisfying instance and is not intended for
+production use; real-world MACs (HMAC, Poly1305) require a probabilistic
+refinement of the MAC interface that is future work.
+
 ---
 
 ## 9. Lean 4 Formalization Plan

@@ -80,7 +80,7 @@ that certify correctness or hiding for each.
 | Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 (`seed_kem_correctness`) |
 | Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 + nonce caveat below |
 | Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 (`aead_correctness`) |
-| Integrity of published artefact | `INT_CTXT` Prop on `AuthOrbitKEM` | `INT_CTXT` (`AEAD/AEAD.lean:172`) — definition, not a theorem |
+| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` (proved for honest compositions with `MAC.verify_inj` and `hOrbitCover`) | Theorem 19 (`authEncrypt_is_int_ctxt`) + Theorem 20 (`carterWegmanMAC_int_ctxt` witness); Workstream C (audit F-07) |
 
 Two caveats recur and must be stated once:
 
@@ -254,9 +254,14 @@ that went into the build; a verifier holding `G_P` can recompute the
 canonical forms of the commits and cross-check. An attacker who
 substitutes a binary without access to `G_P` cannot forge a
 canonicalization match, and a substitution that breaks the AEAD
-tag is rejected by `INT_CTXT` (`AEAD/AEAD.lean:172`, a Prop
-definition, not a theorem). `aead_correctness` (Theorem 12) is the
-round-trip correctness complement, not the integrity statement.
+tag is rejected by `authDecaps` — and this rejection is now a
+*theorem*, `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`, Theorem 19),
+which discharges the `INT_CTXT` predicate for every honest
+composition whose ciphertext space covers a single orbit of the base
+point (audit F-07, Workstream C2). `carterWegmanMAC_int_ctxt`
+(Theorem 20) is the concrete Carter–Wegman witness demonstrating the
+composition is inhabitable. `aead_correctness` (Theorem 12) is the
+round-trip correctness complement.
 
 ### 3.5 Dependency-graph privacy
 
@@ -789,6 +794,10 @@ claims were weakened and why.
   correctness) and `INT_CTXT` as a `Prop` definition in
   `AEAD/AEAD.lean:172` (not a theorem). Tightened the CSIDH row to
   cross-reference `PUBLIC_KEY_ANALYSIS.md` §3 explicitly.
+  *Update (2026-04-19, Workstream C, audit F-07):* the integrity
+  row was updated to Theorem 19 (`authEncrypt_is_int_ctxt`) + Theorem
+  20 (`carterWegmanMAC_int_ctxt` witness); `INT_CTXT` is now provable
+  for honest compositions.
 * **§3.1 (encrypted commit storage).** Added the mandatory
   per-commit DEM key derivation caveat: because `canon` is
   orbit-invariant, every `encaps` under one KEM produces the same
@@ -808,6 +817,15 @@ claims were weakened and why.
   it is a `Prop` definition in `AEAD/AEAD.lean:172`, not Theorem
   12. `aead_correctness` is Theorem 12 and is the round-trip
   correctness complement, not the integrity statement.
+  *Update (2026-04-19, Workstream C, audit F-07):* `INT_CTXT` is now
+  additionally discharged by `authEncrypt_is_int_ctxt` (Theorem 19 in
+  `CLAUDE.md`, in `AEAD/AEAD.lean`) for every honestly-composed
+  `AuthOrbitKEM` whose ciphertext space covers a single orbit of the
+  base point, and by `carterWegmanMAC_int_ctxt` (Theorem 20, in
+  `AEAD/CarterWegmanMAC.lean`) as a concrete witness. The §3.4 prose
+  was rewritten to cite these theorems; this entry remains for
+  historical traceability of the earlier "definition, not theorem"
+  correction.
 * **§4.1 (sealed bug bounty).** Clarified that the message space
   `M_T` is finite (Orbcrypt's `reps` is a map from a finite `M`);
   the PoC content is a separate hybrid-encrypted blob referenced
