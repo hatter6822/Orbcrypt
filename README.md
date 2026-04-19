@@ -66,10 +66,11 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 ### Build Stats
 
 - 32 Lean source files + root import file
-- ~130 public definitions and theorems, all with docstrings
+- ~260 public definitions and theorems, all with docstrings
 - Zero `sorry`, zero custom axioms, zero warnings
 - Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
 - GitHub Actions CI on every push
+- Package version: `0.1.1` (see `lakefile.lean`)
 
 ## Build
 

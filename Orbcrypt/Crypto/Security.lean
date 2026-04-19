@@ -28,6 +28,9 @@ IND-CPA security game and advantage definition: `Adversary` structure,
 * `Orbcrypt.isSecure_implies_isSecureDistinct` — the stronger uniform game
   `IsSecure` implies the classical distinct-challenge game `IsSecureDistinct`
   (audit F-02).
+* `Orbcrypt.hasAdvantageDistinct_iff` — decomposition into distinctness
+  conjunct and `hasAdvantage`; `Iff.rfl`-trivial but useful for rewriting
+  in downstream proofs (audit F-02).
 
 ## Design decisions
 
@@ -208,5 +211,22 @@ theorem isSecure_implies_isSecureDistinct [Group G] [MulAction G X] [DecidableEq
   intro hSec A hAdv
   -- `hAdv.2` is exactly a `hasAdvantage` witness; feed it to `hSec`.
   exact hSec A hAdv.2
+
+/--
+Decomposition lemma: the distinct-challenge advantage is exactly the
+conjunction of the distinctness obligation and the standard `hasAdvantage`
+predicate (audit F-02 / Workstream B1).
+
+This is `Iff.rfl` because `hasAdvantageDistinct`'s second conjunct
+literally repeats `hasAdvantage`'s existential body. The lemma is
+provided so consumers can rewrite a `hasAdvantageDistinct` hypothesis
+into the cleaner two-part form without unfolding the definition.
+-/
+theorem hasAdvantageDistinct_iff [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    hasAdvantageDistinct scheme A ↔
+      (A.choose scheme.reps).1 ≠ (A.choose scheme.reps).2 ∧
+        hasAdvantage scheme A :=
+  Iff.rfl
 
 end Orbcrypt

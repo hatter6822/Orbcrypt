@@ -463,6 +463,24 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.comm_pke_correctness
 -- (standard Lean only — uses CommGroupAction.comm and pk_valid)
+
+-- Workstream B (audit 2026-04-18, F-02 + F-15):
+
+#print axioms Orbcrypt.isSecure_implies_isSecureDistinct
+-- (does not depend on any axioms — strictly axiom-free direction
+--  of the distinct-challenge implication)
+
+#print axioms Orbcrypt.hasAdvantageDistinct_iff
+-- (does not depend on any axioms — `Iff.rfl`-trivial decomposition)
+
+#print axioms Orbcrypt.perQueryAdvantage_nonneg
+-- (standard Lean only — one-line `advantage_nonneg` corollary)
+
+#print axioms Orbcrypt.perQueryAdvantage_le_one
+-- (standard Lean only — one-line `advantage_le_one` corollary)
+
+#print axioms Orbcrypt.perQueryAdvantage_bound_of_concreteOIA
+-- (standard Lean only — `ConcreteOIA` carried as a hypothesis)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden

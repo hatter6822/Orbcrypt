@@ -566,6 +566,15 @@ equal to a `hasAdvantage` witness — this lets
 module docstring and the `IsSecure` docstring gained a "Game asymmetry
 (audit F-02)" note.
 
+**Comprehensive-audit addition:** an explicit `Iff.rfl`-trivial
+decomposition lemma `hasAdvantageDistinct_iff` was added so downstream
+proofs can rewrite `hasAdvantageDistinct ↔ distinct ∧ hasAdvantage`
+without reaching for definitional unfolding. Both this lemma and
+`isSecure_implies_isSecureDistinct` are *strictly axiom-free* (verified
+by `#print axioms` returning "does not depend on any axioms"); they
+appear under that label in `Orbcrypt.lean`'s axiom transparency
+report.
+
 **Decomposition** into three sub-units:
 
 #### B1a — Define `hasAdvantageDistinct` and `IsSecureDistinct` · XS · 45 min · **LANDED**

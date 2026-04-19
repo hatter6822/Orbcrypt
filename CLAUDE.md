@@ -637,9 +637,12 @@ been completed:
   `(m, m)` before sampling). Proved `isSecure_implies_isSecureDistinct`
   showing the unconstrained `IsSecure` game (which still accepts the
   degenerate collision choice) strictly implies the classical
-  distinct-challenge game. Updated module and `IsSecure` docstrings with
-  a "Game asymmetry (audit F-02)" note explaining the one-way implication
-  and the unsatisfiability of the converse.
+  distinct-challenge game. Added `hasAdvantageDistinct_iff` — the
+  `Iff.rfl`-trivial decomposition `hasAdvantageDistinct ↔ distinct ∧
+  hasAdvantage`, useful for downstream rewrites. Updated module and
+  `IsSecure` docstrings with a "Game asymmetry (audit F-02)" note
+  explaining the one-way implication and the unsatisfiability of the
+  converse.
 - `Orbcrypt/Crypto/CompOIA.lean` — (F-15, B2) `SchemeFamily` is now
   explicitly universe-polymorphic. Added a module-level
   `universe u v w` declaration and changed the `G`/`X`/`M` fields from
@@ -662,6 +665,19 @@ Traceability: findings F-02 and F-15 are now resolved; Workstream E8
 `perQueryAdvantage`, and the `ConcreteOIA` per-query bound as ready
 building blocks. See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
 § 5 for the specification and Appendix A for the finding-to-WU mapping.
+
+Verification: `scripts/audit_b_workstream.lean` exercises every
+Workstream B headline result with `#print axioms` and exhibits a
+concrete `DistinctMultiQueryAdversary` instance (over the two-element
+message space `Bool`) to prove the wrapper is non-vacuous. Running
+`lake env lean scripts/audit_b_workstream.lean` should produce only
+"does not depend on any axioms" or `[propext, Classical.choice,
+Quot.sound]` outputs — never `sorryAx` or a custom axiom. The script
+also re-runs the A7 def-eq `rfl` checks so the universe-polymorphic
+`SchemeFamily` regression is caught locally.
+
+Patch version: `lakefile.lean` bumped from `0.1.0` to `0.1.1` for this
+workstream.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules (32 total)
