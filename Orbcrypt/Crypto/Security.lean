@@ -16,6 +16,18 @@ IND-CPA security game and advantage definition: `Adversary` structure,
   messages.
 * `Orbcrypt.IsSecure` — a scheme is IND-1-CPA secure if no adversary has
   advantage.
+* `Orbcrypt.hasAdvantageDistinct` — distinct-challenge advantage variant
+  (audit F-02): requires `m₀ ≠ m₁` in addition to the guess-separation
+  witness. Matches the classical IND-1-CPA game, where the challenger
+  rejects a collision choice `(m, m)` before sampling.
+* `Orbcrypt.IsSecureDistinct` — classical IND-1-CPA security predicate
+  (audit F-02): no adversary has `hasAdvantageDistinct`.
+
+## Main results
+
+* `Orbcrypt.isSecure_implies_isSecureDistinct` — the stronger uniform game
+  `IsSecure` implies the classical distinct-challenge game `IsSecureDistinct`
+  (audit F-02).
 
 ## Design decisions
 
@@ -27,10 +39,24 @@ the secret group `G`.
 This captures IND-1-CPA (single-query, no oracle). The full IND-CPA with
 adaptive oracle queries (DEVELOPMENT.md §8.2) is beyond the current scope.
 
+### Game asymmetry (audit F-02)
+
+`Adversary.choose` is structurally unconstrained: it may return a collision
+`(m, m)`. The headline `IsSecure` quantifies over *all* adversaries,
+including the degenerate ones, and therefore requires the scheme to resist
+even the ill-formed challenges that the classical IND-1-CPA challenger
+would reject. `IsSecureDistinct` matches the literature game by quantifying
+only over adversaries whose `choose` yields `m₀ ≠ m₁`.
+
+The implication `IsSecure → IsSecureDistinct` is unconditional and proved
+below; the reverse direction is false in general, since `IsSecure` can
+detect collisions that `IsSecureDistinct` rules out.
+
 ## References
 
 * DEVELOPMENT.md §4.3 — adversary model and IND-CPA game
 * formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.4–3.6
+* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 5 (Workstream B1) — F-02 resolution
 -/
 
 namespace Orbcrypt
@@ -104,9 +130,83 @@ adversaries — not just computationally bounded ones. This makes the definition
 information-theoretically secure, which is appropriate for the algebraic setting.
 Computational bounds would require a complexity-theoretic framework beyond the
 current scope.
+
+## Game asymmetry (audit F-02)
+
+`Adversary.choose` is structurally unconstrained and may return `(m, m)`.
+Because `IsSecure` quantifies over *all* adversaries, it demands security
+even against the degenerate collision choice that the classical
+IND-1-CPA challenger would reject. This makes `IsSecure` strictly stronger
+than the classical game, which is captured by `IsSecureDistinct`. The
+one-way implication `IsSecure → IsSecureDistinct` is proved by
+`isSecure_implies_isSecureDistinct`.
 -/
 def IsSecure [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) : Prop :=
   ∀ (A : Adversary X M), ¬hasAdvantage scheme A
+
+-- ============================================================================
+-- Audit F-02 / Workstream B1: Distinct-challenge IND-1-CPA variant
+-- ============================================================================
+
+/--
+Distinct-challenge IND-1-CPA advantage (audit F-02).
+
+The classical IND-1-CPA game requires the adversary to submit two
+*distinct* challenge messages `m₀ ≠ m₁`; the challenger rejects `(m, m)`
+before sampling a bit. This predicate captures that game form by
+conjoining a distinctness obligation with the existing guess-separation
+witness from `hasAdvantage`.
+
+Concretely: `A` has distinct-challenge advantage iff its `choose` yields
+a distinct pair `(m₀, m₁)` with `m₀ ≠ m₁` *and* there exist group
+elements `g₀, g₁` on which `A.guess` disagrees between
+`g₀ • reps m₀` and `g₁ • reps m₁`.
+
+Note the asymmetry versus `hasAdvantage`: the unconstrained form may
+witness "advantage" even when `m₀ = m₁`, whereas this form cannot.
+-/
+def hasAdvantageDistinct [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) : Prop :=
+  (A.choose scheme.reps).1 ≠ (A.choose scheme.reps).2 ∧
+    ∃ g₀ g₁ : G,
+      A.guess scheme.reps (g₀ • scheme.reps (A.choose scheme.reps).1) ≠
+      A.guess scheme.reps (g₁ • scheme.reps (A.choose scheme.reps).2)
+
+/--
+Classical IND-1-CPA security predicate (audit F-02).
+
+A scheme is distinct-challenge IND-1-CPA secure if no adversary achieves
+`hasAdvantageDistinct`. This matches the game actually studied in the
+literature: the challenger enforces `m₀ ≠ m₁` before sampling a random
+bit and a random group element.
+
+`IsSecureDistinct` is strictly weaker than `IsSecure`, because the
+stronger game accepts the degenerate collision choice `(m, m)`.
+`isSecure_implies_isSecureDistinct` proves the unconditional direction.
+-/
+def IsSecureDistinct [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) : Prop :=
+  ∀ (A : Adversary X M), ¬hasAdvantageDistinct scheme A
+
+/--
+The stronger uniform-choice game implies the classical distinct-challenge
+game (audit F-02).
+
+Proof: a distinct-challenge adversary exhibits, by definition, a
+`hasAdvantage` witness (the second conjunct is literally the existential
+body of `hasAdvantage`). Hence if no adversary has `hasAdvantage`
+(= `IsSecure`), none has `hasAdvantageDistinct` either.
+
+The converse is false in general: `IsSecure` can detect collisions that
+`IsSecureDistinct` rules out by its distinctness hypothesis, so a scheme
+resisting distinct challenges might still leak on `(m, m)`.
+-/
+theorem isSecure_implies_isSecureDistinct [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) :
+    IsSecure scheme → IsSecureDistinct scheme := by
+  intro hSec A hAdv
+  -- `hAdv.2` is exactly a `hasAdvantage` witness; feed it to `hSec`.
+  exact hSec A hAdv.2
 
 end Orbcrypt

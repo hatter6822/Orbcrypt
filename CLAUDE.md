@@ -629,6 +629,40 @@ Traceability: every Workstream A finding is resolved by the edit above;
 see `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 4 for the
 specification and Appendix A for the finding-to-WU mapping.
 
+Workstream B (Audit 2026-04-18 — Adversary & Family Type Refinements) has
+been completed:
+- `Orbcrypt/Crypto/Security.lean` — (F-02, B1) introduced
+  `hasAdvantageDistinct` and `IsSecureDistinct`, the distinct-challenge
+  variants matching the classical IND-1-CPA game (the challenger rejects
+  `(m, m)` before sampling). Proved `isSecure_implies_isSecureDistinct`
+  showing the unconstrained `IsSecure` game (which still accepts the
+  degenerate collision choice) strictly implies the classical
+  distinct-challenge game. Updated module and `IsSecure` docstrings with
+  a "Game asymmetry (audit F-02)" note explaining the one-way implication
+  and the unsatisfiability of the converse.
+- `Orbcrypt/Crypto/CompOIA.lean` — (F-15, B2) `SchemeFamily` is now
+  explicitly universe-polymorphic. Added a module-level
+  `universe u v w` declaration and changed the `G`/`X`/`M` fields from
+  `ℕ → Type*` to `ℕ → Type u|v|w`, so consumers can thread universe
+  parameters by name (`@SchemeFamily.{u, v, w} ...`) rather than relying
+  on implicit inference. Downstream helpers (`repsAt`, `orbitDistAt`,
+  `advantageAt`, `CompOIA`) inherit the universe parameters transparently.
+- `Orbcrypt/Crypto/CompSecurity.lean` — (F-02, B3) added the
+  multi-query groundwork needed for Workstream E8: the
+  `DistinctMultiQueryAdversary` wrapper extends `MultiQueryAdversary`
+  with a `choose_distinct` obligation (per-query `m₀ ≠ m₁`);
+  `perQueryAdvantage` extracts the single-query advantage at a given
+  query index; `perQueryAdvantage_nonneg`,
+  `perQueryAdvantage_le_one`, and `perQueryAdvantage_bound_of_concreteOIA`
+  are one-liners from `advantage_nonneg`, `advantage_le_one`, and
+  `ConcreteOIA` respectively.
+
+Traceability: findings F-02 and F-15 are now resolved; Workstream E8
+(multi-query security) inherits `DistinctMultiQueryAdversary`,
+`perQueryAdvantage`, and the `ConcreteOIA` per-query bound as ready
+building blocks. See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+§ 5 for the specification and Appendix A for the finding-to-WU mapping.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all modules (32 total)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty

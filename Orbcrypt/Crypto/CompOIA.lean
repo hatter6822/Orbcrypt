@@ -16,6 +16,7 @@ cryptographic assumption.
 * `Orbcrypt.ConcreteOIA` — concrete-security OIA with explicit bound `ε`
 * `Orbcrypt.CompOIA` — asymptotic OIA with negligible advantage
 * `Orbcrypt.SchemeFamily` — security-parameter-indexed scheme family
+  (explicitly universe-polymorphic over `u, v, w` after audit F-15)
 * `Orbcrypt.SchemeFamily.repsAt` — per-level representative under the
   family (readability helper, F-13)
 * `Orbcrypt.SchemeFamily.orbitDistAt` — per-level orbit distribution under
@@ -39,6 +40,12 @@ cryptographic assumption.
 namespace Orbcrypt
 
 open PMF ENNReal
+
+-- Explicit universe variables for `SchemeFamily` (audit F-15 / Workstream B2).
+-- Making `u, v, w` first-class lets consumers thread them by name at call
+-- sites (`@SchemeFamily.{u, v, w} ...`) and avoids the implicit
+-- universe-inference pain that appears when `G, X, M` use `Type*`.
+universe u v w
 
 variable {G : Type*} {X : Type*} {M : Type*}
 
@@ -124,14 +131,21 @@ theorem concreteOIA_one [Group G] [Fintype G] [Nonempty G]
 -- Work Unit 8.5a: Asymptotic scheme family type (stretch goal)
 -- ============================================================================
 
-/-- A family of orbit encryption schemes indexed by security parameter. -/
+/-- A family of orbit encryption schemes indexed by security parameter.
+
+    After audit F-15 / Workstream B2 the structure is explicitly
+    universe-polymorphic: the module-level `universe u v w` declaration
+    above binds the three type-field universes. Consumers can therefore
+    thread universe parameters by name at call sites
+    (`@SchemeFamily.{u, v, w} ...`) and avoid the universe-inference pain
+    that appears when `G, X, M` use the anonymous `Type*`. -/
 structure SchemeFamily where
-  /-- Group type at each security level. -/
-  G : ℕ → Type*
-  /-- Space type at each security level. -/
-  X : ℕ → Type*
-  /-- Message type at each security level. -/
-  M : ℕ → Type*
+  /-- Group type at each security level (universe `u`). -/
+  G : ℕ → Type u
+  /-- Space type at each security level (universe `v`). -/
+  X : ℕ → Type v
+  /-- Message type at each security level (universe `w`). -/
+  M : ℕ → Type w
   /-- Group instances. -/
   instGroup : ∀ n, Group (G n)
   /-- MulAction instances. -/

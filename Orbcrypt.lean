@@ -300,6 +300,13 @@ These theorems depend only on Lean's standard axioms (`propext`,
   canonical form G-invariance (no KEMOIA needed)
 - All `GroupAction/` lemmas — orbit API, canonical forms, invariant functions
 - All `Construction/` proofs — S_n action, HGOE, HGOE-KEM, Hamming weight
+- `isSecure_implies_isSecureDistinct` (`Crypto/Security.lean`) — the
+  stronger uniform IND-1-CPA game implies the classical distinct-challenge
+  game (audit F-02, Workstream B1)
+- `perQueryAdvantage_nonneg`, `perQueryAdvantage_le_one`,
+  `perQueryAdvantage_bound_of_concreteOIA` (`Crypto/CompSecurity.lean`) —
+  per-query advantage properties; the `ConcreteOIA` bound is carried as
+  a hypothesis on the last theorem (audit F-02, Workstream B3)
 - All `Probability/` lemmas — advantage, negligible, hybrid argument
 - `concreteOIA_one` (`Crypto/CompOIA.lean`) — ConcreteOIA(1) is always true
 - `seed_kem_correctness` (`KeyMgmt/SeedKey.lean`) — seed-based KEM correctness

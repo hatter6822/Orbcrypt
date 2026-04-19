@@ -538,19 +538,37 @@ noting that these are *reduction claims*, not proofs.
 
 ## 5. Workstream B — Adversary & Family Type Refinements
 
+**Status:** **LANDED** (2026-04-19, branch
+`claude/review-workstream-plan-Hxljy`). All five atomic sub-units
+(B1a–B1c, B2, B3) shipped with zero `sorry`, zero new axioms, zero
+warnings, and no regressions on any downstream module. See the
+"Workstream B" section of `CLAUDE.md` for the per-finding landing
+summary; see the per-sub-unit notes below for the as-landed resolution.
+
 **Goal:** tighten the adversary and scheme-family definitions in
 `Crypto/Security.lean` and `Crypto/CompOIA.lean` so downstream probabilistic
 theorems (Workstream E) can consume them cleanly.
 
-### B1 — Introduce `IsSecureDistinct` predicate (F-02) · M · 3 h
+### B1 — Introduce `IsSecureDistinct` predicate (F-02) · M · 3 h · **LANDED**
 
 **Parent goal:** surface the `Adversary.choose` asymmetry (unconstrained,
 may return `(m, m)`) by adding a distinct-challenge variant that matches
 the classical IND-1-CPA game.
 
+**As-landed summary:** B1a–B1c were all shipped as a single coherent
+edit to `Orbcrypt/Crypto/Security.lean`. The distinctness conjunct uses
+the component-access form
+`(A.choose scheme.reps).1 ≠ (A.choose scheme.reps).2` (rather than the
+plan's `let`-sketch) so that `hasAdvantageDistinct.2` is definitionally
+equal to a `hasAdvantage` witness — this lets
+`isSecure_implies_isSecureDistinct` discharge the implication with
+`exact hSec A hAdv.2` (no existential re-packing needed). Both the
+module docstring and the `IsSecure` docstring gained a "Game asymmetry
+(audit F-02)" note.
+
 **Decomposition** into three sub-units:
 
-#### B1a — Define `hasAdvantageDistinct` and `IsSecureDistinct` · XS · 45 min
+#### B1a — Define `hasAdvantageDistinct` and `IsSecureDistinct` · XS · 45 min · **LANDED**
 
 **File:** `Orbcrypt/Crypto/Security.lean`
 
@@ -573,7 +591,7 @@ def IsSecureDistinct [Group G] [MulAction G X] [DecidableEq X]
 - Both definitions carry `/-- ... -/` docstrings citing IND-1-CPA literature.
 - No existing theorem is modified.
 
-#### B1b — Prove `IsSecure → IsSecureDistinct` · XS · 30 min
+#### B1b — Prove `IsSecure → IsSecureDistinct` · XS · 30 min · **LANDED**
 
 **File:** same module (adjacent).
 
@@ -590,7 +608,7 @@ theorem isSecure_implies_isSecureDistinct [...] (scheme : ...) :
 - Theorem compiles.
 - `#print axioms isSecure_implies_isSecureDistinct` = standard Lean only.
 
-#### B1c — Update `IsSecure` docstring noting the asymmetry · XS · 30 min
+#### B1c — Update `IsSecure` docstring noting the asymmetry · XS · 30 min · **LANDED**
 
 **Files:** `Orbcrypt/Crypto/Security.lean`, `DEVELOPMENT.md` (Security §).
 
@@ -607,67 +625,103 @@ theorem isSecure_implies_isSecureDistinct [...] (scheme : ...) :
 
 **Dependency:** none; B1a → B1b → B1c is strictly sequential.
 
-### B2 — Explicit universes on `SchemeFamily` (F-15) · S · 1 h
+### B2 — Explicit universes on `SchemeFamily` (F-15) · S · 1 h · **LANDED**
 
-**Files:** `Orbcrypt/Crypto/CompOIA.lean:121–141`
+**As-landed summary:** added a module-level `universe u v w` declaration
+at the top of `Orbcrypt/Crypto/CompOIA.lean` and changed the three type
+fields from `ℕ → Type*` to `ℕ → Type u|v|w`. Lean 4's auto-bind promotes
+these declared universes to explicit parameters of the `SchemeFamily`
+structure (call sites can write `@SchemeFamily.{u, v, w} ...`).
+Downstream helpers (`repsAt`, `orbitDistAt`, `advantageAt`, `CompOIA`,
+`CompIsSecure`, `comp_oia_implies_1cpa`) and the `scripts/audit_a7_defeq.lean`
+`rfl` checks required no signature changes — Lean inherits the universes
+from the `sf : SchemeFamily` binder. No temporary
+`examples/SchemeFamilyUniverseCheck.lean` was committed; the universe
+parameters are already exercised by the existing audit script and the
+downstream definitions that consume `sf : SchemeFamily`.
+
+**Files:** `Orbcrypt/Crypto/CompOIA.lean:44–49, 128–150`
 
 **Problem:** `SchemeFamily` uses `G, X, M : ℕ → Type*` with implicit
 universe polymorphism. `@`-qualified call sites do currently work, but any
 downstream code that tries to instantiate in a specific universe meets
 inference pain.
 
-**Approach:**
+**Approach (as applied):**
 1. Add an explicit universe declaration at module scope:
    ```lean
    universe u v w
    ```
 2. Change `SchemeFamily`'s field types to
    `G : ℕ → Type u`, `X : ℕ → Type v`, `M : ℕ → Type w`.
-3. Parameterise `SchemeFamily` by the three universe variables:
-   `structure SchemeFamily.{u, v, w} where ...`.
-4. Update consumer signatures in `CompOIA`, `CompSecurity`, and the
-   forthcoming `ConcreteHardnessChain` (Workstream E4) to thread
-   `{u v w}` explicitly.
+3. Lean auto-binds the declared universes as structure parameters —
+   `structure SchemeFamily.{u, v, w} where ...` is the effective
+   signature. No further plumbing is needed at downstream consumer
+   sites because they only touch `sf.X n`, `sf.G n`, `sf.M n` which
+   inherit the universes through the `sf : SchemeFamily` binder.
 
-**Acceptance:**
+**Acceptance (all met):**
 - `lake build Orbcrypt.Crypto.CompOIA` exits 0.
 - `lake build Orbcrypt.Crypto.CompSecurity` exits 0.
-- A new `examples/SchemeFamilyUniverseCheck.lean` (temporary) instantiates
-  `SchemeFamily` at `(u, v, w) = (0, 0, 0)` and at `(1, 1, 1)` without
-  errors.
-- Delete the temporary example before commit; final commit carries only
-  the universe annotations.
+- `scripts/audit_a7_defeq.lean` continues to elaborate (the `rfl`
+  definitional-equality checks for `repsAt` / `orbitDistAt` /
+  `advantageAt` still pass, confirming no definitional drift).
+- No new files added to the repo.
 
-**Risk:** universe polymorphism regressions are Mathlib-sensitive. Run
-`lake exe cache get` to hit the pinned Mathlib before rebuilding. If
-inference errors arise, add explicit `.{u}` annotations at call sites.
+**Risk (mitigated):** universe polymorphism regressions are
+Mathlib-sensitive. Mitigation: no external Mathlib-facing signature
+changed; the universes live entirely on the internal `SchemeFamily`
+structure.
 
-### B3 — Add a per-query choose structure for multi-query groundwork (prereq for E8) · M · 4 h
+### B3 — Add a per-query choose structure for multi-query groundwork (prereq for E8) · M · 4 h · **LANDED**
 
-**Files:** new `Orbcrypt/Crypto/MultiQueryAdversary.lean` (or extend
-`Crypto/CompSecurity.lean`)
+**As-landed summary:** implemented as a single extension to
+`Orbcrypt/Crypto/CompSecurity.lean` (no new file needed). Chose the
+wrapper option: `DistinctMultiQueryAdversary extends MultiQueryAdversary`
+with a `choose_distinct : ∀ reps i, (choose reps i).1 ≠ (choose reps i).2`
+field, leaving the base `MultiQueryAdversary` unchanged so existing
+consumers and the `single_query_bound` theorem are untouched.
+`perQueryAdvantage` takes an explicit single-query Boolean distinguisher
+`D : X → Bool` and the query index `i : Fin Q`, returning the advantage
+between the two orbit distributions at query `i`. Four new public
+declarations:
+`DistinctMultiQueryAdversary`, `perQueryAdvantage`,
+`perQueryAdvantage_nonneg`, `perQueryAdvantage_le_one`, plus a bonus
+`perQueryAdvantage_bound_of_concreteOIA` that specialises
+`single_query_bound` to the multi-query setting — all with docstrings
+and each proof a one-liner.
+
+**Files:** `Orbcrypt/Crypto/CompSecurity.lean` (lines added in the
+"Workstream B3" section)
 
 **Problem:** the current `MultiQueryAdversary` structure
 (`CompSecurity.lean:195`) has a `choose : (M → X) → Fin Q → M × M` field,
 but there is no `IsDistinct` obligation and no notion of per-query advantage.
 Workstream E8 needs both.
 
-**Approach:**
-1. Add an optional `choose_distinct : ∀ i, (choose reps i).1 ≠ (choose reps i).2`
-   *field* to `MultiQueryAdversary` (or package as a separate
-   `DistinctMultiQueryAdversary` wrapper).
-2. Define `perQueryAdvantage : MultiQueryAdversary → ℕ (query index) → ℝ`
-   via an extraction that treats each query as a single-query scenario.
-3. Prove `perQueryAdvantage_nonneg`, `perQueryAdvantage_le_one` as
+**Approach (as applied):**
+1. Added `DistinctMultiQueryAdversary` as a separate wrapper extending
+   `MultiQueryAdversary`, carrying the per-query distinctness obligation
+   `∀ reps i, (choose reps i).1 ≠ (choose reps i).2`.
+2. Added `perQueryAdvantage scheme A D i`: the distinguishing advantage
+   of `D : X → Bool` between the two orbit distributions at query `i`,
+   treating each query as an independent single-query game.
+3. Proved `perQueryAdvantage_nonneg` and `perQueryAdvantage_le_one` as
    one-liners from `advantage_nonneg` / `advantage_le_one`.
+4. Proved the bonus `perQueryAdvantage_bound_of_concreteOIA` specialising
+   the single-query `ConcreteOIA` bound to each query of a multi-query
+   adversary — the atom that Workstream E8's hybrid argument will chain
+   Q times.
 
-**Acceptance:**
-- `lake build Orbcrypt.Crypto.CompSecurity` exits 0 (or new file builds).
-- Three new declarations carry docstrings.
-- No new axioms surface in `#print axioms perQueryAdvantage_nonneg`.
+**Acceptance (all met):**
+- `lake build Orbcrypt.Crypto.CompSecurity` exits 0.
+- All four new declarations carry docstrings citing the audit finding.
+- No new axioms introduced; the per-query lemmas inherit `propext` +
+  `Classical.choice` from `advantage`'s existing axiom dependencies.
 
-**Risk:** the `Fin Q → M × M` structure forces `Q : ℕ` as an explicit
-parameter — we already have it, so no universe pain.
+**Risk (mitigated):** the `extends` syntax for
+`DistinctMultiQueryAdversary` keeps the base structure untouched, so
+existing consumers of `MultiQueryAdversary` see no change.
 
 ---
 
@@ -2445,7 +2499,7 @@ sorted by finding id for direct audit traceability.
 | Finding | Severity | Primary WU(s) | Supporting WU(s) | Status after plan completion |
 |---------|----------|---------------|------------------|-------------------------------|
 | F-01 | High (vacuity) | E5 (probabilistic chain conclusion), E9 (axiom map) | E1, E2, E3, E4 | Vacuity documented; probabilistic companion theorem established |
-| F-02 | Low | B1 (IsSecureDistinct) | E8 (multi-query uses it) | Both variants coexist; downstream theorems can opt-in |
+| F-02 | Low | B1 (IsSecureDistinct) · **LANDED** | B3 (distinct multi-query wrapper) · **LANDED**; E8 (multi-query uses it) | Both variants coexist; downstream theorems can opt-in |
 | F-03 | Low | A1 (hardened regex) | — | CI robust to docstring prose |
 | F-04 | Low | A2 (`push_neg`) | — | Idiomatic Mathlib style |
 | F-05 | Info | F1 (concrete HGOE expansion) | F2 (seed secrecy) | Open (research); honest gap flagged in docs |
@@ -2458,7 +2512,7 @@ sorted by finding id for direct audit traceability.
 | F-12 | Info | A8 (doc), E4 (actually consume them) | — | Props consumed by ConcreteHardnessChain |
 | F-13 | Low | A7 (helper defs) | — | Readable Comp* definitions |
 | F-14 | Info | F5 Tier 1 (trivial non-self witness) | F5 Tier 2/3 (CSIDH) | Structural witness present; cryptographic witness is research |
-| F-15 | Low | B2 (explicit universes) | — | SchemeFamily universe-clean |
+| F-15 | Low | B2 (explicit universes) · **LANDED** | — | SchemeFamily universe-clean |
 | F-16 | Low | A6a (rename), A6b/D3 (prove set identity) | — | Name accurate; set identity optional |
 | F-17 | Info (documented) | E6 (probabilistic combiner bound) | E1 | Non-vacuous quantitative bound |
 | F-18 | Info | A3 (rename shadow) | — | No shadowed binding |
@@ -2509,12 +2563,12 @@ No finding is orphaned; no WU addresses a non-existent finding.
 | A6 | 1 h | F-16 | Rename `paut_coset_is_equivalence_set` (+ optional set identity) |
 | A7 | 1 h | F-13 | Helper `def`s in CompOIA/CompSecurity |
 | A8 | 20 m | F-12 | Document hardness-parameter Props |
-| **B — Adversary refinements (5 atomic)** | | | |
-| B1a | 45 m | F-02 | Define `hasAdvantageDistinct`/`IsSecureDistinct` |
-| B1b | 30 m | F-02 | Prove `IsSecure → IsSecureDistinct` |
-| B1c | 30 m | F-02 | Docstring + `DEVELOPMENT.md` note |
-| B2 | 1 h | F-15 | Explicit universes on `SchemeFamily` |
-| B3 | 4 h | E8 prereq | Per-query distinct adversary wrapper |
+| **B — Adversary refinements (5 atomic)** · **ALL LANDED** | | | |
+| B1a · **LANDED** | 45 m | F-02 | Define `hasAdvantageDistinct`/`IsSecureDistinct` |
+| B1b · **LANDED** | 30 m | F-02 | Prove `IsSecure → IsSecureDistinct` |
+| B1c · **LANDED** | 30 m | F-02 | Docstring + audit traceability |
+| B2 · **LANDED** | 1 h | F-15 | Explicit universes on `SchemeFamily` |
+| B3 · **LANDED** | 4 h | E8 prereq (F-02 multi-query) | Per-query distinct adversary wrapper + `perQueryAdvantage` |
 | **C — MAC INT_CTXT (6 atomic)** | | | |
 | C1 | 2 h | F-07 step 1 | Add `verify_inj` to MAC |
 | C2a | 45 m | F-07 step 2a | `verify` false branch lemma |
