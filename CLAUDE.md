@@ -310,6 +310,28 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
   - Type variables: capital letters by role — `G` (groups), `X` (spaces), `M` (messages)
   - Type class instances: bracket notation — `[Group G]`, `[MulAction G X]`
   - Hypothesis names: `h`-prefixed descriptors — `hInv`, `hSep`, `hDistinct`
+  - **Names describe content, never provenance.** A declaration's identifier (name of a `def` / `theorem` / `structure` / `class` / `instance` / `abbrev` / `lemma` / namespace) must describe *what the declaration is or proves*, never *where in the development process it was added*. Forbidden tokens in declaration names include, non-exhaustively:
+    - workstream labels: `workstream`, `ws`, `wu`, and workstream-letter prefixes like `a1`, `b1c`, `e8a` (even when lowercased or embedded, e.g. `workstreamB_perQueryBound`, `ws_e8_hybrid`)
+    - phase labels: `phase`, `phase1`, `phase_12`, `stretch` (as in "stretch goal")
+    - audit finding ids: `audit`, `f02`, `f_15`, `finding`, `cve`
+    - sub-task / work-unit numbers: `3_4`, `step1`, `task2`, `wu4a`
+    - session / PR / branch references: `pr23`, `claude_`, `session_`, `revision2`
+    - temporal markers: `old`, `new`, `v2`, `legacy`, `deprecated`, `temp`, `tmp`, `tmp_`, `foo`, `bar`, `baz`, `todo`, `fixme`
+    This rule applies to the full identifier, including any namespace qualifier. `WorkstreamB.perQueryAdvantage`, `Phase4.correctness`, and `Audit2026.hasAdvantageDistinct` are all disallowed even though their last component reads normally. A declaration that should be private to a scope uses `private` / `section`, not a process-marker prefix.
+
+    **Rationale.** Process markers rot: workstreams close, audits are superseded, phases get renumbered, but the declarations persist. Downstream users reading `perQueryAdvantage_bound_of_concreteOIA` learn what the theorem proves; reading `b3_e8_bound_f02` they learn nothing useful and must chase a changelog to decode it. Mathlib enforces the same discipline — there is no `phaseXYZ_foo` in Mathlib's name space, even though Mathlib is developed in coordinated pull-request batches.
+
+    **Where process references *are* allowed.** Process markers may appear in prose that lives *outside* the declaration identifier: (a) in `/-- … -/` docstrings as traceability notes ("`audit F-02 / Workstream B1`" is fine in a docstring); (b) in `-- ============================================================================` section banners that group a block of related declarations; (c) in commit messages, branch names, PR titles, and planning documents under `docs/planning/`; (d) in `CLAUDE.md` / `formalization/FORMALIZATION_PLAN.md` / `docs/audits/` change logs. The boundary is sharp: the docstring may say "added in Workstream B3," the identifier may not.
+
+    **Enforcement at review time.** Before landing any new `def` / `theorem` / `structure`, grep the diff for the forbidden tokens above against the set of added declarations:
+
+    ```bash
+    git diff --cached -U0 -- '*.lean' \
+      | grep -E '^\+(def|theorem|structure|class|instance|abbrev|lemma|noncomputable)' \
+      | grep -iE 'workstream|\bws[0-9_a-z]*|\bwu[0-9_a-z]*|\bphase[0-9_]|audit|\bf[0-9]{2}\b|\bstep[0-9]|\btmp\b|\btodo\b|\bfixme\b|claude_|session_'
+    ```
+
+    A non-empty result is a review-blocking naming violation.
 - **Proof style**:
   - Prefer tactic mode for non-trivial proofs
   - Use `calc` blocks for equational reasoning chains
