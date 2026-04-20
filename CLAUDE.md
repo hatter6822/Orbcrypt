@@ -372,8 +372,11 @@ The entire formalization exists to machine-check three results. Understand what 
 | 18 | **Commutative PKE Correctness** | `decrypt(encrypt(r).1) = encrypt(r).2` | `PublicKey/CommutativeAction.lean` | CSIDH-style public-key orbit encryption is correct (Phase 13.6) |
 | 19 | **INT-CTXT for AuthOrbitKEM** | `authEncrypt_is_int_ctxt : INT_CTXT akem` (given `MAC.verify_inj` and orbit-cover hypothesis) | `AEAD/AEAD.lean` | Ciphertext integrity: no adversary can forge a (c, t) pair that decapsulates (audit F-07, Workstream C2) |
 | 20 | **Carter–Wegman INT-CTXT witness** | `carterWegmanMAC_int_ctxt : INT_CTXT (carterWegman_authKEM …)` | `AEAD/CarterWegmanMAC.lean` | Concrete instance showing `verify_inj` is satisfiable and `INT_CTXT` non-vacuous (audit F-07, Workstream C4) |
+| 21 | **Code Equivalence is an `Equivalence`** | `arePermEquivalent_setoid : Setoid {C : Finset (Fin n → F) // C.card = k}` (built from `arePermEquivalent_refl` / `_symm` / `_trans`) | `Hardness/CodeEquivalence.lean` | Permutation code equivalence is now a Mathlib-grade equivalence relation; `_symm` carries `C₁.card = C₂.card`, `_trans` is unconditional (audit F-08, Workstream D1+D4) |
+| 22 | **PAut is a `Subgroup`** | `PAutSubgroup C : Subgroup (Equiv.Perm (Fin n))` with `PAut_eq_PAutSubgroup_carrier C : PAut C = (PAutSubgroup C : Set _)` | `Hardness/CodeEquivalence.lean` | Permutation Automorphism group has full Mathlib `Subgroup` API (cosets, Lagrange, quotient); the Set-valued `PAut` and Subgroup-packaged `PAutSubgroup` agree definitionally (audit F-08, Workstream D2) |
+| 23 | **CE coset set identity** | `paut_equivalence_set_eq_coset : {ρ \| ρ : C₁ → C₂} = σ · PAut C₁` (given a witness σ and `C₁.card = C₂.card`) | `Hardness/CodeEquivalence.lean` | The set of all CE-witnessing permutations is *exactly* a left coset of PAut; this is the algebraic statement underlying the LESS signature scheme's effective-search-space reduction (audit F-16 extended, Workstream D3) |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures.
 
 ## Mathlib integration
 
@@ -768,10 +771,105 @@ never `sorryAx` or a custom axiom.
 Patch version: `lakefile.lean` bumped from `0.1.1` to `0.1.2` for this
 workstream.
 
+Workstream D (Audit 2026-04-18 — Code Equivalence API Strengthening,
+F-08 + F-16 extended) has been completed:
+- `Orbcrypt/Hardness/CodeEquivalence.lean` — gains the full
+  Mathlib-style API on top of `permuteCodeword`, `ArePermEquivalent`,
+  and `PAut`. New declarations:
+  * **D1 helpers.** `permuteCodeword_inv_apply` and
+    `permuteCodeword_apply_inv` (both `@[simp]`) prove that
+    `permuteCodeword σ⁻¹` is a two-sided inverse of `permuteCodeword σ`,
+    via the existing composition law `permuteCodeword_mul` and the
+    group identities `inv_mul_cancel` / `mul_inv_cancel`.
+    `permuteCodeword_injective` (Workstream D1) is the immediate
+    corollary: a left inverse implies global injectivity.
+  * **D1a.** `permuteCodeword_self_bij_of_self_preserving` —
+    finite-bijection lemma. If `σ` maps `C` into itself then so does
+    `σ⁻¹`. Proof: restrict `permuteCodeword σ` to the Fintype subtype
+    `↥C`; injective + finite ⇒ bijective (`Function.Injective.bijective_of_finite`);
+    the surjective preimage is exactly `permuteCodeword σ⁻¹ c`.
+  * **D1 helper extracted (audit F-08).**
+    `permuteCodeword_inv_mem_of_card_eq` — cross-code analogue of D1a:
+    if `σ : C₁ → C₂` and `|C₁| = |C₂|`, then `σ⁻¹ : C₂ → C₁`. Proof
+    via `Fintype.bijective_iff_injective_and_card`. Used by both
+    `arePermEquivalent_symm` (D1b) and `paut_equivalence_set_eq_coset`
+    (D3); extracting it eliminates duplication.
+  * **D1b.** `arePermEquivalent_symm` — one-line consequence of the
+    helper. Carries `C₁.card = C₂.card` as a side condition.
+  * **D1c.** `arePermEquivalent_trans` — unconditional, by composition
+    of witnesses.
+  * **D2.** `paut_inv_closed` (free-standing inverse-closure
+    corollary of D1a applied to `C` itself); `PAutSubgroup` (full
+    `Subgroup (Equiv.Perm (Fin n))` with `carrier` / `one_mem'` /
+    `mul_mem'` / `inv_mem'` discharged by `paut_contains_id` /
+    `paut_mul_closed` / `paut_inv_closed`); `mem_PAutSubgroup` (a
+    `@[simp]` membership-coercion lemma).
+  * **D2c.** `PAut_eq_PAutSubgroup_carrier` — `rfl` bridge between
+    the `Set`-valued and `Subgroup`-valued formulations.
+  * **D3 (audit F-16 extended).** `paut_equivalence_set_eq_coset` —
+    the *full* set identity `{ρ | ρ : C₁ → C₂} = σ · PAut C₁`. Forward
+    inclusion uses the D1 helper to inhabit the coset (witness
+    τ := σ⁻¹ * ρ); reverse inclusion delegates to
+    `paut_compose_preserves_equivalence`. Carries the same
+    `C₁.card = C₂.card` hypothesis as D1b for the helper to apply.
+  * **D4.** `arePermEquivalent_setoid` — `Setoid` instance on the
+    card-indexed subtype `{C : Finset (Fin n → F) // C.card = k}`.
+    The instance bundles D1a/b/c into a Mathlib `Equivalence`; the
+    card index supplies `_symm`'s precondition uniformly so the
+    instance synthesises without further obligations. The parameters
+    `{n}`, `{F}`, `{k}` are declared *implicit* (post-audit refinement)
+    so typeclass synthesis unifies them from the subtype in
+    `Setoid Y` calls — `inferInstance` at
+    `{C : Finset (Fin 3 → Bool) // C.card = 2}` simply works without
+    `@`-threading.
+- `Orbcrypt/Hardness/CodeEquivalence.lean` imports gained
+  `Mathlib.Data.Fintype.Card`, `Mathlib.Data.Fintype.EquivFin`,
+  `Mathlib.Data.Fintype.Sets`, and `Mathlib.Algebra.Group.Subgroup.Defs`
+  to support the new API.
+- `scripts/audit_d_workstream.lean` exercises every Workstream D
+  headline result with `#print axioms` (sections 1–5) and, after the
+  post-landing audit, adds five pressure tests (sections 6–10):
+  (6) a **negative cardinality test** exhibiting a concrete
+  asymmetric pair `smallCode ⊊ bigCode` that witnesses that
+  `arePermEquivalent_symm` (D1b) *genuinely* requires the
+  `C₁.card = C₂.card` hypothesis — two elements cannot inject into
+  one, so the card hypothesis is mathematically necessary, not an
+  artefact of the proof technique;
+  (7) `inferInstance` synthesis of the D4 `Setoid` at three distinct
+  concrete card-indexed subtypes;
+  (8) `mem_PAutSubgroup` simp-lemma firing under `simp only` in both
+  directions;
+  (9) `paut_inv_closed` idempotence via `inv_inv`;
+  (10) a D3 reverse-direction witness showing σ itself (τ = 1) is
+  always in its own coset.
+- `Orbcrypt.lean` axiom-transparency report extended with the four
+  new `#print axioms` checks; `CLAUDE.md` headline theorem table
+  extended with theorems #21, #22, #23.
+
+Traceability: findings F-08 and the optional strengthening of F-16 are
+now resolved. The composition gap that previously blocked using
+`ArePermEquivalent` and `PAut` as Mathlib primitives is closed at the
+abstraction level. See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+§ 7 for the specification and Appendix A for the finding-to-WU mapping.
+
+Verification: `scripts/audit_d_workstream.lean` exercises every
+Workstream D headline result with `#print axioms`, applies
+`arePermEquivalent_refl` / `_symm` / `_trans` to a concrete singleton
+code, exhibits `(1 : Equiv.Perm (Fin 3)) ∈ PAutSubgroup C` to confirm
+the `Subgroup` constructor's fields all elaborate, and walks the
+forward direction of `paut_equivalence_set_eq_coset` on the singleton
+code. Running `lake env lean scripts/audit_d_workstream.lean` should
+produce only `[propext]`, `[propext, Classical.choice, Quot.sound]`,
+or "does not depend on any axioms" outputs — never `sorryAx` or a
+custom axiom.
+
+Patch version: `lakefile.lean` bumped from `0.1.2` to `0.1.3` for this
+workstream.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 34 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, bringing the
-  total from 33 to 34)
+  total from 33 to 34; Workstream D added no new modules)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty (the CI
   uses a comment-aware Perl strip so prose mentioning the word "sorry"
   in docstrings does not trigger a false positive; see
@@ -798,6 +896,15 @@ workstream.
 - `#print axioms kem_agreement_correctness` — standard Lean only (follows from kem_correctness)
 - `#print axioms csidh_correctness` — standard Lean only (extracts `CommGroupAction.comm`)
 - `#print axioms comm_pke_correctness` — standard Lean only (uses `CommGroupAction.comm` and `pk_valid`)
+- `#print axioms permuteCodeword_self_bij_of_self_preserving` — standard Lean only (finite-bijection helper, audit F-08, Workstream D1a)
+- `#print axioms permuteCodeword_inv_mem_of_card_eq` — standard Lean only (cross-code helper, audit F-08, Workstream D1)
+- `#print axioms arePermEquivalent_symm` — standard Lean only (one-line wrapper around the D1 helper, audit F-08, Workstream D1b)
+- `#print axioms arePermEquivalent_trans` — standard Lean only (composition, audit F-08, Workstream D1c)
+- `#print axioms paut_inv_closed` — standard Lean only (corollary of D1a, audit F-08, Workstream D2)
+- `#print axioms PAutSubgroup` — standard Lean only (`Subgroup` packaging, audit F-08, Workstream D2)
+- `#print axioms PAut_eq_PAutSubgroup_carrier` — standard Lean only (`rfl` through transitive standard imports, audit F-08, Workstream D2c)
+- `#print axioms paut_equivalence_set_eq_coset` — standard Lean only (full coset set identity, audit F-16 extended, Workstream D3)
+- `#print axioms arePermEquivalent_setoid` — standard Lean only (Mathlib `Setoid` instance, audit F-08, Workstream D4)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
