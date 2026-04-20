@@ -667,9 +667,9 @@ Phase 14 (Parameter Selection & Benchmarks) has been completed:
   * §5 ciphertext-expansion analysis: break-even against AES-GCM is
     `n = 96` bits, so for any `n > 96` the HGOE hybrid carries a
     constant `(n - 96)`-bit overhead. Expansion ratios at λ = 128
-    conservative: 2.18× at 16 B message, 1.05× at 1 KiB, asymptotic
-    1.0× — well under the 100× Phase-14 go/no-go ceiling. **Verdict:
-    GO**, KEM-only narrowing not required (Work Unit 14.5).
+    **balanced** (`n = 512`): 2.18× at 16 B message, 1.05× at 1 KiB,
+    asymptotic 1.0× — well under the 100× Phase-14 go/no-go ceiling.
+    **Verdict: GO**, KEM-only narrowing not required (Work Unit 14.5).
   * §6 three-tier recommendations:
       - **Conservative** (`b = 4, n = 8λ`): 2λ-bit margin on ENUM /
         BIRTH / ALG, ~3× larger n.

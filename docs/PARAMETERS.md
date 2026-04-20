@@ -81,6 +81,14 @@ draws, the mean canonical-image time, and the mean keygen time; it
 writes `docs/benchmarks/results_<λ>.csv` plus the cross-scheme
 `comparison.csv`. `RunQuickSweep()` is the low-sample smoke test.
 
+Each per-level CSV has 39 rows: 36 grid-sweep rows (tagged
+`tier = sweep`) plus 3 tier-pinned rows (`tier = aggressive | balanced
+| conservative`) used by §6. The aggressive tier coincides exactly
+with the `(b = 8, w = n/2, k = n/2)` grid sweep row, so each CSV
+contains one intentional duplicate pair — one row for the sweep
+context, one for the §6 tier lookup. The `tier` column disambiguates
+them.
+
 ### 1.3 Scaling model used for pre-populated CSVs
 
 Until the sweep is run on a live GAP install, the
@@ -252,14 +260,14 @@ therefore `2^(log₂|G| / 2)`.
 
 To achieve λ bits of **birthday** resistance we need
 `log₂|G| ≥ 2λ`, i.e. `ell · log₂(b) ≥ 2λ`, equivalently
-`n ≥ 2λb / log₂(b)`:
+`ell ≥ ⌈2λ / log₂(b)⌉` and `n ≥ b · ell`:
 
 | λ    | `n_birth`  (b=4) | `n_birth`  (b=8) | `n_birth`  (b=16) | `n_birth`  (b=32) |
 |------|------------------|------------------|-------------------|-------------------|
-| 80   | 320              | 428              | 640               | 1 024             |
-| 128  | 512              | 684              | 1 024             | 1 636             |
-| 192  | 768              | 1 024            | 1 536             | 2 456             |
-| 256  | 1 024            | 1 368            | 2 048             | 3 276             |
+| 80   | 320              | 432              | 640               | 1 024             |
+| 128  | 512              | 688              | 1 024             | 1 664             |
+| 192  | 768              | 1 024            | 1 536             | 2 464             |
+| 256  | 1 024            | 1 368            | 2 048             | 3 296             |
 
 Note that the Phase 11 baseline `n=344` at λ=128 provides only
 `log₂|G|/2 ≈ 65` bits of birthday resistance. **If the application
@@ -371,7 +379,8 @@ Plaintext size is identical in both modes.)
 
 The Phase 14 plan requires narrowing scope to KEM-only operation if
 ciphertext expansion exceeds 100× AES-GCM for typical messages.
-Expansion ratios for the conservative λ=128 parameters (`n = 512`):
+Expansion ratios for the **balanced** λ=128 parameters (`n = 512`,
+§6.2):
 
 | Message size | AES-GCM total | HGOE hybrid total | Ratio |
 |--------------|---------------|-------------------|-------|
@@ -381,9 +390,15 @@ Expansion ratios for the conservative λ=128 parameters (`n = 512`):
 | 1 MiB        | ~1 048 604 B  | ~1 048 656 B      | ~1.0× |
 
 **Verdict: GO.** Expansion never approaches the 100× ceiling; the
-hybrid overhead is 2× for tiny messages and asymptotically 1× for
-anything larger than ~256 bytes. KEM-only operation is therefore not
-required by the Phase 14 exit criteria.
+hybrid overhead is 2.18× for a 16 B message and asymptotically 1× for
+messages much larger than `n/8` bytes. KEM-only operation is
+therefore not required by the Phase 14 exit criteria.
+
+At the conservative λ=128 tier (`n = 1024`) the numbers scale by a
+constant: the HGOE hybrid total is `|m| + 128 + 16` bytes, the AES-GCM
+total is `|m| + 28` bytes, giving a 4.82× ratio at 16 B and an
+asymptotic 1× ratio for very long messages. The 100× ceiling is not
+approached at any realistic message length in either tier.
 
 ---
 
@@ -401,10 +416,10 @@ the balanced tier; decapsulation is ~3× slower (projected).
 
 | λ    | n     | b  | ell  | k     | w     | log₂\|G\| | CT (B) | Dec (ms, proj.) |
 |------|-------|----|------|-------|-------|-----------|--------|-----------------|
-| 80   | 640   | 4  | 160  | 320   | 320   | 321       | 80     | ~1 030          |
-| 128  | 1 024 | 4  | 256  | 512   | 512   | 513       | 128    | ~1 960          |
-| 192  | 1 536 | 4  | 384  | 768   | 768   | 769       | 192    | ~2 580          |
-| 256  | 2 048 | 4  | 512  | 1 024 | 1 024 | 1 025     | 256    | ~7 100          |
+| 80   | 640   | 4  | 160  | 320   | 320   | 321       | 80     | ~1 055          |
+| 128  | 1 024 | 4  | 256  | 512   | 512   | 513       | 128    | ~1 976          |
+| 192  | 1 536 | 4  | 384  | 768   | 768   | 769       | 192    | ~2 624          |
+| 256  | 2 048 | 4  | 512  | 1 024 | 1 024 | 1 025     | 256    | ~7 150          |
 
 ### 6.2 Balanced — minimal parameters meeting all §4 thresholds
 
@@ -416,9 +431,9 @@ AND `n/b ≥ λ` (algebraic). At `b = 4` both thresholds collapse to
 | λ    | n     | b  | ell  | k     | w     | log₂\|G\| | CT (B) | Dec (ms, proj.) |
 |------|-------|----|------|-------|-------|-----------|--------|-----------------|
 | 80   | 320   | 4  | 80   | 160   | 160   | 161       | 40     | ~370            |
-| 128  | 512   | 4  | 128  | 256   | 256   | 257       | 64     | ~700            |
-| 192  | 768   | 4  | 192  | 384   | 384   | 385       | 96     | ~920            |
-| 256  | 1 024 | 4  | 256  | 512   | 512   | 513       | 128    | ~2 520          |
+| 128  | 512   | 4  | 128  | 256   | 256   | 257       | 64     | ~694            |
+| 192  | 768   | 4  | 192  | 384   | 384   | 385       | 96     | ~921            |
+| 256  | 1 024 | 4  | 256  | 512   | 512   | 513       | 128    | ~2 511          |
 
 ### 6.3 Aggressive — performance baseline (Phase 11 `b=8`)
 
