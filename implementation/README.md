@@ -60,7 +60,42 @@ echo 'Read("implementation/gap/orbcrypt_keygen.g");; Read("implementation/gap/or
 | `gap/orbcrypt_params.g` | Parameter generation for all security levels |
 | `gap/orbcrypt_test.g` | Correctness test suite (13 tests) |
 | `gap/orbcrypt_bench.g` | Benchmark harness with CSV output |
+| `gap/orbcrypt_sweep.g` | **Phase 14 parameter sweep + tier-pinned rows** |
 | `gap/orbcrypt_benchmarks.csv` | Benchmark results (generated) |
+
+### Phase 14 parameter sweep
+
+`gap/orbcrypt_sweep.g` is the Phase 14 parameter-space exploration
+driver. It varies `b ∈ {4, 8, 16, 32}`, `w/n ∈ {1/3, 1/2, 2/3}`, and
+`k/n ∈ {1/4, 1/3, 1/2}` at each `lambda ∈ {80, 128, 192, 256}`,
+measures `log₂|G|`, orbit count, canonical-image time, and keygen
+time for each configuration, and also measures the three
+recommendation tiers (`aggressive`, `balanced`, `conservative`) from
+[`docs/PARAMETERS.md §6`](../docs/PARAMETERS.md).
+
+Output is written to
+[`docs/benchmarks/`](../docs/benchmarks/): one CSV per security
+level (`results_<lambda>.csv`, 39 rows each) plus
+`comparison.csv` (cross-scheme comparison with literature values
+for AES-256-GCM, Kyber-768, BIKE-L3, HQC-256, Classic McEliece, and
+LESS-L1).
+
+```bash
+# Full sweep (20 samples × 3 keygen trials per config, ~30 min on a
+# single core at lambda=256 with b=4):
+echo 'Read("implementation/gap/orbcrypt_keygen.g");; \
+      Read("implementation/gap/orbcrypt_kem.g");; \
+      Read("implementation/gap/orbcrypt_bench.g");; \
+      Read("implementation/gap/orbcrypt_sweep.g");; \
+      RunFullSweep();; QUIT;' | gap -q -b
+
+# Quick smoke test (5 samples × 1 trial, < 2 min):
+echo 'Read("implementation/gap/orbcrypt_keygen.g");; \
+      Read("implementation/gap/orbcrypt_kem.g");; \
+      Read("implementation/gap/orbcrypt_bench.g");; \
+      Read("implementation/gap/orbcrypt_sweep.g");; \
+      RunQuickSweep();; QUIT;' | gap -q -b
+```
 
 ## Architecture
 

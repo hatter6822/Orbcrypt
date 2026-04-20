@@ -2,7 +2,7 @@
 
 ## What this project is
 
-Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phases 1–3 complete. Group action foundations, cryptographic definitions (scheme, adversary, OIA axiom) are fully formalized. Phase 4 (core theorems) is next.
+Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phases 1–14 complete. All formal-verification phases are done; the reference GAP implementation (Phase 11), hardness alignment (Phase 12), public-key scaffolding (Phase 13), and parameter recommendations (Phase 14) are published. Phase 15 (decryption optimisation in C/C++) is the next major workstream.
 
 ## Build and run
 
@@ -95,8 +95,17 @@ implementation/
     orbcrypt_params.g                 Parameter generation for all security levels (GAP)
     orbcrypt_test.g                   Correctness test suite — 13 tests (GAP)
     orbcrypt_bench.g                  Benchmark harness with CSV output (GAP)
+    orbcrypt_sweep.g                  Phase 14 parameter sweep + tier-pinned rows (GAP)
     orbcrypt_benchmarks.csv           Benchmark results (generated)
   README.md                           Installation, usage, reproducibility guide
+docs/
+  PARAMETERS.md                       Phase 14 parameter recommendation document
+  benchmarks/
+    results_80.csv                    Phase 14 sweep + tier rows, λ = 80
+    results_128.csv                   Phase 14 sweep + tier rows, λ = 128
+    results_192.csv                   Phase 14 sweep + tier rows, λ = 192
+    results_256.csv                   Phase 14 sweep + tier rows, λ = 256
+    comparison.csv                    Cross-scheme comparison CSV
 ```
 
 ### Module dependency graph
@@ -223,6 +232,13 @@ docs/
 docs/
   HARDNESS_ANALYSIS.md                LESS/MEDS alignment, reduction chain, hardness comparison table
   PUBLIC_KEY_ANALYSIS.md              Phase 13 public-key feasibility analysis (oblivious sampling, KEM agreement, CSIDH-style)
+  PARAMETERS.md                       Phase 14 parameter recommendations (3 tiers × 4 security levels)
+  benchmarks/
+    results_80.csv                    Phase 14 sweep + tier rows, λ = 80
+    results_128.csv                   Phase 14 sweep + tier rows, λ = 128
+    results_192.csv                   Phase 14 sweep + tier rows, λ = 192
+    results_256.csv                   Phase 14 sweep + tier rows, λ = 256
+    comparison.csv                    Cross-scheme comparison (AES / Kyber / BIKE / HQC / McEliece / LESS / HGOE)
 implementation/
   README.md                           GAP prototype installation, usage, reproducibility guide
   gap/                                GAP source files for HGOE reference implementation
@@ -425,8 +441,9 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 | 11 | Reference Implementation (GAP) | 24-26 | 9 | ~36h | `docs/planning/PHASE_11_GAP_PROTOTYPE.md` | Complete |
 | 12 | Hardness Alignment (LESS/MEDS/TI) | 26-28 | 8 | ~32h | `docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md` | Complete |
 | 13 | Public-Key Extension | 26-30 | 7 | ~28h | `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` | Complete |
-| 14–16 | Practical Improvements | 30+ | 23 | ~78h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–13)** | **30** | **119** | **~326h** | | |
+| 14 | Parameter Selection & Benchmarks | 28-31 | 6 | ~20h | `docs/planning/PHASE_14_PARAMETER_SELECTION.md` | Complete |
+| 15–16 | Practical Improvements | 30+ | 17 | ~58h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
+| | **Total (1–14)** | **31** | **125** | **~346h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -493,7 +510,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 
 ## Active development status
 
-**Current Phase:** Phases 1–13 Complete — Public-Key Extension Scaffolding Done
+**Current Phase:** Phases 1–14 Complete — Parameter Recommendations Published
 
 Phase 1 (Project Scaffolding) has been completed:
 - `lakefile.lean` — Lean 4 package with Mathlib dependency pinned to commit `fa6418a8`, `autoImplicit := false`
@@ -607,6 +624,67 @@ Phase 13 (Public-Key Extension) has been completed:
 - All 7 work units (13.1–13.7) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 3 new Lean files, ~30 new public declarations across ~600 lines
 - `lake build` succeeds for all 32 modules (zero errors)
+
+Phase 14 (Parameter Selection & Benchmarks) has been completed:
+- `implementation/gap/orbcrypt_sweep.g` — systematic parameter-space
+  sweep. For each `lambda in {80, 128, 192, 256}` it iterates
+  `b in {4, 8, 16, 32}`, `w/n in {1/3, 1/2, 2/3}`, `k/n in {1/4, 1/3, 1/2}`
+  (36 configs) plus three tier-pinned rows (`aggressive`, `balanced`,
+  `conservative`) covering the §6 recommendations. `MeasureConfiguration`
+  returns `log2|G|`, orbit-count sample, mean canonical-image time, and
+  mean keygen time per configuration. `WriteSweepCSV` emits
+  `docs/benchmarks/results_<lambda>.csv` with the 15-column schema
+  (`lambda, b, ell, n, k, w, w_frac, k_frac, log2_G, num_orbits,
+  canon_ms, keygen_ms, num_gens, passed, tier, status`).
+  `WriteComparisonCSV` emits `docs/benchmarks/comparison.csv` with the
+  cross-scheme table. `RunFullSweep(numSamples, numTrials)` is the
+  top-level driver; `RunQuickSweep()` is the CI-sized smoke test.
+- `docs/benchmarks/results_{80,128,192,256}.csv` — per-level sweep CSVs,
+  39 rows each (36 grid + 3 tier). Rows with `status = measured` mirror
+  the Phase 11 benchmarks exactly (the Phase 11 b=8 baseline is the
+  aggressive tier); `status = projected` rows come from the scaling
+  model `canon_ms ∝ n^1.51 · (8/b)^0.25 · W(w/n)` fitted to the four
+  Phase 11 anchors. Running `RunFullSweep()` replaces the projected
+  rows with direct GAP measurements.
+- `docs/benchmarks/comparison.csv` — cross-scheme data with literature
+  values for AES-256-GCM, Kyber-768, BIKE-L3, HQC-256, Classic
+  McEliece, and LESS-L1, plus the measured HGOE-128 row from Phase 11.
+- `docs/PARAMETERS.md` — parameter recommendation document:
+  * §1 parameter-space sweep methodology + scaling-model derivation
+    (Work Unit 14.1).
+  * §2 optimal parameter table at the Phase 11 b=8 anchors, plus the
+    explicit caveat that the fallback wreath-product group has no
+    code-equivalence hardness argument (Work Unit 14.2).
+  * §3 cross-scheme comparison with per-metric honest assessment —
+    HGOE wins on key/CT size, loses by 4–5 orders of magnitude on
+    encrypt/decrypt time (Work Unit 14.3).
+  * §4 security-margin analysis against brute-force orbit enumeration,
+    birthday on orbits (`sqrt|G|`), Babai's GI bound, and algebraic
+    QC-folding. The binding constraint for `b >= 8` is algebraic
+    folding (`n >= b * lambda`); `b = 4` is the size-optimum because
+    birthday and algebraic thresholds coincide there at `n = 4 lambda`
+    (Work Unit 14.4).
+  * §5 ciphertext-expansion analysis: break-even against AES-GCM is
+    `n = 96` bits, so for any `n > 96` the HGOE hybrid carries a
+    constant `(n - 96)`-bit overhead. Expansion ratios at λ = 128
+    **balanced** (`n = 512`): 2.18× at 16 B message, 1.05× at 1 KiB,
+    asymptotic 1.0× — well under the 100× Phase-14 go/no-go ceiling.
+    **Verdict: GO**, KEM-only narrowing not required (Work Unit 14.5).
+  * §6 three-tier recommendations:
+      - **Conservative** (`b = 4, n = 8λ`): 2λ-bit margin on ENUM /
+        BIRTH / ALG, ~3× larger n.
+      - **Balanced** (`b = 4, n = 4λ`, *default*): smallest n meeting
+        all §4 thresholds at exactly λ bits.
+      - **Aggressive** (`b = 8`, Phase 11): benchmarks only, fails
+        birthday and algebraic thresholds.
+    Plus a "not recommended" table documenting the failure modes of
+    `b ∈ {16, 32}`, extreme weights, and the fallback wreath-product
+    group (Work Unit 14.6).
+  * §7 reproducibility — every table trace back to a CSV; full
+    `RunFullSweep()` regeneration instructions.
+- All 6 work units (14.1–14.6) complete; no Lean source-file changes;
+  GAP artefacts + docs only. `lake build` unchanged from Phase 13
+  (still 32 modules, zero errors).
 
 Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been completed:
 - `.github/workflows/lean4-build.yml` — (F-03) hardened `sorry` regex with

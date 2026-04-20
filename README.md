@@ -20,7 +20,14 @@ actions).
 
 ## Status
 
-**Formalization Complete — Phases 1–13 Done**
+**Formalization Complete — Phases 1–14 Done**
+
+Phase 14 (Parameter Selection & Benchmarks) published concrete
+parameter tables, a security-margin analysis against four attack
+vectors, a cross-scheme comparison, and three-tier parameter
+recommendations (`conservative`, `balanced`, `aggressive`) across
+λ ∈ {80, 128, 192, 256}. See [`docs/PARAMETERS.md`](docs/PARAMETERS.md)
+and the raw data under [`docs/benchmarks/`](docs/benchmarks/).
 
 All headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
 
@@ -92,6 +99,7 @@ source ~/.elan/env && lake build
 | [formalization/FORMALIZATION_PLAN.md](formalization/FORMALIZATION_PLAN.md) | Lean 4 formalization roadmap |
 | [docs/HARDNESS_ANALYSIS.md](docs/HARDNESS_ANALYSIS.md) | Phase 12 — hardness reduction chain and NIST PQC alignment |
 | [docs/PUBLIC_KEY_ANALYSIS.md](docs/PUBLIC_KEY_ANALYSIS.md) | Phase 13 — public-key feasibility analysis |
+| [docs/PARAMETERS.md](docs/PARAMETERS.md) | Phase 14 — parameter recommendations (3 tiers × 4 security levels) |
 
 ## License
 
