@@ -945,6 +945,18 @@ is bounded by:
 where Adv^{HSP}\_{A'} is the advantage of the best HSP solver derived from A.
 Since Q is polynomial and negl(λ) is negligible, the sum is negligible. ∎
 
+**Machine-checked hybrid layer (Workstream E8, audit F-11).** The
+Lean formalisation provides the uniform telescoping step via
+`Orbcrypt.hybrid_argument_uniform` and the multi-query scheme-level
+theorem `indQCPA_bound_via_hybrid` in `Crypto/CompSecurity.lean`. These
+reduce the `Q * ε` IND-Q-CPA bound to a single per-step hypothesis
+`h_step : ∀ i < Q, advantage _ (hybridDist … i) (hybridDist … (i+1)) ≤ ε`.
+Discharging `h_step` from `ConcreteOIA scheme ε` alone requires a
+per-coordinate marginal-independence proof over `uniformPMFTuple`; the
+audit plan `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b
+tracks that as follow-up work, and callers can supply the per-step
+bound from custom analysis in the interim.
+
 ### 8.3 Strengthening: Noisy Variant
 
 For defense-in-depth against multi-query attacks (in case HSP turns out easier

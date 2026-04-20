@@ -866,10 +866,219 @@ custom axiom.
 Patch version: `lakefile.lean` bumped from `0.1.2` to `0.1.3` for this
 workstream.
 
+Workstream E (Audit 2026-04-18 — Probabilistic Refinement Chain,
+F-01 + F-10 + F-11 + F-17 + F-20) has been completed:
+- `Orbcrypt/KEM/CompSecurity.lean` — (E1) new module. `kemEncapsDist`
+  (PMF push-forward of `encaps` under uniform G, E1a), `ConcreteKEMOIA
+  kem ε` (point-mass probabilistic KEM-OIA, E1b) plus
+  `concreteKEMOIA_one` / `concreteKEMOIA_mono` satisfiability witnesses,
+  `det_kemoia_implies_concreteKEMOIA_zero` (bridge from deterministic
+  KEMOIA, E1c), `kemAdvantage` + `concrete_kemoia_implies_secure` (E1d)
+  delivering the per-pair point-mass bound. Post-audit addition:
+  `ConcreteKEMOIA_uniform` (uniform-over-G form) + companion
+  `concrete_kemoia_uniform_implies_secure` giving the genuinely
+  ε-smooth KEM reduction. The point-mass form collapses on `ε ∈ [0, 1)`
+  (equivalent to `ε = 0` because point-mass advantage is 0-or-1 per
+  pair); the uniform form's advantage can take any value in `[0, 1]`.
+  All proofs carry only standard Lean axioms.
+- `Orbcrypt/Hardness/CodeEquivalence.lean` — (E2a) `codeOrbitDist C`
+  (PMF push-forward of uniform permutations through `C.image
+  (permuteCodeword σ)`), `ConcreteCEOIA C₀ C₁ ε` probabilistic predicate
+  + `concreteCEOIA_one` / `concreteCEOIA_mono`. Requires `[DecidableEq F]`;
+  `Equiv.Perm (Fin n)` is always nonempty and fintype via
+  `Mathlib.Data.Fintype.Perm`.
+- `Orbcrypt/Hardness/TensorAction.lean` — (E2b) `tensorOrbitDist`,
+  `ConcreteTensorOIA T₀ T₁ ε` parameterised over any `Fintype` surrogate
+  group `G_TI` acting on `Tensor3 n F` (abstracting away the missing
+  `Fintype (GL (Fin n) F)` upstream instance; concrete GL³ binding
+  tracked as Workstream F4). `concreteTensorOIA_one` / `_mono`.
+- `Orbcrypt/Hardness/Reductions.lean` — (E2c) `graphOrbitDist`,
+  `ConcreteGIOIA adj₀ adj₁ ε` + `concreteGIOIA_one` / `_mono`.
+  (E3, audit-revised) `UniversalConcreteTensorOIA εT`,
+  `UniversalConcreteCEOIA εC`, `UniversalConcreteGIOIA εG` (uniform
+  hardness aliases), plus `ConcreteTensorOIAImpliesConcreteCEOIA εT εC`,
+  `ConcreteCEOIAImpliesConcreteGIOIA εC εG`,
+  `ConcreteGIOIAImpliesConcreteOIA scheme εG ε` — the three ε-preserving
+  reduction Props in **universal→universal** form (stated as hypotheses,
+  not proven: a concrete witness via CFI / Grochow–Qiao encodings is
+  Workstream F3/F4 scope). Each has a `_one_one` satisfiability lemma.
+  `concrete_chain_zero_compose` is the E3d sanity sentinel — now
+  meaningfully threads tensor → code → graph → scheme-OIA hardness.
+  (E4, audit-revised) `ConcreteHardnessChain scheme F ε` structure
+  bundling the three ε layers and four hypotheses (including
+  `tensor_hard : UniversalConcreteTensorOIA εT`);
+  `concreteOIA_from_chain` composes them into `ConcreteOIA scheme ε` via
+  three function applications each consuming the previous layer;
+  `ConcreteHardnessChain.tight` is the `ε₁ = ε₂ = ε₃ = ε` convenience
+  constructor; `ConcreteHardnessChain.tight_one_exists` witnesses the
+  chain is non-vacuous at ε = 1. (E5)
+  `concrete_hardness_chain_implies_1cpa_advantage_bound` composes E4
+  with `concrete_oia_implies_1cpa` to give the probabilistic
+  `IND-1-CPA advantage ≤ ε` statement — the non-vacuous counterpart of
+  `hardness_chain_implies_security`.
+- `Orbcrypt/Hardness/Encoding.lean` — (E3-prep) new module.
+  `OrbitPreservingEncoding α β A B` structure formalising the many-one
+  reduction signature, kept as the *reference interface* for a future
+  per-encoding refactor (Workstream F3/F4 will discharge the three
+  reduction Props at concrete encodings via `OrbitPreservingEncoding`
+  witnesses). `identityEncoding` provides a trivial satisfiability
+  witness. The audit-revised universal→universal reduction Props in
+  `Hardness/Reductions.lean` do not themselves reference
+  `OrbitPreservingEncoding` — they state hardness transfer abstractly;
+  the encoding interface is where the *concrete* witnesses will land.
+- `Orbcrypt/PublicKey/CombineImpossibility.lean` — (E6)
+  `combinerOrbitDist scheme m_bp comb m` (distribution of the
+  combiner-induced Boolean output under uniform G sampling on m's orbit,
+  E6a), `combinerDistinguisherAdvantage` between two scheme messages,
+  `combinerDistinguisherAdvantage_eq` bridging to the standard
+  `advantage`/`orbitDist` vocabulary, and the headline
+  `concrete_combiner_advantage_bounded_by_oia` — the probabilistic
+  counterpart of `equivariant_combiner_breaks_oia` (an *upper* bound on
+  the combiner-distinguisher's scheme-level advantage from ConcreteOIA).
+  `combinerOrbitDist_mass_bounds` (E6b) gives the `1/|G|` *intra-orbit*
+  mass bound on both Boolean outcomes under non-degeneracy — a witness
+  of non-trivial variance on one orbit, but not by itself a cross-orbit
+  advantage lower bound (requires additional hypothesis on combine's
+  behavior on the target orbit, disclosed in the docstring).
+- `Orbcrypt/Probability/Monad.lean` — (E7a) `uniformPMFTuple α Q`,
+  `uniformPMFTuple_apply` (each tuple has mass `1/|α|^Q`),
+  `mem_support_uniformPMFTuple`. Built on `uniformPMF (Fin Q → α)`;
+  Fintype / Nonempty on the function type come from `Pi.fintype` /
+  `Pi.instNonempty`.
+- `Orbcrypt/Probability/Advantage.lean` — (E8 prereq)
+  `hybrid_argument_uniform Q hybrids D ε h_step` — uniform per-step
+  bound variant of `hybrid_argument`, delivering `advantage D (hybrids 0)
+  (hybrids Q) ≤ Q·ε`. Direct consequence of `hybrid_argument` +
+  `Finset.sum_const`. (Non-negativity of ε is not needed — the bound
+  is computed via `Finset.sum_le_sum` + `Finset.sum_const`, both
+  unconditional.)
+- `Orbcrypt/Crypto/CompSecurity.lean` — (E8) `hybridDist scheme choose i`
+  (scheme-level hybrids: first `i` coordinates sample from left
+  messages, last `Q - i` from right), `indQCPAAdvantage scheme A`
+  (E8a; all-left vs all-right advantage), `indQCPA_bound_via_hybrid`
+  (E8c; composes `hybrid_argument_uniform` with a caller-supplied
+  per-step bound `h_step`), `indQCPA_bound_recovers_single_query`
+  (E8d; Q = 1 regression). The per-step marginal reduction (showing
+  `h_step` follows from `ConcreteOIA`) is carried as an explicit
+  hypothesis: the marginal-independence proof over `uniformPMFTuple`
+  is the single remaining non-trivial step and is tracked as a
+  follow-up in `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+  § E8b. Users can discharge `h_step` from custom analysis or by
+  reformulating `hybridDist` via an explicit per-coordinate bind
+  chain.
+- `Orbcrypt.lean` — axiom transparency report extended: new section
+  enumerating the Workstream E theorem `#print axioms` checks; a
+  "Vacuity map" table mapping each Phase-4/7/12 vacuous theorem to its
+  non-vacuous Workstream-E counterpart; imports of `Orbcrypt.KEM.CompSecurity`
+  and `Orbcrypt.Hardness.Encoding` added.
+
+Traceability: findings F-01 (vacuous `oia_implies_1cpa` for non-trivial
+schemes), F-10 (deterministic `KEMOIA` not probabilistic), F-11 (no
+multi-query security), F-17 (deterministic combiner no-go), and F-20
+(deterministic hardness chain) are addressed by the probabilistic
+counterparts landed here. Each counterpart is satisfiable at `ε = 1`
+(all delivered advantages are ≤ 1) and reduces to the deterministic
+form at `ε = 0` (via the bridge lemmas). For the scheme-level
+`ConcreteOIA` and the uniform-form `ConcreteKEMOIA_uniform`,
+intermediate ε values genuinely parameterise concrete security; the
+point-mass `ConcreteKEMOIA` collapses on `[0, 1)` (documented
+caveat). See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 8
+for the specification and
+`docs/audits/LEAN_MODULE_AUDIT_2026-04-20_WORKSTREAM_E.md` for the
+post-landing audit that flagged and fixed the initial decoupling of
+the hardness chain.
+
+Non-goal (tracked as Workstream F3/F4): concrete witnesses for the three
+ε-preserving reduction Props (Tensor → CE → GI → scheme OIA). The
+Workstream-E chain is stated *up to* those reductions; providing
+compilable witnesses via the Grochow–Qiao structure-tensor encoding
+(F4) or the CFI graph gadget (F3) is separable research work.
+
+Patch version: `lakefile.lean` bumped from `0.1.3` to `0.1.4` for this
+workstream.
+
+### Workstream E follow-up (post-landing audit, 2026-04-20)
+
+A targeted audit of the landed Workstream E content surfaced four
+correctness issues that were addressed in-place without a new version
+bump (definitions are preserved; the audit-revised shape strengthens the
+semantics without changing the public surface except where a genuine bug
+was fixed):
+
+1. **E3 reduction Props were decoupled.** The landed form
+   `∀ T₀ T₁ C₀ C₁, ConcreteTensorOIA T₀ T₁ εT → ConcreteCEOIA C₀ C₁ εC`
+   was semantically equivalent to `(∃ T, ConcreteTensorOIA T T εT) → (∀
+   C, ConcreteCEOIA C C εC)`, which collapses to `∀ C₀ C₁,
+   ConcreteCEOIA C₀ C₁ εC` because `T₀ = T₁` trivially satisfies the
+   hypothesis. The tensor hardness assumption was never actually
+   consumed by the chain. The audit-revised form uses
+   `UniversalConcreteTensorOIA εT → UniversalConcreteCEOIA εC` (and
+   similarly for the CE → GI and GI → scheme-OIA reductions), so the
+   chain now genuinely threads TI-hardness through every link — see
+   `Hardness/Reductions.lean` `UniversalConcreteTensorOIA`,
+   `UniversalConcreteCEOIA`, `UniversalConcreteGIOIA` and the revised
+   `ConcreteTensorOIAImpliesConcreteCEOIA` / `ConcreteCEOIAImplies-
+   ConcreteGIOIA` / `ConcreteGIOIAImpliesConcreteOIA` definitions.
+
+2. **E4 `ConcreteHardnessChain` carried a per-pair tensor witness.** The
+   landed structure's `tensor_hard` field was a specific
+   `ConcreteTensorOIA T₀ T₁ εT` on a chosen pair `(T₀, T₁)`, and the
+   composition theorem passed it through the decoupled reduction Props
+   (landing on `ConcreteCEOIA ∅ ∅ εC` then `ConcreteGIOIA`-on-0-vertex-
+   graphs), which are trivially true regardless of the hypothesis. The
+   audit-revised `ConcreteHardnessChain` drops the `(n, G_TI, T₀, T₁)`
+   fields and takes a *universal* `tensor_hard :
+   UniversalConcreteTensorOIA εT` instead. `concreteOIA_from_chain` is
+   now a three-line composition `hc.gi_to_oia (hc.ce_to_gi
+   (hc.tensor_to_ce hc.tensor_hard))` — each link consumes the
+   previous layer's hardness meaningfully. A new lemma
+   `ConcreteHardnessChain.tight_one_exists` exhibits a non-vacuity
+   witness at ε = 1.
+
+3. **E1 `ConcreteKEMOIA` collapsed semantically.** Under `PMF.pure`
+   point masses, `advantage` is 0 or 1 only, so bounding by `ε ∈ [0, 1)`
+   forces the 0-advantage case — i.e. `ConcreteKEMOIA kem ε` for `ε ∈
+   [0, 1)` is equivalent to `ConcreteKEMOIA kem 0`. The revised
+   docstring discloses this (the definition is kept as the deterministic
+   bridge target), and `KEM/CompSecurity.lean` now exposes a new
+   `ConcreteKEMOIA_uniform` over the orbit-sampling push-forward
+   (`kemEncapsDist`) whose advantage can take any real value in
+   `[0, 1]`, so intermediate ε parameterise meaningful security.
+
+4. **E6 `combinerOrbitDist_mass_bounds` was over-claimed.** The
+   landed docstring suggested it combined with the ConcreteOIA upper
+   bound to refute `ConcreteOIA 0` under `NonDegenerateCombiner`. The
+   actual content is an intra-orbit bound (Pr[true] ≥ 1/|G| AND
+   Pr[false] ≥ 1/|G| on `m_bp`'s orbit) — it witnesses non-trivial
+   variance on one orbit, not a cross-orbit advantage lower bound.
+   Refuting ConcreteOIA 0 requires a cross-orbit distinguishing witness
+   that is combiner-specific; mass bounds alone are insufficient. The
+   revised docstrings for both `combinerOrbitDist_mass_bounds` and
+   `concrete_combiner_advantage_bounded_by_oia` state this honestly.
+
+5. **Orphan `OrbitPreservingEncoding`.** `Hardness/Encoding.lean`
+   defined the structure but no reduction Prop consumed it. The revised
+   module docstring clarifies the structure is the *reference interface*
+   that a future per-encoding refactor (Workstream F3/F4) will plug
+   into; it is intentionally not wired to the universal→universal
+   reduction Props that landed here.
+
+6. **`audit_e_workstream.lean` was only axiom-dumps.** The script's
+   preamble promised pressure tests but the body only contained
+   `#print axioms` calls. The follow-up appends a Part 2 of ~15
+   concrete `example` bindings exercising each Workstream-E result on
+   a well-typed instance (ConcreteKEMOIA at ε = 1, `uniformPMFTuple`
+   on `Fin 3 → Bool` giving mass 1/8, a 2-step hybrid giving a
+   `2 · ε` bound, `ConcreteHardnessChain.tight_one_exists`
+   instantiated to produce `ConcreteOIA scheme 1`, etc.). Type-checking
+   the script is now equivalent to confirming each headline result is
+   non-vacuous on at least one concrete instance.
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all 34 `Orbcrypt/**/*.lean`
-  modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, bringing the
-  total from 33 to 34; Workstream D added no new modules)
+- `lake build` succeeds with exit code 0 for all 36 `Orbcrypt/**/*.lean`
+  modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
+  added no new modules, Workstream E added `KEM/CompSecurity.lean` and
+  `Hardness/Encoding.lean`, bringing the total from 34 to 36)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty (the CI
   uses a comment-aware Perl strip so prose mentioning the word "sorry"
   in docstrings does not trigger a false positive; see
@@ -905,6 +1114,15 @@ workstream.
 - `#print axioms PAut_eq_PAutSubgroup_carrier` — standard Lean only (`rfl` through transitive standard imports, audit F-08, Workstream D2c)
 - `#print axioms paut_equivalence_set_eq_coset` — standard Lean only (full coset set identity, audit F-16 extended, Workstream D3)
 - `#print axioms arePermEquivalent_setoid` — standard Lean only (Mathlib `Setoid` instance, audit F-08, Workstream D4)
+- `#print axioms det_kemoia_implies_concreteKEMOIA_zero` — standard Lean only (KEMOIA is a hypothesis, audit F-10, Workstream E1c)
+- `#print axioms concrete_kemoia_implies_secure` — standard Lean only (ConcreteKEMOIA is a hypothesis, audit F-10, Workstream E1d)
+- `#print axioms concrete_chain_zero_compose` — standard Lean only (algebraic composition, audit F-20, Workstream E3d)
+- `#print axioms ConcreteHardnessChain.concreteOIA_from_chain` — standard Lean only (chain composition, audit F-20, Workstream E4b)
+- `#print axioms concrete_hardness_chain_implies_1cpa_advantage_bound` — standard Lean only (composes E4b + `concrete_oia_implies_1cpa`, audit F-20, Workstream E5)
+- `#print axioms concrete_combiner_advantage_bounded_by_oia` — standard Lean only (ConcreteOIA bounds the combinerDistinguisher advantage, audit F-17, Workstream E6)
+- `#print axioms combinerOrbitDist_mass_bounds` — standard Lean only (mass bound from non-degeneracy witness + `ENNReal.le_tsum`, audit F-17, Workstream E6b)
+- `#print axioms hybrid_argument_uniform` — standard Lean only (sum telescoping, Workstream E8 prereq)
+- `#print axioms indQCPA_bound_via_hybrid` — standard Lean only (per-step bound `h_step` carried as hypothesis; telescopes via `hybrid_argument_uniform`, audit F-11, Workstream E8c)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

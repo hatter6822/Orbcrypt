@@ -1,5 +1,7 @@
 import Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup.Defs
 import Mathlib.Data.Matrix.Basic
+import Orbcrypt.Probability.Monad
+import Orbcrypt.Probability.Advantage
 
 /-!
 # Orbcrypt.Hardness.TensorAction
@@ -310,5 +312,71 @@ def GIReducesToTI : Prop :=
       @AreTensorIsomorphic (dim m) F _ (encode m adj₁) (encode m adj₂)
 
 end TensorIsomorphism
+
+-- ============================================================================
+-- Workstream E2b — `ConcreteTensorOIA`: probabilistic Tensor-Isomorphism OIA
+-- ============================================================================
+
+section ConcreteTensor
+
+-- `[Field F]` is *not* required here: `Tensor3 n F` is a plain function
+-- type (`Fin n → Fin n → Fin n → F`) with no ring structure, and
+-- `PMF.map`/`advantage` depend only on the surrogate group `G_TI`. The
+-- outer `AreTensorIsomorphic` content does need `[Field F]` for `GL³`;
+-- scoping the requirement out of this section keeps the probabilistic
+-- sub-language constraint-minimal.
+
+/-- Orbit distribution on tensors under a finite group action. Parameterised
+    over an arbitrary `Fintype` group `G_TI` acting on `Tensor3 n F`, so the
+    definition is usable with any concrete surrogate for GL(n,F)³.
+
+    **Why abstract over `G_TI`.** The natural target group is
+    `(GL (Fin n) F) × (GL (Fin n) F) × (GL (Fin n) F)` (see `tensorAction`
+    above), but Mathlib does not currently provide a `Fintype` instance for
+    `GL (Fin n) F` even when `F` is finite. Abstracting over `G_TI` lets
+    this workstream land without blocking on that upstream instance;
+    discharging it via the concrete `tensorAction` is tracked as
+    Workstream F4 in
+    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`. -/
+noncomputable def tensorOrbitDist
+    {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
+    [MulAction G_TI (Tensor3 n F)]
+    (T : Tensor3 n F) : PMF (Tensor3 n F) :=
+  PMF.map (fun g : G_TI => g • T) (uniformPMF G_TI)
+
+/-- **Probabilistic Tensor-Isomorphism OIA** with explicit advantage bound
+    `ε`. Every Boolean distinguisher on `Tensor3 n F` has advantage at most
+    `ε` between the orbit distributions of two candidate tensors `T₀, T₁`
+    under the action of any specified finite group `G_TI`.
+
+    **Strength.** Mirrors `ConcreteOIA` / `ConcreteCEOIA`: `ε = 1` is
+    trivially satisfied (see `concreteTensorOIA_one`), smaller ε
+    parameterises the MEDS/ATFE-style concrete security target. -/
+def ConcreteTensorOIA
+    {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
+    [MulAction G_TI (Tensor3 n F)]
+    (T₀ T₁ : Tensor3 n F) (ε : ℝ) : Prop :=
+  ∀ (D : Tensor3 n F → Bool),
+    advantage D (tensorOrbitDist (G_TI := G_TI) T₀)
+      (tensorOrbitDist (G_TI := G_TI) T₁) ≤ ε
+
+/-- `ConcreteTensorOIA` with `ε = 1` is trivially satisfied. -/
+theorem concreteTensorOIA_one
+    {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
+    [MulAction G_TI (Tensor3 n F)]
+    (T₀ T₁ : Tensor3 n F) :
+    ConcreteTensorOIA (G_TI := G_TI) T₀ T₁ 1 :=
+  fun D => advantage_le_one D _ _
+
+/-- `ConcreteTensorOIA` is monotone in the bound. -/
+theorem concreteTensorOIA_mono
+    {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
+    [MulAction G_TI (Tensor3 n F)]
+    (T₀ T₁ : Tensor3 n F) {ε₁ ε₂ : ℝ}
+    (hle : ε₁ ≤ ε₂) (hOIA : ConcreteTensorOIA (G_TI := G_TI) T₀ T₁ ε₁) :
+    ConcreteTensorOIA (G_TI := G_TI) T₀ T₁ ε₂ :=
+  fun D => le_trans (hOIA D) hle
+
+end ConcreteTensor
 
 end Orbcrypt

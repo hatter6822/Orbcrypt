@@ -2,6 +2,8 @@ import Orbcrypt.GroupAction.Basic
 import Orbcrypt.GroupAction.Invariant
 import Orbcrypt.Crypto.Scheme
 import Orbcrypt.Crypto.OIA
+import Orbcrypt.Crypto.CompOIA
+import Orbcrypt.Probability.Advantage
 import Orbcrypt.PublicKey.ObliviousSampling
 
 /-!
@@ -444,5 +446,176 @@ theorem oblivious_sample_equivariant_obstruction
   -- Apply the OIA-forced constancy lemma on each side.
   rw [oia_forces_combine_constant_on_orbit scheme m_bp combiner hOIA h1,
       oia_forces_combine_constant_on_orbit scheme m_bp combiner hOIA h2]
+
+-- ============================================================================
+-- Workstream E6 — Probabilistic refinement of `equivariant_combiner_breaks_oia`
+-- ============================================================================
+
+section ConcreteEquivariantCombiner
+
+open PMF
+
+variable {G : Type*} {X : Type*} {M : Type*}
+  [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+
+/-- **Workstream E6a.** The distribution of `combinerDistinguisher`'s Boolean
+    output as we vary the group element applied to the scheme's message
+    representative. Push-forward of the uniform group distribution through
+    the composite `g ↦ combinerDistinguisher comb (g • scheme.reps m)`. -/
+noncomputable def combinerOrbitDist
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp)) (m : M) : PMF Bool :=
+  PMF.map (fun g : G => combinerDistinguisher comb (g • scheme.reps m))
+    (uniformPMF G)
+
+/-- **Workstream E6a (continued).** Distinguishing advantage of the
+    combiner-induced Boolean output distribution between two scheme
+    messages. Measures how well `combinerDistinguisher` can tell the two
+    orbit distributions apart. -/
+noncomputable def combinerDistinguisherAdvantage
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp)) (m₀ m₁ : M) : ℝ :=
+  advantage id (combinerOrbitDist scheme m_bp comb m₀)
+              (combinerOrbitDist scheme m_bp comb m₁)
+
+/-- Helper: `probTrue` through a `PMF.map` with the Boolean `id` reduces
+    to the probability that the map function returns `true`. -/
+private theorem probTrue_map_id_eq {α : Type*}
+    (d : PMF α) (f : α → Bool) :
+    probTrue (PMF.map f d) id = probTrue d f := by
+  unfold probTrue
+  rw [PMF.toOuterMeasure_map_apply]
+  rfl
+
+/-- Helper: `probTrue` through an `orbitDist` with a distinguisher
+    factors as `probTrue uniformPMF (D ∘ orbit action)`. -/
+private theorem probTrue_orbitDist_eq
+    {G : Type*} {X : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X]
+    (x : X) (D : X → Bool) :
+    probTrue (orbitDist (G := G) x) D =
+    probTrue (uniformPMF G) (fun g => D (g • x)) := by
+  unfold probTrue orbitDist
+  rw [PMF.toOuterMeasure_map_apply]
+  rfl
+
+/-- The combiner-induced distinguisher is a plain Boolean function
+    `X → Bool`; its advantage between orbit distributions equals
+    `combinerDistinguisherAdvantage`. This is the bridge lemma used below
+    to compose with `ConcreteOIA`. -/
+theorem combinerDistinguisherAdvantage_eq
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp)) (m₀ m₁ : M) :
+    combinerDistinguisherAdvantage scheme m_bp comb m₀ m₁ =
+    advantage (combinerDistinguisher comb)
+      (orbitDist (G := G) (scheme.reps m₀))
+      (orbitDist (G := G) (scheme.reps m₁)) := by
+  -- Both sides reduce to the same probability-on-uniformPMF expression.
+  unfold combinerDistinguisherAdvantage combinerOrbitDist advantage
+  rw [probTrue_map_id_eq, probTrue_map_id_eq,
+      probTrue_orbitDist_eq, probTrue_orbitDist_eq]
+
+/-- **Workstream E6 headline, concrete form.** Any `ConcreteOIA` bound for
+    the scheme also bounds the advantage of the combiner-induced
+    distinguisher.
+
+    This is the probabilistic analogue of `equivariant_combiner_breaks_oia`:
+    the deterministic version shows OIA is *refuted* by any non-degenerate
+    equivariant combiner at `f = combinerDistinguisher`, `m₀ = m₁ = m_bp`,
+    `g₀ = 1`, `g₁ = g_w` (witness from non-degeneracy); the probabilistic
+    version converts that refutation into an *upper bound on the
+    scheme-level ConcreteOIA ε bound* that can be exceeded by the combiner
+    distinguisher.
+
+    **Cryptographic reading.** If you exhibit any `G`-equivariant
+    orbit-closed combiner `combine` on `scheme`, ConcreteOIA `ε` forces
+    `combinerDistinguisherAdvantage ≤ ε`. Choosing a concrete combiner and
+    computing its advantage therefore yields a hard lower bound on the
+    scheme's attainable `ε`.
+
+    **Audit disclosure (2026-04-20 post-landing review).** The pre-audit
+    docstring claimed this theorem combined with `combinerOrbitDist_mass
+    _bounds` to refute `ConcreteOIA 0` under `NonDegenerateCombiner`. That
+    claim overreached: mass bounds on a single orbit (both Booleans have
+    ≥ 1/|G| mass on the `m_bp` orbit) do **not** force a positive advantage
+    between `m_bp`'s orbit distribution and a *different* orbit's
+    distribution — both distributions could place identical Pr[true] =
+    1/2, giving advantage 0. The mass bounds witness that the combiner's
+    output is non-trivially distributed on `m_bp`'s orbit, not that it
+    distinguishes `m_bp`'s orbit from others. Refuting ConcreteOIA 0 via
+    a combiner needs a *cross-orbit* distinguishing witness, not just an
+    intra-orbit mass bound. See the revised `combinerOrbitDist_mass_bounds`
+    docstring for the honest reading. -/
+theorem concrete_combiner_advantage_bounded_by_oia
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (ε : ℝ) (hOIA : ConcreteOIA scheme ε) (m₀ m₁ : M) :
+    combinerDistinguisherAdvantage scheme m_bp comb m₀ m₁ ≤ ε := by
+  rw [combinerDistinguisherAdvantage_eq]
+  exact hOIA (combinerDistinguisher comb) m₀ m₁
+
+/-- **Workstream E6b.** Under a non-degenerate equivariant combiner on
+    `m_bp`'s orbit, the combiner-induced distinguisher has strictly
+    positive mass on both Boolean outcomes on the *basepoint orbit*: both
+    `true` and `false` each receive probability at least `1/|G|` under the
+    uniform `g ∈ G` distribution on `m_bp`'s orbit.
+
+    Precisely: under the uniform `g ∈ G` distribution over `m_bp`'s orbit,
+    the distinguisher is `true` at `g = 1` (by `combinerDistinguisher_basePoint`)
+    and `false` at some `g = g_w` (by `combinerDistinguisher_witness`).
+    Hence the probability of either outcome is at least `1/|G|`.
+
+    **Audit disclosure.** This is an *intra-orbit* mass bound only — it
+    witnesses non-trivial variance of the combiner-distinguisher on
+    `m_bp`'s orbit. It does **not** by itself imply a cross-orbit advantage
+    lower bound (i.e. it does not prove
+    `combinerDistinguisherAdvantage scheme m_bp comb m₀ m₁ ≥ 1/|G|` for
+    `m₀ ≠ m₁`). That stronger claim would require an additional hypothesis
+    about the combiner's behavior on `m₁`'s orbit (e.g. that
+    `combinerDistinguisher` is constant on `m₁`'s orbit), which
+    `NonDegenerateCombiner` alone does not provide.
+
+    The value this lemma does provide: combined with
+    `concrete_combiner_advantage_bounded_by_oia` and a *separately supplied*
+    cross-orbit witness, one can lower-bound `ε` under `ConcreteOIA`. The
+    intra-orbit mass bound is the half of that proof that is unconditional;
+    the cross-orbit witness is problem-specific (tied to the combiner's
+    structure) and must be exhibited per combiner.
+
+    **Proof technique.** Bound each mass by the single-summand term at
+    the relevant witness group element (`g = 1` for the `true` branch,
+    `g = g_w` for the `false` branch), using `ENNReal.le_tsum` on the
+    expanded `PMF.map_apply` form. Each witness summand equals
+    `uniformPMF G witness = 1/|G|`. -/
+theorem combinerOrbitDist_mass_bounds
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (hND : NonDegenerateCombiner comb) :
+    ((Fintype.card G : ENNReal)⁻¹ ≤
+        combinerOrbitDist scheme m_bp comb m_bp true) ∧
+    ((Fintype.card G : ENNReal)⁻¹ ≤
+        combinerOrbitDist scheme m_bp comb m_bp false) := by
+  -- Shared setup: the push-forward function and its key value lemmas.
+  set f : G → Bool := fun g =>
+    combinerDistinguisher comb (g • scheme.reps m_bp) with hf_def
+  have h_true_at_one : f 1 = true := by
+    show combinerDistinguisher comb ((1 : G) • scheme.reps m_bp) = true
+    rw [one_smul]; exact combinerDistinguisher_basePoint comb
+  obtain ⟨g_w, hg_w⟩ := combinerDistinguisher_witness hND
+  have h_false_at_gw : f g_w = false := hg_w
+  refine ⟨?_, ?_⟩
+  · -- Pr[true] ≥ 1/|G|.  Lower-bound the map-applied sum by the `g = 1`
+    -- summand, which equals `uniformPMF G 1 = 1/|G|`.
+    show (Fintype.card G : ENNReal)⁻¹ ≤ PMF.map f (uniformPMF G) true
+    rw [PMF.map_apply]
+    refine le_trans ?_ (ENNReal.le_tsum (1 : G))
+    rw [if_pos (by rw [h_true_at_one]), uniformPMF_apply]
+  · -- Pr[false] ≥ 1/|G|, symmetric argument via g_w.
+    show (Fintype.card G : ENNReal)⁻¹ ≤ PMF.map f (uniformPMF G) false
+    rw [PMF.map_apply]
+    refine le_trans ?_ (ENNReal.le_tsum g_w)
+    rw [if_pos (by rw [h_false_at_gw]), uniformPMF_apply]
+
+end ConcreteEquivariantCombiner
 
 end Orbcrypt

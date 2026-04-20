@@ -4,6 +4,9 @@ import Mathlib.Data.Fintype.Card
 import Mathlib.Data.Fintype.EquivFin
 import Mathlib.Data.Fintype.Sets
 import Mathlib.Algebra.Group.Subgroup.Defs
+import Mathlib.Data.Fintype.Perm
+import Orbcrypt.Probability.Monad
+import Orbcrypt.Probability.Advantage
 
 /-!
 # Orbcrypt.Hardness.CodeEquivalence
@@ -555,5 +558,61 @@ instance arePermEquivalent_setoid
         arePermEquivalent_trans C₁.val C₂.val C₃.val h₁₂ h₂₃ }
 
 end ArePermEquivalentSetoid
+
+-- ============================================================================
+-- Workstream E2a — `ConcreteCEOIA`: probabilistic Code-Equivalence OIA
+-- ============================================================================
+
+section ConcreteCE
+
+variable [DecidableEq F]
+
+/-- Orbit distribution under the natural `S_n` action on codes: sample a
+    uniform permutation `σ ∈ Equiv.Perm (Fin n)`, return the permuted code
+    `C.image (permuteCodeword σ)`.
+
+    This is the code-equivalence analogue of `Orbcrypt.orbitDist` (see
+    `Crypto/CompOIA.lean`). The sampled Finset contains `|C|` permuted
+    codewords; under LESS/MEDS-style hardness, a uniformly sampled coset
+    of `PAut C` is computationally indistinguishable from a random code
+    of the same cardinality.
+
+    **Signature.** `[DecidableEq F]` gives `DecidableEq (Fin n → F)` via
+    `Pi.decidableEq`, which is needed by `Finset.image`. `Equiv.Perm (Fin n)`
+    is always nonempty (the identity permutation) and finite via
+    `Mathlib.Data.Fintype.Perm`. -/
+noncomputable def codeOrbitDist
+    (C : Finset (Fin n → F)) : PMF (Finset (Fin n → F)) :=
+  PMF.map (fun σ : Equiv.Perm (Fin n) => C.image (permuteCodeword σ))
+    (uniformPMF (Equiv.Perm (Fin n)))
+
+/-- **Probabilistic Code-Equivalence OIA** with explicit advantage bound `ε`.
+
+    Every Boolean distinguisher on codes of length `n` has advantage at most
+    `ε` between the orbit distributions of two candidate codes `C₀, C₁`
+    under the `S_n` action by coordinate permutation.
+
+    **Strength.** Exactly mirrors `ConcreteOIA` on an `OrbitEncScheme`:
+    `ε = 1` is trivially satisfied (see `concreteCEOIA_one`); smaller ε
+    parameterises the LESS/MEDS concrete security target. -/
+def ConcreteCEOIA
+    (C₀ C₁ : Finset (Fin n → F)) (ε : ℝ) : Prop :=
+  ∀ (D : Finset (Fin n → F) → Bool),
+    advantage D (codeOrbitDist C₀) (codeOrbitDist C₁) ≤ ε
+
+/-- `ConcreteCEOIA` with `ε = 1` is trivially satisfied — advantage is always
+    at most `1` — so the predicate is non-vacuous. -/
+theorem concreteCEOIA_one
+    (C₀ C₁ : Finset (Fin n → F)) : ConcreteCEOIA C₀ C₁ 1 :=
+  fun D => advantage_le_one D _ _
+
+/-- `ConcreteCEOIA` is monotone in the bound. -/
+theorem concreteCEOIA_mono
+    (C₀ C₁ : Finset (Fin n → F)) {ε₁ ε₂ : ℝ}
+    (hle : ε₁ ≤ ε₂) (hOIA : ConcreteCEOIA C₀ C₁ ε₁) :
+    ConcreteCEOIA C₀ C₁ ε₂ :=
+  fun D => le_trans (hOIA D) hle
+
+end ConcreteCE
 
 end Orbcrypt
