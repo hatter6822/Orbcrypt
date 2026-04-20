@@ -38,6 +38,7 @@ section WorkstreamE_AxiomChecks
 #print axioms Orbcrypt.concreteKEMOIA_uniform_mono
 #print axioms Orbcrypt.det_kemoia_implies_concreteKEMOIA_zero
 #print axioms Orbcrypt.concrete_kemoia_implies_secure
+#print axioms Orbcrypt.concrete_kemoia_uniform_implies_secure
 
 -- E2
 #print axioms Orbcrypt.concreteCEOIA_one
@@ -119,6 +120,22 @@ example (G X K : Type*) [Group G] [Fintype G] [Nonempty G]
     (A : KEMAdversary X K) (g₀ g₁ : G) :
     kemAdvantage kem A g₀ g₁ ≤ 1 :=
   concrete_kemoia_implies_secure kem 1 (concreteKEMOIA_one kem) A g₀ g₁
+
+-- Uniform-form KEM security reduction: post-audit addition. Fires at
+-- ε = 1 against the genuinely ε-smooth `ConcreteKEMOIA_uniform` hypothesis.
+example (G X K : Type*) [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X] (kem : OrbitKEM G X K)
+    (A : KEMAdversary X K) (g_ref : G) :
+    kemAdvantage_uniform kem A g_ref ≤ 1 :=
+  concrete_kemoia_uniform_implies_secure kem 1
+    (concreteKEMOIA_uniform_one kem) A g_ref
+
+-- Uniform-form monotonicity chain: ε = 1/3 → ε = 1.
+example (G X K : Type*) [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X] (kem : OrbitKEM G X K)
+    (hOIA : ConcreteKEMOIA_uniform kem (1/3)) :
+    ConcreteKEMOIA_uniform kem 1 :=
+  concreteKEMOIA_uniform_mono kem (by norm_num : (1 : ℝ)/3 ≤ 1) hOIA
 
 -- ----------------------------------------------------------------------------
 -- E2 concrete tests: each hardness-OIA variant is inhabited at ε = 1 on

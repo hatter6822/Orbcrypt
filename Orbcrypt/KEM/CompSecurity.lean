@@ -319,15 +319,22 @@ theorem kemAdvantage_le_one [Group G] [Fintype G] [Nonempty G]
     kemAdvantage kem A g₀ g₁ ≤ 1 :=
   advantage_le_one _ _ _
 
-/-- **Main KEM security reduction.** If `ConcreteKEMOIA kem ε` holds, every
-    adversary has per-pair KEM advantage at most ε.
+/-- **Main KEM security reduction (point-mass form).** If `ConcreteKEMOIA
+    kem ε` holds, every adversary has per-pair KEM advantage at most ε.
 
-    This is the probabilistic upgrade of `kemoia_implies_secure` from
-    `KEM/Security.lean`. Unlike the deterministic version (which is vacuously
-    true because `KEMOIA` is unsatisfiable for non-trivial KEMs), this
-    theorem has genuine content: `ConcreteKEMOIA kem 1` is trivially true
-    (see `concreteKEMOIA_one`), so the conclusion is non-vacuous; smaller
-    ε values parameterise meaningful security.
+    This is the probabilistic-flavoured upgrade of `kemoia_implies_secure`
+    from `KEM/Security.lean`. `ConcreteKEMOIA kem 1` is trivially true (see
+    `concreteKEMOIA_one`), so the reduction is non-vacuously applicable at
+    ε = 1.
+
+    **Point-mass caveat.** Because `ConcreteKEMOIA` compares two
+    `PMF.pure` point masses, its advantage is 0 or 1 per `(g₀, g₁)` pair,
+    so `ConcreteKEMOIA kem ε` for `ε ∈ [0, 1)` is equivalent to
+    `ConcreteKEMOIA kem 0` (cf. the definition's docstring). Intermediate
+    ε in `[0, 1)` therefore do not add content *to this reduction*. For
+    a genuinely ε-smooth reduction, see
+    `concrete_kemoia_uniform_implies_secure` below, which uses the
+    uniform-over-G form `ConcreteKEMOIA_uniform`.
 
     **Proof.** `kemAdvantage` unfolds to the advantage of a specific
     distinguisher (the adversary's guess function applied to the base point
@@ -351,5 +358,57 @@ theorem concreteKEMOIA_one_meaningful [Group G] [Fintype G] [Nonempty G]
     (kem : OrbitKEM G X K) (A : KEMAdversary X K) (g₀ g₁ : G) :
     kemAdvantage kem A g₀ g₁ ≤ 1 :=
   advantage_le_one _ _ _
+
+-- ============================================================================
+-- Workstream E1d (continued) — Uniform-form KEM security reduction
+-- ============================================================================
+
+/-- **Uniform-form KEM advantage.** Distinguishing advantage of adversary
+    `A` between the uniform-over-G encapsulation distribution
+    `kemEncapsDist kem` and a specific reference encapsulation point mass
+    `PMF.pure (encaps kem g_ref)`.
+
+    This is the uniform-form analogue of `kemAdvantage`. Unlike the
+    point-mass form (where advantage collapses to 0 or 1 per `(g₀, g₁)`
+    pair), the uniform-form advantage can take any real value in `[0, 1]`
+    as `D` and `g_ref` vary, so intermediate ε values are genuinely
+    expressive.
+
+    The adversary's guess is applied to the (ciphertext, key) pair. -/
+noncomputable def kemAdvantage_uniform [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) (A : KEMAdversary X K) (g_ref : G) : ℝ :=
+  advantage (fun p => A.guess kem.basePoint p.1 p.2)
+    (kemEncapsDist kem) (PMF.pure (encaps kem g_ref))
+
+/-- `kemAdvantage_uniform` is non-negative. -/
+theorem kemAdvantage_uniform_nonneg [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) (A : KEMAdversary X K) (g_ref : G) :
+    0 ≤ kemAdvantage_uniform kem A g_ref :=
+  advantage_nonneg _ _ _
+
+/-- `kemAdvantage_uniform` is at most 1. -/
+theorem kemAdvantage_uniform_le_one [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) (A : KEMAdversary X K) (g_ref : G) :
+    kemAdvantage_uniform kem A g_ref ≤ 1 :=
+  advantage_le_one _ _ _
+
+/-- **Uniform-form KEM security reduction.** If `ConcreteKEMOIA_uniform
+    kem ε` holds, every adversary has uniform KEM advantage at most ε,
+    at every reference `g_ref`.
+
+    This is the genuinely ε-smooth KEM reduction: unlike
+    `concrete_kemoia_implies_secure` (which uses the point-mass
+    `ConcreteKEMOIA` that collapses on `[0, 1)`), this reduction admits
+    intermediate ε values that bound real-vs-reference advantage. -/
+theorem concrete_kemoia_uniform_implies_secure
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) (ε : ℝ)
+    (hOIA : ConcreteKEMOIA_uniform kem ε) (A : KEMAdversary X K)
+    (g_ref : G) :
+    kemAdvantage_uniform kem A g_ref ≤ ε :=
+  hOIA (fun p => A.guess kem.basePoint p.1 p.2) g_ref
 
 end Orbcrypt

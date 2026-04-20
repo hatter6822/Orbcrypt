@@ -615,6 +615,10 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.concrete_kemoia_implies_secure
 -- (standard Lean only — ConcreteKEMOIA appears as a hypothesis, Workstream E1d)
 
+#print axioms Orbcrypt.concrete_kemoia_uniform_implies_secure
+-- (standard Lean only — ConcreteKEMOIA_uniform appears as a hypothesis,
+--  Workstream E1d post-audit addition: the genuinely ε-smooth reduction)
+
 #print axioms Orbcrypt.concreteCEOIA_one
 -- (standard Lean only — one-line corollary of advantage_le_one, Workstream E2a)
 
@@ -675,15 +679,19 @@ predecessor. The pairing:
 | Pre-Workstream-E (vacuous today) | Workstream-E counterpart (non-vacuous) |
 |---|---|
 | `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) |
-| `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d) |
+| `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) |
 | `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5) |
 | `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
 | *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`
-(advantage ≤ 1 always), so the definitions are satisfiable. Intermediate
-`ε` values parameterise realistic concrete security.
+(advantage ≤ 1 always), so the definitions are satisfiable. For
+scheme-level `ConcreteOIA` and the uniform-form `ConcreteKEMOIA_uniform`,
+intermediate `ε` values genuinely parameterise realistic concrete
+security. The point-mass `ConcreteKEMOIA` collapses on `ε ∈ [0, 1)`
+(advantage is 0 or 1 per pair); see its docstring for the disclosure
+and the uniform form for the ε-smooth alternative.
 
 No `sorryAx` should appear in any output. If it does, there is a hidden
 `sorry` in the dependency chain.

@@ -98,6 +98,23 @@ advantage there can take any real value in [0, 1], so intermediate ε
 parameterise meaningful security. Added `concreteKEMOIA_uniform_one`
 and `concreteKEMOIA_uniform_mono` for the uniform form.
 
+**Deep-audit follow-up (2026-04-20, second pass).** The uniform form
+was initially introduced without a companion reduction theorem, so
+callers who wanted a genuinely ε-smooth KEM-security statement had no
+reduction to cite. Added:
+
+- `kemAdvantage_uniform kem A g_ref` — the per-reference uniform-form
+  KEM advantage (advantage of the adversary's guess between
+  `kemEncapsDist kem` and `PMF.pure (encaps kem g_ref)`), with
+  `_nonneg` and `_le_one` sanity lemmas.
+- `concrete_kemoia_uniform_implies_secure` — the genuinely ε-smooth
+  KEM reduction: `ConcreteKEMOIA_uniform kem ε → ∀ A g_ref,
+  kemAdvantage_uniform kem A g_ref ≤ ε`.
+
+Now both forms (point-mass and uniform) have bridge-→-definition-→-
+reduction triples, and downstream users can pick based on whether
+they need the 0-or-1 point-mass discipline or a genuine ε spectrum.
+
 ### Finding E-A4 (low): E6 `combinerOrbitDist_mass_bounds` was over-claimed
 
 **Location.** `Orbcrypt/PublicKey/CombineImpossibility.lean` theorem

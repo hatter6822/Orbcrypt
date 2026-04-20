@@ -870,14 +870,17 @@ Workstream E (Audit 2026-04-18 — Probabilistic Refinement Chain,
 F-01 + F-10 + F-11 + F-17 + F-20) has been completed:
 - `Orbcrypt/KEM/CompSecurity.lean` — (E1) new module. `kemEncapsDist`
   (PMF push-forward of `encaps` under uniform G, E1a), `ConcreteKEMOIA
-  kem ε` (probabilistic KEM-OIA, E1b) plus `concreteKEMOIA_one` /
-  `concreteKEMOIA_mono` satisfiability witnesses,
+  kem ε` (point-mass probabilistic KEM-OIA, E1b) plus
+  `concreteKEMOIA_one` / `concreteKEMOIA_mono` satisfiability witnesses,
   `det_kemoia_implies_concreteKEMOIA_zero` (bridge from deterministic
   KEMOIA, E1c), `kemAdvantage` + `concrete_kemoia_implies_secure` (E1d)
-  delivering the per-pair bound. All proofs carry only standard Lean
-  axioms; ConcreteKEMOIA(1) is trivially true, so the predicate is
-  satisfiable — unlike the deterministic `KEMOIA`, which is `False` on
-  any scheme with ≥ 2 distinct orbit elements.
+  delivering the per-pair point-mass bound. Post-audit addition:
+  `ConcreteKEMOIA_uniform` (uniform-over-G form) + companion
+  `concrete_kemoia_uniform_implies_secure` giving the genuinely
+  ε-smooth KEM reduction. The point-mass form collapses on `ε ∈ [0, 1)`
+  (equivalent to `ε = 0` because point-mass advantage is 0-or-1 per
+  pair); the uniform form's advantage can take any value in `[0, 1]`.
+  All proofs carry only standard Lean axioms.
 - `Orbcrypt/Hardness/CodeEquivalence.lean` — (E2a) `codeOrbitDist C`
   (PMF push-forward of uniform permutations through `C.image
   (permuteCodeword σ)`), `ConcreteCEOIA C₀ C₁ ε` probabilistic predicate
@@ -891,25 +894,38 @@ F-01 + F-10 + F-11 + F-17 + F-20) has been completed:
   tracked as Workstream F4). `concreteTensorOIA_one` / `_mono`.
 - `Orbcrypt/Hardness/Reductions.lean` — (E2c) `graphOrbitDist`,
   `ConcreteGIOIA adj₀ adj₁ ε` + `concreteGIOIA_one` / `_mono`.
-  (E3) `ConcreteTensorOIAImpliesConcreteCEOIA εT εC`,
+  (E3, audit-revised) `UniversalConcreteTensorOIA εT`,
+  `UniversalConcreteCEOIA εC`, `UniversalConcreteGIOIA εG` (uniform
+  hardness aliases), plus `ConcreteTensorOIAImpliesConcreteCEOIA εT εC`,
   `ConcreteCEOIAImpliesConcreteGIOIA εC εG`,
   `ConcreteGIOIAImpliesConcreteOIA scheme εG ε` — the three ε-preserving
-  reduction Props (stated as hypotheses, not proven: a concrete witness
-  via CFI / Grochow–Qiao encodings is Workstream F3/F4 scope). Each has
-  a `_one_one` satisfiability lemma. `concrete_chain_zero_compose` is
-  the E3d sanity sentinel. (E4) `ConcreteHardnessChain scheme G_TI ε`
-  structure bundling the tensor pair, three ε layers, and four
-  hypotheses; `concreteOIA_from_chain` composes them into
-  `ConcreteOIA scheme ε`; `ConcreteHardnessChain.tight` is the
-  `ε₁ = ε₂ = ε₃ = ε` convenience constructor. (E5)
+  reduction Props in **universal→universal** form (stated as hypotheses,
+  not proven: a concrete witness via CFI / Grochow–Qiao encodings is
+  Workstream F3/F4 scope). Each has a `_one_one` satisfiability lemma.
+  `concrete_chain_zero_compose` is the E3d sanity sentinel — now
+  meaningfully threads tensor → code → graph → scheme-OIA hardness.
+  (E4, audit-revised) `ConcreteHardnessChain scheme F ε` structure
+  bundling the three ε layers and four hypotheses (including
+  `tensor_hard : UniversalConcreteTensorOIA εT`);
+  `concreteOIA_from_chain` composes them into `ConcreteOIA scheme ε` via
+  three function applications each consuming the previous layer;
+  `ConcreteHardnessChain.tight` is the `ε₁ = ε₂ = ε₃ = ε` convenience
+  constructor; `ConcreteHardnessChain.tight_one_exists` witnesses the
+  chain is non-vacuous at ε = 1. (E5)
   `concrete_hardness_chain_implies_1cpa_advantage_bound` composes E4
   with `concrete_oia_implies_1cpa` to give the probabilistic
   `IND-1-CPA advantage ≤ ε` statement — the non-vacuous counterpart of
   `hardness_chain_implies_security`.
 - `Orbcrypt/Hardness/Encoding.lean` — (E3-prep) new module.
   `OrbitPreservingEncoding α β A B` structure formalising the many-one
-  reduction signature used across E3 (encode + preserves + reflects).
-  `identityEncoding` provides a trivial satisfiability witness.
+  reduction signature, kept as the *reference interface* for a future
+  per-encoding refactor (Workstream F3/F4 will discharge the three
+  reduction Props at concrete encodings via `OrbitPreservingEncoding`
+  witnesses). `identityEncoding` provides a trivial satisfiability
+  witness. The audit-revised universal→universal reduction Props in
+  `Hardness/Reductions.lean` do not themselves reference
+  `OrbitPreservingEncoding` — they state hardness transfer abstractly;
+  the encoding interface is where the *concrete* witnesses will land.
 - `Orbcrypt/PublicKey/CombineImpossibility.lean` — (E6)
   `combinerOrbitDist scheme m_bp comb m` (distribution of the
   combiner-induced Boolean output under uniform G sampling on m's orbit,
@@ -917,10 +933,13 @@ F-01 + F-10 + F-11 + F-17 + F-20) has been completed:
   `combinerDistinguisherAdvantage_eq` bridging to the standard
   `advantage`/`orbitDist` vocabulary, and the headline
   `concrete_combiner_advantage_bounded_by_oia` — the probabilistic
-  counterpart of `equivariant_combiner_breaks_oia`. `combinerOrbitDist_
-  mass_bounds` (E6b) gives the `1/|G|` mass bound on both Boolean
-  outcomes under non-degeneracy, the quantitative lift of the
-  deterministic `combinerDistinguisher_basePoint` + `_witness` pair.
+  counterpart of `equivariant_combiner_breaks_oia` (an *upper* bound on
+  the combiner-distinguisher's scheme-level advantage from ConcreteOIA).
+  `combinerOrbitDist_mass_bounds` (E6b) gives the `1/|G|` *intra-orbit*
+  mass bound on both Boolean outcomes under non-degeneracy — a witness
+  of non-trivial variance on one orbit, but not by itself a cross-orbit
+  advantage lower bound (requires additional hypothesis on combine's
+  behavior on the target orbit, disclosed in the docstring).
 - `Orbcrypt/Probability/Monad.lean` — (E7a) `uniformPMFTuple α Q`,
   `uniformPMFTuple_apply` (each tuple has mass `1/|α|^Q`),
   `mem_support_uniformPMFTuple`. Built on `uniformPMF (Fin Q → α)`;
@@ -958,10 +977,16 @@ schemes), F-10 (deterministic `KEMOIA` not probabilistic), F-11 (no
 multi-query security), F-17 (deterministic combiner no-go), and F-20
 (deterministic hardness chain) are addressed by the probabilistic
 counterparts landed here. Each counterpart is satisfiable at `ε = 1`
-(all delivered advantages are ≤ 1), reduces to the deterministic form at
-`ε = 0`, and parameterises concrete security at intermediate ε values.
-See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 8 for the
-specification and Appendix A for the finding-to-WU mapping.
+(all delivered advantages are ≤ 1) and reduces to the deterministic
+form at `ε = 0` (via the bridge lemmas). For the scheme-level
+`ConcreteOIA` and the uniform-form `ConcreteKEMOIA_uniform`,
+intermediate ε values genuinely parameterise concrete security; the
+point-mass `ConcreteKEMOIA` collapses on `[0, 1)` (documented
+caveat). See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 8
+for the specification and
+`docs/audits/LEAN_MODULE_AUDIT_2026-04-20_WORKSTREAM_E.md` for the
+post-landing audit that flagged and fixed the initial decoupling of
+the hardness chain.
 
 Non-goal (tracked as Workstream F3/F4): concrete witnesses for the three
 ε-preserving reduction Props (Tensor → CE → GI → scheme OIA). The
