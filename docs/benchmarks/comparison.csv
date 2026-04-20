@@ -1,0 +1,8 @@
+scheme,type,key_bytes,ct_bytes,enc_us,dec_us,pq_secure,assumption,source
+AES-256-GCM,symmetric,32,n+28,0.05,0.05,no,none,NIST_SP800-38D
+Kyber-768,lattice-KEM,2400,1088,30,25,yes,MLWE,NIST_FIPS203
+BIKE-L3,code-KEM,3114,3114,100,200,yes,QC-MDPC,NIST_Round4
+HQC-256,code-KEM,7245,14469,300,500,yes,QC-HQC,NIST_Round4
+Classic_McEliece_348864,code-KEM,261120,96,100,150,yes,Goppa,NIST_Round4
+LESS-L1,code-sig,13900,5000,N/A,N/A,yes,PermCodeEquiv,NIST_OnRamp
+HGOE-128,orbit-KEM,32,43,314000,348000,conjectured,CE-OIA,Orbcrypt_Phase11

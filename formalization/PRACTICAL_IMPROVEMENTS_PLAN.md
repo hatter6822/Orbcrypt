@@ -64,7 +64,7 @@ components.
 | 11 | Reference Implementation (GAP) | 9 | ~36h | Phase 7 |
 | 12 | Hardness Alignment | 8 | ~32h | Phase 8 |
 | 13 | Public-Key Extension | 7 | ~28h | Phases 7, 12 | **Complete** |
-| 14 | Parameter Selection & Benchmarks | 6 | ~20h | Phase 11 |
+| 14 | Parameter Selection & Benchmarks | 6 | ~20h | Phase 11 | **Complete** |
 | 15 | Decryption Optimization | 7 | ~22h | Phases 11, 14 |
 | 16 | Formal Verification of New Components | 10 | ~36h | Phases 7–10 |
 | | **Total** | **78** | **~272h** | |
@@ -2582,6 +2582,39 @@ with clear justification for each choice.
 | 14.4 | Security Margin Analysis | `docs/PARAMETERS.md` | 3h | 14.2 |
 | 14.5 | Ciphertext Expansion Analysis | `docs/PARAMETERS.md` | 3h | 14.2 |
 | 14.6 | Parameter Recommendation | `docs/PARAMETERS.md` | 3h | 14.1–14.5 |
+
+**Status: Complete (2026-04-20).**
+
+Delivered artefacts:
+- `implementation/gap/orbcrypt_sweep.g` — parameter-space sweep over
+  `b ∈ {4, 8, 16, 32}`, `w/n ∈ {1/3, 1/2, 2/3}`, `k/n ∈ {1/4, 1/3, 1/2}`
+  plus three tier-pinned rows per level (aggressive / balanced /
+  conservative). `RunFullSweep()` writes `docs/benchmarks/results_<λ>.csv`
+  and `docs/benchmarks/comparison.csv`.
+- `docs/benchmarks/results_{80,128,192,256}.csv` — 39 rows per level
+  (36 grid + 3 tier); measured anchors from Phase 11, remaining rows
+  projected via the power-law model `canon_ms ∝ n^1.51 · (8/b)^0.25`
+  fitted to the four Phase 11 b=8 anchors.
+- `docs/benchmarks/comparison.csv` — cross-scheme table with
+  literature values for AES-256-GCM, Kyber-768, BIKE-L3, HQC-256,
+  Classic McEliece, and LESS-L1, plus the Phase 11 HGOE-128 row.
+- `docs/PARAMETERS.md` — §1 sweep methodology, §2 optimal baseline,
+  §3 cross-scheme honest assessment, §4 security-margin analysis
+  (ENUM/BIRTH/ALG bits per tier), §5 ciphertext-expansion analysis
+  (break-even at n = 96 bits, 100× go/no-go verdict = **GO**),
+  §6 three-tier recommendations with the balanced tier (`b = 4,
+  n = 4λ`) as the default, §7 reproducibility.
+
+Key findings:
+- The Phase 11 b=8 baseline is a *performance proxy*, not a secure
+  parameter set: it fails both the birthday (`log₂|G| ≥ 2λ`) and
+  algebraic-folding (`n/b ≥ λ`) thresholds.
+- The cryptographically smallest viable parameterisation is
+  `b = 4, n = 4λ` (the balanced tier), which meets both thresholds
+  at exactly λ bits.
+- HGOE hybrid ciphertext never exceeds 2.18× AES-GCM size for any
+  realistic message length, comfortably below the 100× go/no-go
+  threshold; the phase exits with a **GO** for KEM + DEM operation.
 
 ---
 
