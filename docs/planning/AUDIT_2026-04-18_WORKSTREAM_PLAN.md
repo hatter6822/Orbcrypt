@@ -956,9 +956,78 @@ crypto.
 
 ## 7. Workstream D — Code Equivalence API Strengthening (F-08)
 
-**Goal:** turn `ArePermEquivalent` and `PAut` into first-class Mathlib-style
-API with `symm`, `trans`, and `Subgroup` structure. Eliminates the gap at
-F-08 and unblocks Workstream E's probabilistic CE refinements.
+**Status (2026-04-20): COMPLETE.** All eight atomic work units (D1a, D1b,
+D1c, D2a, D2b, D2c, D3, D4) have landed. Headline deliverables, all in
+`Orbcrypt/Hardness/CodeEquivalence.lean`:
+
+- **D1 helpers.** Two-sided inverse (`permuteCodeword_inv_apply`,
+  `permuteCodeword_apply_inv`, both `@[simp]`) and global injectivity
+  (`permuteCodeword_injective`) of the codeword-permutation action.
+- **D1a.** `permuteCodeword_self_bij_of_self_preserving` —
+  finite-bijection lemma: if a permutation maps `C` into itself, so does
+  its inverse. Proof via `Function.Injective.bijective_of_finite` on the
+  Fintype subtype `↥C`.
+- **D1 helper (extracted from D1b for reuse in D3):**
+  `permuteCodeword_inv_mem_of_card_eq` — cross-code inverse-mapping
+  lemma, the equal-cardinality analogue of D1a.
+- **D1b.** `arePermEquivalent_symm` — one-line consequence of the
+  helper. Carries the `C₁.card = C₂.card` side condition.
+- **D1c.** `arePermEquivalent_trans` — unconditional, by composition.
+- **D2.** `paut_inv_closed` (free-standing inverse-closure corollary of
+  D1a applied to `C` itself); `PAutSubgroup` (full
+  `Subgroup (Equiv.Perm (Fin n))` instance composing
+  `paut_contains_id` / `paut_mul_closed` / `paut_inv_closed`);
+  `mem_PAutSubgroup` (`@[simp]` membership-coercion lemma).
+- **D2c.** `PAut_eq_PAutSubgroup_carrier` — `rfl` bridge between the
+  `Set`-valued and `Subgroup`-valued formulations.
+- **D3.** `paut_equivalence_set_eq_coset` — full set identity
+  `{ρ | ρ : C₁ → C₂} = σ · PAut C₁`. Forward inclusion uses the D1
+  helper to inhabit the coset; reverse inclusion delegates to
+  `paut_compose_preserves_equivalence`.
+- **D4.** `arePermEquivalent_setoid` — `Setoid` instance on the
+  card-indexed subtype `{C : Finset (Fin n → F) // C.card = k}`,
+  bundling D1a/b/c into a Mathlib `Equivalence`.
+
+Verification: `scripts/audit_d_workstream.lean` exercises every Workstream D
+headline declaration with `#print axioms`, instantiates a concrete
+singleton code over `Fin 1 → Bool`, and exhibits non-vacuous witnesses
+for the `Setoid`, `Subgroup`, and coset identity. Running
+`lake env lean scripts/audit_d_workstream.lean` should produce only
+standard-Lean-axiom or "does not depend on any axioms" outputs — never
+`sorryAx` or a custom axiom.
+
+**As-landed implementation notes.**
+
+- **D1b card hypothesis kept on signature.** The plan considered making
+  the `C₁.card = C₂.card` hypothesis optional. The landed signature
+  keeps it because (a) it is exactly what the cross-code helper
+  (`permuteCodeword_inv_mem_of_card_eq`) needs internally and
+  (b) it lets D4's `Setoid` instance factor through the
+  card-indexed subtype without any further bookkeeping.
+- **D1 helper extracted.** Rather than inlining the bijection argument
+  twice, the landed implementation factors it into
+  `permuteCodeword_inv_mem_of_card_eq`. D1b becomes a one-liner and
+  D3's forward direction uses the same lemma — eliminating proof
+  duplication.
+- **D2 single commit.** The plan called for D2a + D2b to be committed
+  *together* because a structure-field `sorry` in D2a alone would
+  poison `lake build`. The landed implementation skips the intermediate
+  D2a checkpoint entirely: `paut_inv_closed` is proved first, then
+  `PAutSubgroup` is defined with all four fields fully discharged in a
+  single declaration.
+- **D3 forward direction simplified.** The plan sketched a path through
+  `arePermEquivalent_symm` to recover σ⁻¹'s C₂ → C₁ action; the landed
+  proof goes one step shorter by calling
+  `permuteCodeword_inv_mem_of_card_eq` directly, sidestepping the
+  symm/destructure dance.
+
+Patch version: `lakefile.lean` bumped from `0.1.2` to `0.1.3` for this
+workstream.
+
+**Goal (original spec):** turn `ArePermEquivalent` and `PAut` into
+first-class Mathlib-style API with `symm`, `trans`, and `Subgroup`
+structure. Eliminates the gap at F-08 and unblocks Workstream E's
+probabilistic CE refinements.
 
 ### D1 — `ArePermEquivalent.symm` and `_trans` (F-08 step 1) · M · 4 h
 
@@ -2558,7 +2627,7 @@ sorted by finding id for direct audit traceability.
 | F-05 | Info | F1 (concrete HGOE expansion) | F2 (seed secrecy) | Open (research); honest gap flagged in docs |
 | F-06 | Low | F2 (SampleGroupSpec) | — | Secrecy obligation surfaced |
 | F-07 · **LANDED** | Medium | C1 (verify_inj) · **LANDED**, C2 (INT_CTXT proof) · **LANDED** | C3 (headline listing) · **LANDED**, C4 (witness) · **LANDED** | INT_CTXT proved for honest composition (given orbit-cover hypothesis); Carter–Wegman witness provided |
-| F-08 | Info | D1 (symm/trans), D2 (Subgroup) | D3, D4 | Full equivalence API + Mathlib integration |
+| F-08 · **LANDED** | Info | D1 (symm/trans) · **LANDED**, D2 (Subgroup) · **LANDED** | D3 · **LANDED**, D4 · **LANDED** | Full equivalence API + Mathlib integration |
 | F-09 | High | E3 (probabilistic reductions as Props) | F3, F4 (concrete proofs, research) | Prop-level sharp; concrete proofs as research deliverable |
 | F-10 | High | E1 (ConcreteKEMOIA), E2 (concrete hardness OIAs) | E6, E9 | Every OIA variant has probabilistic companion |
 | F-11 | Info | E8 (IND-Q-CPA via hybrid) | E7 (product PMF) | Multi-query theorem proved |
@@ -2566,7 +2635,7 @@ sorted by finding id for direct audit traceability.
 | F-13 | Low | A7 (helper defs) | — | Readable Comp* definitions |
 | F-14 | Info | F5 Tier 1 (trivial non-self witness) | F5 Tier 2/3 (CSIDH) | Structural witness present; cryptographic witness is research |
 | F-15 | Low | B2 (explicit universes) · **LANDED** | — | SchemeFamily universe-clean |
-| F-16 | Low | A6a (rename), A6b/D3 (prove set identity) | — | Name accurate; set identity optional |
+| F-16 · **LANDED** | Low | A6a (rename) · **LANDED**, A6b/D3 (prove set identity) · **LANDED** | — | Name accurate; set identity proved via D3 |
 | F-17 | Info (documented) | E6 (probabilistic combiner bound) | E1 | Non-vacuous quantitative bound |
 | F-18 | Info | A3 (rename shadow) | — | No shadowed binding |
 | F-19 | Info | A5 (strengthen to bi-view identity) | — | Theorem carries real content |
@@ -2629,15 +2698,14 @@ No finding is orphaned; no WU addresses a non-existent finding.
 | C2c · **LANDED** | 1 h | F-07 step 2c | Assemble `authEncrypt_is_int_ctxt` — carries `hOrbitCover` hypothesis |
 | C3 · **LANDED** | 20 m | F-07 step 3 | Wire into headline theorem list (#19, #20) and axiom transparency report |
 | C4 · **LANDED** | 3 h | F-07 witness | Concrete MAC instance (`deterministicTagMAC` + `carterWegmanMAC` + `carterWegmanMAC_int_ctxt`) |
-| **D — CE API (7 atomic)** | | | |
-| D1a | 1 h 30 m | F-08 helper | `permuteCodeword` self-bijection lemma |
-| D1b | 1 h | F-08 | `arePermEquivalent_symm` |
-| D1c | 30 m | F-08 | `arePermEquivalent_trans` |
-| D2a | 1 h | F-08 | `PAutSubgroup` skeleton (+ partial fields) |
-| D2b | 1 h | F-08 | `inv_mem'` from D1a |
-| D2c | 30 m | F-08 | `PAut = PAutSubgroup.carrier` |
-| D3 | 4 h | F-16 (extended) | Prove coset set identity (optional) |
-| D4 | 1 h | F-08 | `Setoid` instance |
+| **D — CE API (8 atomic)** · **ALL LANDED** | | | |
+| D1a · **LANDED** | 1 h 30 m | F-08 helper | `permuteCodeword` self-bijection lemma |
+| D1b · **LANDED** | 1 h | F-08 | `arePermEquivalent_symm` (via `permuteCodeword_inv_mem_of_card_eq` helper) |
+| D1c · **LANDED** | 30 m | F-08 | `arePermEquivalent_trans` |
+| D2a + D2b · **LANDED** | 2 h | F-08 | `PAutSubgroup` (single-commit; `paut_inv_closed` discharges `inv_mem'` from D1a) |
+| D2c · **LANDED** | 30 m | F-08 | `PAut_eq_PAutSubgroup_carrier` (rfl) + `mem_PAutSubgroup` simp lemma |
+| D3 · **LANDED** | 4 h | F-16 (extended) | `paut_equivalence_set_eq_coset` — full set identity |
+| D4 · **LANDED** | 1 h | F-08 | `arePermEquivalent_setoid` instance over `{C // C.card = k}` |
 | **E — Probabilistic chain (28 atomic)** | | | |
 | E1a | 1 h 30 m | F-10 | `kemEncapsDist` PMF push-forward |
 | E1b | 1 h | F-10 | `ConcreteKEMOIA` + `_one` lemma |

@@ -344,8 +344,26 @@ These theorems depend only on Lean's standard axioms (`propext`,
 - `areTensorIsomorphic_refl` (`Hardness/TensorAction.lean`) — TI reflexivity
 - `areTensorIsomorphic_symm` (`Hardness/TensorAction.lean`) — TI symmetry
 - `arePermEquivalent_refl` (`Hardness/CodeEquivalence.lean`) — CE reflexivity
+- `arePermEquivalent_symm` (`Hardness/CodeEquivalence.lean`) — CE symmetry
+  (audit F-08, Workstream D1b; carries `C₁.card = C₂.card` as a hypothesis)
+- `arePermEquivalent_trans` (`Hardness/CodeEquivalence.lean`) — CE
+  transitivity (audit F-08, Workstream D1c; unconditional)
+- `arePermEquivalent_setoid` (`Hardness/CodeEquivalence.lean`) — Mathlib
+  `Setoid` instance bundling refl/symm/trans on the card-indexed
+  subtype (audit F-08, Workstream D4)
 - `paut_compose_preserves_equivalence` (`Hardness/CodeEquivalence.lean`) —
   PAut coset structure
+- `paut_inv_closed` (`Hardness/CodeEquivalence.lean`) — `PAut C` is
+  closed under inverses (audit F-08, Workstream D2; corollary of D1a)
+- `PAutSubgroup` (`Hardness/CodeEquivalence.lean`) — `PAut` packaged as a
+  Mathlib `Subgroup (Equiv.Perm (Fin n))` (audit F-08, Workstream D2)
+- `PAut_eq_PAutSubgroup_carrier` (`Hardness/CodeEquivalence.lean`) — `rfl`
+  bridge between the `Set`-valued and `Subgroup`-valued formulations
+  (audit F-08, Workstream D2c)
+- `paut_equivalence_set_eq_coset` (`Hardness/CodeEquivalence.lean`) — full
+  set identity `{ρ | ρ : C₁ → C₂} = σ · PAut C₁` (audit F-16 extended,
+  Workstream D3; the algebraic statement underlying LESS-style search-space
+  reduction)
 
 ### OIA-dependent results (conditional)
 
@@ -510,6 +528,39 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.perQueryAdvantage_bound_of_concreteOIA
 -- (standard Lean only — `ConcreteOIA` carried as a hypothesis)
+
+-- Workstream D (audit 2026-04-18, F-08 + F-16 extended):
+
+#print axioms Orbcrypt.permuteCodeword_self_bij_of_self_preserving
+-- (standard Lean only — finite-bijection helper, Workstream D1a)
+
+#print axioms Orbcrypt.permuteCodeword_inv_mem_of_card_eq
+-- (standard Lean only — cross-code helper used by D1b and D3)
+
+#print axioms Orbcrypt.arePermEquivalent_symm
+-- (standard Lean only — one-line wrapper, Workstream D1b;
+--  carries `C₁.card = C₂.card` as a hypothesis)
+
+#print axioms Orbcrypt.arePermEquivalent_trans
+-- (standard Lean only — composition of witnesses, Workstream D1c)
+
+#print axioms Orbcrypt.paut_inv_closed
+-- (standard Lean only — corollary of D1a, Workstream D2)
+
+#print axioms Orbcrypt.PAutSubgroup
+-- (standard Lean only — `Subgroup` packaging, Workstream D2)
+
+#print axioms Orbcrypt.PAut_eq_PAutSubgroup_carrier
+-- (standard Lean only — `rfl` proof through transitive standard imports,
+--  Workstream D2c)
+
+#print axioms Orbcrypt.paut_equivalence_set_eq_coset
+-- (standard Lean only — full coset set identity, Workstream D3;
+--  carries `C₁.card = C₂.card` as a hypothesis)
+
+#print axioms Orbcrypt.arePermEquivalent_setoid
+-- (standard Lean only — Mathlib `Setoid` instance over the
+--  card-indexed subtype, Workstream D4)
 ```
 
 No `sorryAx` should appear in any output. If it does, there is a hidden
