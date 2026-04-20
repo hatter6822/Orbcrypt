@@ -521,9 +521,11 @@ theorem combinerDistinguisherAdvantage_eq
 
     This is the probabilistic analogue of `equivariant_combiner_breaks_oia`:
     the deterministic version shows OIA is *refuted* by any non-degenerate
-    equivariant combiner; the probabilistic version shows that the
-    combiner's distinguishing advantage is an *explicit lower bound* on
-    any ConcreteOIA ε bound.
+    equivariant combiner at `f = combinerDistinguisher`, `m₀ = m₁ = m_bp`,
+    `g₀ = 1`, `g₁ = g_w` (witness from non-degeneracy); the probabilistic
+    version converts that refutation into an *upper bound on the
+    scheme-level ConcreteOIA ε bound* that can be exceeded by the combiner
+    distinguisher.
 
     **Cryptographic reading.** If you exhibit any `G`-equivariant
     orbit-closed combiner `combine` on `scheme`, ConcreteOIA `ε` forces
@@ -531,9 +533,19 @@ theorem combinerDistinguisherAdvantage_eq
     computing its advantage therefore yields a hard lower bound on the
     scheme's attainable `ε`.
 
-    For a non-vacuous combiner (e.g. one satisfying `NonDegenerateCombiner`),
-    the advantage is strictly positive and ConcreteOIA `0` is refuted —
-    matching the deterministic no-go. -/
+    **Audit disclosure (2026-04-20 post-landing review).** The pre-audit
+    docstring claimed this theorem combined with `combinerOrbitDist_mass
+    _bounds` to refute `ConcreteOIA 0` under `NonDegenerateCombiner`. That
+    claim overreached: mass bounds on a single orbit (both Booleans have
+    ≥ 1/|G| mass on the `m_bp` orbit) do **not** force a positive advantage
+    between `m_bp`'s orbit distribution and a *different* orbit's
+    distribution — both distributions could place identical Pr[true] =
+    1/2, giving advantage 0. The mass bounds witness that the combiner's
+    output is non-trivially distributed on `m_bp`'s orbit, not that it
+    distinguishes `m_bp`'s orbit from others. Refuting ConcreteOIA 0 via
+    a combiner needs a *cross-orbit* distinguishing witness, not just an
+    intra-orbit mass bound. See the revised `combinerOrbitDist_mass_bounds`
+    docstring for the honest reading. -/
 theorem concrete_combiner_advantage_bounded_by_oia
     (scheme : OrbitEncScheme G X M) (m_bp : M)
     (comb : GEquivariantCombiner G X (scheme.reps m_bp))
@@ -544,13 +556,31 @@ theorem concrete_combiner_advantage_bounded_by_oia
 
 /-- **Workstream E6b.** Under a non-degenerate equivariant combiner on
     `m_bp`'s orbit, the combiner-induced distinguisher has strictly
-    positive "true-probability-variance" on that orbit: both Booleans
-    have at least `1/|G|` mass.
+    positive mass on both Boolean outcomes on the *basepoint orbit*: both
+    `true` and `false` each receive probability at least `1/|G|` under the
+    uniform `g ∈ G` distribution on `m_bp`'s orbit.
 
     Precisely: under the uniform `g ∈ G` distribution over `m_bp`'s orbit,
     the distinguisher is `true` at `g = 1` (by `combinerDistinguisher_basePoint`)
     and `false` at some `g = g_w` (by `combinerDistinguisher_witness`).
     Hence the probability of either outcome is at least `1/|G|`.
+
+    **Audit disclosure.** This is an *intra-orbit* mass bound only — it
+    witnesses non-trivial variance of the combiner-distinguisher on
+    `m_bp`'s orbit. It does **not** by itself imply a cross-orbit advantage
+    lower bound (i.e. it does not prove
+    `combinerDistinguisherAdvantage scheme m_bp comb m₀ m₁ ≥ 1/|G|` for
+    `m₀ ≠ m₁`). That stronger claim would require an additional hypothesis
+    about the combiner's behavior on `m₁`'s orbit (e.g. that
+    `combinerDistinguisher` is constant on `m₁`'s orbit), which
+    `NonDegenerateCombiner` alone does not provide.
+
+    The value this lemma does provide: combined with
+    `concrete_combiner_advantage_bounded_by_oia` and a *separately supplied*
+    cross-orbit witness, one can lower-bound `ε` under `ConcreteOIA`. The
+    intra-orbit mass bound is the half of that proof that is unconditional;
+    the cross-orbit witness is problem-specific (tied to the combiner's
+    structure) and must be exhibited per combiner.
 
     **Proof technique.** Bound each mass by the single-summand term at
     the relevant witness group element (`g = 1` for the `true` branch,

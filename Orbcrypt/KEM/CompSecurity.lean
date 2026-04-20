@@ -106,30 +106,103 @@ theorem kemEncapsDist_pos_of_reachable [Group G] [Fintype G] [Nonempty G]
 -- Workstream E1b — ConcreteKEMOIA: probabilistic KEM indistinguishability
 -- ============================================================================
 
-/-- **Probabilistic KEM-OIA** with explicit advantage bound `ε`.
+/-- **Probabilistic KEM-OIA (point-mass form)** with explicit advantage
+    bound `ε`.
 
     Every Boolean distinguisher on `X × K` has advantage at most `ε` when
     telling apart two encapsulation point masses `PMF.pure (encaps kem g₀)`
     and `PMF.pure (encaps kem g₁)` for any pair of group elements.
 
-    **Semantics.** Under point masses, `advantage D = |D(p₀).toBool - D(p₁).toBool|`
-    is `0` if the Booleans agree and `1` otherwise, so bounding by ε < 1
-    forces agreement (recovering the deterministic KEMOIA's first conjunct
-    specialised to encapsulation outputs). The probabilistic framing lets
-    the theorem generalise cleanly to non-point-mass distributions in
-    follow-on workstreams.
+    **Audit disclosure (2026-04-20 post-landing review).** The point-mass
+    form is *semantically binary*. For any two `α`-valued point masses
+    `PMF.pure p₀`, `PMF.pure p₁` and any `D : α → Bool`:
 
-    **Strength ordering.**
-    * `ε = 0`: perfect indistinguishability (equivalent to the deterministic
-      KEMOIA after taking key-uniformity into account — see the bridge
-      `det_kemoia_implies_concreteKEMOIA_zero`).
-    * `ε = 1`: trivially satisfied (see `concreteKEMOIA_one`).
-    * Intermediate `ε` ∈ (0, 1) parameterises realistic KEM security. -/
+    * `probTrue (PMF.pure p) D = if D p then 1 else 0`, so
+    * `advantage D (PMF.pure p₀) (PMF.pure p₁) ∈ {0, 1}` — it is `0` when
+      `D p₀ = D p₁` and `1` otherwise.
+
+    Consequently `ConcreteKEMOIA kem ε` for `ε ∈ [0, 1)` is equivalent to
+    `ConcreteKEMOIA kem 0`: any non-zero advantage is exactly `1`, so
+    bounding by `ε < 1` forces the 0-advantage (agreement) case. Only
+    `ε = 1` is a strictly-weaker predicate (trivially true).
+
+    **What this definition *does* capture.** For `ε < 1` the predicate is
+    equivalent to the deterministic "no Boolean `D : X × K → Bool`
+    distinguishes `encaps kem g₀` from `encaps kem g₁`" — the first
+    conjunct of `KEMOIA` promoted to act on the full `(c, k)` pair. It is
+    a genuine refinement of `KEMOIA`'s ciphertext indistinguishability
+    conjunct, but it inherits that conjunct's unsatisfiability for schemes
+    with ≥ 2 distinct orbit elements (the `decide (c = basePoint)`
+    distinguisher refutes it at `ε = 0`).
+
+    **For a genuinely ε-smooth KEM security predicate** see
+    `ConcreteKEMOIA_uniform` below, which replaces the point masses with
+    the uniform-over-G push-forward `kemEncapsDist` — there the advantage
+    can take any value in `[0, 1]` as `g` varies, so intermediate `ε`
+    parameterise meaningful security.
+
+    **Why keep the point-mass form.** It is the natural Prop-level target
+    of the deterministic-to-probabilistic bridge
+    `det_kemoia_implies_concreteKEMOIA_zero` below, and is what the
+    audit plan (§ E1b) called out as the minimum viable predicate. -/
 def ConcreteKEMOIA [Group G] [Fintype G] [Nonempty G]
     [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (ε : ℝ) : Prop :=
   ∀ (D : X × K → Bool) (g₀ g₁ : G),
     advantage D (PMF.pure (encaps kem g₀)) (PMF.pure (encaps kem g₁)) ≤ ε
+
+/-- **Probabilistic KEM-OIA (uniform-distribution form)** with explicit
+    advantage bound `ε` — the genuinely ε-smooth predicate.
+
+    Every Boolean distinguisher on `X × K` has advantage at most `ε` when
+    telling apart the joint encapsulation distribution `kemEncapsDist kem`
+    from itself when indexed by two different "reference" encapsulations
+    `encaps kem g₀`, `encaps kem g₁`. Concretely:
+
+    * LHS: sample `g ← uniformPMF G`, output `encaps kem g`.
+    * RHS: `PMF.pure (encaps kem g_ref)` for a specific `g_ref : G`.
+
+    The advantage can take any real value in `[0, 1]` as the adversary
+    picks `g_ref` and `D`, so `ε ∈ (0, 1)` parameterises a non-vacuous
+    security spectrum (unlike the point-mass form above).
+
+    **Why this pattern.** A KEM has a *single* orbit (the basepoint's),
+    so there is no "left vs. right orbit" indistinguishability game to
+    play (as in `ConcreteOIA` on a full `OrbitEncScheme`). The natural
+    question is instead: "How close is a freshly-sampled encapsulation
+    to any fixed reference encapsulation?" — bounding that closeness by
+    ε is the KEM-level analogue of the scheme-level advantage bound.
+
+    **Relation to the point-mass form.** Any `D : X × K → Bool` satisfies
+    `advantage D (kemEncapsDist kem) (PMF.pure (encaps kem g_ref)) =
+     |Pr_{g ∼ U(G)}[D(encaps kem g)] - [D(encaps kem g_ref) = true]|`,
+    which equals the pointwise-averaged distance between
+    `probTrue (PMF.pure (encaps g)) D` and `probTrue (PMF.pure
+    (encaps g_ref)) D`. The point-mass form bounds individual terms;
+    the uniform form bounds their average. For a `KEMOIA`-satisfying
+    kem, all individual terms are zero and so is the average; for
+    intermediate ε, the uniform form admits quantitative refinements
+    the point-mass form cannot express. -/
+def ConcreteKEMOIA_uniform [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) (ε : ℝ) : Prop :=
+  ∀ (D : X × K → Bool) (g_ref : G),
+    advantage D (kemEncapsDist kem) (PMF.pure (encaps kem g_ref)) ≤ ε
+
+/-- `ConcreteKEMOIA_uniform kem 1` is trivially true: advantage is always
+    bounded by 1. Satisfiability witness for the uniform form. -/
+theorem concreteKEMOIA_uniform_one [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) : ConcreteKEMOIA_uniform kem 1 :=
+  fun D _ => advantage_le_one D _ _
+
+/-- The uniform form is monotone in the bound. -/
+theorem concreteKEMOIA_uniform_mono [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) {ε₁ ε₂ : ℝ}
+    (hle : ε₁ ≤ ε₂) (hOIA : ConcreteKEMOIA_uniform kem ε₁) :
+    ConcreteKEMOIA_uniform kem ε₂ :=
+  fun D g_ref => le_trans (hOIA D g_ref) hle
 
 /-- `ConcreteKEMOIA` with `ε = 1` is trivially true: advantage is bounded
     by 1 for any distinguisher and any pair of distributions. Satisfiability

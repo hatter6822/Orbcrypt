@@ -972,6 +972,83 @@ compilable witnesses via the Grochow–Qiao structure-tensor encoding
 Patch version: `lakefile.lean` bumped from `0.1.3` to `0.1.4` for this
 workstream.
 
+### Workstream E follow-up (post-landing audit, 2026-04-20)
+
+A targeted audit of the landed Workstream E content surfaced four
+correctness issues that were addressed in-place without a new version
+bump (definitions are preserved; the audit-revised shape strengthens the
+semantics without changing the public surface except where a genuine bug
+was fixed):
+
+1. **E3 reduction Props were decoupled.** The landed form
+   `∀ T₀ T₁ C₀ C₁, ConcreteTensorOIA T₀ T₁ εT → ConcreteCEOIA C₀ C₁ εC`
+   was semantically equivalent to `(∃ T, ConcreteTensorOIA T T εT) → (∀
+   C, ConcreteCEOIA C C εC)`, which collapses to `∀ C₀ C₁,
+   ConcreteCEOIA C₀ C₁ εC` because `T₀ = T₁` trivially satisfies the
+   hypothesis. The tensor hardness assumption was never actually
+   consumed by the chain. The audit-revised form uses
+   `UniversalConcreteTensorOIA εT → UniversalConcreteCEOIA εC` (and
+   similarly for the CE → GI and GI → scheme-OIA reductions), so the
+   chain now genuinely threads TI-hardness through every link — see
+   `Hardness/Reductions.lean` `UniversalConcreteTensorOIA`,
+   `UniversalConcreteCEOIA`, `UniversalConcreteGIOIA` and the revised
+   `ConcreteTensorOIAImpliesConcreteCEOIA` / `ConcreteCEOIAImplies-
+   ConcreteGIOIA` / `ConcreteGIOIAImpliesConcreteOIA` definitions.
+
+2. **E4 `ConcreteHardnessChain` carried a per-pair tensor witness.** The
+   landed structure's `tensor_hard` field was a specific
+   `ConcreteTensorOIA T₀ T₁ εT` on a chosen pair `(T₀, T₁)`, and the
+   composition theorem passed it through the decoupled reduction Props
+   (landing on `ConcreteCEOIA ∅ ∅ εC` then `ConcreteGIOIA`-on-0-vertex-
+   graphs), which are trivially true regardless of the hypothesis. The
+   audit-revised `ConcreteHardnessChain` drops the `(n, G_TI, T₀, T₁)`
+   fields and takes a *universal* `tensor_hard :
+   UniversalConcreteTensorOIA εT` instead. `concreteOIA_from_chain` is
+   now a three-line composition `hc.gi_to_oia (hc.ce_to_gi
+   (hc.tensor_to_ce hc.tensor_hard))` — each link consumes the
+   previous layer's hardness meaningfully. A new lemma
+   `ConcreteHardnessChain.tight_one_exists` exhibits a non-vacuity
+   witness at ε = 1.
+
+3. **E1 `ConcreteKEMOIA` collapsed semantically.** Under `PMF.pure`
+   point masses, `advantage` is 0 or 1 only, so bounding by `ε ∈ [0, 1)`
+   forces the 0-advantage case — i.e. `ConcreteKEMOIA kem ε` for `ε ∈
+   [0, 1)` is equivalent to `ConcreteKEMOIA kem 0`. The revised
+   docstring discloses this (the definition is kept as the deterministic
+   bridge target), and `KEM/CompSecurity.lean` now exposes a new
+   `ConcreteKEMOIA_uniform` over the orbit-sampling push-forward
+   (`kemEncapsDist`) whose advantage can take any real value in
+   `[0, 1]`, so intermediate ε parameterise meaningful security.
+
+4. **E6 `combinerOrbitDist_mass_bounds` was over-claimed.** The
+   landed docstring suggested it combined with the ConcreteOIA upper
+   bound to refute `ConcreteOIA 0` under `NonDegenerateCombiner`. The
+   actual content is an intra-orbit bound (Pr[true] ≥ 1/|G| AND
+   Pr[false] ≥ 1/|G| on `m_bp`'s orbit) — it witnesses non-trivial
+   variance on one orbit, not a cross-orbit advantage lower bound.
+   Refuting ConcreteOIA 0 requires a cross-orbit distinguishing witness
+   that is combiner-specific; mass bounds alone are insufficient. The
+   revised docstrings for both `combinerOrbitDist_mass_bounds` and
+   `concrete_combiner_advantage_bounded_by_oia` state this honestly.
+
+5. **Orphan `OrbitPreservingEncoding`.** `Hardness/Encoding.lean`
+   defined the structure but no reduction Prop consumed it. The revised
+   module docstring clarifies the structure is the *reference interface*
+   that a future per-encoding refactor (Workstream F3/F4) will plug
+   into; it is intentionally not wired to the universal→universal
+   reduction Props that landed here.
+
+6. **`audit_e_workstream.lean` was only axiom-dumps.** The script's
+   preamble promised pressure tests but the body only contained
+   `#print axioms` calls. The follow-up appends a Part 2 of ~15
+   concrete `example` bindings exercising each Workstream-E result on
+   a well-typed instance (ConcreteKEMOIA at ε = 1, `uniformPMFTuple`
+   on `Fin 3 → Bool` giving mass 1/8, a 2-step hybrid giving a
+   `2 · ε` bound, `ConcreteHardnessChain.tight_one_exists`
+   instantiated to produce `ConcreteOIA scheme 1`, etc.). Type-checking
+   the script is now equivalent to confirming each headline result is
+   non-vacuous on at least one concrete instance.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 36 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

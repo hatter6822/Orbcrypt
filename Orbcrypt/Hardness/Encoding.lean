@@ -8,21 +8,32 @@ An orbit-preserving encoding interface for hardness reductions. Formalises
 the relevant orbit structure", which is the shared signature used by every
 Karp-style reduction in the Orbcrypt hardness chain.
 
-## Workstream E3-prep
+## Workstream E3-prep — status (post-2026-04-20 audit)
 
-This module is the shared prelude for the three probabilistic reductions
-`ConcreteTensorOIAImpliesConcreteCEOIA`, `ConcreteCEOIAImpliesConcreteGIOIA`,
-and `ConcreteGIOIAImpliesConcreteOIA`. Without this abstraction each
-reduction reinvents the encoding signature; by centralising it here the
-reductions share a common surface and the proof obligations are stated
-uniformly.
+This module defines the *reference interface* that the Workstream E
+reduction Props would carry if they were phrased at the per-encoding
+level (e.g. "given `enc : Tensor → Code`, `OIA(T₀, T₁, εT) → OIA(enc
+T₀, enc T₁, εC)`"). The audit-revised `Orbcrypt/Hardness/Reductions`
+instead phrases the three reduction Props in universal→universal form
+(`UniversalConcreteTensorOIA εT → UniversalConcreteCEOIA εC` etc.),
+which elides the explicit encoding; the `OrbitPreservingEncoding`
+structure is therefore **not currently consumed** by any reduction Prop
+in `Reductions.lean`.
+
+**Why keep the module.** It documents the Karp-reduction semantics that
+any concrete discharge of the three reduction Props (tracked as
+Workstream F3/F4 — Grochow–Qiao structure tensor, CFI graph gadget)
+will need to satisfy. A future refactor can lift the universal-universal
+Props to per-encoding Props carrying `OrbitPreservingEncoding` data;
+until then the structure lives here as a reference target.
 
 ## Main definitions
 
 * `Orbcrypt.OrbitPreservingEncoding` — bundles an encoding function
   `encode : α → β` with two structural properties: it maps `A`-orbits
   to `B`-orbits (**preserves**) and reflects `B`-orbits back to
-  `A`-orbits (**reflects**). A *many-one* Karp-style reduction.
+  `A`-orbits (**reflects**). A *many-one* Karp-style reduction. Not
+  (yet) consumed by any reduction Prop.
 
 ## Main results
 
@@ -33,6 +44,8 @@ uniformly.
 ## References
 
 * `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3-prep
+* `docs/audits/AUDIT_2026-04-20_WORKSTREAM_E_REVIEW.md` — the post-
+  landing review that clarified the scope of this module.
 -/
 
 namespace Orbcrypt

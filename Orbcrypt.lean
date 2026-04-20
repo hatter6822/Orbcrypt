@@ -388,20 +388,32 @@ explicit hypothesis:
   TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
   HardnessChain as hypothesis)
 
-**Workstream E (audit 2026-04-18, F-01 + F-10 + F-11 + F-17 + F-20):**
+**Workstream E (audit 2026-04-18 + 2026-04-20 follow-up,
+F-01 + F-10 + F-11 + F-17 + F-20):**
 
 - `det_kemoia_implies_concreteKEMOIA_zero` (`KEM/CompSecurity.lean`) —
   deterministic KEMOIA → ConcreteKEMOIA 0 (E1c).
 - `concrete_kemoia_implies_secure` (`KEM/CompSecurity.lean`) —
-  ConcreteKEMOIA ε bounds per-pair KEM advantage by ε (E1d).
+  ConcreteKEMOIA ε bounds per-pair KEM advantage by ε (E1d). Note the
+  docstring's disclosure that `ConcreteKEMOIA` is point-mass and collapses
+  on `ε ∈ [0, 1)`; the genuinely ε-smooth `ConcreteKEMOIA_uniform` is
+  defined alongside.
 - `ConcreteHardnessChain.concreteOIA_from_chain` (`Hardness/Reductions.lean`)
-  — packaged ε-bounded hardness chain → ConcreteOIA ε (E4b).
+  — packaged ε-bounded hardness chain → ConcreteOIA ε (E4b, audit-revised
+  to universal→universal form so every link is actually used).
+- `ConcreteHardnessChain.tight_one_exists` (`Hardness/Reductions.lean`) —
+  satisfiability witness for the post-audit chain at ε = 1.
 - `concrete_hardness_chain_implies_1cpa_advantage_bound`
   (`Hardness/Reductions.lean`) — ConcreteHardnessChain ε →
   IND-1-CPA advantage ≤ ε (E5).
 - `concrete_combiner_advantage_bounded_by_oia`
   (`PublicKey/CombineImpossibility.lean`) — ConcreteOIA scheme ε bounds
   the combiner-induced distinguisher's advantage by ε (E6).
+- `combinerOrbitDist_mass_bounds` (`PublicKey/CombineImpossibility.lean`) —
+  intra-orbit mass bound (Pr[true] ≥ 1/|G| AND Pr[false] ≥ 1/|G|) on the
+  basepoint orbit under non-degeneracy (E6b). *This is a one-orbit
+  witness, not a cross-orbit advantage bound* — see the lemma's
+  docstring for the distinction.
 - `indQCPA_bound_via_hybrid` (`Crypto/CompSecurity.lean`) — Q-query
   IND-Q-CPA advantage ≤ Q · ε via the hybrid argument, given a per-step
   bound as hypothesis (E8c).

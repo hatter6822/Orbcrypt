@@ -1295,6 +1295,49 @@ hypotheses of the top-level theorems; the chain composes cleanly once
 any concrete instance is supplied. See Workstreams F3 / F4 in § 9 and
 the audit plan E8b note for the research-grade next steps.
 
+**Post-landing audit (2026-04-20 follow-up).** A targeted review of
+the landed Workstream E content surfaced six correctness / documentation
+issues addressed in an in-place revision. The highlights:
+
+1. **E3 Props were decoupled.** `∀ T₀ T₁ C₀ C₁, TensorOIA T εT →
+   CEOIA C εC` collapsed to `∀ C, CEOIA C εC` because `T₀ = T₁`
+   trivially satisfies the hypothesis. The chain never consumed tensor
+   hardness. **Fix:** reshaped to
+   `UniversalConcreteTensorOIA εT → UniversalConcreteCEOIA εC` (and
+   analogously for CE → GI, GI → scheme-OIA). Now the chain genuinely
+   threads TI-hardness through every link. See
+   `Orbcrypt/Hardness/Reductions.lean` `UniversalConcreteTensorOIA`,
+   `UniversalConcreteCEOIA`, `UniversalConcreteGIOIA`.
+2. **E4 `ConcreteHardnessChain` carried a per-pair tensor witness.**
+   The landed structure had `(n, G_TI, T₀, T₁)` fields and a per-pair
+   `tensor_hard`. Composition passed through empty codes / trivial
+   graphs — the tensor content was never consumed. **Fix:** chain now
+   carries `tensor_hard : UniversalConcreteTensorOIA εT` and the
+   composition is a three-line `hc.gi_to_oia (hc.ce_to_gi
+   (hc.tensor_to_ce hc.tensor_hard))`, using every link. A new
+   `ConcreteHardnessChain.tight_one_exists` lemma witnesses non-vacuity
+   at ε = 1.
+3. **E1 `ConcreteKEMOIA` collapsed on `ε ∈ [0, 1)`.** Under `PMF.pure`
+   point masses, advantage is binary (0 or 1), so bounding by ε < 1
+   forces the 0-advantage case. `ConcreteKEMOIA kem ε` for `ε ∈ [0, 1)`
+   is equivalent to `ConcreteKEMOIA kem 0`. **Fix:** honest docstring
+   disclosing the collapse + new `ConcreteKEMOIA_uniform` over the
+   `kemEncapsDist` push-forward whose advantage can take any real value
+   in `[0, 1]`.
+4. **E6 `combinerOrbitDist_mass_bounds` was over-claimed.** Mass bounds
+   on one orbit don't imply cross-orbit advantage bounds. **Fix:**
+   revised docstrings state the bound is intra-orbit only.
+5. **`OrbitPreservingEncoding` was dead code.** Defined in
+   `Hardness/Encoding.lean` but not consumed. **Fix:** module docstring
+   now clarifies it is the reference interface that a future
+   per-encoding refactor (Workstream F3/F4) will plug into.
+6. **`audit_e_workstream.lean` was only axiom dumps.** **Fix:** added
+   a Part 2 of ~15 concrete `example` bindings exercising each headline
+   result on a well-typed instance.
+
+See `CLAUDE.md`'s "Workstream E follow-up" subsection for the detailed
+fix log and line-by-line references.
+
 ### E-overview: what "vacuous" means and what replaces it
 
 Today:
