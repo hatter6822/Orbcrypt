@@ -534,12 +534,17 @@ section ArePermEquivalentSetoid
     instance level. The `iseqv` triple bundles D1c (`refl`), D1b
     (`symm`), and D1c (`trans`).
 
+    The parameters `{n}`, `{F}`, `{k}` are declared implicit so typeclass
+    synthesis can unify them from the subtype in `Setoid Y` calls
+    (e.g. `inferInstance` at a concrete `{C : Finset (Fin 3 → Bool) // C.card = 2}`
+    simply works without `@`-threading).
+
     Downstream consumers can quotient by this `Setoid` to obtain the
     isomorphism classes of permutation codes of fixed length and
     cardinality — the natural state space for LESS-style equivalence
     enumeration. -/
 instance arePermEquivalent_setoid
-    (n : ℕ) (F : Type*) (k : ℕ) :
+    {n : ℕ} {F : Type*} {k : ℕ} :
     Setoid {C : Finset (Fin n → F) // C.card = k} where
   r := fun C₁ C₂ => ArePermEquivalent C₁.val C₂.val
   iseqv :=

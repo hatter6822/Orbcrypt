@@ -816,16 +816,32 @@ F-08 + F-16 extended) has been completed:
     card-indexed subtype `{C : Finset (Fin n → F) // C.card = k}`.
     The instance bundles D1a/b/c into a Mathlib `Equivalence`; the
     card index supplies `_symm`'s precondition uniformly so the
-    instance synthesises without further obligations.
+    instance synthesises without further obligations. The parameters
+    `{n}`, `{F}`, `{k}` are declared *implicit* (post-audit refinement)
+    so typeclass synthesis unifies them from the subtype in
+    `Setoid Y` calls — `inferInstance` at
+    `{C : Finset (Fin 3 → Bool) // C.card = 2}` simply works without
+    `@`-threading.
 - `Orbcrypt/Hardness/CodeEquivalence.lean` imports gained
   `Mathlib.Data.Fintype.Card`, `Mathlib.Data.Fintype.EquivFin`,
   `Mathlib.Data.Fintype.Sets`, and `Mathlib.Algebra.Group.Subgroup.Defs`
   to support the new API.
 - `scripts/audit_d_workstream.lean` exercises every Workstream D
-  headline result with `#print axioms`, exhibits a concrete singleton
-  code over `Fin 1 → Bool`, and materialises non-vacuous witnesses for
-  the `Setoid`, the `Subgroup`, the `inv_mem'` field via D1a, and the
-  D3 coset identity end-to-end.
+  headline result with `#print axioms` (sections 1–5) and, after the
+  post-landing audit, adds five pressure tests (sections 6–10):
+  (6) a **negative cardinality test** exhibiting a concrete
+  asymmetric pair `smallCode ⊊ bigCode` that witnesses that
+  `arePermEquivalent_symm` (D1b) *genuinely* requires the
+  `C₁.card = C₂.card` hypothesis — two elements cannot inject into
+  one, so the card hypothesis is mathematically necessary, not an
+  artefact of the proof technique;
+  (7) `inferInstance` synthesis of the D4 `Setoid` at three distinct
+  concrete card-indexed subtypes;
+  (8) `mem_PAutSubgroup` simp-lemma firing under `simp only` in both
+  directions;
+  (9) `paut_inv_closed` idempotence via `inv_inv`;
+  (10) a D3 reverse-direction witness showing σ itself (τ = 1) is
+  always in its own coset.
 - `Orbcrypt.lean` axiom-transparency report extended with the four
   new `#print axioms` checks; `CLAUDE.md` headline theorem table
   extended with theorems #21, #22, #23.

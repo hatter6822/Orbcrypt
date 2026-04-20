@@ -1020,6 +1020,32 @@ standard-Lean-axiom or "does not depend on any axioms" outputs — never
   proof goes one step shorter by calling
   `permuteCodeword_inv_mem_of_card_eq` directly, sidestepping the
   symm/destructure dance.
+- **Post-landing audit (2026-04-20).** A second-pass audit verified
+  every proof independently (traced `permuteCodeword_mul`-based
+  rewrites, verified `Fintype.bijective_iff_injective_and_card` flow,
+  checked `Subgroup` field bindings against `Mathlib.Algebra.Group.Subgroup.Defs`,
+  destructured the D3 coset proof manually). Two refinements landed:
+  * **D4 parameter style (audit refinement).** `arePermEquivalent_setoid`
+    originally declared `(n : ℕ) (F : Type*) (k : ℕ)` as *explicit*
+    parameters, shadowing the file-level `variable {n} {F}` implicits.
+    Explicit-on-instance is non-idiomatic: Mathlib convention uses
+    implicit braces because typeclass synthesis unifies index
+    parameters from the subtype in `Setoid Y` calls anyway.
+    Switched to `{n} {F} {k}`; `inferInstance` at concrete
+    `{C : Finset (Fin 3 → Bool) // C.card = 2}` resolves cleanly.
+  * **Test coverage expansion.** The committed
+    `scripts/audit_d_workstream.lean` gained five post-audit pressure
+    tests (sections 6–10): a negative-cardinality test proving that
+    D1b's `hcard` is mathematically necessary (a concrete
+    `smallCode ⊊ bigCode` witness); `inferInstance` synthesis across
+    three concrete subtypes; `mem_PAutSubgroup` bidirectional simp
+    firing; `paut_inv_closed` idempotence via `inv_inv`; and a D3
+    reverse-direction witness (σ ∈ σ · PAut C₁ via τ = 1).
+
+The post-audit verification found *no* correctness regressions and
+*no* shortcuts compromising security or formal soundness. Every
+`#print axioms` output remains `[propext, Classical.choice, Quot.sound]`;
+`lake build` succeeds end-to-end with 3362/3362 jobs green.
 
 Patch version: `lakefile.lean` bumped from `0.1.2` to `0.1.3` for this
 workstream.

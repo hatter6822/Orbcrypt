@@ -350,7 +350,9 @@ These theorems depend only on Lean's standard axioms (`propext`,
   transitivity (audit F-08, Workstream D1c; unconditional)
 - `arePermEquivalent_setoid` (`Hardness/CodeEquivalence.lean`) — Mathlib
   `Setoid` instance bundling refl/symm/trans on the card-indexed
-  subtype (audit F-08, Workstream D4)
+  subtype (audit F-08, Workstream D4; parameters `{n} {F} {k}` are
+  implicit so `inferInstance` at concrete subtypes resolves without
+  `@`-threading — verified by `scripts/audit_d_workstream.lean` § 7)
 - `paut_compose_preserves_equivalence` (`Hardness/CodeEquivalence.lean`) —
   PAut coset structure
 - `paut_inv_closed` (`Hardness/CodeEquivalence.lean`) — `PAut C` is
