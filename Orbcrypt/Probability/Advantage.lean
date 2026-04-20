@@ -150,4 +150,36 @@ theorem hybrid_argument {α : Type*} (n : ℕ) (hybrids : ℕ → PMF α)
       advantage D (hybrids i) (hybrids (i + 1))) :=
   hybrid_argument_nat D n hybrids
 
+-- ============================================================================
+-- Workstream E8 prerequisite: uniform hybrid argument (Q * ε bound)
+-- ============================================================================
+
+/-- **Uniform hybrid argument.** If every adjacent hybrid pair has
+    distinguishing advantage at most `ε`, the end-to-end advantage through
+    `Q` steps is at most `Q · ε`.
+
+    This is a direct consequence of `hybrid_argument` (which gives the
+    telescoping *sum* bound) plus the identity `Σᵢ₌₀^{Q-1} ε = Q · ε`. It
+    is the atomic building block used by Workstream E8's multi-query
+    IND-Q-CPA security reduction to telescope `Q` ConcreteOIA-bounded
+    per-step advantages. -/
+theorem hybrid_argument_uniform {α : Type*} (Q : ℕ) (hybrids : ℕ → PMF α)
+    (D : α → Bool) (ε : ℝ)
+    (h_step : ∀ i, i < Q → advantage D (hybrids i) (hybrids (i + 1)) ≤ ε) :
+    advantage D (hybrids 0) (hybrids Q) ≤ (Q : ℝ) * ε := by
+  have h_sum :
+      Finset.sum (Finset.range Q) (fun i =>
+        advantage D (hybrids i) (hybrids (i + 1))) ≤
+      Finset.sum (Finset.range Q) (fun _ : ℕ => ε) := by
+    apply Finset.sum_le_sum
+    intro i hi
+    exact h_step i (Finset.mem_range.mp hi)
+  calc advantage D (hybrids 0) (hybrids Q)
+      ≤ Finset.sum (Finset.range Q) (fun i =>
+          advantage D (hybrids i) (hybrids (i + 1))) :=
+        hybrid_argument Q hybrids D
+    _ ≤ Finset.sum (Finset.range Q) (fun _ : ℕ => ε) := h_sum
+    _ = (Q : ℝ) * ε := by
+        rw [Finset.sum_const, Finset.card_range, nsmul_eq_mul]
+
 end Orbcrypt

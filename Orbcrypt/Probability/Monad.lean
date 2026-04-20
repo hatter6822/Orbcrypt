@@ -102,4 +102,43 @@ theorem probTrue_le_one {α : Type*} (d : PMF α) (f : α → Bool) :
     _ ≤ d.toOuterMeasure Set.univ := d.toOuterMeasure.mono (Set.subset_univ _)
     _ = 1 := h_univ
 
+-- ============================================================================
+-- Workstream E7 — Product PMF infrastructure for multi-query hybrids
+-- ============================================================================
+
+/-- **Workstream E7a.** Uniform distribution over `Fin Q → α`, the canonical
+    product-PMF used for multi-query cryptographic security reductions.
+
+    Defined as `uniformPMF (Fin Q → α)`: `Fin Q → α` inherits `Fintype` from
+    `Pi.fintype` and `Nonempty` from `Pi.instNonempty`, so we can directly
+    apply `uniformPMF` to it without an explicit product construction. This
+    gives each tuple `f : Fin Q → α` probability `1 / |α|^Q`.
+
+    **Why a named wrapper.** Threading `uniformPMF (Fin Q → α)` through
+    downstream proofs is unwieldy when typeclass inference needs to be
+    spelled out; `uniformPMFTuple` centralises that step. -/
+noncomputable def uniformPMFTuple (α : Type*) (Q : ℕ)
+    [Fintype α] [Nonempty α] : PMF (Fin Q → α) :=
+  uniformPMF (Fin Q → α)
+
+/-- Each tuple `f : Fin Q → α` has probability `1 / |α|^Q` under
+    `uniformPMFTuple`.
+
+    `|Fin Q → α| = |α|^Q` by `Fintype.card_pi_const`, so `uniformPMF_apply`
+    delivers the result after one rewrite through that card identity. -/
+theorem uniformPMFTuple_apply {α : Type*} (Q : ℕ)
+    [Fintype α] [Nonempty α] (f : Fin Q → α) :
+    uniformPMFTuple α Q f = ((Fintype.card α) ^ Q : ℝ≥0∞)⁻¹ := by
+  unfold uniformPMFTuple
+  rw [uniformPMF_apply, Fintype.card_pi_const]
+  push_cast
+  rfl
+
+/-- `uniformPMFTuple α Q` is in the support of every tuple `f : Fin Q → α`.
+    Direct consequence of uniformity over a nonempty finite type. -/
+theorem mem_support_uniformPMFTuple {α : Type*} (Q : ℕ)
+    [Fintype α] [Nonempty α] (f : Fin Q → α) :
+    f ∈ (uniformPMFTuple α Q).support :=
+  mem_support_uniformPMF f
+
 end Orbcrypt

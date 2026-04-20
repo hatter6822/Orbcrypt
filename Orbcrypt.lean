@@ -22,6 +22,8 @@ import Orbcrypt.Probability.Advantage
 import Orbcrypt.Crypto.CompOIA
 import Orbcrypt.Crypto.CompSecurity
 
+import Orbcrypt.KEM.CompSecurity
+
 import Orbcrypt.Construction.Permutation
 import Orbcrypt.Construction.HGOE
 import Orbcrypt.Construction.HGOEKEM
@@ -36,6 +38,7 @@ import Orbcrypt.AEAD.CarterWegmanMAC
 
 import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
+import Orbcrypt.Hardness.Encoding
 import Orbcrypt.Hardness.Reductions
 
 import Orbcrypt.PublicKey.ObliviousSampling
@@ -369,7 +372,8 @@ These theorems depend only on Lean's standard axioms (`propext`,
 
 ### OIA-dependent results (conditional)
 
-These theorems carry `OIA`, `KEMOIA`, `ConcreteOIA`, or `CompOIA` as an
+These theorems carry `OIA`, `KEMOIA`, `ConcreteOIA`, `ConcreteKEMOIA`,
+`ConcreteTensorOIA`, `ConcreteCEOIA`, `ConcreteGIOIA`, or `CompOIA` as an
 explicit hypothesis:
 
 - `oia_implies_1cpa` (`Theorems/OIAImpliesCPA.lean`) — OIA implies IND-1-CPA
@@ -383,6 +387,26 @@ explicit hypothesis:
 - `hardness_chain_implies_security` (`Hardness/Reductions.lean`) —
   TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
   HardnessChain as hypothesis)
+
+**Workstream E (audit 2026-04-18, F-01 + F-10 + F-11 + F-17 + F-20):**
+
+- `det_kemoia_implies_concreteKEMOIA_zero` (`KEM/CompSecurity.lean`) —
+  deterministic KEMOIA → ConcreteKEMOIA 0 (E1c).
+- `concrete_kemoia_implies_secure` (`KEM/CompSecurity.lean`) —
+  ConcreteKEMOIA ε bounds per-pair KEM advantage by ε (E1d).
+- `ConcreteHardnessChain.concreteOIA_from_chain` (`Hardness/Reductions.lean`)
+  — packaged ε-bounded hardness chain → ConcreteOIA ε (E4b).
+- `concrete_hardness_chain_implies_1cpa_advantage_bound`
+  (`Hardness/Reductions.lean`) — ConcreteHardnessChain ε →
+  IND-1-CPA advantage ≤ ε (E5).
+- `concrete_combiner_advantage_bounded_by_oia`
+  (`PublicKey/CombineImpossibility.lean`) — ConcreteOIA scheme ε bounds
+  the combiner-induced distinguisher's advantage by ε (E6).
+- `indQCPA_bound_via_hybrid` (`Crypto/CompSecurity.lean`) — Q-query
+  IND-Q-CPA advantage ≤ Q · ε via the hybrid argument, given a per-step
+  bound as hypothesis (E8c).
+- `indQCPA_bound_recovers_single_query` (`Crypto/CompSecurity.lean`) —
+  Q = 1 regression sentinel (E8d).
 
 ### Hardness parameter Props (reduction claims, not proofs)
 
@@ -563,7 +587,91 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.arePermEquivalent_setoid
 -- (standard Lean only — Mathlib `Setoid` instance over the
 --  card-indexed subtype, Workstream D4)
+
+-- Workstream E (audit 2026-04-18, F-01 + F-10 + F-11 + F-17 + F-20):
+
+#print axioms Orbcrypt.kemEncapsDist_support
+-- (standard Lean only — support characterisation, Workstream E1a)
+
+#print axioms Orbcrypt.concreteKEMOIA_one
+-- (does not depend on any axioms — one-line corollary of advantage_le_one,
+--  Workstream E1b)
+
+#print axioms Orbcrypt.det_kemoia_implies_concreteKEMOIA_zero
+-- (standard Lean only — KEMOIA appears as a hypothesis, Workstream E1c)
+
+#print axioms Orbcrypt.concrete_kemoia_implies_secure
+-- (standard Lean only — ConcreteKEMOIA appears as a hypothesis, Workstream E1d)
+
+#print axioms Orbcrypt.concreteCEOIA_one
+-- (standard Lean only — one-line corollary of advantage_le_one, Workstream E2a)
+
+#print axioms Orbcrypt.concreteTensorOIA_one
+-- (standard Lean only — Workstream E2b)
+
+#print axioms Orbcrypt.concreteGIOIA_one
+-- (standard Lean only — Workstream E2c)
+
+#print axioms Orbcrypt.concreteTensorOIAImpliesConcreteCEOIA_one_one
+-- (standard Lean only — vacuously-true reduction witness, Workstream E3a)
+
+#print axioms Orbcrypt.concreteCEOIAImpliesConcreteGIOIA_one_one
+-- (standard Lean only — vacuously-true reduction witness, Workstream E3b)
+
+#print axioms Orbcrypt.concreteGIOIAImpliesConcreteOIA_one_one
+-- (standard Lean only — vacuously-true reduction witness, Workstream E3c)
+
+#print axioms Orbcrypt.concrete_chain_zero_compose
+-- (standard Lean only — algebraic composition, Workstream E3d)
+
+#print axioms Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain
+-- (standard Lean only — chain composition, Workstream E4b)
+
+#print axioms Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound
+-- (standard Lean only — composes E4b with concrete_oia_implies_1cpa,
+--  Workstream E5)
+
+#print axioms Orbcrypt.concrete_combiner_advantage_bounded_by_oia
+-- (standard Lean only — ConcreteOIA bound applied via combinerDistinguisher,
+--  Workstream E6)
+
+#print axioms Orbcrypt.combinerOrbitDist_mass_bounds
+-- (standard Lean only — non-degeneracy witness + ENNReal.le_tsum,
+--  Workstream E6b)
+
+#print axioms Orbcrypt.hybrid_argument_uniform
+-- (standard Lean only — sum telescoping from hybrid_argument, Workstream E8)
+
+#print axioms Orbcrypt.uniformPMFTuple_apply
+-- (standard Lean only — Fintype.card_pi + uniformPMF_apply, Workstream E7a)
+
+#print axioms Orbcrypt.indQCPA_bound_via_hybrid
+-- (standard Lean only — per-step bound h_step carried as hypothesis;
+--  telescopes via hybrid_argument_uniform, Workstream E8c)
+
+#print axioms Orbcrypt.indQCPA_bound_recovers_single_query
+-- (standard Lean only — Q = 1 regression, Workstream E8d)
 ```
+
+## Vacuity map (Workstream E)
+
+Each Workstream-E theorem carries an ε-parameterised probabilistic
+hypothesis (`ConcreteOIA`, `ConcreteKEMOIA`, `ConcreteTensorOIA`, etc.) in
+place of the deterministic (vacuous) OIA hypothesis of its Phase-4/7/12
+predecessor. The pairing:
+
+| Pre-Workstream-E (vacuous today) | Workstream-E counterpart (non-vacuous) |
+|---|---|
+| `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) |
+| `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d) |
+| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5) |
+| `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
+| *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) |
+
+Each counterpart reduces to its deterministic predecessor at `ε = 0`
+(perfect indistinguishability) and is trivially true at `ε = 1`
+(advantage ≤ 1 always), so the definitions are satisfiable. Intermediate
+`ε` values parameterise realistic concrete security.
 
 No `sorryAx` should appear in any output. If it does, there is a hidden
 `sorry` in the dependency chain.

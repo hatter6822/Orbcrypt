@@ -289,4 +289,127 @@ theorem perQueryAdvantage_bound_of_concreteOIA
     perQueryAdvantage scheme A D i ≤ ε :=
   hOIA D (A.choose scheme.reps i).1 (A.choose scheme.reps i).2
 
+-- ============================================================================
+-- Workstream E8 — Multi-query IND-Q-CPA via the hybrid argument
+-- ============================================================================
+
+section MultiQueryHybrid
+
+variable {G : Type*} {X : Type*} {M : Type*}
+  [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+
+/-- **Workstream E7c / E8a helper.** Scheme-level hybrid distribution over
+    ciphertext tuples.
+
+    Parameters:
+    * `scheme` — the target orbit encryption scheme.
+    * `choose : Fin Q → M × M` — per-query message pairs (the multi-query
+      adversary's `choose` function after fixing the public `reps`).
+    * `i : ℕ` — hybrid index. Coordinates with `j.val < i` sample from the
+      *left* message's orbit; coordinates with `j.val ≥ i` sample from the
+      *right* message's orbit.
+
+    At `i = 0` all coordinates sample from right messages; at `i ≥ Q` all
+    coordinates sample from left messages. Adjacent hybrids `(i, i+1)`
+    differ only at coordinate `i`.
+
+    **Construction.** Sample a uniform tuple of group elements
+    `gs : Fin Q → G` and build the ciphertext tuple pointwise by applying
+    the appropriate orbit element. Per-coordinate independence lives in
+    the `uniformPMFTuple` push-forward. -/
+noncomputable def hybridDist
+    (scheme : OrbitEncScheme G X M) {Q : ℕ}
+    (choose : Fin Q → M × M) (i : ℕ) : PMF (Fin Q → X) :=
+  PMF.map (fun gs : Fin Q → G => fun j : Fin Q =>
+    if j.val < i
+    then gs j • scheme.reps (choose j).1
+    else gs j • scheme.reps (choose j).2)
+    (uniformPMFTuple G Q)
+
+/-- **Workstream E8a.** Probabilistic IND-Q-CPA advantage for a distinct
+    multi-query adversary.
+
+    The adversary receives `Q` ciphertexts drawn either all from the *left*
+    messages of its per-query choices or all from the *right* messages,
+    then tries to guess which world it's in. The advantage is the
+    absolute difference between its winning probabilities in the two
+    worlds.
+
+    Defined as the advantage of the adversary's guess function between
+    the all-left hybrid (`hybridDist … Q`) and the all-right hybrid
+    (`hybridDist … 0`). -/
+noncomputable def indQCPAAdvantage {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q) : ℝ :=
+  advantage (A.guess scheme.reps)
+    (hybridDist scheme (A.choose scheme.reps) Q)
+    (hybridDist scheme (A.choose scheme.reps) 0)
+
+/-- `indQCPAAdvantage` is non-negative. -/
+theorem indQCPAAdvantage_nonneg {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q) :
+    0 ≤ indQCPAAdvantage scheme A :=
+  advantage_nonneg _ _ _
+
+/-- `indQCPAAdvantage` is at most 1. -/
+theorem indQCPAAdvantage_le_one {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (A : MultiQueryAdversary X M Q) :
+    indQCPAAdvantage scheme A ≤ 1 :=
+  advantage_le_one _ _ _
+
+/-- **Workstream E8c.** Multi-query IND-Q-CPA advantage bound via the
+    hybrid argument.
+
+    Given a per-step bound `h_step` (adjacent hybrids have advantage
+    ≤ ε), the end-to-end IND-Q-CPA advantage is bounded by `Q · ε`. This
+    is the telescoping step of the hybrid proof; it delegates the
+    quantitative work to `hybrid_argument_uniform` from
+    `Probability/Advantage.lean`.
+
+    **Per-step hypothesis.** `h_step i hi` is the single-query bound for
+    the adjacent hybrid pair `(i, i+1)`. The cryptographic content is
+    that when only coordinate `i` differs between the two distributions,
+    marginalising over the other coordinates yields a single-query
+    distinguisher on X, whose advantage is bounded by `ConcreteOIA scheme
+    ε` applied to the i-th challenge pair. Discharging `h_step` from
+    `ConcreteOIA` alone requires a marginal-independence argument over
+    `uniformPMFTuple`; see the audit plan § E8b for the full proof
+    obligation. The statement here is deliberately agnostic so that any
+    concrete marginal argument (e.g. via a per-coordinate-bind
+    reformulation of `hybridDist`) can be plugged in. -/
+theorem indQCPA_bound_via_hybrid {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M Q)
+    (h_step : ∀ i, i < Q →
+      advantage (A.guess scheme.reps)
+        (hybridDist scheme (A.choose scheme.reps) i)
+        (hybridDist scheme (A.choose scheme.reps) (i + 1)) ≤ ε) :
+    indQCPAAdvantage scheme A ≤ (Q : ℝ) * ε := by
+  unfold indQCPAAdvantage
+  -- Symmetrise: `advantage` is `|a - b|` which is symmetric.
+  rw [advantage_symm]
+  -- Apply `hybrid_argument_uniform` with `hybrids i = hybridDist … i`.
+  exact hybrid_argument_uniform Q
+    (fun i => hybridDist scheme (A.choose scheme.reps) i)
+    (A.guess scheme.reps) ε h_step
+
+/-- **Workstream E8d.** Regression check: at `Q = 1`, the multi-query
+    bound `Q · ε = ε` recovers the single-query advantage bound —
+    provided the single per-step hybrid bound matches
+    `concrete_oia_implies_1cpa`. Sanity sentinel. -/
+theorem indQCPA_bound_recovers_single_query
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M 1)
+    (h_step : advantage (A.guess scheme.reps)
+        (hybridDist scheme (A.choose scheme.reps) 0)
+        (hybridDist scheme (A.choose scheme.reps) 1) ≤ ε) :
+    indQCPAAdvantage scheme A ≤ ε := by
+  have h1 :=
+    indQCPA_bound_via_hybrid (Q := 1) scheme ε A
+      (fun i hi => by
+        interval_cases i
+        exact h_step)
+  simpa using h1
+
+end MultiQueryHybrid
+
 end Orbcrypt

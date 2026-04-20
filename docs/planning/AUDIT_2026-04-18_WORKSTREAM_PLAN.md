@@ -1267,11 +1267,33 @@ leave it as an unbundled `Equivalence` rather than a `Setoid` instance.
 
 ## 8. Workstream E — Probabilistic Refinement Chain (F-01, F-10, F-11, F-17, F-20)
 
+**Status:** **LANDED** (all nine sub-workstreams E1–E9 complete).
+
 **Goal:** thread Phase 8's `ConcreteOIA` / `CompOIA` framework through the
 KEMOIA layer (F-10), the Phase 12 hardness chain (F-20), and the Phase 13
 combiner no-go theorem (F-17). **After this workstream lands, no headline
 security theorem will be vacuously true on any scheme with ≥ 2 orbit
 representatives.**
+
+**Delivery summary.** New modules `Orbcrypt/KEM/CompSecurity.lean` (E1)
+and `Orbcrypt/Hardness/Encoding.lean` (E3-prep). Extensions to
+`Orbcrypt/Hardness/CodeEquivalence.lean` (E2a, +`Orbcrypt.Probability`
+imports + `Mathlib.Data.Fintype.Perm`), `Orbcrypt/Hardness/TensorAction.lean`
+(E2b), `Orbcrypt/Hardness/Reductions.lean` (E2c + E3 + E4 + E5),
+`Orbcrypt/PublicKey/CombineImpossibility.lean` (E6),
+`Orbcrypt/Probability/Monad.lean` (E7a), `Orbcrypt/Probability/Advantage.lean`
+(E8 prereq `hybrid_argument_uniform`), and `Orbcrypt/Crypto/CompSecurity.lean`
+(E8). Root file `Orbcrypt.lean` + `CLAUDE.md` + this planning doc updated
+with traceability notes (E9).
+
+**Non-goal (deferred).** Concrete witnesses for the three ε-preserving
+reduction Props (`ConcreteTensorOIAImpliesConcreteCEOIA`, etc.) and the
+per-step marginal proof `h_step` inside `indQCPA_bound_via_hybrid` require
+external mathematical work (CFI graph gadget, Grochow–Qiao structure
+tensor, PMF marginalisation over `uniformPMFTuple`). They remain as
+hypotheses of the top-level theorems; the chain composes cleanly once
+any concrete instance is supplied. See Workstreams F3 / F4 in § 9 and
+the audit plan E8b note for the research-grade next steps.
 
 ### E-overview: what "vacuous" means and what replaces it
 
