@@ -46,6 +46,9 @@ import Orbcrypt.PublicKey.KEMAgreement
 import Orbcrypt.PublicKey.CommutativeAction
 import Orbcrypt.PublicKey.CombineImpossibility
 
+import Orbcrypt.Optimization.QCCanonical
+import Orbcrypt.Optimization.TwoPhaseDecrypt
+
 /-!
 # Orbcrypt — Formal Verification of Permutation-Orbit Encryption
 
@@ -200,6 +203,20 @@ AEAD.MAC ◄── Mathlib.Tactic
   ◄── CommGroupAction (class), csidh_exchange
   ◄── csidh_correctness
   ◄── CommOrbitPKE, comm_pke_correctness
+
+  GroupAction.Canonical + Construction.Permutation
+          │
+          ▼
+  Optimization.QCCanonical ◄── GroupAction.Canonical, Construction.Permutation
+  ◄── QCCyclicCanonical (abbrev for CanonicalForm on a cyclic subgroup)
+  ◄── qc_invariant_under_cyclic, qc_canon_idem
+
+  Optimization.TwoPhaseDecrypt ◄── Optimization.QCCanonical, KEM.Correctness
+  ◄── TwoPhaseDecomposition (correctness predicate)
+  ◄── two_phase_correct, full_canon_invariant
+  ◄── two_phase_invariant_under_G
+  ◄── two_phase_kem_decaps, two_phase_kem_correctness
+  ◄── IsOrbitConstant, orbit_constant_encaps_eq_basePoint
 ```
 
 ## Headline Theorem Dependencies
@@ -295,6 +312,33 @@ csidh_correctness (PublicKey/CommutativeAction.lean)
 comm_pke_correctness (PublicKey/CommutativeAction.lean)
   ├── CommGroupAction.comm        — commutativity axiom of the class (13.5)
   └── CommOrbitPKE.pk_valid       — public-key validity field (13.6)
+
+two_phase_correct (Optimization/TwoPhaseDecrypt.lean)           ◄── Phase 15.5
+  └── hDecomp (hypothesis)        — TwoPhaseDecomposition predicate
+
+two_phase_kem_correctness (Optimization/TwoPhaseDecrypt.lean)   ◄── Phase 15.3
+  ├── two_phase_kem_decaps        — decapsulation-level rewrite (15.5)
+  └── kem_correctness             — full-group KEM correctness (7.3)
+
+full_canon_invariant (Optimization/TwoPhaseDecrypt.lean)        ◄── Phase 15.5
+  ├── canon_eq_of_mem_orbit       — orbit-constancy of canonical form (2.6)
+  └── smul_mem_orbit              — g • x ∈ orbit G x (2.4)
+
+orbit_constant_encaps_eq_basePoint (Optimization/TwoPhaseDecrypt.lean) ◄── 15.4
+  └── IsOrbitConstant (hypothesis) — predicate for orbit-constant functions
+
+fast_kem_round_trip (Optimization/TwoPhaseDecrypt.lean)         ◄── Phase 15.3
+                                                                    (audit follow-up)
+  └── IsOrbitConstant (hypothesis) — true for the GAP `FastCanonicalImage`
+      whenever the cyclic subgroup is normal in G; this is the actual
+      KEM-correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair,
+      not the stronger `two_phase_kem_correctness` (which requires the
+      `TwoPhaseDecomposition` predicate, empirically false for the
+      default fallback wreath-product G).
+
+fast_canon_composition_orbit_constant (Optimization/TwoPhaseDecrypt.lean) ◄── 15.3
+  ├── full_canon_invariant — orbit constancy of slow canon (15.5)
+  └── hCommutes (hypothesis) — fast preprocessor stays in-orbit
 ```
 
 ## Axiom Transparency Report
@@ -369,6 +413,12 @@ These theorems depend only on Lean's standard axioms (`propext`,
   set identity `{ρ | ρ : C₁ → C₂} = σ · PAut C₁` (audit F-16 extended,
   Workstream D3; the algebraic statement underlying LESS-style search-space
   reduction)
+- `qc_invariant_under_cyclic` and `qc_canon_idem`
+  (`Optimization/QCCanonical.lean`) — the QC cyclic canonical form is
+  constant on its own orbits and idempotent (Phase 15.1 / 15.5)
+- `full_canon_invariant` (`Optimization/TwoPhaseDecrypt.lean`) — the
+  full canonical form is constant on G-orbits; direct application of
+  `canon_eq_of_mem_orbit` (Phase 15.5)
 
 ### OIA-dependent results (conditional)
 
@@ -419,6 +469,46 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
   bound as hypothesis (E8c).
 - `indQCPA_bound_recovers_single_query` (`Crypto/CompSecurity.lean`) —
   Q = 1 regression sentinel (E8d).
+
+**Phase 15 (Decryption Optimisation):**
+
+- `two_phase_correct` (`Optimization/TwoPhaseDecrypt.lean`) — the
+  two-phase (cyclic ∘ residual) canonical form agrees with the full
+  canonical form on `g • x`, *given* a `TwoPhaseDecomposition`
+  hypothesis `hDecomp` (15.5).
+- `two_phase_decompose` (`Optimization/TwoPhaseDecrypt.lean`) —
+  definitional unfolding of `TwoPhaseDecomposition` for direct
+  rewriting in client proofs (15.5).
+- `two_phase_invariant_under_G`
+  (`Optimization/TwoPhaseDecrypt.lean`) — the two-phase pipeline is
+  invariant under the full-group action, given `hDecomp` (15.5).
+- `two_phase_kem_decaps` (`Optimization/TwoPhaseDecrypt.lean`) —
+  decapsulation-level rewrite of the fast path, given `hDecomp` (15.3).
+- `two_phase_kem_correctness`
+  (`Optimization/TwoPhaseDecrypt.lean`) — the two-phase fast path
+  correctly recovers the KEM key on `(encaps g).1`, given `hDecomp`
+  (15.3).
+- `orbit_constant_encaps_eq_basePoint`
+  (`Optimization/TwoPhaseDecrypt.lean`) — an orbit-constant function
+  (such as the syndrome) applied to an encapsulation ciphertext equals
+  its value on the base point, given `IsOrbitConstant` as a hypothesis
+  (15.4).
+- `fast_kem_round_trip`
+  (`Optimization/TwoPhaseDecrypt.lean`) — the actual fast-KEM
+  correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair:
+  given `IsOrbitConstant G fastCanon`, decapsulation via the fast
+  canonical form recovers the encapsulated key. This is the
+  practical correctness story (orbit-constancy is satisfied by
+  `FastCanonicalImage`); the stronger `two_phase_*` theorems
+  require `TwoPhaseDecomposition`, which is empirically false for
+  the default wreath-product G. Post-landing audit addition
+  (Phase 15.3).
+- `fast_canon_composition_orbit_constant`
+  (`Optimization/TwoPhaseDecrypt.lean`) — template lemma: if a
+  fast preprocessor keeps each input inside its own G-orbit
+  (`hCommutes`), the composite `can_full ∘ fastCanon` is
+  G-orbit-constant. Useful for "fast preprocess + slow finalise"
+  pipelines.
 
 ### Hardness parameter Props (reduction claims, not proofs)
 
@@ -667,6 +757,52 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.indQCPA_bound_recovers_single_query
 -- (standard Lean only — Q = 1 regression, Workstream E8d)
+
+-- Phase 15 (Decryption Optimisation):
+
+#print axioms Orbcrypt.two_phase_correct
+-- (standard Lean only — `hDecomp : TwoPhaseDecomposition G C ...`
+--  carried as a hypothesis; Work Unit 15.5)
+
+#print axioms Orbcrypt.two_phase_decompose
+-- (standard Lean only — definitional unfolding, Work Unit 15.5)
+
+#print axioms Orbcrypt.full_canon_invariant
+-- (standard Lean only — direct application of
+--  `canon_eq_of_mem_orbit` and `smul_mem_orbit`, Work Unit 15.5)
+
+#print axioms Orbcrypt.two_phase_invariant_under_G
+-- (standard Lean only — combines `two_phase_correct` with
+--  `full_canon_invariant`, Work Unit 15.5)
+
+#print axioms Orbcrypt.two_phase_kem_decaps
+-- (standard Lean only — unfolds `decaps` and rewrites by `hDecomp`,
+--  Work Unit 15.3)
+
+#print axioms Orbcrypt.two_phase_kem_correctness
+-- (standard Lean only — composes `two_phase_kem_decaps` with
+--  `kem_correctness`, Work Unit 15.3)
+
+#print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint
+-- (standard Lean only — `IsOrbitConstant` carried as a hypothesis,
+--  Work Unit 15.4)
+
+#print axioms Orbcrypt.qc_invariant_under_cyclic
+-- (standard Lean only — direct application of `canon_eq_of_mem_orbit`
+--  and `smul_mem_orbit`, Work Unit 15.1 / 15.5)
+
+#print axioms Orbcrypt.qc_canon_idem
+-- (standard Lean only — `canon_idem` re-exported, Work Unit 15.1 / 15.5)
+
+#print axioms Orbcrypt.fast_kem_round_trip
+-- (standard Lean only — orbit-constancy of `fastCanon` carried as a
+--  hypothesis; the actual correctness theorem for the GAP
+--  `(FastEncaps, FastDecaps)` pair, Phase 15.3 post-landing audit)
+
+#print axioms Orbcrypt.fast_canon_composition_orbit_constant
+-- (standard Lean only — closure-under-orbit hypothesis carried;
+--  template for "fast preprocessor + slow finaliser" pipelines,
+--  Phase 15.3 post-landing audit)
 ```
 
 ## Vacuity map (Workstream E)

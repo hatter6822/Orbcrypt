@@ -2,7 +2,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.1.4"
+  version := v!"0.1.5"
   leanOptions := #[
     ⟨`autoImplicit, false⟩  -- Enforce explicit universe/variable declarations
   ]
