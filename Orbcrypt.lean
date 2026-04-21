@@ -326,6 +326,19 @@ full_canon_invariant (Optimization/TwoPhaseDecrypt.lean)        ◄── Phase 
 
 orbit_constant_encaps_eq_basePoint (Optimization/TwoPhaseDecrypt.lean) ◄── 15.4
   └── IsOrbitConstant (hypothesis) — predicate for orbit-constant functions
+
+fast_kem_round_trip (Optimization/TwoPhaseDecrypt.lean)         ◄── Phase 15.3
+                                                                    (audit follow-up)
+  └── IsOrbitConstant (hypothesis) — true for the GAP `FastCanonicalImage`
+      whenever the cyclic subgroup is normal in G; this is the actual
+      KEM-correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair,
+      not the stronger `two_phase_kem_correctness` (which requires the
+      `TwoPhaseDecomposition` predicate, empirically false for the
+      default fallback wreath-product G).
+
+fast_canon_composition_orbit_constant (Optimization/TwoPhaseDecrypt.lean) ◄── 15.3
+  ├── full_canon_invariant — orbit constancy of slow canon (15.5)
+  └── hCommutes (hypothesis) — fast preprocessor stays in-orbit
 ```
 
 ## Axiom Transparency Report
@@ -480,6 +493,22 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
   (such as the syndrome) applied to an encapsulation ciphertext equals
   its value on the base point, given `IsOrbitConstant` as a hypothesis
   (15.4).
+- `fast_kem_round_trip`
+  (`Optimization/TwoPhaseDecrypt.lean`) — the actual fast-KEM
+  correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair:
+  given `IsOrbitConstant G fastCanon`, decapsulation via the fast
+  canonical form recovers the encapsulated key. This is the
+  practical correctness story (orbit-constancy is satisfied by
+  `FastCanonicalImage`); the stronger `two_phase_*` theorems
+  require `TwoPhaseDecomposition`, which is empirically false for
+  the default wreath-product G. Post-landing audit addition
+  (Phase 15.3).
+- `fast_canon_composition_orbit_constant`
+  (`Optimization/TwoPhaseDecrypt.lean`) — template lemma: if a
+  fast preprocessor keeps each input inside its own G-orbit
+  (`hCommutes`), the composite `can_full ∘ fastCanon` is
+  G-orbit-constant. Useful for "fast preprocess + slow finalise"
+  pipelines.
 
 ### Hardness parameter Props (reduction claims, not proofs)
 
@@ -731,39 +760,49 @@ Users can verify axiom dependencies by running in a Lean file:
 
 -- Phase 15 (Decryption Optimisation):
 
-#print axioms Orbcrypt.Optimization.two_phase_correct
+#print axioms Orbcrypt.two_phase_correct
 -- (standard Lean only — `hDecomp : TwoPhaseDecomposition G C ...`
 --  carried as a hypothesis; Work Unit 15.5)
 
-#print axioms Orbcrypt.Optimization.two_phase_decompose
+#print axioms Orbcrypt.two_phase_decompose
 -- (standard Lean only — definitional unfolding, Work Unit 15.5)
 
-#print axioms Orbcrypt.Optimization.full_canon_invariant
+#print axioms Orbcrypt.full_canon_invariant
 -- (standard Lean only — direct application of
 --  `canon_eq_of_mem_orbit` and `smul_mem_orbit`, Work Unit 15.5)
 
-#print axioms Orbcrypt.Optimization.two_phase_invariant_under_G
+#print axioms Orbcrypt.two_phase_invariant_under_G
 -- (standard Lean only — combines `two_phase_correct` with
 --  `full_canon_invariant`, Work Unit 15.5)
 
-#print axioms Orbcrypt.Optimization.two_phase_kem_decaps
+#print axioms Orbcrypt.two_phase_kem_decaps
 -- (standard Lean only — unfolds `decaps` and rewrites by `hDecomp`,
 --  Work Unit 15.3)
 
-#print axioms Orbcrypt.Optimization.two_phase_kem_correctness
+#print axioms Orbcrypt.two_phase_kem_correctness
 -- (standard Lean only — composes `two_phase_kem_decaps` with
 --  `kem_correctness`, Work Unit 15.3)
 
-#print axioms Orbcrypt.Optimization.orbit_constant_encaps_eq_basePoint
+#print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint
 -- (standard Lean only — `IsOrbitConstant` carried as a hypothesis,
 --  Work Unit 15.4)
 
-#print axioms Orbcrypt.Optimization.qc_invariant_under_cyclic
+#print axioms Orbcrypt.qc_invariant_under_cyclic
 -- (standard Lean only — direct application of `canon_eq_of_mem_orbit`
 --  and `smul_mem_orbit`, Work Unit 15.1 / 15.5)
 
-#print axioms Orbcrypt.Optimization.qc_canon_idem
+#print axioms Orbcrypt.qc_canon_idem
 -- (standard Lean only — `canon_idem` re-exported, Work Unit 15.1 / 15.5)
+
+#print axioms Orbcrypt.fast_kem_round_trip
+-- (standard Lean only — orbit-constancy of `fastCanon` carried as a
+--  hypothesis; the actual correctness theorem for the GAP
+--  `(FastEncaps, FastDecaps)` pair, Phase 15.3 post-landing audit)
+
+#print axioms Orbcrypt.fast_canon_composition_orbit_constant
+-- (standard Lean only — closure-under-orbit hypothesis carried;
+--  template for "fast preprocessor + slow finaliser" pipelines,
+--  Phase 15.3 post-landing audit)
 ```
 
 ## Vacuity map (Workstream E)

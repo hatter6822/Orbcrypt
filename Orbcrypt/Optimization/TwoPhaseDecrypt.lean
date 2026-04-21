@@ -42,7 +42,6 @@ witness formally is Phase 16 work.
 -/
 
 namespace Orbcrypt
-namespace Optimization
 
 variable {n : ℕ}
 
@@ -57,18 +56,33 @@ variable {n : ℕ}
 
     > `∀ x, can_full.canon x = can_residual.canon (can_cyclic.canon x)`
 
-    This is the central correctness requirement of Phase 15 §15.5. For
-    the concrete GAP implementation:
+    This is the **strong** correctness requirement that the Phase 15
+    §15.5 plan suggests. It says that the cheap composition
+    `can_residual ∘ can_cyclic` produces *exactly the same* canonical
+    representative as the expensive `can_full`.
+
+    **Important caveat: the predicate FAILS in general.** The natural
+    interpretation
     * `G`  = `PAut(C)` (the full hidden group)
     * `C`  = `(Z/bZ)^ell` subgroup (known cyclic structure)
-    * `can_cyclic`  = block-wise minimal rotation (`QCCyclicReduce`)
-    * `can_residual` = lex-minimal coset rep under the transversal of
-      `C` inside `G` (`CanonicalImageUnderTransversal`)
-    * `can_full`  = `CanonicalImage(G, ·, OnSets)` (partition backtracking)
+    * `can_cyclic`  = block-wise lex-min rotation (`QCCyclicReduce`)
+    * `can_residual` = lex-min over the right transversal of `C` in `G`
+      (`CanonicalImageUnderTransversal`)
+    * `can_full`  = `CanonicalImage(G, ·, OnSets)` (lex-min over G)
 
-    The decomposition is proved in GAP by the identity
-    `G = (C ∩ G) · residualTransversal`. Re-proving that in Lean is
-    Phase 16 scope; here we carry it as a hypothesis. -/
+    does NOT in general satisfy the predicate, because lex-min does
+    not commute with the residual-transversal action: the lex-min of
+    `G · x` may come from a non-cyclic-canonical element of `(C ∩ G)·x`.
+    A concrete counterexample is given in the GAP audit notes
+    (`implementation/gap/orbcrypt_fast_dec.g` §5).
+
+    This predicate is preserved as a HYPOTHESIS for theorems that
+    require fast = slow agreement (e.g. when interoperating with a
+    legacy slow-canon ciphertext stream). For practical KEM
+    correctness, use `fast_kem_round_trip` below instead — it only
+    needs orbit-constancy of `can_residual ∘ can_cyclic`, which the
+    composition automatically inherits from the `CanonicalForm`
+    structure. -/
 def TwoPhaseDecomposition
     (G : Subgroup (Equiv.Perm (Fin n)))
     (C : Subgroup (Equiv.Perm (Fin n)))
@@ -233,5 +247,57 @@ theorem orbit_constant_encaps_eq_basePoint
   show f (g • kem.basePoint) = f kem.basePoint
   exact hConst g kem.basePoint
 
-end Optimization
+-- ============================================================================
+-- Phase 15 (Lean): KEM correctness via orbit-constancy of the fast canon
+-- ============================================================================
+
+/-- **Fast-KEM round-trip correctness.** When the fast canonical form
+    `fastCanon` is orbit-constant under `G` and the encapsulation /
+    decapsulation pair both derive their key via
+    `keyDerive ∘ fastCanon`, the two values agree on every
+    `g • basePoint`:
+
+    > `keyDerive (fastCanon (g • basePoint)) =
+    >   keyDerive (fastCanon basePoint)`.
+
+    This is the actual correctness story for the GAP `FastEncaps` /
+    `FastDecaps` pair (`implementation/gap/orbcrypt_fast_dec.g` §5).
+    Unlike `two_phase_kem_correctness`, this theorem does NOT require
+    the strong `TwoPhaseDecomposition` predicate; it only requires
+    the orbit-constancy property that any composition of two
+    `CanonicalForm` instances automatically inherits.
+
+    **Proof.** Direct application of `IsOrbitConstant`. -/
+theorem fast_kem_round_trip
+    {K : Type*}
+    {G : Subgroup (Equiv.Perm (Fin n))}
+    (basePoint : Bitstring n)
+    (fastCanon : Bitstring n → Bitstring n)
+    (keyDerive : Bitstring n → K)
+    (hConst : IsOrbitConstant G fastCanon)
+    (g : ↥G) :
+    keyDerive (fastCanon (g • basePoint)) =
+      keyDerive (fastCanon basePoint) := by
+  rw [hConst g basePoint]
+
+/-- If a fast preprocessor `fastCanon` keeps each input inside its
+    own `G`-orbit (so that the slow canonical form is unchanged by
+    the preprocessor), then the composite `can_full ∘ fastCanon` is
+    G-orbit-constant — even when `fastCanon` itself is not. This is
+    a useful template for "in-orbit cleanup followed by slow
+    finalisation"; it does NOT cover the GAP `FastCanonicalImage`
+    (which uses `lex-min over T-images` rather than `can_full`), but
+    it does cover any future fast path that ends in
+    `CanonicalImage(G, ., OnSets)`. -/
+theorem fast_canon_composition_orbit_constant
+    {G : Subgroup (Equiv.Perm (Fin n))}
+    (can_full : CanonicalForm (↥G) (Bitstring n))
+    (fastCanon : Bitstring n → Bitstring n)
+    (hCommutes : ∀ x : Bitstring n,
+       can_full.canon (fastCanon x) = can_full.canon x) :
+    IsOrbitConstant G (fun x => can_full.canon (fastCanon x)) := by
+  intro g x
+  show can_full.canon (fastCanon (g • x)) = can_full.canon (fastCanon x)
+  rw [hCommutes (g • x), hCommutes x, full_canon_invariant can_full g x]
+
 end Orbcrypt

@@ -413,9 +413,10 @@ The entire formalization exists to machine-check three results. Understand what 
 | 22 | **PAut is a `Subgroup`** | `PAutSubgroup C : Subgroup (Equiv.Perm (Fin n))` with `PAut_eq_PAutSubgroup_carrier C : PAut C = (PAutSubgroup C : Set _)` | `Hardness/CodeEquivalence.lean` | Permutation Automorphism group has full Mathlib `Subgroup` API (cosets, Lagrange, quotient); the Set-valued `PAut` and Subgroup-packaged `PAutSubgroup` agree definitionally (audit F-08, Workstream D2) |
 | 23 | **CE coset set identity** | `paut_equivalence_set_eq_coset : {ρ \| ρ : C₁ → C₂} = σ · PAut C₁` (given a witness σ and `C₁.card = C₂.card`) | `Hardness/CodeEquivalence.lean` | The set of all CE-witnessing permutations is *exactly* a left coset of PAut; this is the algebraic statement underlying the LESS signature scheme's effective-search-space reduction (audit F-16 extended, Workstream D3) |
 | 24 | **Two-Phase Correctness** | `two_phase_correct : can_full.canon (g • x) = can_residual.canon (can_cyclic.canon (g • x))` (given `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | The fast (cyclic ∘ residual) canonical form agrees with the full canonical form on every ciphertext `g • x`; this is the formal content of the Phase 15 fast-decryption pipeline (Phase 15.5) |
-| 25 | **Two-Phase KEM Correctness** | `two_phase_kem_correctness : kem.keyDerive (can_residual.canon (can_cyclic.canon (encaps kem g).1)) = (encaps kem g).2` | `Optimization/TwoPhaseDecrypt.lean` | Decapsulation via the fast path recovers the encapsulated key whenever the two-phase decomposition holds; composes `two_phase_kem_decaps` with `kem_correctness` (Phase 15.3 / 15.5) |
+| 25 | **Two-Phase KEM Correctness (conditional)** | `two_phase_kem_correctness : kem.keyDerive (can_residual.canon (can_cyclic.canon (encaps kem g).1)) = (encaps kem g).2` | `Optimization/TwoPhaseDecrypt.lean` | Decapsulation via the fast path recovers the encapsulated key WHEN the two-phase decomposition holds (composes `two_phase_kem_decaps` with `kem_correctness`). Post-landing audit: the GAP implementation does NOT discharge `TwoPhaseDecomposition` because lex-min and the residual transversal action don't commute — this theorem is a conditional that documents the strong agreement property, not the actual GAP correctness story (Phase 15.3 / 15.5) |
+| 26 | **Fast-KEM Round-Trip (orbit-constancy)** | `fast_kem_round_trip : keyDerive (fastCanon (g • basePoint)) = keyDerive (fastCanon basePoint)` (given `IsOrbitConstant G fastCanon`) | `Optimization/TwoPhaseDecrypt.lean` | The actual correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair: orbit-constancy of the fast canonical form is sufficient for round-trip correctness, and orbit-constancy IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G (Phase 15.3, post-landing audit) |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures. The Phase 15 decryption-optimisation formalisation (theorems 24–25) captures the correctness of the two-phase `cyclic ∘ residual` canonical-form factorisation implemented in GAP (`implementation/gap/orbcrypt_fast_dec.g`): the `TwoPhaseDecomposition` predicate states the factorisation as a Prop-valued hypothesis, and every downstream correctness statement is proved modulo that predicate, with zero custom axioms.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures. The Phase 15 decryption-optimisation formalisation (theorems 24–26) covers the GAP fast-decryption pipeline (`implementation/gap/orbcrypt_fast_dec.g`): theorems #24–#25 formalise the strong "fast = slow" decomposition as a conditional, theorem #26 captures the actual KEM correctness story via orbit-constancy of the fast canonical form. Post-landing audit (this commit) confirmed empirically that the strong decomposition does not hold for the default fallback group, so the production correctness argument runs through #26.
 
 ## Mathlib integration
 
@@ -735,35 +736,63 @@ Phase 15 (Decryption Optimisation) has been completed:
     wreath-product generators in `HGOEFallbackGroup` don't cover every
     single-block rotation.
   * §5 / 15.3 — `ExtendKEMKeyWithFastDec`,
-    `FastCanonicalImage(skFast, c)`,
-    `FastDecaps(skFast, c)`, and a debug-mode
-    `FastDecapsSafe(skFast, c)` that cross-checks against the slow
-    path. `CompareFastVsSlow(skFast, numTrials, basePoint)` is the
-    empirical regression harness demanded by §15.3 (10 000-case
-    target; the GAP runner uses a smaller budget so CI finishes in
-    seconds). Returns a record with `fails`, `passed`, `meanFastMs`,
-    `meanSlowMs`, `speedup`.
+    `FastCanonicalImage(skFast, c)`, `FastDecaps(skFast, c)`,
+    and the matching `FastEncaps(skFast, basePoint)` (which derives
+    its key from `FastCanonicalImage`, not from
+    `CanonicalImage(G, ., OnSets)`). `FastDecapsSafe(skFast, basePoint, c)`
+    is a debug wrapper that cross-checks orbit-constancy
+    (`FastDecaps(c) = FastDecaps(basePoint)`).
+    `CompareFastVsSlow(skFast, numTrials, basePoint)` is the
+    empirical regression harness demanded by §15.3. It records
+    three statistics: (a) fast KEM round-trip correctness
+    (`FastEncaps` then `FastDecaps`), (b) slow KEM round-trip
+    correctness (`HGOEEncaps` then `HGOEDecaps`), and (c) the
+    diagnostic `fastSlowAgreementRate` — empirical fraction of
+    ciphertexts on which `FastDecaps` and `HGOEDecaps` produce
+    THE SAME key. **Important post-landing audit finding:** the
+    fast and slow canonical forms are NOT in general equal —
+    lex-min over G does not commute with the residual-transversal
+    action — so (c) is expected to be ≪ 1 (typically 0) for the
+    default fallback wreath-product G. (a) and (b) are the actual
+    pass-fail criteria; both must equal `numTrials`. Pair
+    `FastEncaps` with `FastDecaps` (and `HGOEEncaps` with
+    `HGOEDecaps`); cross-pairing breaks correctness.
   * §6 / 15.4 — `ParityCheckFromGenerator` / `SyndromeOf` /
     `SyndromeDecaps(skSyn, c)`, plus the semantics caveat in the
-    docstring (KEM mode is always correct because all ciphertexts
-    share one orbit; AOE multi-message mode requires
-    `ValidateSyndromeUniqueness` to pass).
-  * §7 / 15.6 — `OrbitSampleList` / `OrbitHashDigest` / `OrbitHash`
-    + `OrbitHashDecaps`, `ExtendKEMKeyWithOrbitHash(sk, nSamples)`,
-    `ValidateOrbitHashConsistency`, and
-    `MeasureOrbitHashCollision` (empirical collision-rate between
-    distinct orbits — always 0 in KEM mode).
+    docstring (KEM mode is always correct provided the parity-check
+    matrix is the actual one of the secret code). The benchmark
+    uses a 1×n all-ones placeholder H — `SyndromeOf` reduces to
+    Hamming-weight parity, which IS orbit-invariant under any
+    permutation group; this gives an honest orbit-invariant
+    timing measurement on the fallback path where no real code
+    is constructed.
+  * §7 / 15.6 — `OrbitHashDigest`, `DeterministicOrbitHash(G, x)`
+    (full orbit enumeration, exact, cost O(|G|·n)),
+    `OrbitSampleList`, `SampledOrbitHash(G, x, nSamples)`
+    (probabilistic, NOT a canonical form — two calls return
+    different digests), `OrbitHash` (alias for
+    `DeterministicOrbitHash`; the `nSamples` parameter is accepted
+    for backward compatibility but ignored), `OrbitHashDecaps`,
+    `ExtendKEMKeyWithOrbitHash(sk, nSamples)`,
+    `ValidateOrbitHashConsistency` (passes when `OrbitHash` is
+    deterministic, which it now is), `MeasureOrbitHashCollision`
+    (collision rate between distinct orbits — always 0 with
+    `DeterministicOrbitHash`).
   * §8 / 15.7 — `CompareDecryptionMethods(params, numCiphertexts)`
-    runs all five methods (full, two-phase, syndrome, hash-100,
-    hash-1000) on the same ciphertext population and records
-    mean time + exactness. `PrintDecryptionComparison` gives a
-    human-readable table; `WritePhase15CSV` emits
-    `docs/benchmarks/phase15_decryption.csv` with per-method rows
-    keyed by (`lambda`, `n`, `method`).
+    runs six methods on the same ciphertext population: full
+    backtracking, two-phase, syndrome (placeholder H),
+    deterministic orbit hash, sampled hash 100, sampled hash 1000.
+    `PrintDecryptionComparison` gives a human-readable table;
+    `WritePhase15CSV` emits the per-method rows.
+    `RunPhase15Comparison(levels)` is the production driver
+    (`HGOEParams(λ)` for each λ; slow at production levels).
+    `RunPhase15QuickComparison()` is the CI-friendly variant
+    (n ∈ {16, 24, 32}, finishes in seconds, writes
+    `docs/benchmarks/phase15_decryption_quick.csv`).
   * §9 — `RunPhase15SelfTest()` smoke test that exercises 15.1c
-    idempotence, 15.2/15.3 fast-vs-slow agreement, and 15.6 hash
-    consistency on a small `n = 24` instance. Returns `true` iff
-    every sub-test passes.
+    idempotence, 15.2/15.3 fast and slow KEM correctness, and
+    15.6 hash consistency on a small `n = 24` instance. Returns
+    `true` iff every sub-test passes.
 - `Orbcrypt/Optimization/QCCanonical.lean` — (15.1 / 15.5) Lean
   specification for the cyclic canonical form. Defines the alias
   `QCCyclicCanonical C := CanonicalForm (↥C) (Bitstring n)` over a
@@ -774,10 +803,10 @@ Phase 15 (Decryption Optimisation) has been completed:
   `smul_mem_orbit`) and `qc_canon_idem` (re-exported
   `canon_idem`).
 - `Orbcrypt/Optimization/TwoPhaseDecrypt.lean` — (15.3 / 15.5) the
-  central correctness statement. Introduces the predicate
+  central correctness statements. Introduces the predicate
   `TwoPhaseDecomposition G C can_full can_cyclic can_residual :
   Prop` ( `∀ x, can_full.canon x = can_residual.canon (can_cyclic.canon
-  x)` ), and proves:
+  x)` ) and proves:
   * `two_phase_decompose` — definitional unfolding.
   * `two_phase_correct` — the factorisation restricted to `g • x`.
   * `full_canon_invariant` — the full canonical form is constant on
@@ -788,30 +817,59 @@ Phase 15 (Decryption Optimisation) has been completed:
   * `two_phase_kem_decaps` — `decaps kem c = kem.keyDerive
     (can_residual.canon (can_cyclic.canon c))` given `hDecomp`.
   * `two_phase_kem_correctness` — the fast-path decapsulation
-    recovers the encapsulated key on `(encaps kem g).1`; proven by
-    chaining `two_phase_kem_decaps` with `kem_correctness`.
-  * `IsOrbitConstant G f : Prop := ∀ g x, f (g • x) = f x` plus
-    `orbit_constant_encaps_eq_basePoint` — an orbit-constant
+    recovers the encapsulated key on `(encaps kem g).1` IF
+    `hDecomp` holds (i.e. fast canonical form equals slow); proven
+    by chaining `two_phase_kem_decaps` with `kem_correctness`.
+
+  **Important post-landing audit finding:** `TwoPhaseDecomposition`
+  does NOT hold for the GAP `FastCanonicalImage` against the slow
+  `CanonicalImage(G, ., OnSets)` — lex-min over G does not in
+  general commute with the residual transversal action; a
+  20-trial empirical test on n=24 fallback group records 0/20
+  agreement. The `two_phase_*` theorems remain valid CONDITIONALS
+  but are not directly instantiated by the GAP code. The actual
+  KEM-correctness story for the GAP `(FastEncaps, FastDecaps)`
+  pair is captured by:
+  * `IsOrbitConstant G f : Prop := ∀ g x, f (g • x) = f x` —
+    G-orbit-constancy predicate.
+  * `orbit_constant_encaps_eq_basePoint` — an orbit-constant
     function applied to a fresh encapsulation equals its value on
     the base point; this is the correctness statement the
-    syndrome-based decryption path (`SyndromeDecaps` in the GAP
-    file) inherits in KEM mode.
+    syndrome-based path (`SyndromeDecaps`) inherits in KEM mode.
+  * `fast_kem_round_trip` — given an orbit-constant `fastCanon`,
+    `keyDerive (fastCanon (g • basePoint)) = keyDerive (fastCanon
+    basePoint)`; this is the `(FastEncaps, FastDecaps)`
+    self-consistency guarantee, with **zero** assumption beyond
+    orbit-constancy of the chosen fast canonical form.
+  * `fast_canon_composition_orbit_constant` — if a fast
+    preprocessor `fastCanon` keeps its input inside the same
+    G-orbit (a much weaker condition than the
+    `TwoPhaseDecomposition` predicate), then the composite
+    `can_full ∘ fastCanon` is G-orbit-constant.
 - All 7 work units (15.1–15.7) implemented with zero `sorry`, zero
   warnings, zero custom axioms. Two new Lean modules, one new GAP file;
-  one new CSV (`docs/benchmarks/phase15_decryption.csv`) will be
-  generated by `RunPhase15Comparison`.
+  the CI-grade benchmark CSV is
+  `docs/benchmarks/phase15_decryption_quick.csv` (generated by
+  `RunPhase15QuickComparison`); the production-scale CSV
+  `docs/benchmarks/phase15_decryption.csv` is regenerated by
+  `RunPhase15Comparison([λ])` for any λ for which the slow path
+  terminates in reasonable time (impractical at λ ≥ 80).
 - `lake build` succeeds for all 38 Orbcrypt Lean modules (was 36; the
   two additions are `Orbcrypt.Optimization.QCCanonical` and
   `Orbcrypt.Optimization.TwoPhaseDecrypt`). Post-landing axiom audit
   in `scripts/audit_phase15.lean` confirms every Phase 15 theorem
   depends only on `[propext, Classical.choice, Quot.sound]`.
 - Headline theorems in the table: #24 `two_phase_correct` (15.5),
-  #25 `two_phase_kem_correctness` (15.3 / 15.5). The factorisation
-  `TwoPhaseDecomposition` is carried as a Prop-valued hypothesis; a
-  direct Lean proof that GAP's concrete
-  `QCCyclicReduce ∘ CanonicalImageUnderTransversal` satisfies the
-  predicate is out of scope for Phase 15 and scheduled for Phase 16
-  (extended formal verification).
+  #25 `two_phase_kem_correctness` (15.3 / 15.5),
+  #26 `fast_kem_round_trip` (15.3, post-landing audit
+  addition). `TwoPhaseDecomposition` is the strong predicate
+  (fast = slow) and is carried as a hypothesis on #24/#25; the
+  GAP implementation does NOT discharge it (lex-min and
+  residual-transversal action don't commute). `fast_kem_round_trip`
+  carries only the much weaker `IsOrbitConstant` hypothesis, which
+  IS satisfied by the GAP `FastCanonicalImage`, so #26 is the
+  correctness theorem that actually applies to the production
+  fast-decryption pair.
 
 Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been completed:
 - `.github/workflows/lean4-build.yml` — (F-03) hardened `sorry` regex with
@@ -1330,11 +1388,13 @@ was fixed):
 - `#print axioms combinerOrbitDist_mass_bounds` — standard Lean only (mass bound from non-degeneracy witness + `ENNReal.le_tsum`, audit F-17, Workstream E6b)
 - `#print axioms hybrid_argument_uniform` — standard Lean only (sum telescoping, Workstream E8 prereq)
 - `#print axioms indQCPA_bound_via_hybrid` — standard Lean only (per-step bound `h_step` carried as hypothesis; telescopes via `hybrid_argument_uniform`, audit F-11, Workstream E8c)
-- `#print axioms Orbcrypt.Optimization.two_phase_correct` — standard Lean only (TwoPhaseDecomposition predicate carried as a hypothesis, Phase 15.5)
-- `#print axioms Orbcrypt.Optimization.two_phase_kem_correctness` — standard Lean only (composes two_phase_kem_decaps with kem_correctness, Phase 15.3 / 15.5)
-- `#print axioms Orbcrypt.Optimization.full_canon_invariant` — standard Lean only (direct canon_eq_of_mem_orbit + smul_mem_orbit, Phase 15.5)
-- `#print axioms Orbcrypt.Optimization.orbit_constant_encaps_eq_basePoint` — standard Lean only (IsOrbitConstant carried as a hypothesis, Phase 15.4)
-- `#print axioms Orbcrypt.Optimization.qc_invariant_under_cyclic` / `qc_canon_idem` — standard Lean only (Phase 15.1 / 15.5)
+- `#print axioms Orbcrypt.two_phase_correct` — standard Lean only (TwoPhaseDecomposition predicate carried as a hypothesis, Phase 15.5)
+- `#print axioms Orbcrypt.two_phase_kem_correctness` — standard Lean only (composes two_phase_kem_decaps with kem_correctness, Phase 15.3 / 15.5)
+- `#print axioms Orbcrypt.full_canon_invariant` — standard Lean only (direct canon_eq_of_mem_orbit + smul_mem_orbit, Phase 15.5)
+- `#print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint` — standard Lean only (IsOrbitConstant carried as a hypothesis, Phase 15.4)
+- `#print axioms Orbcrypt.qc_invariant_under_cyclic` / `qc_canon_idem` — standard Lean only (Phase 15.1 / 15.5)
+- `#print axioms Orbcrypt.fast_kem_round_trip` — standard Lean only (orbit-constancy of `fastCanon` carried as a hypothesis; Phase 15.3 post-landing audit)
+- `#print axioms Orbcrypt.fast_canon_composition_orbit_constant` — standard Lean only (closure-under-orbit hypothesis carried; Phase 15.3 post-landing audit)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

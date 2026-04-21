@@ -9,7 +9,6 @@ the axiom sets.
 -/
 
 open Orbcrypt
-open Orbcrypt.Optimization
 
 -- Work Unit 15.5: core correctness
 #print axioms two_phase_correct
@@ -27,3 +26,10 @@ open Orbcrypt.Optimization
 -- QC canonical form orbit-invariance and idempotence
 #print axioms qc_invariant_under_cyclic
 #print axioms qc_canon_idem
+
+-- Phase 15 audit follow-up: orbit-constancy-based KEM correctness
+-- (the actual statement that the GAP `FastEncaps` / `FastDecaps`
+-- pair satisfies; does NOT require the strong `TwoPhaseDecomposition`
+-- predicate, which fails for the default fallback wreath-product G).
+#print axioms fast_kem_round_trip
+#print axioms fast_canon_composition_orbit_constant

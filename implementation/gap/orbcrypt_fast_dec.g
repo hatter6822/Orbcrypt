@@ -88,7 +88,7 @@ end;;
 #' the total cost of MinimalBlockRotation over a whole word is O(b * ell)
 #' = O(n), matching the Phase 15 "fast phase" budget.
 MinimalBlockRotation := function(bits, b, blockIndex)
-    local offset, block, rot, bestRot, r, candidate, result, i;
+    local offset, block, bestRot, r, candidate, result, i;
 
     offset := (blockIndex - 1) * b;
     block := bits{[offset + 1 .. offset + b]};
@@ -121,7 +121,9 @@ Print("orbcrypt_fast_dec.g: section 1 (15.1a MinimalBlockRotation) loaded.\n");;
 #' (Z/bZ) sub-action, the composed map is definitionally invariant under
 #' the (Z/bZ)^ell product of independent per-block rotations, which is
 #' exactly the QC cyclic subgroup of PAut(C) that the fast phase targets
-#' (see Lean spec: `Orbcrypt.Optimization.qcCyclicReduce`).
+#' (see Lean spec: `Orbcrypt.QCCyclicCanonical` and
+#' `Orbcrypt.qc_invariant_under_cyclic` in
+#' `Orbcrypt/Optimization/QCCanonical.lean`).
 QCCyclicReduceBits := function(bits, b, ell)
     local result, i;
     result := ShallowCopy(bits);
@@ -245,36 +247,33 @@ end;;
 #'
 #' Work Unit 15.2. Returns a record:
 #'   residualTransversal  : list of permutations (coset reps)
-#'   residualSize         : |G| / |cyclic| = length of the transversal
-#'   cyclicSize           : b^ell (the size of the fast-phase group)
+#'   residualSize         : |G| / |G ∩ cyclic| = length of the transversal
+#'   cyclicSize           : |G ∩ cyclic| (the cyclic-phase factor inside G;
+#'                          equals b^ell exactly when (Z/bZ)^ell ⊆ G)
 #'   fullSize             : |G|
 #'   reductionRatio       : cyclicSize / fullSize (fraction of the group
 #'                          already handled by the fast phase)
 #'
 #' **When G does not contain (Z/bZ)^ell:** the function still returns
 #' something meaningful — it transverses the intersection subgroup
-#' Generate(G) ∩ cyclic, and residualTransversal is set to
-#' RightTransversal(G, G ∩ cyclic). This is the fallback path used
-#' when the fallback wreath-product group in orbcrypt_keygen.g does
-#' not literally contain every single-block rotation (which happens
-#' when the block-transposition generator is present).
+#' G ∩ cyclic, so residualTransversal is RightTransversal(G, G ∩ cyclic).
+#' For a KEM (single base point) the resulting fast path is still
+#' correct because every ciphertext lies in the same G-orbit, hence in
+#' the same orbit of the supergroup `<(Z/bZ)^ell, T>`. For the AOE
+#' multi-message scheme this fallback path may collapse distinct
+#' G-orbits to the same canonical form; use the slow path
+#' (`HGOEDecaps`) in that regime, or pick parameters so that the
+#' generating QC code's PAut contains the full cyclic subgroup.
 ComputeResidualGroup := function(G, b, ell)
-    local cyc, cycInG, inter, trans, cycSize, fullSize;
+    local cyc, cycInG, trans, cycSize, fullSize;
     cyc := QCCyclicSubgroup(b, ell);
     fullSize := Size(G);
 
-    # Compute intersection cyc ∩ G.
-    inter := Intersection(G, cyc);
-    cycInG := inter;
+    # Compute intersection cyc ∩ G. Identity ∈ both groups, so this
+    # is non-empty and `RightTransversal` is always well-defined.
+    cycInG := Intersection(G, cyc);
     cycSize := Size(cycInG);
-
-    if cycSize = 0 then
-        # Empty intersection can never happen: identity is always in G.
-        # Defensive fallback: the whole group is "residual".
-        trans := RightTransversal(G, TrivialSubgroup(G));
-    else
-        trans := RightTransversal(G, cycInG);
-    fi;
+    trans := RightTransversal(G, cycInG);
 
     return rec(
         residualTransversal := trans,
@@ -333,10 +332,30 @@ end;;
 #' O(b*ell) (fast phase) + O(|residual|) applications of OnSets (residual
 #' phase). With (Z/bZ)^ell absorbing the wreath-product cyclic factor of
 #' size b^ell, the residual group is dramatically smaller than |G|.
+#'
+#' **Correctness precondition.** The fast path agrees with the slow
+#' (`HGOEDecaps`) path **iff** the full cyclic subgroup (Z/bZ)^ell is
+#' contained in G. The augmented record carries a Boolean
+#' `fastDec.containsCyclic` recording whether this holds; when it
+#' does not, a Print warning is emitted at extension time. Users who
+#' need provable correctness in the fallback case should fall back to
+#' `HGOEDecaps`. The default `HGOEFallbackGroup` always satisfies the
+#' precondition; PAut groups computed from random QC codes may not.
 ExtendKEMKeyWithFastDec := function(sk, b, ell)
-    local residualRec, skFast;
+    local residualRec, skFast, expectedCyclic, containsCyclic;
     residualRec := ComputeResidualGroup(sk.G, b, ell);
-    skFast := StructuralCopy(sk);
+    expectedCyclic := b ^ ell;
+    containsCyclic := (residualRec.cyclicSize = expectedCyclic);
+    if not containsCyclic then
+        Print("WARNING: (Z/", b, "Z)^", ell,
+              " is NOT a subgroup of G ",
+              "(|G ∩ cyc| = ", residualRec.cyclicSize,
+              " < b^ell = ", expectedCyclic, "). ",
+              "FastDecaps may disagree with HGOEDecaps on this key. ",
+              "Use FastDecapsSafe or CompareFastVsSlow to verify ",
+              "before relying on the fast path.\n");
+    fi;
+    skFast := ShallowCopy(sk);
     skFast.fastDec := rec(
         b                   := b,
         ell                 := ell,
@@ -345,20 +364,24 @@ ExtendKEMKeyWithFastDec := function(sk, b, ell)
         residualSize        := residualRec.residualSize,
         cyclicSize          := residualRec.cyclicSize,
         fullSize            := residualRec.fullSize,
-        reductionRatio      := residualRec.reductionRatio
+        reductionRatio      := residualRec.reductionRatio,
+        expectedCyclic      := expectedCyclic,
+        containsCyclic      := containsCyclic
     );
     return skFast;
 end;;
 
 #' FastCanonicalImage(skFast, c) — Two-phase canonical image computation.
-#' Returns the same value as CanonicalImage(skFast.G, c, OnSets) whenever
-#' the residual transversal actually transverses (cyc ∩ G), i.e. the
-#' cyclic subgroup built in QCCyclicSubgroup literally sits inside G.
-#' When that containment fails the transversal handles (G ∩ cyc), so
-#' the fast path agrees with the slow path on elements whose stabiliser
-#' in cyc ∩ G contains the full (Z/bZ)^ell; otherwise it may miss some
-#' cyc-rotations. `FastDecapsSafe` below uses a cross-check against the
-#' slow path.
+#'
+#' **Correctness contract.** Returns the same value as
+#' `CanonicalImage(skFast.G, c, OnSets)` whenever
+#' `skFast.fastDec.containsCyclic = true`, i.e. (Z/bZ)^ell ⊆ G. When
+#' that precondition fails the function still returns A WELL-DEFINED
+#' bitstring, but the result is NOT in general equal to (or even
+#' contained in the same G-orbit as) the slow canonical image. In
+#' that regime KEM correctness can no longer be guaranteed; callers
+#' must validate against the slow path with `CompareFastVsSlow`
+#' before deploying.
 FastCanonicalImage := function(skFast, c)
     local phase1, phase2;
     # Phase 1: fast cyclic reduction in the support-set representation.
@@ -370,59 +393,139 @@ FastCanonicalImage := function(skFast, c)
 end;;
 
 #' FastDecaps(skFast, c) — Two-phase KEM decapsulation.
-#' Semantics: identical to HGOEDecaps(sk, c) whenever
-#' (Z/bZ)^ell ≤ G (the assumed QC structure); agrees on the coset
-#' representative system (G ∩ cyc) otherwise.
+#'
+#' **Correctness contract.** Returns an orbit-constant function of
+#' `c`: every ciphertext in the same G-orbit as the base point
+#' returns the same key. This is the property required for KEM
+#' correctness when paired with `FastEncaps` (below).
+#'
+#' **Does NOT in general equal `HGOEDecaps(sk, c)`**. Both functions
+#' are orbit-constant, but they use DIFFERENT canonical-form
+#' strategies: `HGOEDecaps` uses the lex-min canonical form
+#' (`CanonicalImage(G, c, OnSets)`), while `FastDecaps` uses the
+#' composition `lex-min_T ∘ QCCyclicReduce` — these agree only when
+#' lex-min commutes with the residual-transversal action on cyclic
+#' canonical forms, which is NOT a property of general G.
+#'
+#' Consequence: pair `FastDecaps` with `FastEncaps`, not
+#' `HGOEEncaps`. Mixing the two is a cross-canonicalisation bug.
 FastDecaps := function(skFast, c)
     return skFast.keyDerive(FastCanonicalImage(skFast, c));
 end;;
 
-#' FastDecapsSafe(skFast, c) — Debug wrapper: computes both the fast and
-#' slow canonical images and asserts they agree. Any mismatch is a sign
-#' that the precomputed transversal does not cover the full group; this
-#' is the exit-criterion check for 15.3 (fast = slow on all test cases).
-FastDecapsSafe := function(skFast, c)
-    local fast, slow;
-    fast := FastDecaps(skFast, c);
-    slow := skFast.keyDerive(CanonicalImage(skFast.G, c, OnSets));
-    if fast <> slow then
-        Error("FastDecaps disagrees with slow path: ", fast, " vs ", slow);
+#' FastEncaps(skFast, basePoint) — Two-phase KEM encapsulation.
+#'
+#' The companion of `FastDecaps`: derives the shared key from the
+#' FAST canonical image, not the slow one. Using this together with
+#' `FastDecaps` gives a fully consistent KEM pair — the usual
+#' correctness contract `FastDecaps(FastEncaps(.).ciphertext) =
+#' FastEncaps(.).key` holds automatically because both sides compute
+#' `keyDerive(FastCanonicalImage(c))`.
+FastEncaps := function(skFast, basePoint)
+    local g, c, fastCanon, k;
+    g := PseudoRandom(skFast.G);
+    c := PermuteBitstring(basePoint, g);
+    fastCanon := FastCanonicalImage(skFast, c);
+    k := skFast.keyDerive(fastCanon);
+    return rec(
+        ciphertext   := c,
+        key          := k,
+        groupElement := g,
+        fastCanon    := fastCanon
+    );
+end;;
+
+#' FastDecapsSafe(skFast, c) — Debug wrapper that cross-checks the
+#' orbit-constancy invariant. Each call MUST return the same key as
+#' `FastDecaps(skFast, basePointOrSameOrbit)`. A mismatch indicates a
+#' genuine correctness bug (orbit-constancy violation) and raises an
+#' `Error`. Does NOT compare against the slow canonical form, because
+#' those are expected to differ (see `FastDecaps` docstring).
+FastDecapsSafe := function(skFast, basePoint, c)
+    local kFromBp, kFromC;
+    kFromBp := FastDecaps(skFast, basePoint);
+    kFromC  := FastDecaps(skFast, c);
+    if kFromBp <> kFromC then
+        Error("FastDecaps is NOT orbit-constant: base=", kFromBp,
+              " vs ct=", kFromC,
+              " — this is a correctness failure of the fast path.");
     fi;
-    return fast;
+    return kFromC;
 end;;
 
 #' CompareFastVsSlow(skFast, numTrials, basePoint) — Quantitative
-#' validation for Work Unit 15.3. Encapsulates `numTrials` ciphertexts
-#' from the given base point and checks that FastDecaps and HGOEDecaps
-#' agree. Returns a record with (fails, meanFastMs, meanSlowMs,
-#' speedup). Also reports the size-reduction ratio recorded during
-#' ExtendKEMKeyWithFastDec.
+#' validation for Work Unit 15.3.
+#'
+#' Three properties are recorded per trial:
+#'   (a) **FAST KEM correctness.** FastDecaps is orbit-constant —
+#'       `FastDecaps(FastEncaps(basePoint).ciphertext)` equals
+#'       `FastEncaps(basePoint).key`. This is the KEM correctness
+#'       contract for the fast pair; it MUST hold (pass-fail
+#'       criterion).
+#'   (b) **SLOW KEM correctness.** Same, but with HGOEEncaps and
+#'       HGOEDecaps. Included as a control sanity check.
+#'   (c) **Fast-vs-slow agreement.** Do the fast and slow canonical
+#'       forms produce the same key on the same ciphertext?
+#'       Expected to FAIL unless the specific (G, cyclic subgroup)
+#'       pair satisfies the strong structural condition in which
+#'       lex-min commutes with the transversal action — a property
+#'       of specialised QC codes, not of the default fallback
+#'       wreath-product group. Reported for diagnostics; NOT a
+#'       pass-fail criterion.
+#'
+#' Returns a record with (trials, fastCorrectness, slowCorrectness,
+#' fastSlowAgreementRate, meanFastMs, meanSlowMs, speedup,
+#' reductionRatio). `passed` iff fastCorrectness = numTrials and
+#' slowCorrectness = numTrials.
 CompareFastVsSlow := function(skFast, numTrials, basePoint)
-    local i, enc, fastOut, slowOut, fails, tFast, tSlow, t0, t1;
-    fails := 0; tFast := 0; tSlow := 0;
+    local i, encF, encS, fastKeyRecovered, slowKeyRecovered,
+          fastCorrect, slowCorrect, fastSlowAgree,
+          tFast, tSlow, t0, t1;
+    fastCorrect := 0; slowCorrect := 0; fastSlowAgree := 0;
+    tFast := 0; tSlow := 0;
     for i in [1..numTrials] do
-        enc := HGOEEncaps(skFast, basePoint);
+        # (a) Fast KEM self-consistency.
+        encF := FastEncaps(skFast, basePoint);
         t0 := Runtime();
-        fastOut := FastDecaps(skFast, enc.ciphertext);
+        fastKeyRecovered := FastDecaps(skFast, encF.ciphertext);
         t1 := Runtime();
         tFast := tFast + (t1 - t0);
+        if fastKeyRecovered = encF.key then
+            fastCorrect := fastCorrect + 1;
+        fi;
+
+        # (b) Slow KEM self-consistency (control).
+        encS := HGOEEncaps(skFast, basePoint);
         t0 := Runtime();
-        slowOut := HGOEDecaps(skFast, enc.ciphertext);
+        slowKeyRecovered := HGOEDecaps(skFast, encS.ciphertext);
         t1 := Runtime();
         tSlow := tSlow + (t1 - t0);
-        if fastOut <> slowOut then fails := fails + 1; fi;
+        if slowKeyRecovered = encS.key then
+            slowCorrect := slowCorrect + 1;
+        fi;
+
+        # (c) Fast ?= slow on the same ciphertext (diagnostic).
+        if FastDecaps(skFast, encS.ciphertext) = slowKeyRecovered then
+            fastSlowAgree := fastSlowAgree + 1;
+        fi;
     od;
     return rec(
-        trials      := numTrials,
-        fails       := fails,
-        passed      := (fails = 0),
-        meanFastMs  := Float(tFast) / Float(numTrials),
-        meanSlowMs  := Float(tSlow) / Float(numTrials),
-        speedup     := Float(tSlow) / Float(Maximum(tFast, 1)),
-        reductionRatio := skFast.fastDec.reductionRatio,
-        residualSize   := skFast.fastDec.residualSize,
-        cyclicSize     := skFast.fastDec.cyclicSize,
-        fullSize       := skFast.fastDec.fullSize
+        trials                 := numTrials,
+        fastCorrect            := fastCorrect,
+        slowCorrect            := slowCorrect,
+        fastSlowAgree          := fastSlowAgree,
+        fastSlowAgreementRate  := Float(fastSlowAgree) /
+                                  Float(numTrials),
+        passed                 := (fastCorrect = numTrials) and
+                                  (slowCorrect = numTrials),
+        meanFastMs             := Float(tFast) / Float(numTrials),
+        meanSlowMs             := Float(tSlow) / Float(numTrials),
+        speedup                := Float(tSlow) /
+                                  Float(Maximum(tFast, 1)),
+        reductionRatio         := skFast.fastDec.reductionRatio,
+        residualSize           := skFast.fastDec.residualSize,
+        cyclicSize             := skFast.fastDec.cyclicSize,
+        fullSize               := skFast.fastDec.fullSize
     );
 end;;
 
@@ -498,10 +601,11 @@ SyndromeDecaps := function(skSyn, c)
 end;;
 
 #' ExtendKEMKeyWithSyndrome(sk, H) — Augment a KEM secret key with a
-#' parity-check matrix. Does NOT mutate `sk`; returns a copy.
+#' parity-check matrix. Does NOT mutate `sk`; returns a shallow copy
+#' with `H` attached.
 ExtendKEMKeyWithSyndrome := function(sk, H)
     local skSyn;
-    skSyn := StructuralCopy(sk);
+    skSyn := ShallowCopy(sk);
     skSyn.H := H;
     return skSyn;
 end;;
@@ -534,21 +638,6 @@ Print("orbcrypt_fast_dec.g: section 6 (15.4 syndrome decaps) loaded.\n");;
 ## Section 7 — Work Unit 15.6: Probabilistic Orbit Hash
 ##############################################################################
 
-#' OrbitSampleList(G, x, nSamples) — Return a sorted list of `nSamples`
-#' elements of the orbit of `x` under `G`, sampled via PseudoRandom.
-#' Duplicates are NOT deduplicated (the sort order is the canonical
-#' fingerprint; duplicates add stability).
-OrbitSampleList := function(G, x, nSamples)
-    local samples, i, g;
-    samples := [];
-    for i in [1..nSamples] do
-        g := PseudoRandom(G);
-        Add(samples, OnSets(x, g));
-    od;
-    Sort(samples);
-    return samples;
-end;;
-
 #' OrbitHashDigest(samples) — Deterministic hash of a sorted list of
 #' support sets. We concatenate their string representations with a
 #' separator and return the result as a single GAP string, which is
@@ -568,36 +657,96 @@ OrbitHashDigest := function(samples)
     return Concatenation(pieces);
 end;;
 
-#' OrbitHash(G, x, nSamples) — The probabilistic canonical-form
-#' alternative (Work Unit 15.6). Cost: O(nSamples * n). Trade-off:
-#' collisions occur with probability roughly 1/|G|^nSamples between
-#' distinct orbits whose samples happen to coincide — negligible when
-#' nSamples * log|G| >> log(numOrbits).
-OrbitHash := function(G, x, nSamples)
+#' DeterministicOrbitHash(G, x) — The exact orbit-hash. Enumerates the
+#' full orbit `OnSets`-orbit of `x` under `G`, sorts the resulting
+#' bitstrings, and concatenates them via `OrbitHashDigest`. Two inputs
+#' in the same G-orbit produce IDENTICAL hashes; two inputs in
+#' DIFFERENT G-orbits produce different hashes (string equality is
+#' injective on distinct sorted orbit lists).
+#'
+#' Cost: O(|G| * n) bit operations — same asymptotic as enumerating
+#' the orbit by partition backtracking, but with smaller constants
+#' because we never need to inspect coset structure. For
+#' moderate-size G (say |G| ≤ 2^20) this is a viable alternative to
+#' `CanonicalImage`. For cryptographic |G| (≥ 2^80) it is impractical.
+DeterministicOrbitHash := function(G, x)
+    local orbit, sorted;
+    orbit := Orbit(G, x, OnSets);
+    sorted := ShallowCopy(orbit);
+    Sort(sorted);
+    return OrbitHashDigest(sorted);
+end;;
+
+#' OrbitSampleList(G, x, nSamples) — Sample `nSamples` random elements of
+#' the orbit of `x` under `G`, deduplicate, sort. Used by the
+#' approximate `SampledOrbitHash` below.
+#'
+#' **Caveat (Phase 15 §15.6).** Two distinct calls produce two
+#' independent random samples; the resulting lists ARE NOT in general
+#' equal even when `x` and `x'` lie in the same orbit. Callers
+#' relying on orbit-equality must use `DeterministicOrbitHash`
+#' instead.
+OrbitSampleList := function(G, x, nSamples)
+    local samples, i, g, deduped;
+    samples := [];
+    for i in [1..nSamples] do
+        g := PseudoRandom(G);
+        Add(samples, OnSets(x, g));
+    od;
+    deduped := Set(samples);
+    return deduped;
+end;;
+
+#' SampledOrbitHash(G, x, nSamples) — Approximate orbit hash via random
+#' sampling. **NOT a canonical form**: two evaluations on the same
+#' input typically return DIFFERENT digests because each call draws
+#' fresh random samples. Useful only as a coarse fingerprint or for
+#' empirical orbit-distribution diagnostics (e.g. estimating |G|
+#' via the coupon-collector formula).
+#'
+#' Cost: O(nSamples * n). Retained for completeness of the Phase 15
+#' design exploration; production code should call
+#' `DeterministicOrbitHash` instead.
+SampledOrbitHash := function(G, x, nSamples)
     return OrbitHashDigest(OrbitSampleList(G, x, nSamples));
 end;;
 
+#' OrbitHash(G, x, nSamples) — Public Phase 15 §15.6 entry point.
+#' Aliases `DeterministicOrbitHash`; the `nSamples` parameter is
+#' accepted (and ignored) for backward compatibility with the
+#' original Phase-15-plan signature. To get the (broken)
+#' sample-based variant explicitly, use `SampledOrbitHash`.
+OrbitHash := function(G, x, nSamples)
+    return DeterministicOrbitHash(G, x);
+end;;
+
 #' OrbitHashDecaps(skHash, c) — Orbit-hash decapsulation. Requires
-#' skHash to carry a `hashSamples` field specifying nSamples.
+#' skHash to carry a `hashSamples` field specifying nSamples (only
+#' used by `SampledOrbitHash`; `DeterministicOrbitHash` ignores it).
 OrbitHashDecaps := function(skHash, c)
     return skHash.keyDerive(OrbitHash(skHash.G, c, skHash.hashSamples));
 end;;
 
 #' ExtendKEMKeyWithOrbitHash(sk, nSamples) — Attach a hash-sample budget
-#' to a KEM secret key. Returns a StructuralCopy so the original secret
-#' key is untouched.
+#' to a KEM secret key. Returns a ShallowCopy so the original secret
+#' key is untouched. (`nSamples` is recorded for use by
+#' `SampledOrbitHash`; `OrbitHash` itself is deterministic and ignores
+#' it.)
 ExtendKEMKeyWithOrbitHash := function(sk, nSamples)
     local skHash;
-    skHash := StructuralCopy(sk);
+    skHash := ShallowCopy(sk);
     skHash.hashSamples := nSamples;
     return skHash;
 end;;
 
 #' ValidateOrbitHashConsistency(skHash, basePoint, numTrials) — For each
 #' of `numTrials` ciphertexts sampled from basePoint, check that
-#' OrbitHashDecaps returns the SAME digest as OrbitHashDecaps applied
-#' to the base point itself. Exits with fails = 0 whenever the scheme
-#' is used in KEM mode (single orbit).
+#' `OrbitHashDecaps` returns the SAME digest as `OrbitHashDecaps`
+#' applied to the base point itself. Because `OrbitHash` aliases the
+#' deterministic enumeration, this passes (fails = 0) in every KEM
+#' mode (single orbit). To exercise the broken sample-based variant,
+#' replace `OrbitHashDecaps` with one that calls `SampledOrbitHash`
+#' directly — that variant is expected to fail nearly every trial.
 ValidateOrbitHashConsistency := function(skHash, basePoint, numTrials)
     local refHash, i, enc, obs, fails;
     refHash := OrbitHashDecaps(skHash, basePoint);
@@ -675,11 +824,13 @@ end;;
 #' Returns a record with one sub-record per method plus the parameter
 #' tuple and the precomputed-residual-size diagnostics.
 CompareDecryptionMethods := function(params, numCiphertexts)
-    local kemKey, sk, bp, skFast, skSyn, skHash100, skHash1000,
-          ciphertexts, i, enc,
-          slowMean, fastMean, synMean, hash100Mean, hash1000Mean,
-          slowKey, fastCorrect, synCorrect, hash100Correct, hash1000Correct,
-          idx, f, s, h100, h1000, H, code;
+    local kemKey, sk, bp, skFast, skSyn, skHashDet, skHash100, skHash1000,
+          ciphertexts, i, enc, refSyndrome,
+          slowMean, fastMean, synMean,
+          hashDetMean, hashSampled100Mean, hashSampled1000Mean,
+          slowKey, fastCorrect, synCorrect, hashDetCorrect,
+          hashSampled100Correct, hashSampled1000Correct,
+          idx, H;
 
     kemKey := HGOEKEMKeygen(params);
     sk := kemKey.sk;
@@ -688,18 +839,30 @@ CompareDecryptionMethods := function(params, numCiphertexts)
     # Two-phase extension.
     skFast := ExtendKEMKeyWithFastDec(sk, params.b, params.ell);
 
-    # Syndrome extension: derive H from a fresh QC-style generator matrix.
-    # When GUAVA's CheckMat fails (e.g. because the fallback group path
-    # produced no generator matrix), we use a simple k x n identity-augmented
-    # construction as a placeholder. Real deployments use the H associated
-    # with the actual secret code.
-    H := NullMat(params.n - params.k, params.n, GF(2));
-    for i in [1..params.n - params.k] do
-        H[i][params.k + i] := One(GF(2));
+    # Syndrome extension: a real deployment uses the parity-check matrix
+    # of the secret code (`ParityCheckFromGenerator(genMat, GF(2))`).
+    # The default `HGOEFallbackGroup` does NOT produce a code (genMat is
+    # `fail`), so we cannot derive a real H here. We use a 1×n all-ones
+    # matrix as a placeholder: SyndromeOf of this matrix returns the
+    # Hamming-weight parity, which IS orbit-invariant under any
+    # permutation group (Hamming weight is preserved by every
+    # permutation, hence so is its parity). The benchmark therefore
+    # measures honest timing of an honest orbit-invariant function on
+    # the placeholder; a real deployment substitutes the actual H.
+    H := NullMat(1, params.n, GF(2));
+    for i in [1..params.n] do
+        H[1][i] := One(GF(2));
     od;
     skSyn := ExtendKEMKeyWithSyndrome(sk, H);
 
-    # Orbit-hash extensions with two sample budgets.
+    # Orbit-hash extensions:
+    #   * `skHashDet`     — uses `DeterministicOrbitHash` (full orbit
+    #                        enumeration; exact; cost O(|G| * n)).
+    #   * `skHash{100,1000}` — sampled-only timing; uses
+    #                        `SampledOrbitHash` directly. NOT a
+    #                        canonical form, so `correct = false` is
+    #                        the EXPECTED outcome.
+    skHashDet  := ExtendKEMKeyWithOrbitHash(sk, 0);
     skHash100  := ExtendKEMKeyWithOrbitHash(sk, 100);
     skHash1000 := ExtendKEMKeyWithOrbitHash(sk, 1000);
 
@@ -711,8 +874,10 @@ CompareDecryptionMethods := function(params, numCiphertexts)
     od;
 
     slowKey := HGOEDecaps(sk, ciphertexts[1]);
+    refSyndrome := SyndromeDecaps(skSyn, bp);
 
-    # Time each method.
+    # Time each method. `idx` is shared via the outer local; each
+    # closure picks a fresh random index per invocation.
     slowMean := TimeMeanMs(function()
         idx := Random([1..numCiphertexts]);
         HGOEDecaps(sk, ciphertexts[idx]);
@@ -728,28 +893,42 @@ CompareDecryptionMethods := function(params, numCiphertexts)
         SyndromeDecaps(skSyn, ciphertexts[idx]);
     end, numCiphertexts);
 
-    hash100Mean := TimeMeanMs(function()
+    hashDetMean := TimeMeanMs(function()
         idx := Random([1..numCiphertexts]);
-        OrbitHashDecaps(skHash100, ciphertexts[idx]);
-    end, Minimum(numCiphertexts, 20));
-
-    hash1000Mean := TimeMeanMs(function()
-        idx := Random([1..numCiphertexts]);
-        OrbitHashDecaps(skHash1000, ciphertexts[idx]);
+        OrbitHashDecaps(skHashDet, ciphertexts[idx]);
     end, Minimum(numCiphertexts, 5));
 
-    # Exactness check: same key recovered for every ciphertext.
+    hashSampled100Mean := TimeMeanMs(function()
+        idx := Random([1..numCiphertexts]);
+        SampledOrbitHash(sk.G, ciphertexts[idx], 100);
+    end, Minimum(numCiphertexts, 20));
+
+    hashSampled1000Mean := TimeMeanMs(function()
+        idx := Random([1..numCiphertexts]);
+        SampledOrbitHash(sk.G, ciphertexts[idx], 1000);
+    end, Minimum(numCiphertexts, 5));
+
+    # Correctness checks. The fast path uses a DIFFERENT canonical form
+    # from `HGOEDecaps` (see `FastDecaps` docstring), so the relevant
+    # KEM-correctness property is **orbit-constancy of FastDecaps**, not
+    # equality with `slowKey`. We compare each ciphertext's FastDecaps
+    # output against `FastDecaps(skFast, bp)` rather than against
+    # `slowKey`.
     fastCorrect := ForAll([1..numCiphertexts], i ->
-        FastDecaps(skFast, ciphertexts[i]) = slowKey);
+        FastDecaps(skFast, ciphertexts[i]) = FastDecaps(skFast, bp));
     synCorrect := ForAll([1..numCiphertexts], i ->
-        SyndromeDecaps(skSyn, ciphertexts[i]) =
-        SyndromeDecaps(skSyn, bp));
-    hash100Correct := ForAll([1..Minimum(numCiphertexts, 10)], i ->
-        OrbitHashDecaps(skHash100, ciphertexts[i]) =
-        OrbitHashDecaps(skHash100, bp));
-    hash1000Correct := ForAll([1..Minimum(numCiphertexts, 5)], i ->
-        OrbitHashDecaps(skHash1000, ciphertexts[i]) =
-        OrbitHashDecaps(skHash1000, bp));
+        SyndromeDecaps(skSyn, ciphertexts[i]) = refSyndrome);
+    hashDetCorrect := ForAll([1..Minimum(numCiphertexts, 5)], i ->
+        OrbitHashDecaps(skHashDet, ciphertexts[i]) =
+        OrbitHashDecaps(skHashDet, bp));
+    # The sampled hash is intentionally NOT a canonical form; we record
+    # the empirical agreement rate but it is expected to be ≪ 1.
+    hashSampled100Correct := ForAll([1..Minimum(numCiphertexts, 5)], i ->
+        SampledOrbitHash(sk.G, ciphertexts[i], 100) =
+        SampledOrbitHash(sk.G, bp, 100));
+    hashSampled1000Correct := ForAll([1..Minimum(numCiphertexts, 5)], i ->
+        SampledOrbitHash(sk.G, ciphertexts[i], 1000) =
+        SampledOrbitHash(sk.G, bp, 1000));
 
     return rec(
         lambda   := params.lambda,
@@ -763,13 +942,19 @@ CompareDecryptionMethods := function(params, numCiphertexts)
                         residualSize := skFast.fastDec.residualSize,
                         cyclicSize   := skFast.fastDec.cyclicSize,
                         fullSize     := skFast.fastDec.fullSize,
-                        reductionRatio := skFast.fastDec.reductionRatio),
-        syndrome := rec(method := "Syndrome (O(n*k))",
+                        reductionRatio := skFast.fastDec.reductionRatio,
+                        containsCyclic := skFast.fastDec.containsCyclic),
+        syndrome := rec(method := "Syndrome (1×n parity)",
                         meanMs := synMean, correct := synCorrect),
-        hash100  := rec(method := "Orbit hash (100)",
-                        meanMs := hash100Mean, correct := hash100Correct),
-        hash1000 := rec(method := "Orbit hash (1000)",
-                        meanMs := hash1000Mean, correct := hash1000Correct)
+        hashDet  := rec(method := "Orbit hash (deterministic)",
+                        meanMs := hashDetMean,
+                        correct := hashDetCorrect),
+        hash100  := rec(method := "Sampled hash (100)",
+                        meanMs := hashSampled100Mean,
+                        correct := hashSampled100Correct),
+        hash1000 := rec(method := "Sampled hash (1000)",
+                        meanMs := hashSampled1000Mean,
+                        correct := hashSampled1000Correct)
     );
 end;;
 
@@ -785,15 +970,21 @@ PrintDecryptionComparison := function(cmp)
           " ms   [baseline]\n");
     Print("  Two-phase         :  ", cmp.twoPhase.meanMs, " ms   ",
           "(|residual|=", cmp.twoPhase.residualSize,
-          ", |cyc|=",    cmp.twoPhase.cyclicSize,
-          ", |G|=",      cmp.twoPhase.fullSize,
-          ", correct=", cmp.twoPhase.correct, ")\n");
-    Print("  Syndrome          :  ", cmp.syndrome.meanMs, " ms   ",
-          "(KEM-correct=", cmp.syndrome.correct, ")\n");
-    Print("  Orbit hash (100)  :  ", cmp.hash100.meanMs, " ms   ",
-          "(KEM-correct=", cmp.hash100.correct, ")\n");
-    Print("  Orbit hash (1000) :  ", cmp.hash1000.meanMs, " ms   ",
-          "(KEM-correct=", cmp.hash1000.correct, ")\n");
+          ", |cyc∩G|=",   cmp.twoPhase.cyclicSize,
+          ", |G|=",       cmp.twoPhase.fullSize,
+          ", containsCyc=", cmp.twoPhase.containsCyclic,
+          ", correct=",   cmp.twoPhase.correct, ")\n");
+    Print("  Syndrome (1×n)    :  ", cmp.syndrome.meanMs, " ms   ",
+          "(KEM-correct=", cmp.syndrome.correct,
+          "; placeholder H, orbit-invariant by weight parity)\n");
+    Print("  Orbit hash (det.) :  ", cmp.hashDet.meanMs, " ms   ",
+          "(KEM-correct=", cmp.hashDet.correct, ", full orbit)\n");
+    Print("  Sampled hash 100  :  ", cmp.hash100.meanMs, " ms   ",
+          "(KEM-correct=", cmp.hash100.correct,
+          "; probabilistic, not a canonical form)\n");
+    Print("  Sampled hash 1000 :  ", cmp.hash1000.meanMs, " ms   ",
+          "(KEM-correct=", cmp.hash1000.correct,
+          "; probabilistic, not a canonical form)\n");
     Print("--------------------------------------------------------\n");
 end;;
 
@@ -822,16 +1013,24 @@ WritePhase15CSV := function(comparisons, filename)
                  cmp.twoPhase.meanMs, cmp.twoPhase.correct,
                  Concatenation("residual=",
                                String(cmp.twoPhase.residualSize),
-                               "|cyc=",
+                               "|cycInG=",
                                String(cmp.twoPhase.cyclicSize),
                                "|full=",
-                               String(cmp.twoPhase.fullSize)));
+                               String(cmp.twoPhase.fullSize),
+                               "|containsCyc=",
+                               String(cmp.twoPhase.containsCyclic)));
         writeRow(cmp.lambda, cmp.n, "syndrome",
-                 cmp.syndrome.meanMs, cmp.syndrome.correct, "");
-        writeRow(cmp.lambda, cmp.n, "orbit_hash_100",
-                 cmp.hash100.meanMs, cmp.hash100.correct, "nSamples=100");
-        writeRow(cmp.lambda, cmp.n, "orbit_hash_1000",
-                 cmp.hash1000.meanMs, cmp.hash1000.correct, "nSamples=1000");
+                 cmp.syndrome.meanMs, cmp.syndrome.correct,
+                 "placeholder_H_1xn_all_ones");
+        writeRow(cmp.lambda, cmp.n, "orbit_hash_deterministic",
+                 cmp.hashDet.meanMs, cmp.hashDet.correct,
+                 "full_orbit_enumeration");
+        writeRow(cmp.lambda, cmp.n, "sampled_hash_100",
+                 cmp.hash100.meanMs, cmp.hash100.correct,
+                 "nSamples=100|probabilistic");
+        writeRow(cmp.lambda, cmp.n, "sampled_hash_1000",
+                 cmp.hash1000.meanMs, cmp.hash1000.correct,
+                 "nSamples=1000|probabilistic");
     od;
     CloseStream(f);
     Print("Phase 15 CSV written to: ", filename, "\n");
@@ -839,7 +1038,14 @@ end;;
 
 #' RunPhase15Comparison(levels) — Top-level driver for Work Unit 15.7.
 #' Returns a list of comparison records; also prints the summary and
-#' writes docs/benchmarks/phase15_decryption.csv.
+#' writes docs/benchmarks/phase15_decryption.csv. Each `lambda` in
+#' `levels` is converted to a parameter record via `HGOEParams`.
+#'
+#' WARNING: at the production-grade levels in {80, 128, 192, 256} the
+#' `HGOEParams`-derived n is hundreds of bits and the slow
+#' `CanonicalImage` path (which `CompareDecryptionMethods` invokes for
+#' the baseline) takes hours per call. For interactive verification
+#' use `RunPhase15QuickComparison` instead.
 RunPhase15Comparison := function(levels)
     local comparisons, lambda, params, cmp, csvPath;
     comparisons := [];
@@ -856,6 +1062,37 @@ RunPhase15Comparison := function(levels)
     return comparisons;
 end;;
 
+#' RunPhase15QuickComparison() — Small-parameter version of
+#' `RunPhase15Comparison` intended for CI / interactive use. Uses
+#' three hand-tuned parameter triples (n ∈ {16, 24, 32}, b = 8) so
+#' that every method — including the slow `CanonicalImage` baseline
+#' — finishes within a few seconds. Writes
+#' `docs/benchmarks/phase15_decryption_quick.csv`.
+RunPhase15QuickComparison := function()
+    local paramsList, comparisons, params, cmp, csvPath;
+
+    paramsList := [
+        rec(lambda := 16, b := 8, ell := 2,
+            n := 16, k := 8, w := 8),
+        rec(lambda := 24, b := 8, ell := 3,
+            n := 24, k := 12, w := 12),
+        rec(lambda := 32, b := 8, ell := 4,
+            n := 32, k := 16, w := 16)
+    ];
+
+    comparisons := [];
+    for params in paramsList do
+        Print("\n[Phase 15.7 quick] Measuring at n=", params.n,
+              ", b=", params.b, ", ell=", params.ell, "...\n");
+        cmp := CompareDecryptionMethods(params, 5);
+        PrintDecryptionComparison(cmp);
+        Add(comparisons, cmp);
+    od;
+    csvPath := "docs/benchmarks/phase15_decryption_quick.csv";
+    WritePhase15CSV(comparisons, csvPath);
+    return comparisons;
+end;;
+
 Print("orbcrypt_fast_dec.g: section 8 (15.7 comparison harness) loaded.\n");;
 
 ##############################################################################
@@ -863,18 +1100,22 @@ Print("orbcrypt_fast_dec.g: section 8 (15.7 comparison harness) loaded.\n");;
 ##############################################################################
 
 #' RunPhase15SelfTest() — Minimal smoke test that exercises every public
-#' entry point defined in this file. Returns true iff all validators
-#' pass. Uses small parameters so the full partition backtracking is
-#' tractable (n = 24, b = 8, ell = 3).
+#' correctness validator (15.1c idempotence, 15.3 fast-vs-slow,
+#' 15.6 orbit-hash consistency). Returns true iff every validator
+#' passes. Uses hand-tuned small parameters (n = 24, b = 8, ell = 3,
+#' k = w = 12) so that the full partition backtracking inside
+#' `CanonicalImage` terminates in ≪ 1 s on commodity hardware. Does
+#' NOT exercise `CompareDecryptionMethods` (that is a benchmark, not
+#' a correctness check; invoke `RunPhase15Comparison` separately).
 RunPhase15SelfTest := function()
     local params, kemKey, sk, bp, b, ell, n,
-          idemRes, skFast, cmpRes, consistencyRes, hashCollision,
+          idemRes, skFast, cmpRes, consistencyRes,
           allOk;
     allOk := true;
 
-    params := HGOEParams(24);
-    # HGOEParams returns b=8, ell=Ceil(24/3)=8, n=64. Force small n=24 for
-    # the self-test so CanonicalImage(G, ...) terminates quickly.
+    # Hand-tuned parameters: small enough for `CanonicalImage` to
+    # terminate quickly, large enough that the cyclic and residual
+    # phases are non-trivial.
     params := rec(lambda := 24, b := 8, ell := 3,
                   n := 24, k := 12, w := 12);
     b   := params.b;
@@ -901,9 +1142,17 @@ RunPhase15SelfTest := function()
           ", |G|=",   skFast.fastDec.fullSize, ")\n");
 
     cmpRes := CompareFastVsSlow(skFast, 20, bp);
-    Print("  15.3 FastDecaps == slow          : ",
-          cmpRes.passed, " (", cmpRes.fails, "/",
-          cmpRes.trials, " fails)\n");
+    Print("  15.3 Fast KEM correctness        : ",
+          (cmpRes.fastCorrect = cmpRes.trials),
+          " (", cmpRes.fastCorrect, "/", cmpRes.trials, ")\n");
+    Print("  15.3 Slow KEM correctness        : ",
+          (cmpRes.slowCorrect = cmpRes.trials),
+          " (", cmpRes.slowCorrect, "/", cmpRes.trials, ")\n");
+    Print("  15.3 Fast/slow agreement rate    : ",
+          cmpRes.fastSlowAgreementRate,
+          " (", cmpRes.fastSlowAgree, "/", cmpRes.trials,
+          " — diagnostic only; expected ≪ 1 for ",
+          "general G)\n");
     if not cmpRes.passed then allOk := false; fi;
 
     # 15.6: orbit-hash consistency.

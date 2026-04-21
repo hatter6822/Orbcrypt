@@ -38,7 +38,6 @@ over the choice of `canon`.
 -/
 
 namespace Orbcrypt
-namespace Optimization
 
 variable {n : ℕ}
 
@@ -86,5 +85,4 @@ theorem qc_canon_idem
     qc.canon (qc.canon x) = qc.canon x :=
   canon_idem qc x
 
-end Optimization
 end Orbcrypt
