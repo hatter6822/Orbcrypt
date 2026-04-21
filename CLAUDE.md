@@ -2,7 +2,7 @@
 
 ## What this project is
 
-Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phases 1–14 complete. All formal-verification phases are done; the reference GAP implementation (Phase 11), hardness alignment (Phase 12), public-key scaffolding (Phase 13), and parameter recommendations (Phase 14) are published. Phase 15 (decryption optimisation in C/C++) is the next major workstream.
+Orbcrypt is a research-stage symmetric-key encryption scheme with formal verification in Lean 4 using Mathlib. Security arises from hiding the equivalence relation (orbit structure) that makes data meaningful, not from hiding data itself. A message is the *identity* of an orbit under a secret permutation group G ≤ S_n; a ciphertext is a uniformly random element of that orbit. The hardness assumption (OIA) reduces to Graph Isomorphism on Cai-Furer-Immerman graphs and to Permutation Code Equivalence. Current status: Phases 1–14 complete and Phase 16 (Formal Verification of New Components) complete. All formal-verification phases are done; the reference GAP implementation (Phase 11), hardness alignment (Phase 12), public-key scaffolding (Phase 13), parameter recommendations (Phase 14), and the consolidated end-to-end verification report (Phase 16, `docs/VERIFICATION_REPORT.md`) are published. Phase 15 (decryption optimisation in C/C++) is the next major workstream.
 
 ## Build and run
 
@@ -100,12 +100,15 @@ implementation/
   README.md                           Installation, usage, reproducibility guide
 docs/
   PARAMETERS.md                       Phase 14 parameter recommendation document
+  VERIFICATION_REPORT.md              Phase 16 end-to-end verification report (sorry/axiom audit, headline results, exit-criteria checklist)
   benchmarks/
     results_80.csv                    Phase 14 sweep + tier rows, λ = 80
     results_128.csv                   Phase 14 sweep + tier rows, λ = 128
     results_192.csv                   Phase 14 sweep + tier rows, λ = 192
     results_256.csv                   Phase 14 sweep + tier rows, λ = 256
     comparison.csv                    Cross-scheme comparison CSV
+scripts/
+  audit_phase_16.lean                 Phase 16 consolidated `#print axioms` audit script (153 declarations + non-vacuity witnesses)
 ```
 
 ### Module dependency graph
@@ -233,6 +236,7 @@ docs/
   HARDNESS_ANALYSIS.md                LESS/MEDS alignment, reduction chain, hardness comparison table
   PUBLIC_KEY_ANALYSIS.md              Phase 13 public-key feasibility analysis (oblivious sampling, KEM agreement, CSIDH-style)
   PARAMETERS.md                       Phase 14 parameter recommendations (3 tiers × 4 security levels)
+  VERIFICATION_REPORT.md              Phase 16 end-to-end verification report (sorry audit, axiom audit, headline-results table, exit-criteria checklist)
   benchmarks/
     results_80.csv                    Phase 14 sweep + tier rows, λ = 80
     results_128.csv                   Phase 14 sweep + tier rows, λ = 128
@@ -242,6 +246,14 @@ docs/
 implementation/
   README.md                           GAP prototype installation, usage, reproducibility guide
   gap/                                GAP source files for HGOE reference implementation
+scripts/
+  audit_phase_16.lean                 Phase 16 consolidated `#print axioms` audit script
+  audit_print_axioms.lean             Per-headline `#print axioms` script (Workstream A historical baseline)
+  audit_b_workstream.lean             Workstream B audit script (historical, F-02 + F-15)
+  audit_c_workstream.lean             Workstream C audit script (historical, F-07)
+  audit_d_workstream.lean             Workstream D audit script (historical, F-08 + F-16)
+  audit_e_workstream.lean             Workstream E audit script (historical, F-01 + F-10 + F-11 + F-17 + F-20)
+  setup_lean_env.sh                   Lean environment setup with elan SHA-256 verification
 ```
 
 ## Reading large files
@@ -442,8 +454,9 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 | 12 | Hardness Alignment (LESS/MEDS/TI) | 26-28 | 8 | ~32h | `docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md` | Complete |
 | 13 | Public-Key Extension | 26-30 | 7 | ~28h | `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` | Complete |
 | 14 | Parameter Selection & Benchmarks | 28-31 | 6 | ~20h | `docs/planning/PHASE_14_PARAMETER_SELECTION.md` | Complete |
-| 15–16 | Practical Improvements | 30+ | 17 | ~58h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Planned |
-| | **Total (1–14)** | **31** | **125** | **~346h** | | |
+| 15 | Decryption Optimisation (C/C++) | 30+ | TBD | ~20h | `docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md` | Planned |
+| 16 | Formal Verification of New Components | 30-36 | 10 | ~36h | `docs/planning/PHASE_16_FORMAL_VERIFICATION.md` | Complete |
+| | **Total (1–14, 16)** | **37** | **135** | **~382h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
 ```
@@ -685,6 +698,64 @@ Phase 14 (Parameter Selection & Benchmarks) has been completed:
 - All 6 work units (14.1–14.6) complete; no Lean source-file changes;
   GAP artefacts + docs only. `lake build` unchanged from Phase 13
   (still 32 modules, zero errors).
+
+Phase 16 (Formal Verification of New Components) has been completed:
+- `scripts/audit_phase_16.lean` — new consolidated audit script. Runs
+  `#print axioms` on **153 declarations** spanning every headline
+  result of Phases 4–14 plus the Workstream A/B/C/D/E follow-ups
+  (KEM correctness, KEM-OIA security, probabilistic IND-CPA, AEAD
+  correctness, INT_CTXT, hybrid encryption correctness, hardness
+  chain, public-key extension, every Workstream-E ε-bounded
+  reduction, etc.). Followed by §9 non-vacuity witnesses: trivial
+  KEM / DEM / MAC / AuthOrbitKEM instances on `Unit` exercising
+  `kem_correctness`, `hybrid_correctness`, `aead_correctness`,
+  `authEncrypt_is_int_ctxt`, `concreteKEMOIA_one`,
+  `concreteKEMOIA_uniform_one`, `hybrid_argument_uniform`, and
+  `uniformPMFTuple_apply` on a concrete (≤ 8-element) model. Type-
+  checking the script *is* the verification that each headline
+  result accepts well-typed inputs.
+- `.github/workflows/lean4-build.yml` — extended with a fourth CI
+  step (Work Unit 16.8). After the existing build / sorry / axiom
+  declaration checks, CI now runs `lake env lean
+  scripts/audit_phase_16.lean`, fails fast on any `sorryAx`
+  occurrence, and walks every `depends on axioms: [...]` line to
+  reject any axiom outside the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`). Hardens against any future
+  regression that hides a `sorry` behind an opaque definition or
+  introduces a custom axiom.
+- `Orbcrypt.lean` — appended a "Phase 16 Verification Audit Snapshot
+  (2026-04-21)" section at the end of the axiom-transparency report
+  (Work Unit 16.7). Records the audit-time totals: 36 source
+  modules, 0 sorries, 0 custom axioms, 153 declarations exercised by
+  the audit script, 343 public declarations all carrying docstrings,
+  5 intentional `private` helpers.
+- `docs/VERIFICATION_REPORT.md` — new prose verification report
+  (Work Unit 16.10, ~570 lines). Sections: executive summary,
+  reproduction recipe, headline results table (28 theorems with
+  status and axiom dependencies), per-phase verification matrix
+  (Phase 7 / 8 / 9 / 10 / 12 / 13), sorry audit (16.4), axiom audit
+  (16.5), module-docstring audit (16.6), root-import / dependency-
+  graph audit (16.7), CI configuration (16.8), regression audit
+  (16.9), theorem inventory (16.10b), known limitations (16.10d:
+  OIA/CompOIA assumption, GIReducesToCE/TI as Karp-claim Props,
+  `h_step` hypothesis on `indQCPA_bound_via_hybrid`,
+  `ObliviousSamplingHiding` strength, `SymmetricKeyAgreementLimitation`,
+  Carter-Wegman as satisfiability witness only, multi-query KEM-CCA
+  out of scope), and the Phase 16 exit-criteria checklist.
+- All 10 work units (16.1–16.10) complete with **zero source-file
+  changes** to existing `Orbcrypt/**/*.lean` modules: the audit
+  script + CI step + transparency-report appendix + verification
+  report are *additive only*. The Phase 16 deliverable is the
+  *machine-checkable evidence* that Phases 7–14 have preserved the
+  zero-`sorry` / zero-custom-axiom posture established at the end
+  of Phase 6.
+- Exit-criteria results: 36 modules build (3,364 jobs, zero
+  warnings); comment-aware sorry scan returns 0 occurrences;
+  axiom-declaration grep returns 0 matches; Phase 16 audit script
+  runs clean (0 `sorryAx`, 0 non-standard axioms, 54/153
+  declarations are completely axiom-free); all 11 original
+  Phase 1–6 modules build individually with unchanged axiom
+  dependencies.
 
 Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been completed:
 - `.github/workflows/lean4-build.yml` — (F-03) hardened `sorry` regex with
