@@ -628,4 +628,26 @@ example {G : Type} {X : Type} {M : Type}
     Nonempty (ConcreteHardnessChain scheme F (punitSurrogate F) 1) :=
   ConcreteHardnessChain.tight_one_exists scheme F
 
+/-- Full chain composition: combining `tight_one_exists` with
+    `concreteOIA_from_chain` produces `ConcreteOIA scheme 1`. This
+    exercises the Workstream G composition proof
+    (`hc.gi_to_oia` applied to image-specific GI hardness obtained by
+    threading `tensor_hard → tensor_to_ce → ce_to_gi`). -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) :
+    ConcreteOIA scheme 1 :=
+  let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
+  ConcreteHardnessChain.concreteOIA_from_chain hc
+
+/-- `concrete_hardness_chain_implies_1cpa_advantage_bound` fires at
+    ε = 1 via `tight_one_exists`, confirming the chain's output
+    composes with the probabilistic IND-1-CPA reduction. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    indCPAAdvantage scheme A ≤ 1 :=
+  let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
+  concrete_hardness_chain_implies_1cpa_advantage_bound scheme 1 hc A
+
 end NonVacuityWitnesses

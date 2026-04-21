@@ -208,9 +208,9 @@ example (G X M : Type*)
     (encTC : Tensor3 nT Bool → Finset (Fin mC → Bool))
     (encCG : Finset (Fin mC → Bool) → (Fin kG → Fin kG → Bool)) :
     ConcreteGIOIAImpliesConcreteOIA_viaEncoding
-      scheme (punitSurrogate Bool) encTC encCG 1 1 :=
+      scheme encTC encCG 1 1 :=
   concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
-    scheme (punitSurrogate Bool) encTC encCG
+    scheme encTC encCG
 
 -- `concrete_chain_zero_compose` exercises the full chain composition at
 -- ε = 0 under a *universal* TensorOIA hypothesis at 0. Universal
@@ -250,6 +250,121 @@ example (G X M : Type*)
     ConcreteOIA scheme 1 :=
   let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
   ConcreteHardnessChain.concreteOIA_from_chain hc
+
+-- ----------------------------------------------------------------------------
+-- Workstream G audit follow-up pressure tests:
+-- Exercise the chain with a **non-PUnit surrogate** AND **non-zero
+-- dimensions** to ensure the surrogate binding + per-encoding composition
+-- work outside the tight_one_exists degenerate case.
+-- ----------------------------------------------------------------------------
+
+/-- Custom non-PUnit surrogate: `Equiv.Perm (Fin 2)` (the 2-element
+    symmetric group) acting trivially on tensors. This is a
+    non-degenerate choice of `SurrogateTensor` — the carrier group
+    has 2 elements rather than 1. The action is trivial (identity on
+    tensors) so advantage-bound claims still discharge at ε = 1 via
+    `concreteTensorOIA_one`, but the surrogate binding is exercised
+    with a different carrier type than `punitSurrogate`. -/
+private def permTwoSurrogate (F : Type*) : SurrogateTensor F where
+  carrier := Equiv.Perm (Fin 2)
+  groupInst := inferInstance
+  fintypeInst := inferInstance
+  nonemptyInst := inferInstance
+  action := fun _ =>
+    { smul := fun _ T => T
+      one_smul := fun _ => rfl
+      mul_smul := fun _ _ _ => rfl }
+
+-- Tensor-OIA with the permTwoSurrogate carrier fires at ε = 1.
+example (T₀ T₁ : Tensor3 2 Bool) :
+    ConcreteTensorOIA (G_TI := (permTwoSurrogate Bool).carrier) T₀ T₁ 1 :=
+  concreteTensorOIA_one T₀ T₁
+
+-- `UniversalConcreteTensorOIA` at ε = 1 under the permTwoSurrogate.
+example : UniversalConcreteTensorOIA (F := Bool) (permTwoSurrogate Bool) 1 :=
+  fun T₀ T₁ => concreteTensorOIA_one T₀ T₁
+
+-- Tight constructor at non-zero dimensions. Use nT = 1, mC = 2, kG = 3
+-- with arbitrary encoders; at ε = 1 all per-encoding Props discharge
+-- via the _one_one witnesses.
+example (G X M : Type*)
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) :
+    ConcreteHardnessChain scheme Bool (permTwoSurrogate Bool) 1 :=
+  let encTC : Tensor3 1 Bool → Finset (Fin 2 → Bool) := fun _ => ∅
+  let encCG : Finset (Fin 2 → Bool) → (Fin 3 → Fin 3 → Bool) :=
+    fun _ _ _ => false
+  ConcreteHardnessChain.tight (S := permTwoSurrogate Bool)
+    (nT := 1) (mC := 2) (kG := 3)
+    (encTC := encTC)
+    (encCG := encCG)
+    (h_tensor := fun T₀ T₁ => concreteTensorOIA_one T₀ T₁)
+    (h_tc := concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one
+      (permTwoSurrogate Bool) encTC)
+    (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
+      (F := Bool) encCG)
+    (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
+      scheme encTC encCG)
+
+-- `concreteOIA_from_chain` composes end-to-end even at non-zero
+-- dimensions; the output `ConcreteOIA scheme 1` is still trivial (ε = 1)
+-- but the composition itself threads through each of tensor_hard →
+-- tensor_to_ce → ce_to_gi → gi_to_oia.
+example (G X M : Type*)
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) :
+    ConcreteOIA scheme 1 := by
+  let encTC : Tensor3 1 Bool → Finset (Fin 2 → Bool) := fun _ => ∅
+  let encCG : Finset (Fin 2 → Bool) → (Fin 3 → Fin 3 → Bool) :=
+    fun _ _ _ => false
+  let hc : ConcreteHardnessChain scheme Bool (permTwoSurrogate Bool) 1 :=
+    ConcreteHardnessChain.tight (S := permTwoSurrogate Bool)
+      (nT := 1) (mC := 2) (kG := 3)
+      (encTC := encTC) (encCG := encCG)
+      (h_tensor := fun T₀ T₁ => concreteTensorOIA_one T₀ T₁)
+      (h_tc := concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one _ _)
+      (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one _)
+      (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one _ _ _)
+  exact ConcreteHardnessChain.concreteOIA_from_chain hc
+
+-- `concrete_hardness_chain_implies_1cpa_advantage_bound` with the
+-- non-PUnit surrogate at non-zero dimensions still bounds IND-1-CPA
+-- advantage by ε = 1.
+example (G X M : Type*)
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    indCPAAdvantage scheme A ≤ 1 := by
+  let encTC : Tensor3 1 Bool → Finset (Fin 2 → Bool) := fun _ => ∅
+  let encCG : Finset (Fin 2 → Bool) → (Fin 3 → Fin 3 → Bool) :=
+    fun _ _ _ => false
+  let hc : ConcreteHardnessChain scheme Bool (permTwoSurrogate Bool) 1 :=
+    ConcreteHardnessChain.tight (S := permTwoSurrogate Bool)
+      (nT := 1) (mC := 2) (kG := 3)
+      (encTC := encTC) (encCG := encCG)
+      (h_tensor := fun T₀ T₁ => concreteTensorOIA_one T₀ T₁)
+      (h_tc := concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one _ _)
+      (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one _)
+      (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one _ _ _)
+  exact concrete_hardness_chain_implies_1cpa_advantage_bound scheme 1 hc A
+
+-- Exercise the per-encoding Props on a non-trivial encoder that
+-- actually depends on its input (not a constant). This confirms the
+-- Prop's hypothesis-consumption matches its signature and is not
+-- inadvertently dropping the encoder argument.
+example :
+    ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding
+      (punitSurrogate Bool)
+      (fun T : Tensor3 1 Bool =>
+        ({fun _ => T 0 0 0} : Finset (Fin 1 → Bool)))
+      1 1 :=
+  fun _ _ _ => concreteCEOIA_one _ _
+
+example :
+    ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding (F := Bool)
+      (fun C : Finset (Fin 1 → Bool) =>
+        fun (_ : Fin 2) (_ : Fin 2) => decide (C.card = 0))
+      1 1 :=
+  fun _ _ _ => concreteGIOIA_one _ _
 
 -- ----------------------------------------------------------------------------
 -- E5 concrete test: IND-1-CPA bound from chain at ε = 1

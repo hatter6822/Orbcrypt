@@ -297,13 +297,15 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
     Stated as a `Prop`-valued definition following the OIA pattern.
     The encoding construction is beyond this formalization's scope.
 
-    **Audit note (F-12).** This definition has no in-tree consumer today;
-    Workstream E's probabilistic hardness chain
-    (`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3–E5) is
-    scheduled to consume it as an input to `ConcreteHardnessChain`. A
-    concrete witness via the triangle-indicator tensor encoding is
-    tracked as Workstream F4. Listed in the root-file "Hardness parameter
-    Props" section for transparency. -/
+    **Audit note (F-12 / 2026-04-21 H1 follow-up).** This definition is
+    the deterministic Karp-claim Prop paired with the probabilistic
+    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` (Workstream G /
+    Fix C) in `Hardness/Reductions.lean`. A concrete witness via the
+    Grochow–Qiao structure-tensor encoding (2021) would discharge both
+    the deterministic claim and the per-encoding Prop simultaneously;
+    it is a research-scope follow-up
+    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
+    in the root-file "Hardness parameter Props" section for transparency. -/
 def GIReducesToTI : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) F),
@@ -335,9 +337,11 @@ section ConcreteTensor
     above), but Mathlib does not currently provide a `Fintype` instance for
     `GL (Fin n) F` even when `F` is finite. Abstracting over `G_TI` lets
     this workstream land without blocking on that upstream instance;
-    discharging it via the concrete `tensorAction` is tracked as
-    Workstream F4 in
-    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`. -/
+    post-Workstream-G, callers supply a specific `G_TI` via
+    `SurrogateTensor F` (Fix B). Discharging the surrogate with the
+    concrete `tensorAction` once `Fintype (GL (Fin n) F)` lands is a
+    research-scope follow-up
+    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). -/
 noncomputable def tensorOrbitDist
     {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
     [MulAction G_TI (Tensor3 n F)]
@@ -415,11 +419,16 @@ end ConcreteTensor
     surrogate, not an accidental quantifier collapse.
 
     **Field structure.** `carrier` is the group type; `action` provides
-    the per-dimension MulAction. The `[groupInst]`, `[fintypeInst]`, and
-    `[nonemptyInst]` instance fields are captured by angle brackets so
-    Lean's typeclass inference can resolve them transparently via
-    `S.carrier` at use sites (via `attribute [local instance]` inside
-    defs that need them). -/
+    the per-dimension MulAction; `groupInst` / `fintypeInst` /
+    `nonemptyInst` carry the three required typeclass instances. Lean
+    4's structure syntax does *not* support instance-field angle
+    brackets at declaration time, so the three instances are exposed as
+    regular fields here and re-registered via the four top-level
+    `instance` declarations below (`surrogateTensor_group`,
+    `surrogateTensor_fintype`, `surrogateTensor_nonempty`,
+    `surrogateTensor_mulAction`). Downstream defs referencing
+    `S.carrier` or `Tensor3 n F` pick up the instances automatically
+    via typeclass inference — no manual `letI` threading is required. -/
 structure SurrogateTensor (F : Type*) where
   /-- The underlying group carrier. -/
   carrier : Type

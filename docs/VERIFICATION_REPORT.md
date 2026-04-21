@@ -292,8 +292,9 @@ of GL³, Tensor Isomorphism reduction.
 `Hardness/Reductions.lean` — `TensorOIA`, `GIOIA`, the reduction chain,
 plus the Workstream E ε-bounded ConcreteHardnessChain.
 `Hardness/Encoding.lean` — orbit-preserving encoding interface
-(reference-only, not consumed by any reduction Prop today; tracked as
-Workstream F3/F4).
+(reference target for concrete discharges of Workstream G's per-encoding
+reduction Props; see `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
+§ 15.1 for the CFI / Grochow–Qiao research-scope discharges).
 
 ### Phase 13 — Public-key extension scaffolding
 

@@ -293,18 +293,30 @@ end ConcreteGI
 -- `[Field F]` out of this section's `variable` block avoids the linter
 -- warning about automatically included unused section variables.
 --
--- **Audit-revised shape (post-2026-04-20 follow-up).** An earlier landed
--- form of these Props was `∀ T₀ T₁ C₀ C₁, ConcreteTensorOIA T T' εT →
--- ConcreteCEOIA C C' εC`. With `T = T' = T₀` that hypothesis is trivially
--- satisfiable (same-tensor advantage is 0), so the Prop collapsed to the
--- *unrelated* universal `∀ C₀ C₁, ConcreteCEOIA C₀ C₁ εC` — the tensor
--- layer had no content. The revised form below makes both sides
--- *universal-in-the-problem-instance*: the hypothesis is "TI is εT-hard
--- for every tensor instance" and the conclusion is "CE is εC-hard for
--- every code instance". That is the honest shape of a reduction at the
--- Prop level (see the section docstring below for the cryptographic
--- justification and the `OrbitPreservingEncoding` bridge that makes it
--- concrete).
+-- **History.**
+--
+-- * *Initial Workstream E3 shape* (2026-04-18): `∀ T₀ T₁ C₀ C₁,
+--   ConcreteTensorOIA T T' εT → ConcreteCEOIA C C' εC`. With
+--   `T = T' = T₀` the hypothesis is trivially satisfiable (same-tensor
+--   advantage is 0), so the Prop collapsed to the *unrelated* universal
+--   `∀ C₀ C₁, ConcreteCEOIA C₀ C₁ εC` — the tensor layer had no content.
+-- * *Post-2026-04-20 audit follow-up*: rewritten to
+--   universal-in-the-problem-instance form
+--   (`UniversalConcreteTensorOIA εT → UniversalConcreteCEOIA εC`) so the
+--   tensor hypothesis genuinely threads through. But the universal
+--   `UniversalConcreteTensorOIA εT` implicitly quantified over every
+--   `G_TI : Type` including PUnit, so the Prop again collapsed at εT < 1
+--   for a different reason.
+-- * *Post-Workstream-G (2026-04-21)*: the universal form now takes
+--   `S : SurrogateTensor F` as a named parameter (Fix B), binding the
+--   tensor surrogate explicitly and closing the PUnit collapse. The
+--   primary reduction vocabulary is the per-encoding
+--   `*_viaEncoding` Props (Fix C, below), which name a specific encoder
+--   function `enc : α → β` and state hardness transfer through that
+--   encoder. The legacy universal→universal Props are retained as
+--   derived corollaries. See `Orbcrypt/Hardness/Encoding.lean` for the
+--   `OrbitPreservingEncoding` interface that concrete discharges use
+--   to prove the per-encoding Props.
 
 section ConcreteReductions
 
@@ -460,15 +472,18 @@ theorem concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
     Parameters:
     * `scheme : OrbitEncScheme G X M` — the scheme whose advantage we
       bound.
-    * `S : SurrogateTensor F` — the chain's tensor-layer surrogate
-      (referenced here only to keep the signature consistent with the
-      chain's universe).
     * `encTC : Tensor3 nT F → Finset (Fin mC → F)` — chain's Tensor → CE
-      encoder.
+      encoder. Named here because the hypothesis references the
+      chain-image composition `encCG ∘ encTC`.
     * `encCG : Finset (Fin mC → F) → (Fin kG → Fin kG → Bool)` —
       chain's CE → GI encoder.
     * `εG, ε : ℝ` — source (GI) and target (scheme-OIA) advantage
       bounds.
+
+    Note that this Prop does **not** reference the tensor-layer
+    surrogate directly — GI-hardness on the chain image is a
+    statement about adjacency matrices, independent of which finite
+    group witnesses the upstream tensor hardness.
 
     **Concrete discharge.** A CFI-indexed `OrbitEncScheme` where each
     message corresponds to a graph via the encoder composition, and the
@@ -478,8 +493,7 @@ def ConcreteGIOIAImpliesConcreteOIA_viaEncoding
     {G : Type*} {X : Type*} {M : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
-    {F : Type*} [Fintype F] [DecidableEq F]
-    (_S : SurrogateTensor F)
+    {F : Type*} [DecidableEq F]
     {nT mC kG : ℕ}
     (encTC : Tensor3 nT F → Finset (Fin mC → F))
     (encCG : Finset (Fin mC → F) → (Fin kG → Fin kG → Bool))
@@ -495,12 +509,11 @@ theorem concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
     {G : Type*} {X : Type*} {M : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
-    {F : Type*} [Fintype F] [DecidableEq F]
-    (S : SurrogateTensor F)
+    {F : Type*} [DecidableEq F]
     {nT mC kG : ℕ}
     (encTC : Tensor3 nT F → Finset (Fin mC → F))
     (encCG : Finset (Fin mC → F) → (Fin kG → Fin kG → Bool)) :
-    ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme S encTC encCG 1 1 :=
+    ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme encTC encCG 1 1 :=
   fun _ => concreteOIA_one scheme
 
 -- ============================================================================
@@ -604,9 +617,11 @@ variable [Fintype F] [DecidableEq F]
     **Chain semantics.** Given:
     * A surrogate `S` whose TI-hardness is bounded by `εT` on dimension
       `nT`,
-    * Three encoders `encTC, encCG, getAdj` at dimensions `(nT, mC, kG)`,
-    * Three per-encoding reduction Props, each witnessed for the stated
-      encoder,
+    * Two encoders `encTC : Tensor3 nT F → Finset (Fin mC → F)` and
+      `encCG : Finset (Fin mC → F) → (Fin kG → Fin kG → Bool)` at the
+      chain's dimensions `(nT, mC, kG)`,
+    * Three per-encoding reduction Props, each witnessed at the stated
+      encoder and advantage bounds,
     the chain delivers `ConcreteOIA scheme ε` via
     `concreteOIA_from_chain`.
 
@@ -615,12 +630,15 @@ variable [Fintype F] [DecidableEq F]
     * `encTC : Tensor3 nT F → Finset (Fin mC → F)` — Tensor → CE encoder.
     * `encCG : Finset (Fin mC → F) → (Fin kG → Fin kG → Bool)` — CE → GI
       encoder.
-    * `getAdj : M → (Fin kG → Fin kG → Bool)` — message-to-graph
-      adjacency retrieval (GI → scheme-OIA link).
     * `εT, εC, εG : ℝ` — per-layer advantage bounds.
     * `tensor_hard` — surrogate-bound universal tensor hardness.
     * `tensor_to_ce` / `ce_to_gi` / `gi_to_oia` — per-encoding reduction
-      Props naming the three encoders.
+      Props naming the encoders. The `gi_to_oia` field takes a
+      chain-image GI-hardness hypothesis (universal over the tensor
+      pairs produced by composing `encCG ∘ encTC`) rather than
+      universal GI hardness over every adjacency pair; this is what
+      makes compositional closure possible without a coverage
+      obligation on the encoders.
 
     **Satisfiability.** `tight_one_exists` inhabits the chain at `ε = 1`
     with `S := punitSurrogate F`, `nT = mC = kG = 0`, and trivial
@@ -662,7 +680,7 @@ structure ConcreteHardnessChain
   /-- Per-encoding GI → scheme-OIA reduction consuming the chain's
       image-specific hypothesis through `encTC` and `encCG`. -/
   gi_to_oia :
-    ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme S encTC encCG εG ε
+    ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme encTC encCG εG ε
 
 namespace ConcreteHardnessChain
 
@@ -732,7 +750,7 @@ def tight
     (h_tc : ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding S encTC ε ε)
     (h_cg : ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding (F := F) encCG ε ε)
     (h_go :
-      ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme S encTC encCG ε ε) :
+      ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme encTC encCG ε ε) :
     ConcreteHardnessChain scheme F S ε :=
   { nT := nT, mC := mC, kG := kG
     encTC := encTC, encCG := encCG
@@ -781,7 +799,7 @@ theorem tight_one_exists
     (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
       (F := F) encCG)
     (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
-      scheme (punitSurrogate F) encTC encCG)⟩
+      scheme encTC encCG)⟩
 
 end ConcreteHardnessChain
 
