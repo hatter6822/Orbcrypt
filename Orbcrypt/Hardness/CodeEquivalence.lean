@@ -310,13 +310,15 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
     The encoding construction is beyond this formalization's scope.
     Results carry this as an explicit hypothesis.
 
-    **Audit note (F-12).** This definition has no in-tree consumer today;
-    Workstream E's probabilistic hardness chain
-    (`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3–E5) is
-    scheduled to consume it as an input to `ConcreteHardnessChain`. A
-    concrete witness (e.g. via the CFI gadget) is tracked as Workstream F3.
-    Listed in the root-file "Hardness parameter Props" section for
-    transparency. -/
+    **Audit note (F-12 / 2026-04-21 H1 follow-up).** This definition is
+    the deterministic Karp-claim Prop paired with the probabilistic
+    `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding` (Workstream G /
+    Fix C) in `Hardness/Reductions.lean`. A concrete witness via the
+    Cai–Fürer–Immerman (1992) graph gadget or the incidence-matrix
+    encoding would discharge both the deterministic claim and the
+    per-encoding Prop simultaneously; it is a research-scope follow-up
+    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
+    in the root-file "Hardness parameter Props" section for transparency. -/
 def GIReducesToCE : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Finset (Fin (dim m) → Bool)),

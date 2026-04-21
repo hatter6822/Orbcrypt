@@ -292,8 +292,9 @@ of GL³, Tensor Isomorphism reduction.
 `Hardness/Reductions.lean` — `TensorOIA`, `GIOIA`, the reduction chain,
 plus the Workstream E ε-bounded ConcreteHardnessChain.
 `Hardness/Encoding.lean` — orbit-preserving encoding interface
-(reference-only, not consumed by any reduction Prop today; tracked as
-Workstream F3/F4).
+(reference target for concrete discharges of Workstream G's per-encoding
+reduction Props; see `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
+§ 15.1 for the CFI / Grochow–Qiao research-scope discharges).
 
 ### Phase 13 — Public-key extension scaffolding
 
@@ -501,10 +502,16 @@ limitations, each documented in source and tracked as future work:
 
 2. **`GIReducesToCE` and `GIReducesToTI` are reduction *claims*, not
    proofs.** They are `Prop`-valued definitions that point at LESS /
-   MEDS / Grochow-Qiao external research. A concrete witness via the
-   CFI graph gadget or the structure-tensor encoding is tracked as
-   Workstream F3/F4. This is documented in `Orbcrypt.lean`'s axiom
-   transparency report under "Hardness parameter Props".
+   MEDS / Grochow-Qiao external research. Concrete discharge of the
+   associated per-encoding reduction Props
+   (`ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
+   `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`,
+   `ConcreteGIOIAImpliesConcreteOIA_viaEncoding`) via the CFI graph
+   gadget or the structure-tensor encoding is a research-scope
+   follow-up tracked in
+   `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1. This
+   is documented in `Orbcrypt.lean`'s axiom transparency report under
+   "Hardness parameter Props".
 
 3. **`indQCPA_bound_via_hybrid` carries `h_step` as a hypothesis.** The
    per-step bound is the marginal-independence step that would, in a
@@ -544,10 +551,89 @@ limitations, each documented in source and tracked as future work:
    require a Decisional KEM-CCA game and a forking-lemma-style
    reduction, both out of scope for Phase 16.
 
+8. **`ConcreteHardnessChain` at ε < 1 requires caller-supplied
+   cryptographic witnesses.** Post-Workstream-G (audit
+   F-AUDIT-2026-04-21-H1), the chain binds a `SurrogateTensor F`
+   parameter (Fix B) and carries two explicit encoder fields
+   `encTC`, `encCG` plus three per-encoding reduction Prop fields
+   (Fix C). Non-vacuity at ε = 1 is witnessed by
+   `tight_one_exists` via the `punitSurrogate F` and dimension-0
+   trivial encoders. **For ε < 1**, the caller must supply:
+   * A surrogate `S` whose TI-hardness is genuinely εT-bounded —
+     typically a finite subgroup witness for GL³(F) (once Mathlib
+     provides `Fintype (GL (Fin n) F)`).
+   * Encoder functions `encTC, encCG` with proven advantage-transfer
+     properties — the Cai–Fürer–Immerman graph gadget (1992) and the
+     Grochow–Qiao structure-tensor encoding (2021) are the
+     canonical candidates.
+   Concrete formalisations of these witnesses are genuine research-
+   scope items (requiring multi-week Lean proofs of combinatorial
+   constructions), tracked in the audit plan § 15.1. They plug into
+   the `*_viaEncoding` Props landed by Workstream G without further
+   structural refactor.
+
 These items are *known and documented*, not silent gaps. The
 formalization is internally consistent: every conditional theorem
 states its assumptions, every probabilistic predicate is satisfiable
 at `ε = 1`, and no custom axiom or `sorry` short-circuits any proof.
+
+---
+
+## Release readiness (post-Workstream-G)
+
+The 2026-04-21 audit's HIGH-severity finding (H1) is **closed** by
+Workstream G. The formalization's public release posture:
+
+1. **Deterministic chain** (Phases 3, 4, 7, 10, 12). Built from
+   `Prop`-valued OIA variants (`OIA`, `KEMOIA`, `TensorOIA`, `CEOIA`,
+   `GIOIA`). Each quantifies over every Boolean distinguisher,
+   including orbit-membership oracles, and is **False on every
+   non-trivial scheme**. Consequently the deterministic headline
+   theorems (`oia_implies_1cpa`, `kemoia_implies_secure`,
+   `hardness_chain_implies_security`) are vacuously true on
+   production instances. They are **algebraic scaffolding** — type-
+   theoretic templates whose existence we verify, not standalone
+   security claims. External release claims that cite them should be
+   framed as "the scheme's type-theoretic structure admits an
+   OIA-style reduction argument".
+
+2. **Probabilistic chain** (Phase 8, Workstream E, Workstream G).
+   Built from `ConcreteOIA`, `ConcreteKEMOIA_uniform`,
+   `ConcreteHardnessChain`, etc. After Workstream G's Fix B + Fix C:
+   * `ConcreteHardnessChain scheme F S ε` binds a `SurrogateTensor F`
+     parameter explicitly, preventing the pre-G PUnit collapse.
+   * Three per-encoding reduction Props name concrete encoder
+     functions; the chain's ε-parameter reflects the caller's
+     surrogate and encoder choices.
+   * At ε = 1 the chain is inhabited via `tight_one_exists` (PUnit
+     surrogate + trivial encoders).
+   * At ε < 1 the chain is inhabited only by caller-supplied
+     surrogate + encoder pairs with genuine hardness — typically
+     deriving from research-scope discharges.
+   This is the **substantive security content**. External release
+   claims of the form "Orbcrypt achieves ε-bounded IND-1-CPA under
+   TI-hardness of surrogate S and reductions via encoders (encTC,
+   encCG)" should cite `concrete_hardness_chain_implies_1cpa_advantage_bound`.
+
+3. **What to cite externally:**
+   * `concrete_hardness_chain_implies_1cpa_advantage_bound` — the
+     quantitative bound under caller-supplied hardness.
+   * `oia_implies_1cpa_distinct` (post-Workstream-K) — the classical
+     IND-1-CPA form matching the literature.
+   * `correctness`, `kem_correctness`, `aead_correctness`,
+     `hybrid_correctness` — unconditional.
+   * `invariant_attack` — vulnerability analysis (complete break
+     under separating invariant).
+
+4. **What NOT to cite without qualification:**
+   * `oia_implies_1cpa`, `kemoia_implies_secure`,
+     `hardness_chain_implies_security` — scaffolding only,
+     vacuously true on production schemes.
+   * `ConcreteHardnessChain scheme F (punitSurrogate F) 1` — the
+     non-vacuity witness, not a quantitative security claim.
+   * `ObliviousSamplingHiding`, `ConcreteKEMOIA` (point-mass form) —
+     self-disclosed as pathological-strength or collapsed on
+     [0, 1).
 
 ---
 
@@ -586,3 +672,20 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   axiom lists before parsing, so a custom axiom cannot hide on a
   continuation line). Appended a Phase 16 snapshot section to
   `Orbcrypt.lean`'s axiom transparency report.
+
+* **2026-04-21 (Workstream G)** — Hardness-chain non-vacuity
+  refactor (audit finding H1, HIGH). Landed Fix B (surrogate
+  parameter) and Fix C (per-encoding reduction Props) together.
+  `ConcreteHardnessChain` now carries a `SurrogateTensor F`
+  parameter and two explicit encoder fields; three new
+  `*_viaEncoding` per-encoding reduction Props are the primary
+  reduction vocabulary. `tight_one_exists` inhabits the chain at
+  ε = 1 via `punitSurrogate F` and dimension-0 trivial encoders;
+  concrete ε < 1 discharges require caller-supplied hardness
+  witnesses (research-scope, tracked at audit plan § 15.1). The
+  "Known limitations" section gained item 8 describing the chain's
+  ε-parameterisation; a new "Release readiness" section
+  distinguishes deterministic-chain scaffolding from the
+  substantively-quantitative probabilistic chain. Audit scripts
+  extended with `#print axioms` for all new declarations; all
+  emit only standard-trio axioms.

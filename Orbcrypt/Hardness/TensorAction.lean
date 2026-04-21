@@ -297,13 +297,15 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
     Stated as a `Prop`-valued definition following the OIA pattern.
     The encoding construction is beyond this formalization's scope.
 
-    **Audit note (F-12).** This definition has no in-tree consumer today;
-    Workstream E's probabilistic hardness chain
-    (`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3–E5) is
-    scheduled to consume it as an input to `ConcreteHardnessChain`. A
-    concrete witness via the triangle-indicator tensor encoding is
-    tracked as Workstream F4. Listed in the root-file "Hardness parameter
-    Props" section for transparency. -/
+    **Audit note (F-12 / 2026-04-21 H1 follow-up).** This definition is
+    the deterministic Karp-claim Prop paired with the probabilistic
+    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` (Workstream G /
+    Fix C) in `Hardness/Reductions.lean`. A concrete witness via the
+    Grochow–Qiao structure-tensor encoding (2021) would discharge both
+    the deterministic claim and the per-encoding Prop simultaneously;
+    it is a research-scope follow-up
+    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
+    in the root-file "Hardness parameter Props" section for transparency. -/
 def GIReducesToTI : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) F),
@@ -335,9 +337,11 @@ section ConcreteTensor
     above), but Mathlib does not currently provide a `Fintype` instance for
     `GL (Fin n) F` even when `F` is finite. Abstracting over `G_TI` lets
     this workstream land without blocking on that upstream instance;
-    discharging it via the concrete `tensorAction` is tracked as
-    Workstream F4 in
-    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`. -/
+    post-Workstream-G, callers supply a specific `G_TI` via
+    `SurrogateTensor F` (Fix B). Discharging the surrogate with the
+    concrete `tensorAction` once `Fintype (GL (Fin n) F)` lands is a
+    research-scope follow-up
+    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). -/
 noncomputable def tensorOrbitDist
     {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
     [MulAction G_TI (Tensor3 n F)]
@@ -378,5 +382,103 @@ theorem concreteTensorOIA_mono
   fun D => le_trans (hOIA D) hle
 
 end ConcreteTensor
+
+-- ============================================================================
+-- Workstream G (audit 2026-04-21, finding H1) — `SurrogateTensor F` structure
+-- ============================================================================
+
+/-- **Tensor-action surrogate.** Bundles a cryptographically meaningful
+    group-and-action pair used as the tensor-layer surrogate in
+    `UniversalConcreteTensorOIA` and `ConcreteHardnessChain`.
+
+    **Motivation (audit F-AUDIT-2026-04-21-H1).** Prior to Workstream G,
+    the universal tensor-hardness predicate
+    `UniversalConcreteTensorOIA εT` implicitly quantified over every
+    `G_TI : Type` equipped with `Group`, `Fintype`, `Nonempty`, and a
+    `MulAction` on `Tensor3 n F`. That universal quantifier was satisfied
+    by `G_TI := PUnit` with the trivial `MulAction`, under which the
+    orbit distribution collapses to a point mass admitting advantage-1
+    distinguishers. Consequently any claim of the form "tensor hardness
+    at εT < 1 holds for all instances" was provably false, and every
+    reduction Prop threading through `UniversalConcreteTensorOIA` became
+    vacuous. The chain still inhabited at ε = 1 (trivial bound), but no
+    intermediate ε carried quantitative content.
+
+    **Fix (Workstream G, Fix B).** The surrogate binds `G_TI` to a
+    *specific* finite group chosen by the caller. `SurrogateTensor F`
+    packages the four typeclass obligations plus the per-dimension
+    `MulAction`; downstream Props and structures take
+    `S : SurrogateTensor F` as a named parameter rather than implicitly
+    quantifying over every possible instance.
+
+    **Cryptographic interpretation.** A *production* surrogate is a
+    finite subgroup witness for GL³(F) (or the full GL³(F) once Mathlib
+    provides `Fintype (GL (Fin n) F)`). A *trivial* surrogate is
+    `PUnit`; choosing `PUnit` is explicit at the call site and makes
+    the chain's ε bound reflect the (trivial) hardness of that
+    surrogate, not an accidental quantifier collapse.
+
+    **Field structure.** `carrier` is the group type; `action` provides
+    the per-dimension MulAction; `groupInst` / `fintypeInst` /
+    `nonemptyInst` carry the three required typeclass instances. Lean
+    4's structure syntax does *not* support instance-field angle
+    brackets at declaration time, so the three instances are exposed as
+    regular fields here and re-registered via the four top-level
+    `instance` declarations below (`surrogateTensor_group`,
+    `surrogateTensor_fintype`, `surrogateTensor_nonempty`,
+    `surrogateTensor_mulAction`). Downstream defs referencing
+    `S.carrier` or `Tensor3 n F` pick up the instances automatically
+    via typeclass inference — no manual `letI` threading is required. -/
+structure SurrogateTensor (F : Type*) where
+  /-- The underlying group carrier. -/
+  carrier : Type
+  /-- `Group` instance on the carrier. -/
+  groupInst : Group carrier
+  /-- `Fintype` instance on the carrier. -/
+  fintypeInst : Fintype carrier
+  /-- `Nonempty` instance on the carrier. -/
+  nonemptyInst : Nonempty carrier
+  /-- `MulAction` on `Tensor3 n F` for every dimension `n`. -/
+  action : ∀ n : ℕ, MulAction carrier (Tensor3 n F)
+
+/-- Register the surrogate's `Group` field as a typeclass instance on
+    its carrier, so downstream defs referencing `S.carrier` pick up
+    the bundled structure without manual `letI` threading. -/
+instance surrogateTensor_group {F : Type*} (S : SurrogateTensor F) :
+    Group S.carrier := S.groupInst
+
+/-- Register the surrogate's `Fintype` field as a typeclass instance. -/
+instance surrogateTensor_fintype {F : Type*} (S : SurrogateTensor F) :
+    Fintype S.carrier := S.fintypeInst
+
+/-- Register the surrogate's `Nonempty` field as a typeclass instance. -/
+instance surrogateTensor_nonempty {F : Type*} (S : SurrogateTensor F) :
+    Nonempty S.carrier := S.nonemptyInst
+
+/-- Register the surrogate's per-dimension `MulAction` as a typeclass
+    instance. The dimension `n` is a regular parameter, so this is a
+    dependent instance that fires once `n` is known. -/
+instance surrogateTensor_mulAction {F : Type*} (S : SurrogateTensor F)
+    (n : ℕ) : MulAction S.carrier (Tensor3 n F) := S.action n
+
+/-- **Trivial PUnit surrogate.** The one-element group acting trivially
+    on every `Tensor3 n F`. Used as the canonical non-vacuity witness
+    at ε = 1 in `ConcreteHardnessChain.tight_one_exists`.
+
+    **Why PUnit.** The audit finding H1 (cf. docstring of
+    `SurrogateTensor`) showed that `PUnit` previously caused the
+    universal tensor-hardness Prop to collapse. After Fix B, using
+    `PUnit` as the surrogate is an *explicit caller choice* — it
+    simply declares that the chain's hardness input is trivial, which
+    is the correct cryptographic reading. -/
+def punitSurrogate (F : Type*) : SurrogateTensor F where
+  carrier := PUnit
+  groupInst := inferInstance
+  fintypeInst := inferInstance
+  nonemptyInst := inferInstance
+  action := fun _ =>
+    { smul := fun _ T => T
+      one_smul := fun _ => rfl
+      mul_smul := fun _ _ _ => rfl }
 
 end Orbcrypt

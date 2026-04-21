@@ -82,8 +82,13 @@ Orbcrypt/
     CarterWegmanMAC.lean              Deterministic Carter–Wegman MAC witness, carterWegmanMAC_int_ctxt (Workstream C4)
   Hardness/
     CodeEquivalence.lean              CE problem, PAut group, CEOIA, GI≤CE reduction
-    TensorAction.lean                 Tensor3 type, GL³ MulAction, TI problem, GI≤TI reduction
-    Reductions.lean                   TensorOIA, GIOIA, reduction chain, hardness_chain_implies_security
+    TensorAction.lean                 Tensor3 type, GL³ MulAction, TI problem, GI≤TI reduction,
+                                       SurrogateTensor structure + punitSurrogate (Workstream G / Fix B)
+    Encoding.lean                     OrbitPreservingEncoding structure, identityEncoding
+                                       (reference target for Workstream G / Fix C per-encoding Props)
+    Reductions.lean                   TensorOIA, GIOIA, reduction chain, hardness_chain_implies_security,
+                                       ConcreteHardnessChain (with SurrogateTensor + encoder fields),
+                                       *_viaEncoding per-encoding reduction Props (Workstream G / Fix C)
   PublicKey/
     ObliviousSampling.lean            OrbitalRandomizers, obliviousSample, refreshRandomizers (Phase 13)
     KEMAgreement.lean                 Two-party OrbitKeyAgreement, kem_agreement_correctness (Phase 13)
@@ -181,13 +186,19 @@ scripts/
               v                                       v
   Hardness.CodeEquivalence            Hardness.TensorAction
   (ArePermEquivalent, PAut,           (Tensor3, tensorAction GL³,
-   CEOIA, GIReducesToCE)               AreTensorIsomorphic, GIReducesToTI)
+   CEOIA, GIReducesToCE)               AreTensorIsomorphic, GIReducesToTI,
+                                       SurrogateTensor, punitSurrogate
+                                       — Workstream G / Fix B)
               \                                      /
-               \                                    /
-                v                                  v
+               \               Hardness.Encoding    /
+                \              (OrbitPreservingEncoding,
+                 \              identityEncoding — reference target)
+                  v                                v
               Hardness.Reductions ◄── Crypto.OIA, Theorems.OIAImpliesCPA
               (TensorOIA, GIOIA, HardnessChain,
-               hardness_chain_implies_security)
+               hardness_chain_implies_security,
+               ConcreteHardnessChain (surrogate + encoder fields),
+               *_viaEncoding per-encoding Props — Workstream G / Fix C)
 
   KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
               |
@@ -426,8 +437,10 @@ The entire formalization exists to machine-check three results. Understand what 
 | 24 | **Two-Phase Correctness** | `two_phase_correct : can_full.canon (g • x) = can_residual.canon (can_cyclic.canon (g • x))` (given `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | The fast (cyclic ∘ residual) canonical form agrees with the full canonical form on every ciphertext `g • x`; this is the formal content of the Phase 15 fast-decryption pipeline (Phase 15.5) |
 | 25 | **Two-Phase KEM Correctness (conditional)** | `two_phase_kem_correctness : kem.keyDerive (can_residual.canon (can_cyclic.canon (encaps kem g).1)) = (encaps kem g).2` | `Optimization/TwoPhaseDecrypt.lean` | Decapsulation via the fast path recovers the encapsulated key WHEN the two-phase decomposition holds (composes `two_phase_kem_decaps` with `kem_correctness`). Post-landing audit: the GAP implementation does NOT discharge `TwoPhaseDecomposition` because lex-min and the residual transversal action don't commute — this theorem is a conditional that documents the strong agreement property, not the actual GAP correctness story (Phase 15.3 / 15.5) |
 | 26 | **Fast-KEM Round-Trip (orbit-constancy)** | `fast_kem_round_trip : keyDerive (fastCanon (g • basePoint)) = keyDerive (fastCanon basePoint)` (given `IsOrbitConstant G fastCanon`) | `Optimization/TwoPhaseDecrypt.lean` | The actual correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair: orbit-constancy of the fast canonical form is sufficient for round-trip correctness, and orbit-constancy IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G (Phase 15.3, post-landing audit) |
+| 27 | **Surrogate-Bound Hardness Chain (non-vacuous)** | `ConcreteHardnessChain.concreteOIA_from_chain hc : ConcreteOIA scheme ε` for `hc : ConcreteHardnessChain scheme F S ε` with explicit `S : SurrogateTensor F` and encoder fields `encTC, encCG`; `tight_one_exists` witnesses inhabitation at ε = 1 via `punitSurrogate F` and dimension-0 trivial encoders | `Hardness/Reductions.lean` | Closes audit finding H1 (2026-04-21, HIGH). Pre-G the chain's `UniversalConcreteTensorOIA εT` implicitly quantified over every `G_TI : Type` including PUnit, making the Prop collapse at εT < 1. Fix B binds the surrogate; Fix C adds per-encoding reduction Props (`*_viaEncoding`) naming explicit encoder functions. Composition threads advantage through the chain image `encCG ∘ encTC`, not a universal hypothesis (Workstream G) |
+| 28 | **Per-Encoding Reduction Props (Fix C)** | `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding S enc εT εC`, `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding enc εC εG`, `ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme encTC encCG εG ε` | `Hardness/Reductions.lean` | Each reduction Prop names an explicit encoder function and asserts hardness transfer *through* that encoder. Satisfiable at ε = 1 via the `*_one_one` witnesses (conclusion is unconditionally true); non-trivial ε < 1 discharges require concrete encoder witnesses (CFI, Grochow–Qiao — research-scope, audit plan § 15.1). This is the "cryptographically cleanest" formulation the audit calls for (Workstream G / Fix C) |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures. The Phase 15 decryption-optimisation formalisation (theorems 24–26) covers the GAP fast-decryption pipeline (`implementation/gap/orbcrypt_fast_dec.g`): theorems #24–#25 formalise the strong "fast = slow" decomposition as a conditional, theorem #26 captures the actual KEM correctness story via orbit-constancy of the fast canonical form. Post-landing audit (this commit) confirmed empirically that the strong decomposition does not hold for the default fallback group, so the production correctness argument runs through #26.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures. The Phase 15 decryption-optimisation formalisation (theorems 24–26) covers the GAP fast-decryption pipeline (`implementation/gap/orbcrypt_fast_dec.g`): theorems #24–#25 formalise the strong "fast = slow" decomposition as a conditional, theorem #26 captures the actual KEM correctness story via orbit-constancy of the fast canonical form. Post-landing audit (this commit) confirmed empirically that the strong decomposition does not hold for the default fallback group, so the production correctness argument runs through #26. The Workstream G refactor (theorems 27–28, audit 2026-04-21 finding H1) closes the pre-G PUnit collapse in `UniversalConcreteTensorOIA` by binding a `SurrogateTensor F` parameter (Fix B) and introducing per-encoding reduction Props that name explicit encoder functions (Fix C); the chain is now honestly ε-parametric in both the surrogate choice and the encoder witnesses.
 
 ## Mathlib integration
 
@@ -1253,6 +1266,108 @@ was fixed):
    the script is now equivalent to confirming each headline result is
    non-vacuous on at least one concrete instance.
 
+Workstream G (Audit 2026-04-21 — Hardness-Chain Non-Vacuity: Fix B +
+Fix C, finding H1, HIGH) has been completed:
+- `Orbcrypt/Hardness/TensorAction.lean` — (G1 / Fix B) introduces
+  `SurrogateTensor F`, a structure bundling a tensor-layer surrogate
+  group carrier with its `Group`, `Fintype`, `Nonempty` instance
+  fields plus a per-dimension `MulAction carrier (Tensor3 n F)`.
+  The structure parameter binds the tensor-layer `G_TI` explicitly
+  in all downstream Props, preventing the pre-G PUnit collapse.
+  Four helper instances (`surrogateTensor_group`,
+  `surrogateTensor_fintype`, `surrogateTensor_nonempty`,
+  `surrogateTensor_mulAction`) register the structure's fields as
+  typeclass instances on `S.carrier` / `Tensor3 n F`, so downstream
+  `ConcreteTensorOIA (G_TI := S.carrier)` elaborates without manual
+  `letI` threading. `punitSurrogate F` provides the explicit PUnit
+  witness used by the non-vacuity story.
+- `Orbcrypt/Hardness/Reductions.lean` — (G2–G6) refactored to
+  surrogate-parameterised + per-encoding shape:
+  * `UniversalConcreteTensorOIA` now takes `S : SurrogateTensor F`
+    as a named parameter. The pre-G `{G_TI : Type}` implicit
+    universal binder is removed.
+  * `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding S enc εT εC`
+    (G3a / Fix C) — per-encoding Tensor → CE reduction Prop. Takes
+    an explicit encoder `enc : Tensor3 n F → Finset (Fin m → F)` and
+    asserts advantage transfer through that encoder.
+    `_one_one` satisfiability witness included.
+  * `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding enc εC εG`
+    (G3b / Fix C) — per-encoding CE → GI reduction Prop.
+  * `ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme S encTC encCG εG ε`
+    (G3c / Fix C) — per-encoding GI → scheme-OIA reduction Prop.
+    Hypothesis is the **chain-image** GI hardness
+    (`∀ T₀ T₁, ConcreteGIOIA (encCG (encTC T₀)) (encCG (encTC T₁)) εG`)
+    rather than universal GI over all adjacency pairs; this lets
+    composition compose *without* a coverage obligation.
+  * `ConcreteHardnessChain` (G4) — now carries a
+    `SurrogateTensor F` parameter plus three dimension fields
+    (`nT, mC, kG`), two encoder fields (`encTC, encCG`), and three
+    per-encoding reduction Prop fields. Pre-G universal→universal
+    Props are retained as derived corollaries.
+  * `concreteOIA_from_chain` (G5) — composition threads advantage
+    through the chain image: tensor_hard → tensor_to_ce → ce_to_gi
+    → gi_to_oia, each link consuming exactly what the previous
+    produces. Zero `sorry`, zero custom axioms.
+  * `tight_one_exists` (G6) — inhabits the chain at ε = 1 via
+    `punitSurrogate F` and dimension-0 trivial encoders (empty
+    Finset + false adjacency function). Non-vacuity witness for
+    `ConcreteHardnessChain scheme F (punitSurrogate F) 1`.
+  * `concrete_hardness_chain_implies_1cpa_advantage_bound` updated
+    to thread the new `SurrogateTensor` structure parameter.
+- `scripts/audit_phase_16.lean` — (G7) extended with `#print axioms`
+  for the new declarations (`SurrogateTensor`, the four instance
+  helpers, `punitSurrogate`, the three `*_viaEncoding` Props, their
+  `_one_one` witnesses, the refactored `ConcreteHardnessChain`
+  fields). The non-vacuity `example` at the bottom now uses the
+  post-refactor chain signature
+  `Nonempty (ConcreteHardnessChain scheme F (punitSurrogate F) 1)`.
+- `scripts/audit_e_workstream.lean` — (G7) pressure tests extended:
+  each `*_viaEncoding` Prop at ε = 1 is exercised on a caller-
+  supplied encoder; the `concrete_chain_zero_compose` example now
+  takes a `SurrogateTensor Bool` parameter; the chain-non-vacuity
+  example is updated for the new structure signature. Axiom-dump
+  section covers `SurrogateTensor`, `punitSurrogate`, and all six
+  new `*_viaEncoding` declarations.
+- `Orbcrypt.lean` — (G8) axiom-transparency report extended with a
+  Workstream-G subsection listing the new declarations, and a
+  "Workstream G Snapshot (audit 2026-04-21, finding H1)" section at
+  the end describing Fix B + Fix C in prose.
+- `docs/VERIFICATION_REPORT.md` — (G8) "Known limitations" section
+  updated to reflect that the H1 finding is closed: at ε < 1 the
+  chain's ε-parameter genuinely reflects caller-supplied surrogate
+  + encoder hardness; the PUnit surrogate + dimension-0 trivial
+  encoders remain a satisfiability witness at ε = 1. Research
+  follow-ups (concrete CFI / Grochow–Qiao encoder witnesses) are
+  tracked at § 15.1 of the audit plan.
+- `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` — updated
+  to land Fix C (per-encoding refactor) as part of Workstream G
+  rather than deferring to future F3/F4. Renamed "Out-of-scope
+  future work" to "Research-scope follow-ups" to emphasise the
+  distinction between deferred engineering (forbidden) and genuine
+  research formalisation (separate milestones with landed
+  interfaces).
+
+Traceability: finding H1 (AUDIT-2026-04-21-H1) is resolved. The
+`UniversalConcreteTensorOIA` PUnit collapse is fixed at the type
+level by the `SurrogateTensor` binding; the chain's per-encoding
+reduction Props expose encoder functions so concrete ε < 1
+discharges are compositional. No existing audit scripts or
+downstream modules require further refactor when concrete encoder
+witnesses land.
+
+Verification: `scripts/audit_phase_16.lean` and
+`scripts/audit_e_workstream.lean` both produce only standard-trio
+axiom dumps (`propext`, `Classical.choice`, `Quot.sound`) or
+"does not depend on any axioms" — never `sorryAx` or a custom
+axiom. The full project builds (3,366 jobs) with zero errors and
+zero warnings.
+
+Patch version: `lakefile.lean` retains `0.1.5` (bumped during
+Phase 15 post-landing audit); Workstream G is additive to the
+existing 38-module count and does not introduce new `.lean` source
+files — the changes are restricted to `Hardness/TensorAction.lean`,
+`Hardness/Reductions.lean`, and audit scripts.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
@@ -1311,6 +1426,13 @@ was fixed):
 - `#print axioms Orbcrypt.qc_invariant_under_cyclic` / `qc_canon_idem` — standard Lean only (Phase 15.1 / 15.5)
 - `#print axioms Orbcrypt.fast_kem_round_trip` — standard Lean only (orbit-constancy of `fastCanon` carried as a hypothesis; Phase 15.3 post-landing audit)
 - `#print axioms Orbcrypt.fast_canon_composition_orbit_constant` — standard Lean only (closure-under-orbit hypothesis carried; Phase 15.3 post-landing audit)
+- `#print axioms Orbcrypt.SurrogateTensor` — standard Lean only (structure packaging `Group + Fintype + Nonempty + MulAction` bundle; audit 2026-04-21 H1, Workstream G / Fix B)
+- `#print axioms Orbcrypt.punitSurrogate` — standard Lean only (trivial PUnit surrogate witness; Workstream G / Fix B)
+- `#print axioms Orbcrypt.ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` — standard Lean only (per-encoding Tensor → CE reduction Prop; Workstream G / Fix C)
+- `#print axioms Orbcrypt.ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding` — standard Lean only (per-encoding CE → GI reduction Prop; Workstream G / Fix C)
+- `#print axioms Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` — standard Lean only (per-encoding GI → scheme-OIA reduction Prop, consumes chain-image hardness; Workstream G / Fix C)
+- `#print axioms Orbcrypt.ConcreteHardnessChain.tight_one_exists` — standard Lean only (inhabits chain at ε = 1 via `punitSurrogate` + dimension-0 trivial encoders; Workstream G)
+- `#print axioms Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound` — standard Lean only (composes `concreteOIA_from_chain` with `concrete_oia_implies_1cpa`; post-Workstream-G signature threads `SurrogateTensor` via the chain structure)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
