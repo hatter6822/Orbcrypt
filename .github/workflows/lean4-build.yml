@@ -81,3 +81,60 @@ jobs:
             echo "ERROR: unexpected axiom declaration found in source files"
             exit 1
           fi
+
+      - name: Phase 16 axiom-transparency audit
+        # Run the consolidated Phase 16 audit script:
+        # `#print axioms` over every headline result in Phases 1–14, plus
+        # non-vacuity witnesses for KEM correctness, hybrid correctness,
+        # AEAD correctness, INT_CTXT, and the probabilistic ε-bound
+        # reductions. The script type-checks against the production build
+        # (no `sorry`, no custom axioms). CI fails if:
+        #  - any axiom-print output mentions `sorryAx` (a hidden `sorry`
+        #    in the dependency chain), or
+        #  - any axiom-print output references an axiom outside the
+        #    standard Lean trio (`propext`, `Classical.choice`,
+        #    `Quot.sound`).
+        # See `docs/VERIFICATION_REPORT.md` for the prose summary and
+        # `scripts/audit_phase_16.lean` for the script itself.
+        run: |
+          set -e
+          out="$(lake env lean scripts/audit_phase_16.lean 2>&1)"
+          echo "$out"
+          # Fail fast on `sorryAx` anywhere in the script's output.
+          if printf '%s\n' "$out" | grep -Fq sorryAx; then
+            echo "ERROR: sorryAx detected by Phase 16 audit script"
+            exit 1
+          fi
+          # Lean wraps long axiom lists across multiple lines, e.g.
+          #   'Orbcrypt.X' depends on axioms: [propext,
+          #    Classical.choice,
+          #    Quot.sound]
+          # A naive line-oriented scan would only see `[propext,` on the
+          # first line and miss a custom axiom hiding on lines 2–3. We
+          # therefore *de-wrap* the output first — collapse
+          # `,<newline><whitespace>` into `, ` — so every
+          # `depends on axioms: [...]` entry occupies a single logical line
+          # before we parse it.
+          dewrapped="$(printf '%s\n' "$out" | perl -0777 -pe 's/,\n\s+/, /g')"
+          # Walk the (now one-line) axiom-print entries and reject any
+          # axiom outside the standard Lean trio.
+          fail=0
+          while IFS= read -r line; do
+            # Strip everything up to and including the colon-space header.
+            axioms_part="${line#*depends on axioms: }"
+            # Tokenise: drop leading `[`, trailing `]`, and split on commas.
+            axioms_part="${axioms_part#[}"
+            axioms_part="${axioms_part%]}"
+            IFS=',' read -ra tokens <<< "$axioms_part"
+            for tok in "${tokens[@]}"; do
+              # Trim whitespace.
+              tok="$(echo "$tok" | tr -d '[:space:]')"
+              case "$tok" in
+                propext|Classical.choice|Quot.sound|"") : ;;
+                *) echo "ERROR: unexpected axiom: $tok in line: $line"; fail=1 ;;
+              esac
+            done
+          done < <(printf '%s\n' "$dewrapped" | grep -E "depends on axioms")
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi

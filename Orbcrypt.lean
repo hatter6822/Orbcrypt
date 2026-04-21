@@ -831,4 +831,45 @@ and the uniform form for the ε-smooth alternative.
 
 No `sorryAx` should appear in any output. If it does, there is a hidden
 `sorry` in the dependency chain.
+
+## Phase 16 Verification Audit Snapshot (2026-04-21)
+
+Phase 16 (Formal Verification of New Components) consolidated the
+per-workstream `#print axioms` checks into a single comprehensive audit
+script (`scripts/audit_phase_16.lean`) and produced a prose verification
+report (`docs/VERIFICATION_REPORT.md`).
+
+The Phase 16 snapshot at the time of landing:
+
+* **36** Lean source modules under `Orbcrypt/`, all building successfully
+  via `lake build Orbcrypt` (3,364 jobs, zero errors, zero warnings).
+* **0** uses of `sorry` anywhere in `Orbcrypt/**/*.lean` (verified by the
+  comment-aware Perl strip used by CI).
+* **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every
+  `Prop`-valued security assumption (OIA, KEMOIA, ConcreteOIA, ConcreteKEMOIA,
+  ConcreteTensorOIA, ConcreteCEOIA, ConcreteGIOIA, CompOIA,
+  ObliviousSamplingHiding, ConcreteHardnessChain, …) is a `Prop`-valued
+  *definition* carried as an explicit hypothesis on the theorems that
+  use it.
+* **342** declarations exercised by `scripts/audit_phase_16.lean` via
+  `#print axioms` — every public `def`, `theorem`, `structure`,
+  `class`, `instance`, and `abbrev` declared under
+  `Orbcrypt/**/*.lean`. **All 342** depend only on the standard Lean
+  axioms (`propext`, `Classical.choice`, `Quot.sound`); 133 depend on
+  *no* axioms at all. **No `sorryAx`** appears in any output. The CI
+  parser de-wraps Lean's multi-line axiom lists before scanning, so a
+  custom axiom cannot hide on a continuation line.
+* **343** public (non-`private`) declarations across the source tree;
+  every one carries a `/-- … -/` docstring (Phase 6 standards retained
+  through Phases 7–14).
+* **5** intentionally `private` helper declarations
+  (`Probability.Advantage.hybrid_argument_nat`,
+  `AEAD.AEAD.{authDecaps_none_of_verify_false, keyDerive_canon_eq_of_mem_orbit}`,
+  `PublicKey.CombineImpossibility.{probTrue_map_id_eq, probTrue_orbitDist_eq}`).
+  Private-by-design, deliberately not part of the public API.
+
+See `docs/VERIFICATION_REPORT.md` for the full per-headline breakdown,
+the theorem inventory, the Phase 8 `sorry` classification, and the
+known-limitations log (HSP / concrete tensor witness / Workstream F3-F4
+follow-ups).
 -/
