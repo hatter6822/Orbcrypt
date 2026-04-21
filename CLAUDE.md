@@ -108,7 +108,7 @@ docs/
     results_256.csv                   Phase 14 sweep + tier rows, λ = 256
     comparison.csv                    Cross-scheme comparison CSV
 scripts/
-  audit_phase_16.lean                 Phase 16 consolidated `#print axioms` audit script (153 declarations + non-vacuity witnesses)
+  audit_phase_16.lean                 Phase 16 consolidated `#print axioms` audit script (342 declarations — every public declaration in Orbcrypt/ — plus non-vacuity witnesses)
 ```
 
 ### Module dependency graph
@@ -701,24 +701,30 @@ Phase 14 (Parameter Selection & Benchmarks) has been completed:
 
 Phase 16 (Formal Verification of New Components) has been completed:
 - `scripts/audit_phase_16.lean` — new consolidated audit script. Runs
-  `#print axioms` on **153 declarations** spanning every headline
-  result of Phases 4–14 plus the Workstream A/B/C/D/E follow-ups
-  (KEM correctness, KEM-OIA security, probabilistic IND-CPA, AEAD
-  correctness, INT_CTXT, hybrid encryption correctness, hardness
-  chain, public-key extension, every Workstream-E ε-bounded
-  reduction, etc.). Followed by §9 non-vacuity witnesses: trivial
-  KEM / DEM / MAC / AuthOrbitKEM instances on `Unit` exercising
-  `kem_correctness`, `hybrid_correctness`, `aead_correctness`,
-  `authEncrypt_is_int_ctxt`, `concreteKEMOIA_one`,
-  `concreteKEMOIA_uniform_one`, `hybrid_argument_uniform`, and
-  `uniformPMFTuple_apply` on a concrete (≤ 8-element) model. Type-
-  checking the script *is* the verification that each headline
-  result accepts well-typed inputs.
+  `#print axioms` on **342 declarations** — every public `def`,
+  `theorem`, `structure`, `class`, `instance`, and `abbrev` under
+  `Orbcrypt/**/*.lean`. This spans Phases 2–14 foundations plus
+  Workstream A/B/C/D/E follow-ups (KEM correctness, KEM-OIA
+  security, probabilistic IND-CPA, AEAD correctness, INT_CTXT,
+  hybrid encryption correctness, Carter–Wegman MAC witness,
+  hardness chain, public-key extension, every Workstream-E
+  ε-bounded reduction, etc.). Followed by §12 non-vacuity
+  witnesses: trivial KEM / DEM / MAC / AuthOrbitKEM instances on
+  `Unit` exercising `kem_correctness`, `hybrid_correctness`,
+  `aead_correctness`, `authEncrypt_is_int_ctxt`,
+  `concreteKEMOIA_one`, `concreteKEMOIA_uniform_one`,
+  `hybrid_argument_uniform`, `uniformPMFTuple_apply`, and
+  `ConcreteHardnessChain.tight_one_exists`. Type-checking the
+  script *is* the verification that each headline result accepts
+  well-typed inputs.
 - `.github/workflows/lean4-build.yml` — extended with a fourth CI
   step (Work Unit 16.8). After the existing build / sorry / axiom
   declaration checks, CI now runs `lake env lean
-  scripts/audit_phase_16.lean`, fails fast on any `sorryAx`
-  occurrence, and walks every `depends on axioms: [...]` line to
+  scripts/audit_phase_16.lean`. The parser first **de-wraps**
+  Lean's multi-line axiom lists (`[propext,\n Classical.choice,\n
+  Quot.sound]` across three lines) so a custom axiom cannot hide
+  on a continuation line; it then fails fast on any `sorryAx`
+  occurrence and walks every `depends on axioms: [...]` line to
   reject any axiom outside the standard Lean trio (`propext`,
   `Classical.choice`, `Quot.sound`). Hardens against any future
   regression that hides a `sorry` behind an opaque definition or
@@ -726,11 +732,12 @@ Phase 16 (Formal Verification of New Components) has been completed:
 - `Orbcrypt.lean` — appended a "Phase 16 Verification Audit Snapshot
   (2026-04-21)" section at the end of the axiom-transparency report
   (Work Unit 16.7). Records the audit-time totals: 36 source
-  modules, 0 sorries, 0 custom axioms, 153 declarations exercised by
-  the audit script, 343 public declarations all carrying docstrings,
-  5 intentional `private` helpers.
+  modules, 0 sorries, 0 custom axioms, 342 declarations exercised by
+  the audit script (133 axiom-free, 209 standard-Lean-only), 343
+  public declarations all carrying docstrings, 5 intentional
+  `private` helpers.
 - `docs/VERIFICATION_REPORT.md` — new prose verification report
-  (Work Unit 16.10, ~570 lines). Sections: executive summary,
+  (Work Unit 16.10, ~580 lines). Sections: executive summary,
   reproduction recipe, headline results table (28 theorems with
   status and axiom dependencies), per-phase verification matrix
   (Phase 7 / 8 / 9 / 10 / 12 / 13), sorry audit (16.4), axiom audit
@@ -752,7 +759,7 @@ Phase 16 (Formal Verification of New Components) has been completed:
 - Exit-criteria results: 36 modules build (3,364 jobs, zero
   warnings); comment-aware sorry scan returns 0 occurrences;
   axiom-declaration grep returns 0 matches; Phase 16 audit script
-  runs clean (0 `sorryAx`, 0 non-standard axioms, 54/153
+  runs clean (0 `sorryAx`, 0 non-standard axioms, 133/342
   declarations are completely axiom-free); all 11 original
   Phase 1–6 modules build individually with unchanged axiom
   dependencies.

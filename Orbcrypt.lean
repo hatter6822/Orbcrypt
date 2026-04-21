@@ -715,10 +715,14 @@ The Phase 16 snapshot at the time of landing:
   ObliviousSamplingHiding, ConcreteHardnessChain, …) is a `Prop`-valued
   *definition* carried as an explicit hypothesis on the theorems that
   use it.
-* **153** declarations exercised by `scripts/audit_phase_16.lean` via
-  `#print axioms`. **All 153** depend only on the standard Lean axioms
-  (`propext`, `Classical.choice`, `Quot.sound`); 54 of them depend on
-  *no* axioms at all. **No `sorryAx`** appears in any output.
+* **342** declarations exercised by `scripts/audit_phase_16.lean` via
+  `#print axioms` — every public `def`, `theorem`, `structure`,
+  `class`, `instance`, and `abbrev` declared under
+  `Orbcrypt/**/*.lean`. **All 342** depend only on the standard Lean
+  axioms (`propext`, `Classical.choice`, `Quot.sound`); 133 depend on
+  *no* axioms at all. **No `sorryAx`** appears in any output. The CI
+  parser de-wraps Lean's multi-line axiom lists before scanning, so a
+  custom axiom cannot hide on a continuation line.
 * **343** public (non-`private`) declarations across the source tree;
   every one carries a `/-- … -/` docstring (Phase 6 standards retained
   through Phases 7–14).

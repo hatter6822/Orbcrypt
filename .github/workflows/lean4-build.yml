@@ -105,8 +105,19 @@ jobs:
             echo "ERROR: sorryAx detected by Phase 16 audit script"
             exit 1
           fi
-          # Walk the axiom-print lines and reject any that name an axiom
-          # outside the standard Lean trio.
+          # Lean wraps long axiom lists across multiple lines, e.g.
+          #   'Orbcrypt.X' depends on axioms: [propext,
+          #    Classical.choice,
+          #    Quot.sound]
+          # A naive line-oriented scan would only see `[propext,` on the
+          # first line and miss a custom axiom hiding on lines 2–3. We
+          # therefore *de-wrap* the output first — collapse
+          # `,<newline><whitespace>` into `, ` — so every
+          # `depends on axioms: [...]` entry occupies a single logical line
+          # before we parse it.
+          dewrapped="$(printf '%s\n' "$out" | perl -0777 -pe 's/,\n\s+/, /g')"
+          # Walk the (now one-line) axiom-print entries and reject any
+          # axiom outside the standard Lean trio.
           fail=0
           while IFS= read -r line; do
             # Strip everything up to and including the colon-space header.
@@ -123,7 +134,7 @@ jobs:
                 *) echo "ERROR: unexpected axiom: $tok in line: $line"; fail=1 ;;
               esac
             done
-          done < <(printf '%s\n' "$out" | grep -E "depends on axioms")
+          done < <(printf '%s\n' "$dewrapped" | grep -E "depends on axioms")
           if [ "$fail" -ne 0 ]; then
             exit 1
           fi

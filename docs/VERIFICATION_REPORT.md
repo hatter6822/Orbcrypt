@@ -31,10 +31,10 @@ post-Phase-6 work.
 | Custom `axiom` declarations | **0** |
 | `lake build` jobs (full project) | 3,364 |
 | `lake build` warnings | 0 |
-| Headline results checked by `scripts/audit_phase_16.lean` | 153 |
-| Headline results depending on `sorryAx` | **0** |
-| Headline results depending on a non-standard axiom | **0** |
-| Headline results depending on *no* axioms | 54 |
+| Public declarations checked by `scripts/audit_phase_16.lean` | 342 |
+| Declarations depending on `sorryAx` | **0** |
+| Declarations depending on a non-standard axiom | **0** |
+| Declarations depending on *no* axioms | 133 |
 
 **Verdict.** Phase 16 exit criteria are all met. The formal verification
 posture established at the end of Phase 6 — zero `sorry`, zero custom axioms,
@@ -67,9 +67,14 @@ done; echo "PASS: zero sorry"
 source ~/.elan/env && lake env lean scripts/audit_phase_16.lean
 ```
 
-Step 5 prints `#print axioms` for 153 declarations. CI fails if any line
-mentions `sorryAx` or any axiom outside the standard Lean trio (`propext`,
-`Classical.choice`, `Quot.sound`).
+Step 5 prints `#print axioms` for 342 declarations — every public `def`,
+`theorem`, `structure`, `class`, `instance`, and `abbrev` in
+`Orbcrypt/**/*.lean`. CI fails if any line mentions `sorryAx` or any
+axiom outside the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`). The CI parser first de-wraps multi-line axiom lists
+(Lean wraps long `[propext, Classical.choice, Quot.sound]` outputs
+across three lines) so a custom axiom cannot hide on a continuation
+line.
 
 ---
 
@@ -121,8 +126,9 @@ is honest about which assumption is doing the cryptographic work.
 | 28  | `combinerOrbitDist_mass_bounds`                               | `PublicKey/CombineImpossibility.lean`         | Intra-orbit mass bound under non-degeneracy (E6b) |
 
 Every one of #1–#28 was confirmed to depend only on standard Lean axioms by
-running `scripts/audit_phase_16.lean` — 153 declarations exercised,
-no `sorryAx`, no custom axiom outside the standard Lean trio.
+running `scripts/audit_phase_16.lean` — 342 declarations exercised
+(every public declaration in the source tree), no `sorryAx`, no custom
+axiom outside the standard Lean trio.
 
 ---
 
@@ -329,10 +335,14 @@ discharged by Workstream E (E1, E5, E8) as documented above.
 
 ## Axiom audit (work unit 16.5)
 
-**Method.** `scripts/audit_phase_16.lean` runs `#print axioms` on 153
-declarations spanning every public theorem and definition introduced by
-Phases 4–14 plus the Workstream A/B/C/D/E follow-ups. CI parses each
-output line and rejects:
+**Method.** `scripts/audit_phase_16.lean` runs `#print axioms` on 342
+declarations — every public `def`, `theorem`, `structure`, `class`,
+`instance`, and `abbrev` in `Orbcrypt/**/*.lean`, including all
+Phase 2–14 foundations and the Workstream A/B/C/D/E follow-ups. CI
+first de-wraps multi-line axiom lists (Lean wraps long
+`[propext, Classical.choice, Quot.sound]` outputs across three lines,
+so a naive line-oriented scan would miss a custom axiom on a
+continuation line), then parses each depends-on line and rejects:
 
 * any axiom outside the standard Lean trio
   (`propext`, `Classical.choice`, `Quot.sound`);
@@ -342,9 +352,9 @@ output line and rejects:
 **Result.**
 
 ```
-153 declarations exercised
-  54 depend on no axioms at all
-  99 depend only on a subset of {propext, Classical.choice, Quot.sound}
+342 declarations exercised (every public declaration in Orbcrypt/**/*.lean)
+ 133 depend on no axioms at all
+ 209 depend only on a subset of {propext, Classical.choice, Quot.sound}
    0 depend on any non-standard axiom
    0 depend on `sorryAx`
 ```
@@ -465,10 +475,12 @@ included in the global totals row but not broken out here to keep the
 table compact; see the per-phase verification matrix above for the
 detailed counts per file.)
 
-The 153 declarations exercised by `scripts/audit_phase_16.lean` cover
-every public theorem and definition that downstream consumers would
-care about: every headline result of every phase, plus the
-Workstream A/B/C/D/E follow-ups.
+The 342 declarations exercised by `scripts/audit_phase_16.lean` cover
+every public `def`, `theorem`, `structure`, `class`, `instance`, and
+`abbrev` under `Orbcrypt/**/*.lean`. This includes every headline
+result a downstream consumer would care about (every phase, every
+workstream) plus every supporting lemma, simp rule, typeclass
+instance, and namespace-qualified field accessor.
 
 ---
 
@@ -563,8 +575,14 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ## Document history
 
 * **2026-04-21** — Phase 16 verification report authored. Added
-  `scripts/audit_phase_16.lean` (153 `#print axioms` checks +
-  non-vacuity witnesses), extended `.github/workflows/lean4-build.yml`
-  with the Phase 16 audit-script regression sentinel, and appended a
-  Phase 16 snapshot section to `Orbcrypt.lean`'s axiom transparency
-  report.
+  `scripts/audit_phase_16.lean` (342 `#print axioms` checks spanning
+  every public declaration in the source tree, plus non-vacuity
+  witnesses for `kem_correctness`, `hybrid_correctness`,
+  `aead_correctness`, `authEncrypt_is_int_ctxt`, `ConcreteKEMOIA` /
+  `ConcreteKEMOIA_uniform` satisfiability, `hybrid_argument_uniform`,
+  `uniformPMFTuple_apply`, and `ConcreteHardnessChain.tight_one_exists`).
+  Extended `.github/workflows/lean4-build.yml` with the Phase 16
+  audit-script regression sentinel (de-wraps Lean's multi-line
+  axiom lists before parsing, so a custom axiom cannot hide on a
+  continuation line). Appended a Phase 16 snapshot section to
+  `Orbcrypt.lean`'s axiom transparency report.
