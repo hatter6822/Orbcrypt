@@ -58,6 +58,9 @@ All headline results are machine-checked with zero `sorry`, zero warnings, zero 
 | 13 | `kem_agreement_correctness` — two-party orbit-KEM agreement | `PublicKey/KEMAgreement.lean` | Standard Lean only |
 | 14 | `csidh_correctness` — `a • b • x = b • a • x` under `CommGroupAction` | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` (typeclass axiom) |
 | 15 | `comm_pke_correctness` — CSIDH-style public-key encryption correctness | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` + `pk_valid` |
+| 16 | `two_phase_correct` — fast (cyclic ∘ residual) canonical form agrees with full IF the strong `TwoPhaseDecomposition` predicate holds | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` carried as a hypothesis; not satisfied by the default fallback group) |
+| 17 | `two_phase_kem_correctness` — two-phase KEM decapsulation recovers the encapsulated key (conditional on `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` is a hypothesis) |
+| 18 | `fast_kem_round_trip` — actual KEM correctness for `(FastEncaps, FastDecaps)`: orbit-constancy of `fastCanon` suffices | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`IsOrbitConstant` is a hypothesis; satisfied by the GAP `FastCanonicalImage` whenever the cyclic subgroup is normal in G) |
 
 ### Axiom Transparency
 
