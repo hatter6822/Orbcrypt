@@ -449,13 +449,19 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
   on `ε ∈ [0, 1)`; the genuinely ε-smooth `ConcreteKEMOIA_uniform` is
   defined alongside.
 - `ConcreteHardnessChain.concreteOIA_from_chain` (`Hardness/Reductions.lean`)
-  — packaged ε-bounded hardness chain → ConcreteOIA ε (E4b, audit-revised
-  to universal→universal form so every link is actually used).
+  — packaged ε-bounded hardness chain → ConcreteOIA ε. Post-Workstream-G
+  (audit F-AUDIT-2026-04-21-H1, Fix B + Fix C), the chain carries a
+  `SurrogateTensor F` parameter plus two explicit encoder fields
+  (`encTC`, `encCG`) and consumes three per-encoding reduction Props
+  (`*_viaEncoding`). Composition threads advantage through the chain
+  image without relying on universal-over-all-instances hypotheses.
 - `ConcreteHardnessChain.tight_one_exists` (`Hardness/Reductions.lean`) —
-  satisfiability witness for the post-audit chain at ε = 1.
+  satisfiability witness for the post-Workstream-G chain at ε = 1, using
+  `punitSurrogate F` and dimension-0 trivial encoders.
 - `concrete_hardness_chain_implies_1cpa_advantage_bound`
   (`Hardness/Reductions.lean`) — ConcreteHardnessChain ε →
-  IND-1-CPA advantage ≤ ε (E5).
+  IND-1-CPA advantage ≤ ε (E5; signature now threads `SurrogateTensor` via
+  the chain structure).
 - `concrete_combiner_advantage_bounded_by_oia`
   (`PublicKey/CombineImpossibility.lean`) — ConcreteOIA scheme ε bounds
   the combiner-induced distinguisher's advantage by ε (E6).
@@ -758,6 +764,49 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.indQCPA_bound_recovers_single_query
 -- (standard Lean only — Q = 1 regression, Workstream E8d)
 
+-- Workstream G (audit 2026-04-21, F-AUDIT-2026-04-21-H1): Fix B + Fix C
+--
+-- Fix B (SurrogateTensor): the tensor-layer surrogate group is now bound
+-- as an explicit structure parameter, preventing the pre-G PUnit collapse
+-- of `UniversalConcreteTensorOIA`. Fix C (per-encoding reductions): the
+-- three layer-transfer Props carry explicit encoder functions and assert
+-- hardness transfer through those encoders (rather than universal-over-
+-- every-instance), matching the cryptographic reduction literature's
+-- per-encoding shape.
+
+#print axioms Orbcrypt.SurrogateTensor
+-- (standard Lean only — structure packaging group + fintype + nonempty
+--  + per-dimension MulAction, Workstream G / Fix B)
+
+#print axioms Orbcrypt.punitSurrogate
+-- (standard Lean only — trivial PUnit witness, Workstream G / Fix B)
+
+#print axioms Orbcrypt.ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding
+-- (standard Lean only — per-encoding Tensor → CE reduction Prop,
+--  Workstream G / Fix C)
+
+#print axioms Orbcrypt.ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding
+-- (standard Lean only — per-encoding CE → GI reduction Prop,
+--  Workstream G / Fix C)
+
+#print axioms Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding
+-- (standard Lean only — per-encoding GI → scheme-OIA reduction Prop,
+--  Workstream G / Fix C; consumes chain-image GI hardness, not universal)
+
+#print axioms Orbcrypt.concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one
+-- (standard Lean only — trivial satisfiability witness at ε = 1,
+--  Workstream G / Fix C)
+
+#print axioms Orbcrypt.concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
+-- (standard Lean only — trivial satisfiability witness, Workstream G)
+
+#print axioms Orbcrypt.concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
+-- (standard Lean only — trivial satisfiability witness, Workstream G)
+
+#print axioms Orbcrypt.ConcreteHardnessChain.tight_one_exists
+-- (standard Lean only — inhabits the chain at ε = 1 via punitSurrogate
+--  + dimension-0 trivial encoders, Workstream G post-refactor)
+
 -- Phase 15 (Decryption Optimisation):
 
 #print axioms Orbcrypt.two_phase_correct
@@ -870,6 +919,50 @@ The Phase 16 snapshot at the time of landing:
 
 See `docs/VERIFICATION_REPORT.md` for the full per-headline breakdown,
 the theorem inventory, the Phase 8 `sorry` classification, and the
-known-limitations log (HSP / concrete tensor witness / Workstream F3-F4
-follow-ups).
+known-limitations log (HSP / concrete tensor witness / research-scope
+concrete Karp-encoding follow-ups).
+
+## Workstream G Snapshot (audit 2026-04-21, finding H1)
+
+Workstream G (Fix B + Fix C) lands the hardness-chain non-vacuity
+refactor. The audit finding H1 showed that the pre-G
+`UniversalConcreteTensorOIA εT` implicitly quantified over every
+`G_TI : Type` and collapsed under `G_TI := PUnit` to "advantage ≤ 1" —
+making the whole probabilistic chain vacuous at any εT < 1.
+
+**Fix B: `SurrogateTensor F` parameter.** The chain now binds its
+tensor-layer surrogate group explicitly through a structure
+parameter. See `Orbcrypt/Hardness/TensorAction.lean`.
+
+**Fix C: per-encoding reduction Props.** The three reduction links
+(`*_viaEncoding`) carry explicit encoder functions and state
+hardness transfer *through the specific encoder*, matching the
+per-encoding shape used in cryptographic reduction literature. See
+`Orbcrypt/Hardness/Reductions.lean`.
+
+**Composition.** `concreteOIA_from_chain` threads advantage through
+the chain-image — `encCG ∘ encTC` — without needing universal GI
+hardness. Every link consumes exactly what the previous link
+produces. Zero `sorry`, zero custom axioms.
+
+**Non-vacuity.** `tight_one_exists` inhabits the chain at ε = 1 via
+`punitSurrogate F` and dimension-0 trivial encoders.
+
+**Research-scope follow-ups.** Concrete ε < 1 discharges of the
+per-encoding reduction Props via (a) the Cai–Fürer–Immerman graph
+gadget (1992), (b) the Grochow–Qiao structure-tensor encoding
+(2021), and (c) CFI-indexed scheme instantiations are genuine
+research-scope items tracked in
+`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1. They
+plug directly into the `*_viaEncoding` Props landed here without
+further structural refactor.
+
+**Module status post-G.** All 38 modules build clean; the full
+Phase 16 audit script still emits only standard-trio axioms; 12
+new declarations were added by Workstream G (the surrogate
+structure + its four instance registrations + PUnit witness + three
+per-encoding Props + three `_one_one` satisfiability witnesses);
+the `ConcreteHardnessChain` structure gained a `SurrogateTensor`
+parameter and two encoder fields in place of its pre-G implicit
+universal quantifiers.
 -/

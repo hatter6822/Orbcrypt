@@ -395,6 +395,13 @@ open Orbcrypt
 #print axioms ConcreteTensorOIA
 #print axioms concreteTensorOIA_one
 #print axioms concreteTensorOIA_mono
+-- Workstream G (audit 2026-04-21, H1): Fix B surrogate structure
+#print axioms SurrogateTensor
+#print axioms surrogateTensor_group
+#print axioms surrogateTensor_fintype
+#print axioms surrogateTensor_nonempty
+#print axioms surrogateTensor_mulAction
+#print axioms punitSurrogate
 
 -- Hardness.Encoding (Workstream E3-prep)
 #print axioms OrbitPreservingEncoding
@@ -427,6 +434,14 @@ open Orbcrypt
 #print axioms concreteCEOIAImpliesConcreteGIOIA_one_one
 #print axioms concreteGIOIAImpliesConcreteOIA_one_one
 #print axioms concrete_chain_zero_compose
+-- Workstream G (audit 2026-04-21, H1): Fix C per-encoding reduction Props
+#print axioms ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding
+#print axioms ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding
+#print axioms ConcreteGIOIAImpliesConcreteOIA_viaEncoding
+#print axioms concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one
+#print axioms concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
+#print axioms concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
+-- Workstream G: Fix B + Fix C chain (surrogate + encoders)
 #print axioms ConcreteHardnessChain
 #print axioms ConcreteHardnessChain.concreteOIA_from_chain
 #print axioms ConcreteHardnessChain.tight
@@ -601,15 +616,16 @@ example (f : Fin 3 → Bool) :
   uniformPMFTuple_apply 3 f
 
 /-- `ConcreteHardnessChain.tight_one_exists` is non-vacuous: for every
-    scheme / field choice there is a chain with the vacuous-at-ε = 1
-    universal reduction Props. Exercises Workstream E4 on an abstract
-    hypothesis set (this mirrors the theorem's signature exactly, so
-    any drift in the required typeclasses will fail to elaborate). -/
+    scheme / field choice there is a chain at ε = 1 carrying the
+    `punitSurrogate` and dimension-0 trivial encoders. Exercises
+    Workstream G's Fix B + Fix C surrogate-plus-encoders refactor;
+    any drift in the required typeclasses or structure fields will
+    fail to elaborate. -/
 example {G : Type} {X : Type} {M : Type}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
     (F : Type) [Fintype F] [DecidableEq F] :
-    Nonempty (ConcreteHardnessChain scheme F 1) :=
+    Nonempty (ConcreteHardnessChain scheme F (punitSurrogate F) 1) :=
   ConcreteHardnessChain.tight_one_exists scheme F
 
 end NonVacuityWitnesses

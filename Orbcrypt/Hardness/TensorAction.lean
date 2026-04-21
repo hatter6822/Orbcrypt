@@ -379,4 +379,97 @@ theorem concreteTensorOIA_mono
 
 end ConcreteTensor
 
+-- ============================================================================
+-- Workstream G (audit 2026-04-21, finding H1) — `SurrogateTensor F` structure
+-- ============================================================================
+
+/-- **Tensor-action surrogate.** Bundles a cryptographically meaningful
+    group-and-action pair used as the tensor-layer surrogate in
+    `UniversalConcreteTensorOIA` and `ConcreteHardnessChain`.
+
+    **Motivation (audit F-AUDIT-2026-04-21-H1).** Prior to Workstream G,
+    the universal tensor-hardness predicate
+    `UniversalConcreteTensorOIA εT` implicitly quantified over every
+    `G_TI : Type` equipped with `Group`, `Fintype`, `Nonempty`, and a
+    `MulAction` on `Tensor3 n F`. That universal quantifier was satisfied
+    by `G_TI := PUnit` with the trivial `MulAction`, under which the
+    orbit distribution collapses to a point mass admitting advantage-1
+    distinguishers. Consequently any claim of the form "tensor hardness
+    at εT < 1 holds for all instances" was provably false, and every
+    reduction Prop threading through `UniversalConcreteTensorOIA` became
+    vacuous. The chain still inhabited at ε = 1 (trivial bound), but no
+    intermediate ε carried quantitative content.
+
+    **Fix (Workstream G, Fix B).** The surrogate binds `G_TI` to a
+    *specific* finite group chosen by the caller. `SurrogateTensor F`
+    packages the four typeclass obligations plus the per-dimension
+    `MulAction`; downstream Props and structures take
+    `S : SurrogateTensor F` as a named parameter rather than implicitly
+    quantifying over every possible instance.
+
+    **Cryptographic interpretation.** A *production* surrogate is a
+    finite subgroup witness for GL³(F) (or the full GL³(F) once Mathlib
+    provides `Fintype (GL (Fin n) F)`). A *trivial* surrogate is
+    `PUnit`; choosing `PUnit` is explicit at the call site and makes
+    the chain's ε bound reflect the (trivial) hardness of that
+    surrogate, not an accidental quantifier collapse.
+
+    **Field structure.** `carrier` is the group type; `action` provides
+    the per-dimension MulAction. The `[groupInst]`, `[fintypeInst]`, and
+    `[nonemptyInst]` instance fields are captured by angle brackets so
+    Lean's typeclass inference can resolve them transparently via
+    `S.carrier` at use sites (via `attribute [local instance]` inside
+    defs that need them). -/
+structure SurrogateTensor (F : Type*) where
+  /-- The underlying group carrier. -/
+  carrier : Type
+  /-- `Group` instance on the carrier. -/
+  groupInst : Group carrier
+  /-- `Fintype` instance on the carrier. -/
+  fintypeInst : Fintype carrier
+  /-- `Nonempty` instance on the carrier. -/
+  nonemptyInst : Nonempty carrier
+  /-- `MulAction` on `Tensor3 n F` for every dimension `n`. -/
+  action : ∀ n : ℕ, MulAction carrier (Tensor3 n F)
+
+/-- Register the surrogate's `Group` field as a typeclass instance on
+    its carrier, so downstream defs referencing `S.carrier` pick up
+    the bundled structure without manual `letI` threading. -/
+instance surrogateTensor_group {F : Type*} (S : SurrogateTensor F) :
+    Group S.carrier := S.groupInst
+
+/-- Register the surrogate's `Fintype` field as a typeclass instance. -/
+instance surrogateTensor_fintype {F : Type*} (S : SurrogateTensor F) :
+    Fintype S.carrier := S.fintypeInst
+
+/-- Register the surrogate's `Nonempty` field as a typeclass instance. -/
+instance surrogateTensor_nonempty {F : Type*} (S : SurrogateTensor F) :
+    Nonempty S.carrier := S.nonemptyInst
+
+/-- Register the surrogate's per-dimension `MulAction` as a typeclass
+    instance. The dimension `n` is a regular parameter, so this is a
+    dependent instance that fires once `n` is known. -/
+instance surrogateTensor_mulAction {F : Type*} (S : SurrogateTensor F)
+    (n : ℕ) : MulAction S.carrier (Tensor3 n F) := S.action n
+
+/-- **Trivial PUnit surrogate.** The one-element group acting trivially
+    on every `Tensor3 n F`. Used as the canonical non-vacuity witness
+    at ε = 1 in `ConcreteHardnessChain.tight_one_exists`.
+
+    **Why PUnit.** The audit finding H1 (cf. docstring of
+    `SurrogateTensor`) showed that `PUnit` previously caused the
+    universal tensor-hardness Prop to collapse. After Fix B, using
+    `PUnit` as the surrogate is an *explicit caller choice* — it
+    simply declares that the chain's hardness input is trivial, which
+    is the correct cryptographic reading. -/
+def punitSurrogate (F : Type*) : SurrogateTensor F where
+  carrier := PUnit
+  groupInst := inferInstance
+  fintypeInst := inferInstance
+  nonemptyInst := inferInstance
+  action := fun _ =>
+    { smul := fun _ T => T
+      one_smul := fun _ => rfl
+      mul_smul := fun _ _ _ => rfl }
+
 end Orbcrypt
