@@ -23,16 +23,37 @@ pattern established in `Crypto/OIA.lean`) or states a computational reduction
 
 ## Main definitions
 
-* `Orbcrypt.TensorOIA` — OIA for tensor isomorphism under GL(n,F)³
-* `Orbcrypt.GIOIA` — OIA for graph isomorphism under S_n
+* `Orbcrypt.TensorOIA` — deterministic OIA for tensor isomorphism under GL(n,F)³
+* `Orbcrypt.GIOIA` — deterministic OIA for graph isomorphism under S_n
 * `Orbcrypt.TensorOIAImpliesCEOIA` — TensorOIA → CEOIA reduction (Prop)
 * `Orbcrypt.CEOIAImpliesGIOIA` — CEOIA → GIOIA reduction (Prop)
-* `Orbcrypt.HardnessChain` — full reduction chain from TensorOIA to OIA
+* `Orbcrypt.HardnessChain` — deterministic composite chain (TensorOIA → OIA)
+* `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c)
+* `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound probabilistic
+  tensor-OIA (post-Workstream-G Fix B: carries `SurrogateTensor F`)
+* `Orbcrypt.ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
+  `Orbcrypt.ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`,
+  `Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` — per-encoding
+  probabilistic reduction Props naming explicit encoder functions
+  (Workstream G Fix C, primary post-G vocabulary)
+* `Orbcrypt.ConcreteHardnessChain` — packaged ε-bounded chain with
+  `SurrogateTensor` parameter and two encoder fields (Workstream G)
 
 ## Main results
 
-* `Orbcrypt.hardness_chain_implies_security` — full chain → IND-1-CPA
-* `Orbcrypt.oia_from_tensor_oia` — TensorOIA + reductions → OIA
+* `Orbcrypt.hardness_chain_implies_security` — deterministic chain →
+  IND-1-CPA (vacuous on non-trivial schemes; see the Workstream J
+  "deterministic vs probabilistic" framing).
+* `Orbcrypt.oia_from_hardness_chain` — TensorOIA + reductions → OIA.
+* `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` — probabilistic
+  chain composition threading advantage through the chain-image
+  `encCG ∘ encTC` (Workstream G).
+* `Orbcrypt.ConcreteHardnessChain.tight_one_exists` — non-vacuity witness
+  at `ε = 1` via `punitSurrogate F` + dimension-0 trivial encoders
+  (Workstream G).
+* `Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound` —
+  ε-bounded IND-1-CPA advantage from the probabilistic chain
+  (Workstream E5, post-G signature threads `SurrogateTensor`).
 
 ## Reduction Chain
 
@@ -593,7 +614,9 @@ theorem concrete_chain_zero_compose
 end ConcreteReductions
 
 -- ============================================================================
--- Workstream E4 — `ConcreteHardnessChain`: composable ε-bounded hardness chain
+-- `ConcreteHardnessChain` — composable ε-bounded hardness chain
+--   Initial form: Workstream E4 (2026-04-18, universal→universal reductions)
+--   Post-G form:  Workstream G (2026-04-21, Fix B surrogate + Fix C encoders)
 -- ============================================================================
 
 section ConcreteHardnessChainSection
@@ -776,8 +799,9 @@ def tight
 
     This witness **does not** assert quantitative hardness — it only
     exhibits that the chain's type is inhabitable at ε = 1,
-    discharging the non-vacuity obligation from the audit plan's Exit
-    Criterion #4. Concrete quantitative discharges require
+    discharging the non-vacuity obligation from the audit plan's
+    Exit Criterion #8 (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
+    § 3.6). Concrete quantitative discharges at ε < 1 require
     research-scope encoder witnesses (audit plan § 15.1). -/
 theorem tight_one_exists
     {G : Type*} {X : Type*} {M : Type*}
@@ -804,25 +828,38 @@ theorem tight_one_exists
 end ConcreteHardnessChain
 
 -- ============================================================================
--- Workstream E5 — Probabilistic `hardness_chain_implies_security`
+-- Probabilistic `hardness_chain_implies_security`
+--   Initial form: Workstream E5 (2026-04-18)
+--   Post-G form:  threads `{S : SurrogateTensor F}` through the chain
+--                 structure (Workstream G, 2026-04-21, finding H1)
 -- ============================================================================
 
-/-- **Workstream E5 (audit-revised).** Probabilistic upgrade of
-    `hardness_chain_implies_security`.
+/-- **Probabilistic upgrade of `hardness_chain_implies_security`.**
 
-    Given a `ConcreteHardnessChain scheme F ε`, the probabilistic
-    IND-1-CPA advantage of any adversary on `scheme` is bounded by `ε`.
+    Given a `ConcreteHardnessChain scheme F S ε` — i.e. a chain with a
+    chosen `SurrogateTensor F` (Fix B) and explicit encoder fields
+    `encTC, encCG` (Fix C), at per-layer bounds `εT, εC, εG` threading
+    through to the target `ε` — the probabilistic IND-1-CPA advantage
+    of any adversary on `scheme` is bounded by `ε`.
 
-    Composes Workstream E4b (`concreteOIA_from_chain`) with
-    `concrete_oia_implies_1cpa` from `Crypto/CompSecurity.lean`. Unlike the
-    deterministic `hardness_chain_implies_security` (which is vacuously
-    true because `HardnessChain` extends through the vacuous deterministic
-    OIA), this statement bounds the genuine probabilistic advantage.
+    Composes `ConcreteHardnessChain.concreteOIA_from_chain` with
+    `concrete_oia_implies_1cpa` from `Crypto/CompSecurity.lean`. Unlike
+    the deterministic `hardness_chain_implies_security` (which is
+    vacuously true because `HardnessChain` extends through the vacuous
+    deterministic OIA), this statement bounds the genuine probabilistic
+    advantage — subject to the caller supplying a surrogate whose TI
+    hardness is genuinely `εT`-bounded (post-Workstream-G, audit
+    finding H1).
 
     **Interpretation.** When the tensor-layer hardness `εT`, the three
     reduction losses `(εT→εC, εC→εG, εG→ε)`, and the scheme's
-    IND-1-CPA advantage `ε` are all meaningful ε < 1, this theorem
-    delivers non-vacuous concrete security for the scheme. -/
+    IND-1-CPA advantage `ε` are all meaningful `ε < 1`, this theorem
+    delivers non-vacuous concrete security for the scheme.
+
+    **History.** The `{S : SurrogateTensor F}` implicit parameter was
+    added by Workstream G to fix the pre-G PUnit collapse in
+    `UniversalConcreteTensorOIA`; the theorem body is otherwise
+    unchanged from the Workstream E5 landing. -/
 theorem concrete_hardness_chain_implies_1cpa_advantage_bound
     {G : Type*} {X : Type*} {M : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
