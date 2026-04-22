@@ -110,6 +110,8 @@ open Orbcrypt
 #print axioms hasAdvantage_iff
 #print axioms no_advantage_from_oia
 #print axioms oia_implies_1cpa
+-- Workstream K1 (F-AUDIT-2026-04-21-M1): distinct-challenge corollary
+#print axioms oia_implies_1cpa_distinct
 -- Track D (contrapositive)
 #print axioms adversary_yields_distinguisher
 #print axioms insecure_implies_separating
@@ -231,6 +233,8 @@ open Orbcrypt
 #print axioms indCPAAdvantage
 #print axioms indCPAAdvantage_eq
 #print axioms indCPAAdvantage_nonneg
+-- Workstream K4 (F-AUDIT-2026-04-21-M1): collision-case advantage
+#print axioms indCPAAdvantage_collision_zero
 #print axioms concrete_oia_implies_1cpa
 #print axioms concreteOIA_one_meaningful
 #print axioms CompIsSecure
@@ -454,6 +458,10 @@ open Orbcrypt
 #print axioms ConcreteHardnessChain.tight
 #print axioms ConcreteHardnessChain.tight_one_exists
 #print axioms concrete_hardness_chain_implies_1cpa_advantage_bound
+-- Workstream K3 + K4 companion (F-AUDIT-2026-04-21-M1):
+-- distinct-challenge IND-1-CPA corollaries in the hardness-chain layer
+#print axioms hardness_chain_implies_security_distinct
+#print axioms concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
 
 -- ============================================================================
 -- §11  Public-key extension (Phase 13)
@@ -708,5 +716,82 @@ example {G : Type} {X : Type} {M : Type} {K : Type}
   let ⟨hc⟩ := ConcreteKEMHardnessChain.tight_one_exists
     scheme Bool m₀ keyDerive
   concrete_kem_hardness_chain_implies_kem_advantage_bound hc A g_ref
+
+/-- Workstream K1 non-vacuity: `oia_implies_1cpa_distinct` is
+    well-typed on every scheme and the composition with
+    `isSecure_implies_isSecureDistinct` elaborates. Exercises the
+    deterministic distinct-challenge corollary at the scheme level. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (hOIA : OIA scheme) :
+    IsSecureDistinct scheme :=
+  oia_implies_1cpa_distinct scheme hOIA
+
+/-- Workstream K3 non-vacuity: `hardness_chain_implies_security_distinct`
+    is well-typed on every scheme. Exercises the chain-level
+    distinct-challenge corollary. The `HardnessChain` Prop requires
+    `[Field F]`, so we use `ZMod 2` as the witness field. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (hChain : HardnessChain (F := ZMod 2) scheme) :
+    IsSecureDistinct scheme :=
+  hardness_chain_implies_security_distinct scheme hChain
+
+/-- Workstream K4 non-vacuity (structural): `indCPAAdvantage_collision_zero`
+    accepts any scheme + adversary pair satisfying the collision
+    hypothesis and delivers `indCPAAdvantage scheme A = 0`. Exercises
+    the lemma on a freely-quantified input; a signature drift would
+    fail to elaborate. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M)
+    (hCollision : (A.choose scheme.reps).1 = (A.choose scheme.reps).2) :
+    indCPAAdvantage scheme A = 0 :=
+  indCPAAdvantage_collision_zero scheme A hCollision
+
+/-- Workstream K4 non-vacuity (concrete adversary): constructs a
+    `collisionAdversary` on the singleton message space `Unit` whose
+    `choose` always returns `((), ())`, and confirms
+    `indCPAAdvantage_collision_zero` forces its advantage to be
+    exactly zero. This is a genuine witness of the lemma firing on
+    a concrete input, not merely a signature check. -/
+example : True := by
+  -- Build a trivial scheme on `Unit` under the one-element
+  -- permutation group; all messages collide since `Unit` has only
+  -- one inhabitant.
+  let trivialScheme : OrbitEncScheme (Equiv.Perm (Fin 1)) Unit Unit :=
+    { reps := fun _ => ()
+      reps_distinct := fun _ _ h => (h (Subsingleton.elim _ _)).elim
+      canonForm :=
+        { canon := id
+          mem_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
+          orbit_iff := fun _ _ => by simp } }
+  let collisionAdv : Adversary Unit Unit :=
+    { choose := fun _ => ((), ())
+      guess := fun _ _ => true }
+  -- The collision hypothesis holds by `rfl` since both projections
+  -- are `()`; feed it to the lemma to get `indCPAAdvantage = 0`.
+  have hZero : indCPAAdvantage trivialScheme collisionAdv = 0 :=
+    indCPAAdvantage_collision_zero trivialScheme collisionAdv rfl
+  -- Return `True`; the meaningful assertion lives in `hZero`, whose
+  -- existence (together with its dependency on the lemma) is what
+  -- this example actually proves.
+  trivial
+
+/-- Workstream K4 companion non-vacuity: fires the
+    `_distinct`-suffixed probabilistic chain bound at ε = 1 via
+    `ConcreteHardnessChain.tight_one_exists`. The extra distinctness
+    hypothesis is consumed but unused in the proof — `_distinct`
+    inherits its ε from the non-distinct form. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M)
+    (hDistinct :
+      (A.choose scheme.reps).1 ≠ (A.choose scheme.reps).2) :
+    indCPAAdvantage scheme A ≤ 1 :=
+  let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
+  concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
+    scheme 1 hc A hDistinct
 
 end NonVacuityWitnesses

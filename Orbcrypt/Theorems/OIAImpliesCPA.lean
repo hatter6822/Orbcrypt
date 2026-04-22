@@ -31,6 +31,11 @@ Additionally, Track D (optional) proves the contrapositive direction:
 * `Orbcrypt.hasAdvantage_iff` — clean characterization of `hasAdvantage`
 * `Orbcrypt.no_advantage_from_oia` — OIA implies no adversary has advantage
 * `Orbcrypt.oia_implies_1cpa` — **OIA implies IND-1-CPA security**
+* `Orbcrypt.oia_implies_1cpa_distinct` — classical distinct-challenge
+  IND-1-CPA form: OIA implies `IsSecureDistinct` (composes
+  `oia_implies_1cpa` with `isSecure_implies_isSecureDistinct`). This is
+  the release-facing corollary matching the literature's IND-1-CPA game
+  (challenger rejects `(m, m)` before sampling).
 * `Orbcrypt.adversary_yields_distinguisher` — advantage implies a distinguisher
 * `Orbcrypt.insecure_implies_separating` — insecurity implies a separating function
 
@@ -38,6 +43,9 @@ Additionally, Track D (optional) proves the contrapositive direction:
 
 * DEVELOPMENT.md §8.1 — OIA implies IND-1-CPA security
 * formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.10–4.15
+* docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 6 — Workstream K
+  (distinct-challenge IND-1-CPA corollary, audit finding
+  F-AUDIT-2026-04-21-M1)
 -/
 
 namespace Orbcrypt
@@ -122,6 +130,39 @@ theorem oia_implies_1cpa [Group G] [MulAction G X] [DecidableEq X]
   -- IsSecure = ∀ A, ¬ hasAdvantage scheme A
   intro A
   exact no_advantage_from_oia scheme hOIA A
+
+/--
+**Distinct-challenge IND-1-CPA from OIA (classical game).**
+
+Corollary of `oia_implies_1cpa`: the OIA hypothesis implies the
+classical distinct-challenge security predicate `IsSecureDistinct`.
+Composes the strong uniform-challenge `oia_implies_1cpa` with
+`isSecure_implies_isSecureDistinct` (proved in `Crypto/Security.lean`).
+
+**Why this corollary.** The classical IND-1-CPA game in the literature
+requires the adversary to submit *distinct* challenges `m₀ ≠ m₁`; the
+challenger rejects `(m, m)` before sampling. `IsSecure` is strictly
+stronger — it demands security even against the degenerate collision
+choice that the classical challenger would reject. External summaries
+and downstream citations that read "IND-1-CPA under OIA" should prefer
+`oia_implies_1cpa_distinct` over `oia_implies_1cpa` because this form
+matches the game shape actually studied in the literature.
+
+**Scaffolding disclosure.** Like `oia_implies_1cpa`, this theorem
+inherits the *scaffolding* status of the deterministic chain: the
+`OIA` hypothesis quantifies over every Boolean distinguisher and is
+**False on every non-trivial scheme** (see `Crypto/OIA.lean`).
+Consequently the conclusion is vacuously true on production
+instances. For genuinely ε-smooth distinct-challenge security, cite
+the probabilistic chain (`concrete_oia_implies_1cpa` +
+`indCPAAdvantage_collision_zero`; the probabilistic advantage is
+unconditionally bounded for every adversary, so the distinct-challenge
+restriction transfers for free).
+-/
+theorem oia_implies_1cpa_distinct [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (hOIA : OIA scheme) : IsSecureDistinct scheme :=
+  isSecure_implies_isSecureDistinct scheme (oia_implies_1cpa scheme hOIA)
 
 -- ============================================================================
 -- Track D (Optional): Contrapositive Direction

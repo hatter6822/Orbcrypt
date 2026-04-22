@@ -46,11 +46,27 @@ with real-vs-random key distinguishing.
 * `Orbcrypt.kemoia_implies_secure` — **KEMOIA implies KEM security**
 * `Orbcrypt.kemIsSecure_iff` — unfolding lemma for `KEMIsSecure`
 
+## Design note — no distinct-challenge KEM variant (Workstream K)
+
+Unlike the scheme-level security game (which carries both `IsSecure` and
+`IsSecureDistinct` — the latter filtering out the degenerate
+collision-choice `(m, m)` the classical IND-1-CPA challenger would
+reject), the KEM game does not admit a parallel `_distinct` refinement.
+`kemHasAdvantage` quantifies over two *group elements* `g₀, g₁ : G`
+rather than two messages; encapsulation operates on the single
+base point `kem.basePoint`, so every ciphertext lives in the same
+orbit `orbit G kem.basePoint`. There is no per-message collision risk
+at the KEM layer — see the extended note on `kemoia_implies_secure`
+below for the full rationale.
+
 ## References
 
 * formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work units 7.4, 7.5, 7.6
 * Crypto/Security.lean — original AOE security definitions
 * Crypto/OIA.lean — original OIA definition
+* docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 6 (K2) — rationale
+  for omitting a `kemoia_implies_secure_distinct` corollary (audit
+  finding F-AUDIT-2026-04-21-M1)
 -/
 
 namespace Orbcrypt
@@ -233,6 +249,35 @@ encapsulations. This is the KEM analogue of `oia_implies_1cpa`.
 
 **Axioms:** Zero custom axioms. `#print axioms kemoia_implies_secure` shows
 only standard Lean axioms. KEMOIA appears as a hypothesis.
+
+## No distinct-challenge KEM corollary required
+
+At the scheme level, `Crypto/Security.lean` carries a second
+`IsSecureDistinct` predicate because the underlying `Adversary.choose`
+function may return a collision `(m, m)` on its two *message*
+challenges — the classical IND-1-CPA game rejects such collisions
+before sampling, so `IsSecure` and `IsSecureDistinct` differ (with
+`IsSecure → IsSecureDistinct`, proved by
+`isSecure_implies_isSecureDistinct`).
+
+The KEM security game (`kemHasAdvantage` / `KEMIsSecure` above) does
+**not** admit the analogous collision-choice gap. A `KEMAdversary`'s
+two encapsulations are parameterised by *group elements* `g₀, g₁ : G`,
+which are drawn by the challenger from `G` uniformly rather than
+chosen by the adversary; there is only one base point (`kem.basePoint`),
+so every ciphertext lies in the single orbit `orbit G kem.basePoint`.
+No per-message distinctness filter applies. Therefore no
+`kemoia_implies_secure_distinct` corollary is introduced — the
+`Adversary`-level game asymmetry documented at `IsSecure` does not
+surface at the KEM layer.
+
+The probabilistic KEM advantage (`kemAdvantage_uniform` in
+`KEM/CompSecurity.lean`) likewise uses a fixed reference group element
+and measures distinguishing advantage between a uniform orbit
+distribution and a point mass on that reference; it has no
+challenge-distinctness obligation either. The bound
+`concrete_kemoia_uniform_implies_secure` applies unconditionally to
+every KEM adversary without distinctness filtering.
 -/
 theorem kemoia_implies_secure [Group G] [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) : KEMIsSecure kem := by

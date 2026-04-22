@@ -44,6 +44,11 @@ pattern established in `Crypto/OIA.lean`) or states a computational reduction
 * `Orbcrypt.hardness_chain_implies_security` — deterministic chain →
   IND-1-CPA (vacuous on non-trivial schemes; see the Workstream J
   "deterministic vs probabilistic" framing).
+* `Orbcrypt.hardness_chain_implies_security_distinct` — classical
+  distinct-challenge form of the deterministic chain corollary
+  (IsSecureDistinct). Release-facing: matches the literature's
+  IND-1-CPA game shape (Workstream K, audit finding
+  F-AUDIT-2026-04-21-M1).
 * `Orbcrypt.oia_from_hardness_chain` — TensorOIA + reductions → OIA.
 * `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` — probabilistic
   chain composition threading advantage through the chain-image
@@ -255,6 +260,44 @@ theorem hardness_chain_implies_security
     (hChain : HardnessChain (F := F) scheme) :
     IsSecure scheme :=
   oia_implies_1cpa scheme (oia_from_hardness_chain scheme hChain)
+
+/-- **Distinct-challenge IND-1-CPA from the hardness chain (classical game).**
+
+    Chain-level parallel of `oia_implies_1cpa_distinct`: composing
+    `hardness_chain_implies_security` with
+    `isSecure_implies_isSecureDistinct` delivers the classical
+    distinct-challenge security predicate `IsSecureDistinct` from a
+    `HardnessChain (F := F) scheme` hypothesis.
+
+    **Why this corollary.** Consumers reading "TI-hardness implies
+    IND-1-CPA" through the lens of the literature expect the
+    distinct-challenge form (the classical IND-1-CPA challenger rejects
+    `(m, m)` collisions before sampling). `IsSecure` is strictly
+    stronger — it demands security even against the degenerate
+    collision choice. External summaries that cite TI-hardness as the
+    security basis should prefer this theorem over
+    `hardness_chain_implies_security`.
+
+    **Scaffolding disclosure.** Like `hardness_chain_implies_security`,
+    this corollary carries the deterministic `HardnessChain` as a
+    hypothesis. `HardnessChain` is composed from the deterministic
+    `TensorOIA` / `CEOIA` / `GIOIA` / `OIA` predicates, each of which
+    is **False on every non-trivial scheme**; consequently the
+    conclusion is vacuously true on production instances. For the
+    genuinely ε-smooth distinct-challenge bound, cite the probabilistic
+    chain (`concrete_hardness_chain_implies_1cpa_advantage_bound`
+    composed with `indCPAAdvantage_collision_zero`, which shows the
+    `≤ ε` bound holds unconditionally — the distinct-challenge
+    restriction transfers for free since the collision branch yields
+    advantage 0). -/
+theorem hardness_chain_implies_security_distinct
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (hChain : HardnessChain (F := F) scheme) :
+    IsSecureDistinct scheme :=
+  isSecure_implies_isSecureDistinct scheme
+    (hardness_chain_implies_security scheme hChain)
 
 end ReductionChain
 
@@ -871,6 +914,41 @@ theorem concrete_hardness_chain_implies_1cpa_advantage_bound
     indCPAAdvantage scheme A ≤ ε :=
   concrete_oia_implies_1cpa scheme ε
     (ConcreteHardnessChain.concreteOIA_from_chain hc) A
+
+/-- **Probabilistic hardness-chain bound, distinct-challenge framing
+    (Workstream K, audit F-AUDIT-2026-04-21-M1).**
+
+    Release-facing restatement of
+    `concrete_hardness_chain_implies_1cpa_advantage_bound` matching the
+    classical IND-1-CPA game shape (challenger rejects `(m, m)`). Since
+    the underlying bound already holds unconditionally on every
+    adversary — the collision branch contributes advantage `0` via
+    `indCPAAdvantage_collision_zero` — adding a distinctness hypothesis
+    yields the same bound for free.
+
+    This is the probabilistic counterpart of
+    `hardness_chain_implies_security_distinct` (deterministic K3): it
+    pairs the Workstream-K distinct-challenge messaging with the
+    non-vacuous ε-smooth content of the probabilistic chain. External
+    summaries that cite "TI-hardness ⇒ IND-1-CPA advantage ≤ ε" should
+    prefer this corollary because it matches the literature's
+    challenger-rejects-`(m, m)` game shape. -/
+theorem concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    {F : Type*} [Fintype F] [DecidableEq F]
+    {S : SurrogateTensor F}
+    (ε : ℝ) (hc : ConcreteHardnessChain scheme F S ε)
+    (A : Adversary X M)
+    (_hDistinct :
+      (A.choose scheme.reps).1 ≠ (A.choose scheme.reps).2) :
+    indCPAAdvantage scheme A ≤ ε :=
+  -- `_hDistinct` is unused: the bound holds unconditionally because
+  -- `indCPAAdvantage_collision_zero` shows the collision branch
+  -- contributes zero advantage. The hypothesis is retained to make
+  -- the classical-IND-1-CPA game shape explicit in the signature.
+  concrete_hardness_chain_implies_1cpa_advantage_bound scheme ε hc A
 
 end ConcreteHardnessChainSection
 
