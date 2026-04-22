@@ -108,7 +108,9 @@ is honest about which assumption is doing the cryptographic work.
 | 10  | `nonce_encaps_correctness`                                    | `KeyMgmt/Nonce.lean`                          | Unconditional |
 | 11  | `nonce_reuse_leaks_orbit`                                     | `KeyMgmt/Nonce.lean`                          | Unconditional warning theorem |
 | 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | Conditional on orbit-cover hypothesis |
-| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | Concrete witness for #12 |
+| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | Concrete witness for #12 (now `[Fact (Nat.Prime p)]`) |
+| 13a | `carterWegmanHash_isUniversal`                                | `AEAD/CarterWegmanMAC.lean`                   | **Carter–Wegman 1977 `(1/p)`-universality** (post-audit 2026-04-22) |
+| 13b | `IsEpsilonUniversal`                                          | `Probability/UniversalHash.lean`              | ε-universal hash Prop (post-audit 2026-04-22) |
 | 14  | `hardness_chain_implies_security`                             | `Hardness/Reductions.lean`                    | Conditional on `HardnessChain` |
 | 15  | `oblivious_sample_in_orbit`                                   | `PublicKey/ObliviousSampling.lean`            | Conditional on closure hypothesis |
 | 16  | `kem_agreement_correctness`                                   | `PublicKey/KEMAgreement.lean`                 | Unconditional |
@@ -556,14 +558,19 @@ limitations, each documented in source and tracked as future work:
    and analysed in `docs/PUBLIC_KEY_ANALYSIS.md`.
 
 6. **`carterWegmanMAC_int_ctxt` is a satisfiability witness, not a
-   production-grade MAC.** The Carter-Wegman MAC is information-
-   theoretically weak and uses `ZMod p` ciphertexts (not the
-   permutation orbits used by the production AOE / KEM). It exists
-   purely to inhabit `INT_CTXT` non-vacuously and to demonstrate that
-   `MAC.verify_inj` is satisfiable. Production AEAD would compose
-   `OrbitKEM` with HMAC or Poly1305 and would need a probabilistic
-   refinement of the `MAC` interface to discharge `verify_inj` from
-   collision-resistance / pseudo-randomness assumptions.
+   production-grade MAC.** Post the L-workstream post-audit upgrade
+   (2026-04-22), the Carter–Wegman MAC carries a machine-checked
+   `(1/p)`-universal hash guarantee (`carterWegmanHash_isUniversal`)
+   under the `[Fact (Nat.Prime p)]` constraint — the actual Carter–
+   Wegman 1977 property.  However, `carterWegmanMAC_int_ctxt` remains
+   a *deterministic* witness: it uses a fixed key and
+   `decide`-equality verification rather than the probabilistic
+   key-sampling required for Wegman–Carter 1981 SUF-CMA.  Producing a
+   full SUF-CMA reduction from `IsEpsilonUniversal` is future work;
+   the `(1/p)`-universal property proved here is the information-
+   theoretic foundation that reduction builds on.  Production AEAD
+   would compose `OrbitKEM` with HMAC or Poly1305 (probabilistic MAC
+   refinement — future work).
 
 7. **Multi-query KEM-CCA is not formalised.** `concrete_kemoia_implies_
    secure` and the uniform-form variant cover the no-decapsulation-
@@ -898,14 +905,36 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     implementation uses the bit-length form, matching the
     docstring's prose framing.
 
-  * **L2 (M3) — `carterWegmanMAC` primality hygiene.**
-    `Orbcrypt/AEAD/CarterWegmanMAC.lean`: `[NeZero p]` added to
-    `carterWegmanHash`, `carterWegmanMAC`, `carterWegman_authKEM`,
-    and `carterWegmanMAC_int_ctxt`. Docstring expanded with a
-    "Naming note" clarifying `carterWegmanMAC` names the linear
-    hash shape, not the Carter–Wegman universal-hash security
-    guarantee. `scripts/audit_c_workstream.lean`'s hash-shape
-    example updated.
+  * **L2 (M3) — Carter–Wegman universal-hash MAC (initial landing
+    superseded by post-audit universal-hash upgrade, 2026-04-22).**
+
+    *Initial landing (superseded).* `[NeZero p]` added to
+    `carterWegmanHash` / `carterWegmanMAC` / `carterWegman_authKEM` /
+    `carterWegmanMAC_int_ctxt` with a docstring "Naming note"
+    disclaiming the universal-hash property.  This violated the
+    **Security-by-docstring prohibition** (CLAUDE.md Key Conventions):
+    an identifier named after a cryptographic primitive must prove
+    the property, not disclaim it.
+
+    *Post-audit upgrade (authoritative).* `[Fact (Nat.Prime p)]`
+    replaces `[NeZero p]`.  New module
+    `Orbcrypt/Probability/UniversalHash.lean` defines
+    `IsEpsilonUniversal` (Carter–Wegman 1977 ε-universal
+    pair-collision bound).  New theorem
+    `carterWegmanHash_isUniversal` proves the CW linear hash family
+    is `(1/p)`-universal over the prime field `ZMod p` — the actual
+    security property the name promises.  Proof structure:
+    `carterWegmanHash_collision_iff` (algebraic characterisation:
+    collision ↔ `k.1 = 0`) + `carterWegmanHash_collision_card`
+    (counting: collision set has cardinality `p`) +
+    `probTrue_uniformPMF_decide_eq` (probability = card / total) =
+    `(1/p)` bound.
+
+    `scripts/audit_c_workstream.lean` migrates its INT-CTXT witness
+    from (non-prime) `p = 1` to `p = 2`; `scripts/audit_phase_16.lean`
+    gains non-vacuity witnesses for the universal-hash theorem at
+    `p = 2` and `p = 3` (Fact auto-resolved) and the
+    collision-iff / collision-card discharges.
 
   * **L3 (M4) — `RefreshIndependent` rename.**
     `Orbcrypt/PublicKey/ObliviousSampling.lean`:

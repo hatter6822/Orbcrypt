@@ -340,12 +340,27 @@ open Orbcrypt
 #print axioms hybridEncrypt_snd
 #print axioms hybrid_correctness
 
--- AEAD.CarterWegmanMAC (Workstream C4)
+-- AEAD.CarterWegmanMAC (Workstream C4 + L-workstream post-audit
+-- universal-hash upgrade, 2026-04-22). Note: the pre-upgrade
+-- `[NeZero p]` constraint has been strengthened to
+-- `[Fact (Nat.Prime p)]`, and the new headline theorem
+-- `carterWegmanHash_isUniversal` proves the `(1/p)`-universal
+-- property at the primality hypothesis.
 #print axioms deterministicTagMAC
 #print axioms carterWegmanHash
+#print axioms carterWegmanHash_collision_iff
+#print axioms carterWegmanHash_collision_card
+#print axioms carterWegmanHash_isUniversal
 #print axioms carterWegmanMAC
 #print axioms carterWegman_authKEM
 #print axioms carterWegmanMAC_int_ctxt
+
+-- Probability.UniversalHash (L-workstream post-audit addition)
+#print axioms IsEpsilonUniversal
+#print axioms IsEpsilonUniversal.mono
+#print axioms IsEpsilonUniversal.le_one
+#print axioms IsEpsilonUniversal.ofCollisionCardBound
+#print axioms probTrue_uniformPMF_decide_eq
 
 -- ============================================================================
 -- §10  Hardness alignment (Phase 12 + Workstream D/E)
@@ -881,5 +896,82 @@ example {X : Type} {M : Type}
     (sampleG : ℕ → Equiv.Perm (Fin 3)) :
     SeedKey Unit (Equiv.Perm (Fin 3)) X :=
   scheme.toSeedKey sampleG (by decide)
+
+-- ============================================================================
+-- Workstream L1 pressure tests — verify the `SeedKey.compression` field
+-- actually rejects non-compressive configurations (negative coverage).
+-- ============================================================================
+
+/-- **Positive pressure.** The compression inequality holds for
+    `|Seed| = 2 < |G| = 6` at the bit-length level (`log₂ 2 = 1 <
+    log₂ 6 = 2`). -/
+example :
+    Nat.log 2 (Fintype.card (Fin 2)) <
+    Nat.log 2 (Fintype.card (Equiv.Perm (Fin 3))) := by decide
+
+/-- **Negative pressure (equality).** If `|Seed| = |G|` the compression
+    inequality fails. -/
+example :
+    ¬ (Nat.log 2 (Fintype.card (Fin 2)) <
+       Nat.log 2 (Fintype.card (Fin 2))) := by decide
+
+/-- **Negative pressure (reversed).** If `|Seed| > |G|` the compression
+    inequality fails. -/
+example :
+    ¬ (Nat.log 2 (Fintype.card (Fin 4)) <
+       Nat.log 2 (Fintype.card (Fin 2))) := by decide
+
+/-- **Negative pressure (same bit-length).** If `|Seed| = 2` and
+    `|G| = 3`, the plain `card <` comparison would accept the pair
+    (`2 < 3`), but the bit-length comparison correctly rejects — they
+    both need 1 bit, so there is no compression. -/
+example :
+    ¬ (Nat.log 2 (Fintype.card (Fin 2)) <
+       Nat.log 2 (Fintype.card (Fin 3))) := by decide
+
+/-- **Bridge pressure.** For the trivial group `Unit` (card 1), the
+    bridge hypothesis `1 < Fintype.card G` is unsatisfiable, so
+    `OrbitEncScheme.toSeedKey` cannot build a seed key over `Unit`
+    seeds and `Unit` groups. -/
+example : ¬ (1 < Fintype.card Unit) := by decide
+
+-- ============================================================================
+-- Workstream L2 post-audit universal-hash witnesses (2026-04-22)
+-- ============================================================================
+
+/-- **Carter–Wegman `(1/p)`-universality at the smallest prime** —
+    concrete instantiation of `carterWegmanHash_isUniversal` at `p = 2`,
+    with `Fact (Nat.Prime 2)` auto-resolved by Mathlib's
+    `fact_prime_two` instance. -/
+example : IsEpsilonUniversal (carterWegmanHash 2) ((1 : ENNReal) / 2) :=
+  carterWegmanHash_isUniversal 2
+
+/-- **Carter–Wegman `(1/p)`-universality at `p = 3`** — second concrete
+    instance via Mathlib's `fact_prime_three`. -/
+example : IsEpsilonUniversal (carterWegmanHash 3) ((1 : ENNReal) / 3) :=
+  carterWegmanHash_isUniversal 3
+
+/-- **Collision-count discharge at `p = 2`.** The algebraic heart of
+    the universal-hash proof: the collision set for distinct messages
+    has cardinality exactly `p`. -/
+example (m₁ m₂ : ZMod 2) (h_ne : m₁ ≠ m₂) :
+    (Finset.univ.filter
+      (fun k : ZMod 2 × ZMod 2 =>
+        carterWegmanHash 2 k m₁ = carterWegmanHash 2 k m₂)).card = 2 :=
+  carterWegmanHash_collision_card 2 h_ne
+
+/-- **Collision-iff discharge at `p = 2`.** For any distinct `m₁ ≠ m₂`,
+    the CW hash collides iff the first key component is zero. -/
+example (m₁ m₂ : ZMod 2) (h_ne : m₁ ≠ m₂) (k : ZMod 2 × ZMod 2) :
+    carterWegmanHash 2 k m₁ = carterWegmanHash 2 k m₂ ↔ k.1 = 0 :=
+  carterWegmanHash_collision_iff 2 h_ne k
+
+/-- **Monotonicity of `IsEpsilonUniversal`.** Inheriting universality
+    from a tighter bound is a trivial `.mono` step. -/
+example : IsEpsilonUniversal (carterWegmanHash 2) ((1 : ENNReal) / 1) :=
+  (carterWegmanHash_isUniversal 2).mono (by
+    -- 1/2 ≤ 1/1 = 1 in ENNReal.
+    refine ENNReal.div_le_div_left ?_ _
+    exact_mod_cast Nat.one_le_iff_ne_zero.mpr two_ne_zero)
 
 end NonVacuityWitnesses

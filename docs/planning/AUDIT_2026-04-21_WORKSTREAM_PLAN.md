@@ -1393,13 +1393,37 @@ can land in separate commits if desired.
 6. The module docstring's "Key size comparison" section cites the
    `compression` field as the machine-checked witness.
 
-### 7.2 L2 — `carterWegmanMAC` primality hygiene (M3)
+### 7.2 L2 — Carter–Wegman universal-hash MAC (M3)
 
 **File.** `Orbcrypt/AEAD/CarterWegmanMAC.lean`.
 
-**Problem.** `carterWegmanMAC (p : ℕ)` accepts `p = 0` (`ZMod 0 = ℤ`,
-which is not a finite field; universal-hash semantics break).
-`[Fact (Nat.Prime p)]` would be the cryptographically correct
+> **Revision note (2026-04-22 post-audit).** The landing that matches
+> this section's work units (L2-WU1–WU3) added `[NeZero p]` + a
+> docstring "Naming note" disclaiming the universal-hash property.
+> The L-workstream post-audit pass found that this design violates
+> CLAUDE.md's **"Security-by-docstring prohibition"** (Key
+> Conventions section): an identifier named after a cryptographic
+> primitive must *prove* the property, not disclaim it.  The
+> remediation **upgrades** the design to:
+>
+> 1. Replace `[NeZero p]` with `[Fact (Nat.Prime p)]` on every
+>    `carterWegman*` definition.
+> 2. Introduce a new module `Orbcrypt/Probability/UniversalHash.lean`
+>    defining `IsEpsilonUniversal`.
+> 3. Prove `carterWegmanHash_isUniversal : IsEpsilonUniversal
+>    (carterWegmanHash p) (1/p)` via the classical collision-counting
+>    argument (Carter & Wegman 1977 JCSS 18:143–154).
+> 4. Migrate `scripts/audit_c_workstream.lean` from `p = 1` to
+>    `p = 2` (smallest prime; `fact_prime_two` auto-resolves).
+>
+> The sub-WU descriptions below are retained as a record of the
+> initial plan; the **as-landed authoritative description** is in
+> `CLAUDE.md`'s Workstream L snapshot and the "Post-audit upgrade"
+> note.
+
+**Problem (original).** `carterWegmanMAC (p : ℕ)` accepts `p = 0`
+(`ZMod 0 = ℤ`, which is not a finite field; universal-hash semantics
+break). `[Fact (Nat.Prime p)]` would be the cryptographically correct
 constraint but is over-restrictive — the Lean `correct` and
 `verify_inj` obligations hold for any `p`. The audit proposes two
 options: (a) add a typeclass constraint, or (b) rename.

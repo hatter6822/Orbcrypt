@@ -361,6 +361,43 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
 
 ## Key conventions
 
+- **Security-by-docstring prohibition (ABSOLUTE).** If an identifier
+  names a cryptographic primitive or security property — e.g.,
+  `carterWegmanMAC`, `universalHash`, `ind_cca_secure`,
+  `forward_secret_kem` — the Lean code for that identifier **must
+  formally prove the advertised security property** (or carry it as
+  an explicit hypothesis Prop the caller discharges).  It is **not
+  acceptable** to name an identifier after a security primitive and
+  then disclaim the property in a docstring; doing so is a
+  security-reducing shortcut that tricks downstream readers /
+  consumers into building on a name that promises more than the code
+  delivers.  Concretely:
+
+  * If the name promises ε-universal hashing, the module must prove
+    `IsEpsilonUniversal h ε` (see
+    `Orbcrypt/Probability/UniversalHash.lean`).
+  * If the name promises IND-CPA security, the module must prove
+    `IsSecure` or `IsSecureDistinct` (see `Crypto/Security.lean`).
+  * If the name promises ciphertext integrity, the module must prove
+    `INT_CTXT` (see `AEAD/AEAD.lean`).
+
+  When the full security property cannot yet be proved, **rename the
+  identifier** to describe what the code *does* prove — e.g., a
+  "linear hash shape" (`linearHashOverFp`) rather than a
+  "universal hash" (`universalHashMAC`).  Docstring disclaimers are
+  **not** an acceptable substitute for a rename or a proof.
+
+  *Historical reference:* the Workstream L2 initial landing
+  (`[NeZero p]` + "Naming note: linear hash shape, not the universal-
+  hash security property") violated this rule by keeping the
+  `carterWegmanMAC` identifier while disclaiming its security
+  property in prose.  The L-workstream post-audit pass (2026-04-22)
+  remediated by proving the universal-hash property
+  (`carterWegmanHash_isUniversal`) at the strengthened
+  `[Fact (Nat.Prime p)]` constraint.  Future audit findings of this
+  shape must either prove-the-property or rename-the-identifier;
+  docstring-only fixes are forbidden.
+
 - **No axiom/sorry**: forbidden in the final formalization proof surface. Zero custom axioms — the OIA (Orbit Indistinguishability Assumption) is a `Prop`-valued definition, NOT a Lean `axiom`. Theorems carry it as an explicit hypothesis (e.g., `theorem oia_implies_1cpa (hOIA : OIA scheme) : IsSecure scheme`). A universal `axiom` would introduce inconsistency by asserting OIA for trivial group actions where it is provably false. Zero `sorry` at release.
 - **autoImplicit := false**: the lakefile.lean enforces this project-wide. All universe and type variables must be declared explicitly. This prevents subtle bugs from Lean auto-introducing variables.
 - **Maximal Mathlib reuse**: never redefine what Mathlib already provides. Wrap and re-export where convenient, but the source of truth is Mathlib's `MulAction` framework. Import only the specific Mathlib modules needed — never `import Mathlib`.
@@ -1705,22 +1742,47 @@ MEDIUM) has been completed:
   `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 for
   the detailed rationale.
 
-- **L2 (M3) — `carterWegmanMAC` primality hygiene.**
+- **L2 (M3) — Carter–Wegman universal-hash MAC
+  (initial landing superseded by post-audit universal-hash upgrade,
+  2026-04-22).**
+
+  *Initial landing (superseded).* The L2 initial implementation
+  kept the `carterWegmanMAC` identifier, added a `[NeZero p]`
+  typeclass constraint to rule out the pathological `ZMod 0 = ℤ`
+  case, and disclaimed the universal-hash security property in a
+  docstring "Naming note".  This failed the
+  **Security-by-docstring prohibition** rule in the Key Conventions
+  section: an identifier that names a cryptographic primitive must
+  prove the property, not disclaim it.
+
+  *Post-audit upgrade (authoritative).*
   `Orbcrypt/AEAD/CarterWegmanMAC.lean`: `carterWegmanHash`,
   `carterWegmanMAC`, `carterWegman_authKEM`, and
-  `carterWegmanMAC_int_ctxt` all gain a `[NeZero p]` typeclass
-  constraint on the modulus. `ZMod 0 = ℤ` is the integer ring —
-  infinite, not a proper finite type — so `[NeZero p]` rules
-  out the degenerate `p = 0` branch at elaboration time without
-  demanding primality. `[NeZero 1]` is provided automatically by
-  Mathlib's `instance : NeZero (n+1)`, so the audit script's
-  `p = 1` witness continues to elaborate. Docstring expanded
-  with a "Naming note" clarifying that `carterWegmanMAC` names
-  the **linear hash shape** `k₁ · m + k₂`, not the Carter–Wegman
-  universal-hash security guarantee (which would require `p`
-  prime and probabilistic key sampling). `scripts/audit_c_work-
-  stream.lean` updated to pass `[NeZero p]` on the hash-shape
-  example.
+  `carterWegmanMAC_int_ctxt` now require `[Fact (Nat.Prime p)]`.  A
+  new module `Orbcrypt/Probability/UniversalHash.lean` defines the
+  ε-universal hash Prop `IsEpsilonUniversal`.  The headline theorem
+  `carterWegmanHash_isUniversal` proves the CW linear hash family is
+  `(1/p)`-universal over the prime field `ZMod p` — the actual
+  Carter–Wegman 1977 security property.  The proof uses the
+  algebraic characterisation `carterWegmanHash_collision_iff`
+  (`h k m₁ = h k m₂ ↔ k.1 = 0` for `m₁ ≠ m₂`) and the counting
+  lemma `carterWegmanHash_collision_card` (the collision set has
+  cardinality exactly `p`), combined with the uniform-distribution
+  counting form `probTrue_uniformPMF_decide_eq`.
+
+  Mathlib's `fact_prime_two : Fact (Nat.Prime 2)` and
+  `fact_prime_three : Fact (Nat.Prime 3)` instances resolve `p = 2`
+  and `p = 3` automatically.  `scripts/audit_c_workstream.lean`
+  migrates its INT-CTXT witness from the (non-prime) `p = 1` to
+  `p = 2`, with a concrete `OrbitKEM` fixture on `ZMod 2` whose
+  canonical form uses `Equiv.swap` to realise the transitive
+  `S_{ZMod 2}` action.
+
+  Non-vacuity witnesses added to `scripts/audit_phase_16.lean`
+  include: the universal-hash theorem at `p = 2` and `p = 3`, the
+  collision-iff discharge at `p = 2`, the collision-card discharge
+  at `p = 2`, and a monotonicity example.  All land at standard-
+  trio axioms only (no `sorryAx`, no custom axiom).
 
 - **L3 (M4) — `RefreshIndependent` rename.**
   `Orbcrypt/PublicKey/ObliviousSampling.lean`: the `Prop`

@@ -18,6 +18,7 @@ import Orbcrypt.KEM.Security
 import Orbcrypt.Probability.Monad
 import Orbcrypt.Probability.Negligible
 import Orbcrypt.Probability.Advantage
+import Orbcrypt.Probability.UniversalHash
 
 import Orbcrypt.Crypto.CompOIA
 import Orbcrypt.Crypto.CompSecurity
@@ -121,13 +122,16 @@ Mathlib.Probability.Distributions.Uniform
           ▼
   Probability.Monad ◄── PMF wrappers (uniformPMF, probTrue)
           │
-          ├────────────────────────┐
-          ▼                        ▼
-  Probability.Advantage    Probability.Negligible
-  ◄── advantage, triangle  ◄── IsNegligible
-  ◄── hybrid_argument      ◄── add closure
-          │                        │
-          ├────────────────────────┘
+          ├──────────────────┬────────────────────┐
+          ▼                  ▼                    ▼
+  Probability.Advantage  Probability.Negligible  Probability.UniversalHash
+  ◄── advantage, triangle  ◄── IsNegligible      ◄── IsEpsilonUniversal
+  ◄── hybrid_argument      ◄── add closure       ◄── probTrue_uniformPMF_decide_eq
+          │                  │                    │
+          ├──────────────────┘                    │
+          │                                       │
+          │                                       └─── AEAD.CarterWegmanMAC
+          │                                            (post-audit universal-hash)
           ▼
   Crypto.CompOIA ◄── Crypto.OIA
   ◄── orbitDist, ConcreteOIA, CompOIA
@@ -167,7 +171,12 @@ AEAD.MAC ◄── Mathlib.Tactic
   ◄── hybrid_correctness
 
   AEAD.CarterWegmanMAC ◄── AEAD.MAC, AEAD.AEAD, Mathlib.Data.ZMod.Basic
-  ◄── deterministicTagMAC, carterWegmanMAC
+                       ◄── Probability.UniversalHash (post-audit)
+  ◄── deterministicTagMAC, carterWegmanHash, carterWegmanMAC
+  ◄── carterWegmanHash_collision_iff, carterWegmanHash_collision_card
+  ◄── carterWegmanHash_isUniversal [Fact (Nat.Prime p)]
+      (headline: CW is `(1/p)`-universal over the prime field `ZMod p`,
+       L-workstream post-audit, 2026-04-22)
   ◄── carterWegman_authKEM, carterWegmanMAC_int_ctxt (Workstream C4)
 
   Mathlib.GroupTheory.Perm.Basic
@@ -742,7 +751,18 @@ Users can verify axiom dependencies by running in a Lean file:
 --  the `hOrbitCover` orbit-cover condition is carried as a hypothesis)
 
 #print axioms Orbcrypt.carterWegmanMAC_int_ctxt
--- (standard Lean only — direct specialisation of authEncrypt_is_int_ctxt)
+-- (standard Lean only — direct specialisation of authEncrypt_is_int_ctxt;
+--  post-audit now requires `[Fact (Nat.Prime p)]`)
+
+#print axioms Orbcrypt.carterWegmanHash_isUniversal
+-- (standard Lean only — Carter–Wegman 1977 `(1/p)`-universality;
+--  L-workstream post-audit headline, 2026-04-22)
+
+#print axioms Orbcrypt.IsEpsilonUniversal
+-- (standard Lean only — Prop-valued ε-universality definition)
+
+#print axioms Orbcrypt.probTrue_uniformPMF_decide_eq
+-- (standard Lean only — counting form of uniform probability)
 
 #print axioms Orbcrypt.hybrid_correctness
 -- (standard Lean only — follows from kem_correctness + DEM.correct)
@@ -1330,20 +1350,43 @@ threads `[Fintype Seed]` and `[Fintype G]`. The
 `scripts/audit_phase_16.lean` discharges `compression` by
 `decide` (`Nat.log 2 2 = 1 < 2 = Nat.log 2 6`).
 
-### L2 — `carterWegmanMAC` primality hygiene (M3)
+### L2 — Carter–Wegman universal-hash MAC (M3, upgraded post-audit)
 
-`Orbcrypt/AEAD/CarterWegmanMAC.lean` adds a `[NeZero p]`
-typeclass constraint to `carterWegmanHash`, `carterWegmanMAC`,
-`carterWegman_authKEM`, and `carterWegmanMAC_int_ctxt`. This
-rules out `p = 0` at elaboration time (`ZMod 0 = ℤ` is not a
-proper finite type) without demanding primality (which would be
-over-restrictive for the Lean `correct` / `verify_inj`
-obligations, both of which hold for any `NeZero p`). Mathlib's
-`instance : NeZero (n+1)` means `NeZero 1` is auto-derived, so
-the audit script's `p = 1` witness continues to elaborate.
-Docstring expanded with a "Naming note" clarifying the
-identifier names the linear hash shape, not the universal-hash
-security property.
+`Orbcrypt/AEAD/CarterWegmanMAC.lean` is the canonical Carter–Wegman
+universal-hash MAC.  The L-workstream post-audit pass (2026-04-22)
+upgraded the initial landing:
+
+* **Initial landing.** `[NeZero p]` + docstring disclaimer that
+  `carterWegmanMAC` names the "linear hash shape, not the
+  universal-hash security property."  This failed CLAUDE.md's
+  **"Security-by-docstring prohibition"** rule: an identifier that
+  names a cryptographic primitive must *prove* the security
+  property, not disclaim it.
+
+* **Post-audit upgrade.** `[Fact (Nat.Prime p)]` replaces `[NeZero p]`
+  on all `carterWegman*` definitions.  A new module
+  `Orbcrypt/Probability/UniversalHash.lean` defines `IsEpsilonUniversal
+  (h : K → Msg → Tag) (ε : ℝ≥0∞)`, the Carter–Wegman 1977 ε-universal
+  pair-collision bound.  The headline theorem
+  `carterWegmanHash_isUniversal` proves the CW linear hash family is
+  `(1/p)`-universal over the prime field `ZMod p`.  The proof proceeds
+  by counting: the collision set `{k : (ZMod p)² | h k m₁ = h k m₂}`
+  for distinct `m₁ ≠ m₂` has cardinality exactly `p`
+  (`carterWegmanHash_collision_card`), and the uniform distribution
+  over `(ZMod p)²` assigns probability `p/p² = 1/p` to this set.
+
+The primality constraint is **mathematical, not cosmetic**: it is
+the precondition for `ZMod p` to be a field, which is required for
+the algebraic collision analysis `k₁ · (m₁ - m₂) = 0 → k₁ = 0`
+(`mul_eq_zero` in a field + `m₁ - m₂ ≠ 0`).  Dropping primality
+would leave the MAC structure without the universal-hash Prop the
+name promises.
+
+Mathlib provides `fact_prime_two : Fact (Nat.Prime 2)` and
+`fact_prime_three : Fact (Nat.Prime 3)`, so the audit scripts at
+`p = 2, p = 3` auto-resolve the Fact.  The former audit script
+instantiation at `p = 1` (not prime) is replaced by `p = 2` in
+`scripts/audit_c_workstream.lean`.
 
 ### L3 — `RefreshIndependent` rename (M4)
 

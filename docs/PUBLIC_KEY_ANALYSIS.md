@@ -488,9 +488,11 @@ Every Phase 13 theorem either (i) carries its cryptographic assumption
 as an explicit `Prop`-typed hypothesis (`ObliviousSamplingHiding`,
 `OIA`), (ii) extracts a typeclass axiom (`CommGroupAction.comm` via the
 `CommGroupAction` class extending `MulAction`), or (iii) is an
-unconditional structural identity (`symmetric_key_agreement_limitation`,
-`refresh_independent`, `combine_diagonal_smul`). There are **no Lean
-`axiom` declarations** in the Phase 13 surface.
+unconditional structural identity (`sessionKey_expands_to_canon_form`
+— renamed from `symmetric_key_agreement_limitation` in Workstream L4;
+`refresh_depends_only_on_epoch_range` — renamed from
+`refresh_independent` in Workstream L3; `combine_diagonal_smul`).
+There are **no Lean `axiom` declarations** in the Phase 13 surface.
 
 ---
 

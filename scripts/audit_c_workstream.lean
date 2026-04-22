@@ -113,67 +113,88 @@ example : MAC Bool ℕ String := deterministicTagMAC toyHashBNS
 example : MAC ℕ Unit Bool := deterministicTagMAC (fun n _ => n % 2 == 0)
 
 -- Instantiation (iii): the Carter–Wegman witness is an instance of
--- `deterministicTagMAC`. `[NeZero p]` (audit
--- F-AUDIT-2026-04-21-M3 / Workstream L2) rules out the degenerate
--- `ZMod 0 = ℤ` branch at elaboration time.
-example (p : ℕ) [NeZero p] :
+-- `deterministicTagMAC`.  `[Fact (Nat.Prime p)]` (upgraded post-audit
+-- from `[NeZero p]` in the L-workstream audit pass, 2026-04-22):
+-- the primality constraint is the mathematical precondition for the
+-- universal-hash property proved by `carterWegmanHash_isUniversal`.
+-- Mathlib provides `instance fact_prime_two : Fact (Nat.Prime 2)`, so
+-- `[Fact (Nat.Prime 2)]` resolves automatically.
+example (p : ℕ) [Fact (Nat.Prime p)] :
     carterWegmanMAC p = deterministicTagMAC (carterWegmanHash p) := rfl
+
+-- Instantiation (iv): the Carter–Wegman hash is `(1/p)`-universal for
+-- every prime `p` (headline theorem of the L-workstream audit pass).
+example (p : ℕ) [Fact (Nat.Prime p)] :
+    IsEpsilonUniversal (carterWegmanHash p) ((1 : ENNReal) / p) :=
+  carterWegmanHash_isUniversal p
+
+-- Concrete discharge at `p = 2` (smallest prime; Fact auto-resolves).
+example : IsEpsilonUniversal (carterWegmanHash 2) ((1 : ENNReal) / 2) :=
+  carterWegmanHash_isUniversal 2
 
 end C4TemplateCheck
 
 -- ============================================================================
--- (5) `carterWegmanMAC_int_ctxt` is exercisable on a singleton ciphertext
---     space (`ZMod 1`).
+-- (5) `carterWegmanMAC_int_ctxt` is exercisable at the smallest prime
+--     `p = 2` over `ZMod 2` under the natural `S_{ZMod 2}` action.
 -- ============================================================================
 --
--- `ZMod 1` is the singleton type (every element equals zero); every orbit
--- under any action covers the whole space trivially. This gives a
--- one-line discharge of `hOrbitCover` and materialises `INT_CTXT` end-
--- to-end.
+-- Post the L-workstream audit pass (2026-04-22), the MAC requires
+-- `[Fact (Nat.Prime p)]`.  The smallest such `p` is `2`; we
+-- materialise the end-to-end INT-CTXT witness there.  The natural
+-- `Equiv.Perm` action on `ZMod 2` is transitive (swap `0` with any
+-- point), so the orbit-cover discharge is direct.
 
-section C4ExerciseINT_CTXT
+section C4ExerciseINT_CTXT_Prime
 
--- Action of the trivial group on `ZMod 1` — every group element fixes
--- the unique `ZMod 1` point. Local `instance` so unification picks it up
--- for the `carterWegman_authKEM` composition below.
-local instance trivialActionZMod1 :
-    MulAction (Equiv.Perm (ZMod 1)) (ZMod 1) := inferInstance
+-- Natural action of `Equiv.Perm α` on `α` (Mathlib's standard instance);
+-- made local so unification picks it up for the composition below.
+local instance permActionZMod2 :
+    MulAction (Equiv.Perm (ZMod 2)) (ZMod 2) := inferInstance
 
-/-- Concrete `OrbitKEM` on `ZMod 1` whose `keyDerive` is the constant
-    `(0, 0) : ZMod 1 × ZMod 1`. The canonical form is the identity.
-    This is purely a fixture for the audit script. -/
-def toyKEMZMod1 : OrbitKEM (Equiv.Perm (ZMod 1)) (ZMod 1) (ZMod 1 × ZMod 1) where
-  basePoint := (0 : ZMod 1)
+/-- Concrete `OrbitKEM` on `ZMod 2` with constant canonical form `= 0`.
+    Under `Equiv.Perm (ZMod 2)` acting naturally on `ZMod 2`, the group
+    acts transitively on the two-element set, so every point lies in
+    the single orbit, and `canon _ := 0` — always pointing to the
+    basepoint — satisfies both `mem_orbit` (via `swap x 0`) and
+    `orbit_iff` (all orbits coincide, both sides of the iff are
+    trivially true).  Fixture for the audit script. -/
+def toyKEMZMod2 :
+    OrbitKEM (Equiv.Perm (ZMod 2)) (ZMod 2) (ZMod 2 × ZMod 2) where
+  basePoint := (0 : ZMod 2)
   canonForm :=
-    { canon := id
-      mem_orbit := fun _ => MulAction.mem_orbit_self _
+    { canon := fun _ => 0
+      mem_orbit := fun x => by
+        -- Goal: `0 ∈ MulAction.orbit _ x` — use the swap `x ↔ 0`.
+        refine ⟨Equiv.swap x 0, ?_⟩
+        show (Equiv.swap x 0) x = 0
+        exact Equiv.swap_apply_left x 0
       orbit_iff := by
         intro x y
-        -- Both `x` and `y` equal zero (singleton); every orbit relation
-        -- is trivially an equality.
-        have hx : x = (0 : ZMod 1) := Subsingleton.elim _ _
-        have hy : y = (0 : ZMod 1) := Subsingleton.elim _ _
-        subst hx
-        subst hy
-        simp }
-  keyDerive := fun _ => ((0 : ZMod 1), (0 : ZMod 1))
+        -- `canon x = canon y` is always `(0 = 0) ↔ True`.
+        -- `orbit G x = orbit G y` also always holds (transitive action).
+        refine ⟨fun _ => ?_, fun _ => rfl⟩
+        -- Goal: `MulAction.orbit G x = MulAction.orbit G y`.
+        ext z
+        refine ⟨fun _ => ⟨Equiv.swap y z, Equiv.swap_apply_left y z⟩,
+                fun _ => ⟨Equiv.swap x z, Equiv.swap_apply_left x z⟩⟩ }
+  keyDerive := fun _ => ((0 : ZMod 2), (0 : ZMod 2))
 
-/-- Every `c : ZMod 1` lies in `orbit G toyKEMZMod1.basePoint` — trivial
-    since `ZMod 1` is a singleton. -/
-lemma toyKEMZMod1_orbit_cover
-    (c : ZMod 1) :
-    c ∈ MulAction.orbit (Equiv.Perm (ZMod 1)) toyKEMZMod1.basePoint := by
-  have : c = toyKEMZMod1.basePoint := Subsingleton.elim _ _
-  rw [this]
-  exact MulAction.mem_orbit_self _
+/-- Every `c : ZMod 2` lies in `orbit G toyKEMZMod2.basePoint`:
+    the `Equiv.swap 0 c` permutation maps `0` to `c`. -/
+lemma toyKEMZMod2_orbit_cover (c : ZMod 2) :
+    c ∈ MulAction.orbit (Equiv.Perm (ZMod 2)) toyKEMZMod2.basePoint :=
+  ⟨Equiv.swap 0 c, Equiv.swap_apply_left 0 c⟩
 
-/-- The Carter–Wegman AEAD composition over `toyKEMZMod1` satisfies
-    `INT_CTXT`. This is the end-to-end Workstream C audit receipt:
-    `MAC.verify_inj` → `authEncrypt_is_int_ctxt` → concrete witness. -/
+/-- The Carter–Wegman AEAD composition over `toyKEMZMod2` satisfies
+    `INT_CTXT`.  End-to-end receipt: `MAC.verify_inj` →
+    `authEncrypt_is_int_ctxt` → concrete witness at the smallest prime.
+    Post-audit (2026-04-22): moved from `p = 1` (no longer admissible
+    under `[Fact (Nat.Prime p)]`) to `p = 2`. -/
 theorem toyCarterWegmanMAC_is_int_ctxt :
-    INT_CTXT (carterWegman_authKEM 1 toyKEMZMod1) :=
-  carterWegmanMAC_int_ctxt 1 toyKEMZMod1 toyKEMZMod1_orbit_cover
+    INT_CTXT (carterWegman_authKEM 2 toyKEMZMod2) :=
+  carterWegmanMAC_int_ctxt 2 toyKEMZMod2 toyKEMZMod2_orbit_cover
 
 #print axioms toyCarterWegmanMAC_is_int_ctxt
 
-end C4ExerciseINT_CTXT
+end C4ExerciseINT_CTXT_Prime
