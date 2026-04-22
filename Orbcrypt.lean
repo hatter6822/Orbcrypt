@@ -807,6 +807,35 @@ Users can verify axiom dependencies by running in a Lean file:
 -- (standard Lean only — inhabits the chain at ε = 1 via punitSurrogate
 --  + dimension-0 trivial encoders, Workstream G post-refactor)
 
+-- Workstream H (audit 2026-04-21, F-AUDIT-2026-04-21-H2): KEM-layer
+-- ε-smooth hardness chain
+--
+-- Workstream H lifts the scheme-level Workstream-G chain to the KEM
+-- layer via `ConcreteKEMOIA_uniform`. Three additions: the
+-- scheme-to-KEM reduction Prop (H1), its ε' = 1 satisfiability
+-- witness (H2), and the `ConcreteKEMHardnessChain` structure with its
+-- composition theorem and ε = 1 non-vacuity witness (H3).
+
+#print axioms Orbcrypt.ConcreteOIAImpliesConcreteKEMOIAUniform
+-- (standard Lean only — Prop-valued reduction Prop, Workstream H1)
+
+#print axioms Orbcrypt.concreteOIAImpliesConcreteKEMOIAUniform_one_right
+-- (standard Lean only — satisfiability witness at ε' = 1 via
+--  concreteKEMOIA_uniform_one, Workstream H2)
+
+#print axioms Orbcrypt.ConcreteKEMHardnessChain
+-- (standard Lean only — structure packaging scheme-level chain +
+--  scheme-to-KEM reduction witness, Workstream H3)
+
+#print axioms Orbcrypt.concreteKEMHardnessChain_implies_kemUniform
+-- (standard Lean only — composes ConcreteHardnessChain.concreteOIA_from_chain
+--  with the scheme-to-KEM field, Workstream H3)
+
+#print axioms Orbcrypt.ConcreteKEMHardnessChain.tight_one_exists
+-- (standard Lean only — inhabits the KEM chain at ε = 1 via
+--  ConcreteHardnessChain.tight_one_exists + the _one_right discharge,
+--  Workstream H3)
+
 -- Phase 15 (Decryption Optimisation):
 
 #print axioms Orbcrypt.two_phase_correct
@@ -861,13 +890,14 @@ hypothesis (`ConcreteOIA`, `ConcreteKEMOIA`, `ConcreteTensorOIA`, etc.) in
 place of the deterministic (vacuous) OIA hypothesis of its Phase-4/7/12
 predecessor. The pairing:
 
-| Pre-Workstream-E (vacuous today) | Workstream-E counterpart (non-vacuous) |
+| Pre-Workstream-E (vacuous today) | Workstream-E/G/H counterpart (non-vacuous) |
 |---|---|
 | `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) |
 | `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) |
-| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5) |
+| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) |
 | `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
 | *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) |
+| *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`
@@ -965,4 +995,67 @@ per-encoding Props + three `_one_one` satisfiability witnesses);
 the `ConcreteHardnessChain` structure gained a `SurrogateTensor`
 parameter and two encoder fields in place of its pre-G implicit
 universal quantifiers.
+
+## Workstream H Snapshot (audit 2026-04-21, finding H2)
+
+Workstream H lands the KEM-layer ε-smooth hardness chain, closing
+finding H2 (MEDIUM). Pre-H, the KEM surface had two probabilistic
+reductions (`concrete_kemoia_implies_secure` over the point-mass form
+that collapses on `ε ∈ [0, 1)`, and `concrete_kemoia_uniform_implies_
+secure` over the genuinely ε-smooth `ConcreteKEMOIA_uniform`), but no
+**chain-level entry point** routing TI-hardness through to the
+KEM-layer advantage bound.
+
+**Additions (three new declarations in `Orbcrypt/KEM/CompSecurity.lean`).**
+
+* `ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀ keyDerive ε ε'` —
+  Prop-valued scheme-to-KEM reduction (H1). States "a `ConcreteOIA
+  scheme ε` bound transfers to `ConcreteKEMOIA_uniform (scheme.toKEM
+  m₀ keyDerive) ε'`". Parameterised by the KEM's anchor message `m₀`
+  and its key-derivation function `keyDerive`. Carried as an abstract
+  obligation matching the Workstream-G per-encoding-Prop pattern.
+* `concreteOIAImpliesConcreteKEMOIAUniform_one_right` (H2) — trivial
+  satisfiability witness at `ε' = 1`, discharging the Prop
+  unconditionally from `concreteKEMOIA_uniform_one`.
+* `ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε` (H3) — KEM-layer
+  chain structure bundling a `ConcreteHardnessChain scheme F S ε`
+  (Workstream G) with a matched `ConcreteOIAImpliesConcreteKEMOIA-
+  Uniform scheme m₀ keyDerive ε ε` field.
+* `concreteKEMHardnessChain_implies_kemUniform` — composition theorem
+  delivering `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε`.
+* `ConcreteKEMHardnessChain.tight_one_exists` — non-vacuity witness at
+  ε = 1 via `punitSurrogate F`, dimension-0 trivial encoders, and the
+  `_one_right` discharge.
+
+**Layering.** `Orbcrypt/KEM/CompSecurity.lean` gained a new import
+from `Orbcrypt/Hardness/Reductions.lean` (the KEM chain wraps the
+scheme-level chain). No cycle is introduced: `Hardness/Reductions`
+does not import `KEM/CompSecurity`.
+
+**Cryptographic interpretation.** At ε < 1, the chain's ε bound
+reflects the caller's choices of (a) tensor surrogate `S` and its
+TI-hardness, (b) encoders `encTC`, `encCG` and their per-encoding
+reduction Props, AND (c) the scheme-to-KEM reduction witness for the
+specific `(m₀, keyDerive)` pair. At ε = 1 the chain is inhabited
+trivially for any scheme / field / KEM anchor via `tight_one_exists`.
+Concrete ε < 1 discharges of the scheme-to-KEM Prop (e.g. under a
+`keyDerive` modelled as a random oracle) are research-scope items
+analogous to Workstream G's encoder discharges.
+
+**Research-scope follow-ups.** Concrete discharges of the
+`ConcreteOIAImpliesConcreteKEMOIAUniform` Prop at ε' < 1 require
+quantitative reasoning about the statistical behaviour of the
+`keyDerive` map's push-forward on orbit samples. A natural setting
+is the random-oracle idealisation (`keyDerive` sampled from an
+idealised hash family); formalising that is tracked in the audit
+plan as a follow-up parallel to § 15.1's Karp-encoding items.
+
+**Module status post-H.** All 38 modules build clean; the full
+Phase 16 audit script still emits only standard-trio axioms; 5 new
+declarations were added by Workstream H (one Prop definition, one
+satisfiability witness, one structure, one composition theorem, and
+one non-vacuity witness). The existing KEM-layer API is unchanged —
+`ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`, `concrete_kemoia_implies
+_secure`, and `concrete_kemoia_uniform_implies_secure` are all
+preserved; the new chain structure is additive.
 -/

@@ -2,6 +2,7 @@ import Orbcrypt.KEM.Security
 import Orbcrypt.Probability.Monad
 import Orbcrypt.Probability.Advantage
 import Orbcrypt.Crypto.CompOIA
+import Orbcrypt.Hardness.Reductions
 
 /-!
 # Orbcrypt.KEM.CompSecurity
@@ -33,6 +34,27 @@ Prop, then proves a quantitative security reduction (KEM version of
 * `Orbcrypt.concrete_kemoia_implies_secure` — main reduction: for any
   adversary and any pair `g₀, g₁ : G`, the per-pair KEM advantage is
   bounded by `ε` (Workstream E1d).
+
+## Workstream H additions (audit 2026-04-21, H2)
+
+* `Orbcrypt.ConcreteOIAImpliesConcreteKEMOIAUniform` — probabilistic
+  scheme-to-KEM reduction Prop (H1): transfer a `ConcreteOIA` bound
+  to the KEM-layer uniform form `ConcreteKEMOIA_uniform` on a derived
+  `scheme.toKEM` KEM.
+* `Orbcrypt.concreteOIAImpliesConcreteKEMOIAUniform_one_right` —
+  satisfiability witness at the right bound `ε' = 1` (H2), the KEM
+  analogue of the `_one_one` witnesses in `Hardness/Reductions.lean`.
+* `Orbcrypt.ConcreteKEMHardnessChain` — structure packaging a
+  scheme-level `ConcreteHardnessChain` (Workstream G) with the
+  scheme-to-KEM reduction Prop, delivering the KEM-layer
+  ε-smooth hardness chain (H3).
+* `Orbcrypt.concreteKEMHardnessChain_implies_kemUniform` — composition
+  theorem: a `ConcreteKEMHardnessChain` entails
+  `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε`.
+* `Orbcrypt.ConcreteKEMHardnessChain.tight_one_exists` — non-vacuity
+  witness at ε = 1 via `punitSurrogate` + dimension-0 trivial
+  encoders, matching the scheme-level
+  `ConcreteHardnessChain.tight_one_exists`.
 
 ## Relationship to KEMOIA (Phase 7)
 
@@ -410,5 +432,248 @@ theorem concrete_kemoia_uniform_implies_secure
     (g_ref : G) :
     kemAdvantage_uniform kem A g_ref ≤ ε :=
   hOIA (fun p => A.guess kem.basePoint p.1 p.2) g_ref
+
+-- ============================================================================
+-- Workstream H (audit 2026-04-21, finding H2, MEDIUM) —
+-- KEM-layer ε-smooth hardness chain via `ConcreteKEMOIA_uniform`
+-- ============================================================================
+--
+-- ## Scope and motivation
+--
+-- Workstream G (finding H1, HIGH) closed the scheme-level probabilistic
+-- hardness chain: `ConcreteHardnessChain scheme F S ε` bundles a
+-- surrogate choice plus three per-encoding reduction Props, and
+-- `ConcreteHardnessChain.concreteOIA_from_chain` delivers
+-- `ConcreteOIA scheme ε` via `concrete_oia_implies_1cpa`, which yields
+-- an `ε`-bounded probabilistic IND-1-CPA advantage for any adversary.
+--
+-- Finding H2 observes that the KEM-layer analogue is missing:
+-- * `kemoia_implies_secure` transports deterministic `KEMOIA` through
+--   the (vacuous) deterministic surface;
+-- * `concrete_kemoia_implies_secure` transports the point-mass
+--   `ConcreteKEMOIA`, which collapses on `ε ∈ [0, 1)` (point-mass
+--   advantage is 0 or 1);
+-- * the genuinely ε-smooth KEM predicate `ConcreteKEMOIA_uniform` has
+--   a security reduction (`concrete_kemoia_uniform_implies_secure`)
+--   but **no chain-level entry point** — downstream KEM consumers
+--   must assemble a scheme-to-KEM step by hand, and there is no
+--   `TI-hardness → KEM-uniform-OIA` pipeline parallel to Workstream G.
+--
+-- This section closes the gap in three steps (H1 / H2 / H3 per the
+-- audit plan `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 4):
+--
+-- * **H1.** `ConcreteOIAImpliesConcreteKEMOIAUniform` — the abstract
+--   reduction Prop, stated as a `Prop`-valued definition (matching
+--   the Workstream-G pattern of per-encoding reduction Props).
+-- * **H2.** `concreteOIAImpliesConcreteKEMOIAUniform_one_right` —
+--   trivial satisfiability witness at ε' = 1, the KEM analogue of
+--   Workstream G's `_one_one` anchors. This is the non-vacuity
+--   foundation for `ConcreteKEMHardnessChain.tight_one_exists`
+--   below.
+-- * **H3.** `ConcreteKEMHardnessChain` — structure packaging the
+--   scheme-level chain with the scheme-to-KEM reduction Prop,
+--   plus `concreteKEMHardnessChain_implies_kemUniform` (composition)
+--   and `ConcreteKEMHardnessChain.tight_one_exists` (non-vacuity).
+
+-- ============================================================================
+-- Workstream H1 — probabilistic scheme-to-KEM reduction Prop
+-- ============================================================================
+
+/-- **Workstream H1 — probabilistic scheme-to-KEM reduction Prop.**
+
+    A `ConcreteOIA scheme ε` bound on an `OrbitEncScheme`'s
+    orbit-indistinguishability advantage transfers to a
+    `ConcreteKEMOIA_uniform kem ε'` bound on the derived KEM
+    `scheme.toKEM m₀ keyDerive`, with potentially relaxed `ε'`. The
+    predicate is parameterised by the `m₀ : M` that anchors the KEM's
+    base point (`(scheme.toKEM m₀ keyDerive).basePoint = scheme.reps
+    m₀`) and by the caller's `keyDerive : X → K`.
+
+    **Why `Prop`-valued rather than a proved theorem.** Matching the
+    Workstream-G design for the per-encoding reduction Props, this is
+    stated as an abstract obligation the caller supplies. The
+    scheme-to-KEM reduction is **not** a free algebraic consequence
+    of `ConcreteOIA scheme ε`: the scheme-level predicate bounds the
+    advantage between two *orbit distributions*, whereas the KEM
+    uniform predicate bounds the advantage between a *uniform orbit
+    distribution* and a *point mass on a specific orbit element*.
+    Translating the former into the latter requires quantitative
+    reasoning about how `keyDerive` interacts with the PMF
+    push-forward — a `keyDerive`-specific, concrete-mathematics
+    obligation. Concrete discharges (e.g. when `keyDerive` is a
+    random-oracle idealisation) supply a proof; this predicate makes
+    the obligation explicit at the chain's KEM layer.
+
+    **Non-vacuity anchor.** `concreteOIAImpliesConcreteKEMOIAUniform_
+    one_right` exhibits the Prop at `ε' = 1` unconditionally, which
+    is what the Workstream-H non-vacuity witness
+    (`ConcreteKEMHardnessChain.tight_one_exists`) uses.
+
+    **References.**
+    * `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 4.3 (H1).
+    * `Orbcrypt/Hardness/Reductions.lean` for the companion per-encoding
+      reduction Props (`*_viaEncoding`) this predicate mirrors at the
+      KEM layer. -/
+def ConcreteOIAImpliesConcreteKEMOIAUniform
+    {G : Type*} {X : Type*} {M : Type*} {K : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (m₀ : M) (keyDerive : X → K)
+    (ε ε' : ℝ) : Prop :=
+  ConcreteOIA scheme ε →
+    ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε'
+
+/-- **Workstream H2 — satisfiability witness at `ε' = 1`.**
+
+    The scheme-to-KEM reduction Prop is unconditionally inhabited when
+    the target KEM-uniform bound is `1`: the conclusion
+    `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) 1` is a direct
+    specialisation of `concreteKEMOIA_uniform_one`.
+
+    **Role.** This lemma is the KEM-layer counterpart of Workstream G's
+    `*_one_one` anchors (e.g.
+    `concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one`). It
+    discharges the scheme-to-KEM field of `ConcreteKEMHardnessChain`
+    at ε = 1 without assuming anything about the source ε — hence the
+    signature `∀ ε, ... scheme m₀ keyDerive ε 1`.
+
+    **What this does NOT provide.** At `ε' < 1` the Prop requires a
+    genuine concrete-mathematics discharge (see the H1 docstring).
+    This anchor is the type-level non-vacuity witness only. -/
+theorem concreteOIAImpliesConcreteKEMOIAUniform_one_right
+    {G : Type*} {X : Type*} {M : Type*} {K : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m₀ : M) (keyDerive : X → K) (ε : ℝ) :
+    ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀ keyDerive ε 1 :=
+  fun _ => concreteKEMOIA_uniform_one (scheme.toKEM m₀ keyDerive)
+
+-- ============================================================================
+-- Workstream H3 — `ConcreteKEMHardnessChain` + composition
+-- ============================================================================
+
+/-- **Workstream H3 — KEM-layer ε-smooth hardness chain.**
+
+    Packages the scheme-level `ConcreteHardnessChain scheme F S ε`
+    (Workstream G Fix B + Fix C, surrogate-bound and per-encoding) with
+    a scheme-to-KEM reduction Prop witness, delivering the KEM-layer
+    hardness chain parallel to the scheme-layer chain.
+
+    **Fields.**
+    * `chain : ConcreteHardnessChain scheme F S ε` — the scheme-level
+      Workstream-G chain at bound `ε`.
+    * `scheme_to_kem : ConcreteOIAImpliesConcreteKEMOIAUniform scheme
+      m₀ keyDerive ε ε` — Workstream-H1 reduction Prop at the matched
+      source / target advantage bounds.
+
+    **Chain semantics.** Composing the two fields via
+    `concreteKEMHardnessChain_implies_kemUniform` yields
+    `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε` — the
+    genuinely ε-smooth KEM security predicate.
+
+    **Why a separate structure (rather than extending
+    `ConcreteHardnessChain`).** The KEM is anchored at a specific
+    `m₀ : M` and a specific `keyDerive : X → K`, parameters that the
+    scheme-level chain does not carry. Introducing a sibling structure
+    keeps both chain flavours clean (scheme-level = every `m`,
+    KEM-level = one `m₀` and one `keyDerive`).
+
+    **Satisfiability.** `ConcreteKEMHardnessChain.tight_one_exists`
+    inhabits the KEM chain at ε = 1 via `punitSurrogate F` +
+    dimension-0 trivial encoders + the `_one_right` discharge — the
+    KEM analogue of `ConcreteHardnessChain.tight_one_exists`.
+
+    **References.** Audit plan § 4 (H2 / H3). -/
+structure ConcreteKEMHardnessChain
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (F : Type*) [Fintype F] [DecidableEq F]
+    (S : SurrogateTensor F)
+    {K : Type*}
+    (m₀ : M) (keyDerive : X → K)
+    (ε : ℝ) where
+  /-- Underlying Workstream-G scheme-level hardness chain at bound `ε`. -/
+  chain : ConcreteHardnessChain scheme F S ε
+  /-- Workstream-H1 reduction Prop at matched source/target bound `(ε, ε)`. -/
+  scheme_to_kem :
+    ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀ keyDerive ε ε
+
+/-- **Workstream H3 composition theorem.**
+
+    A `ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε` entails
+    `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε`.
+
+    **Proof.** The chain's scheme-to-KEM field is a function
+    `ConcreteOIA scheme ε → ConcreteKEMOIA_uniform (scheme.toKEM m₀
+    keyDerive) ε`. Feed it the scheme-level `ConcreteOIA scheme ε`
+    obtained by composing the four fields of the Workstream-G chain
+    via `ConcreteHardnessChain.concreteOIA_from_chain`.
+
+    **Quantitative meaning.** If the caller supplies:
+    * a surrogate `S : SurrogateTensor F` whose TI-hardness is
+      `εT`-bounded,
+    * encoders `encTC`, `encCG` whose per-encoding reduction Props
+      hold at the claimed `(εT→εC, εC→εG, εG→ε)` losses,
+    * and a scheme-to-KEM reduction witness at `(ε, ε)`,
+    the chain's ε reflects genuine, compositionally-threaded
+    hardness all the way from TI to the KEM's uniform encapsulation
+    advantage.
+
+    **Non-vacuity.** See `ConcreteKEMHardnessChain.tight_one_exists`
+    below for the ε = 1 witness via `punitSurrogate` + dimension-0
+    trivial encoders. -/
+theorem concreteKEMHardnessChain_implies_kemUniform
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    {scheme : OrbitEncScheme G X M}
+    {F : Type*} [Fintype F] [DecidableEq F]
+    {S : SurrogateTensor F}
+    {K : Type*} {m₀ : M} {keyDerive : X → K} {ε : ℝ}
+    (hc : ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε) :
+    ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε :=
+  hc.scheme_to_kem (ConcreteHardnessChain.concreteOIA_from_chain hc.chain)
+
+namespace ConcreteKEMHardnessChain
+
+/-- **Workstream H3 non-vacuity witness.**
+
+    For every scheme, field type `F`, KEM anchor `m₀ : M`, and key
+    derivation `keyDerive : X → K`, there is an inhabitant of
+    `ConcreteKEMHardnessChain scheme F (punitSurrogate F) m₀
+    keyDerive 1`.
+
+    **Construction.**
+    * `chain` — supplied by `ConcreteHardnessChain.tight_one_exists`
+      (Workstream G), which uses `punitSurrogate F`, dimension-0 trivial
+      encoders (empty finset + false adjacency), and discharges each
+      per-encoding reduction Prop at its `_one_one` witness.
+    * `scheme_to_kem` — supplied by
+      `concreteOIAImpliesConcreteKEMOIAUniform_one_right`, which is
+      trivially true at `ε' = 1` because
+      `ConcreteKEMOIA_uniform _ 1` is unconditionally true.
+
+    **Interpretation.** This witness does **not** assert any
+    quantitative KEM-level hardness — it only certifies that the
+    chain's type is inhabitable at ε = 1, matching Exit Criterion
+    #4 in the audit plan (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_
+    PLAN.md` § 4.5). Meaningful `ε < 1` witnesses require concrete
+    surrogate + encoder + keyDerive discharges (research-scope
+    follow-ups, tracked in the audit plan § 15.1). -/
+theorem tight_one_exists
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (F : Type*) [Fintype F] [DecidableEq F]
+    {K : Type*} (m₀ : M) (keyDerive : X → K) :
+    Nonempty
+      (ConcreteKEMHardnessChain scheme F (punitSurrogate F)
+        m₀ keyDerive 1) :=
+  let ⟨chain⟩ := ConcreteHardnessChain.tight_one_exists scheme F
+  ⟨{ chain := chain
+     scheme_to_kem :=
+       concreteOIAImpliesConcreteKEMOIAUniform_one_right
+         scheme m₀ keyDerive 1 }⟩
+
+end ConcreteKEMHardnessChain
 
 end Orbcrypt

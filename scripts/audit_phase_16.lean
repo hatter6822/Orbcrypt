@@ -271,6 +271,12 @@ open Orbcrypt
 #print axioms kemAdvantage_uniform_nonneg
 #print axioms kemAdvantage_uniform_le_one
 #print axioms concrete_kemoia_uniform_implies_secure
+-- Workstream H (audit 2026-04-21, H2): KEM-layer ε-smooth chain
+#print axioms ConcreteOIAImpliesConcreteKEMOIAUniform
+#print axioms concreteOIAImpliesConcreteKEMOIAUniform_one_right
+#print axioms ConcreteKEMHardnessChain
+#print axioms concreteKEMHardnessChain_implies_kemUniform
+#print axioms ConcreteKEMHardnessChain.tight_one_exists
 
 -- ============================================================================
 -- §8  Key management (Phase 9)
@@ -649,5 +655,41 @@ example {G : Type} {X : Type} {M : Type}
     indCPAAdvantage scheme A ≤ 1 :=
   let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
   concrete_hardness_chain_implies_1cpa_advantage_bound scheme 1 hc A
+
+/-- Workstream H non-vacuity: the scheme-to-KEM reduction Prop is
+    inhabited at ε' = 1 unconditionally. Exercises
+    `concreteOIAImpliesConcreteKEMOIAUniform_one_right`. -/
+example {G : Type} {X : Type} {M : Type} {K : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m₀ : M) (keyDerive : X → K) (ε : ℝ) :
+    ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀ keyDerive ε 1 :=
+  concreteOIAImpliesConcreteKEMOIAUniform_one_right scheme m₀ keyDerive ε
+
+/-- Workstream H non-vacuity: `ConcreteKEMHardnessChain.tight_one_exists`
+    inhabits the KEM chain at ε = 1 for every scheme, field type `F`,
+    KEM anchor `m₀`, and key-derivation `keyDerive`. Structural check
+    that the H3 structure accepts well-typed inputs. -/
+example {G : Type} {X : Type} {M : Type} {K : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (F : Type) [Fintype F] [DecidableEq F]
+    (m₀ : M) (keyDerive : X → K) :
+    Nonempty
+      (ConcreteKEMHardnessChain scheme F (punitSurrogate F)
+        m₀ keyDerive 1) :=
+  ConcreteKEMHardnessChain.tight_one_exists scheme F m₀ keyDerive
+
+/-- Workstream H composition: combining `ConcreteKEMHardnessChain.
+    tight_one_exists` with `concreteKEMHardnessChain_implies_kemUniform`
+    yields `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) 1`,
+    which is trivially true via `concreteKEMOIA_uniform_one`. Exercises
+    the full H3 composition pipeline on a concrete instance. -/
+example {G : Type} {X : Type} {M : Type} {K : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m₀ : M) (keyDerive : X → K) :
+    ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) 1 :=
+  let ⟨hc⟩ := ConcreteKEMHardnessChain.tight_one_exists
+    scheme Bool m₀ keyDerive
+  concreteKEMHardnessChain_implies_kemUniform hc
 
 end NonVacuityWitnesses
