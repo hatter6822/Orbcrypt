@@ -25,6 +25,13 @@ meaningful probabilistic result.
 * `Orbcrypt.concreteOIA_one_meaningful` — ConcreteOIA(1) is trivially true,
   demonstrating the definition is satisfiable
 * `Orbcrypt.indCPAAdvantage_eq` — unfolding lemma for IND-1-CPA advantage
+* `Orbcrypt.indCPAAdvantage_collision_zero` — when the adversary's
+  challenge pair collides (`m₀ = m₁`), the probabilistic IND-1-CPA
+  advantage is exactly `0`. Consequence: the `concrete_oia_implies_1cpa`
+  upper bound transfers to the classical distinct-challenge IND-1-CPA
+  game unchanged — no separate `_distinct` corollary is required at the
+  probabilistic level (Workstream K, audit finding
+  F-AUDIT-2026-04-21-M1).
 * `Orbcrypt.DistinctMultiQueryAdversary` — multi-query adversary wrapper
   with per-query distinctness obligation (audit F-02 / Workstream B3)
 * `Orbcrypt.perQueryAdvantage` — per-query distinguishing advantage for a
@@ -90,6 +97,54 @@ theorem indCPAAdvantage_eq {G : Type*} {X : Type*} {M : Type*}
       (orbitDist (G := G) (scheme.reps (A.choose scheme.reps).2)) :=
   rfl
 
+/--
+**Collision case collapses the probabilistic advantage to zero.**
+
+When the adversary's two challenge messages collide — `(A.choose
+scheme.reps).1 = (A.choose scheme.reps).2` — the two orbit distributions
+`orbitDist (scheme.reps m)` appearing in `indCPAAdvantage` coincide, so
+the advantage of any distinguisher between them is exactly `0` via
+`advantage_self`.
+
+**Role in the distinct-challenge story (Workstream K, audit
+F-AUDIT-2026-04-21-M1).** The scheme-level security game `IsSecure`
+carries a stronger predicate than the classical IND-1-CPA game
+(`IsSecureDistinct`) because `Adversary.choose` may return a collision
+`(m, m)` that the classical challenger would reject. The
+`isSecure_implies_isSecureDistinct` theorem in `Crypto/Security.lean`
+bridges the two predicates unconditionally.
+
+At the **probabilistic** level, the analogous concern evaporates: this
+lemma shows that the `(m, m)` branch contributes advantage zero, so the
+`ConcreteOIA(ε)` upper bound `indCPAAdvantage scheme A ≤ ε` delivered
+by `concrete_oia_implies_1cpa` already holds unconditionally over all
+adversaries, including collision-choice ones. The classical distinct-
+challenge form (`(A.choose reps).1 ≠ (A.choose reps).2 →
+indCPAAdvantage scheme A ≤ ε`) is therefore a trivial specialisation
+of the existing bound — no new `_distinct` theorem is introduced at the
+probabilistic layer; consumers requiring the classical game shape can
+conjoin their distinctness hypothesis with the unconditional bound
+directly. External summaries may still cite
+`concrete_oia_implies_1cpa` as the "distinct-challenge IND-1-CPA"
+bound because the collision case adds no additional advantage.
+
+See the module docstring for the full rationale and the
+audit plan `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 6
+(Workstream K4).
+-/
+theorem indCPAAdvantage_collision_zero {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M)
+    (hCollision : (A.choose scheme.reps).1 = (A.choose scheme.reps).2) :
+    indCPAAdvantage scheme A = 0 := by
+  -- `indCPAAdvantage` unfolds to `advantage (A.guess reps) d₀ d₁` with
+  -- `d₀ = orbitDist (reps m₀)` and `d₁ = orbitDist (reps m₁)`. Under
+  -- the collision hypothesis `m₀ = m₁`, the two distributions are
+  -- definitionally equal, so the result follows from `advantage_self`.
+  unfold indCPAAdvantage
+  rw [hCollision]
+  exact advantage_self _ _
+
 -- ============================================================================
 -- Work Unit 8.7a: Concrete security theorem (primary target)
 -- ============================================================================
@@ -106,7 +161,19 @@ theorem indCPAAdvantage_eq {G : Type*} {X : Type*} {M : Type*}
     distinguisher (the adversary's guess function) between two specific
     orbit distributions. ConcreteOIA bounds the advantage of ALL distinguishers
     between ALL pairs of orbit distributions. The conclusion follows by
-    instantiation. -/
+    instantiation.
+
+    **Distinct-challenge form (Workstream K, audit
+    F-AUDIT-2026-04-21-M1).** This theorem already delivers the bound
+    `≤ ε` for *every* adversary, including those whose `choose` returns
+    a collision `(m, m)`. The classical IND-1-CPA game
+    (`IsSecureDistinct`) restricts to `m₀ ≠ m₁`; the bound transfers to
+    that restricted form for free, because
+    `indCPAAdvantage_collision_zero` shows the collision branch
+    contributes advantage `0`. Release-facing citations of the form
+    "ConcreteOIA(ε) ⇒ distinct-challenge IND-1-CPA advantage ≤ ε" may
+    therefore cite this theorem directly, without requiring a
+    `_distinct` corollary at the probabilistic level. -/
 theorem concrete_oia_implies_1cpa {G : Type*} {X : Type*} {M : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) (ε : ℝ)

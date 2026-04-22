@@ -186,7 +186,7 @@ The three headline results of the formalization.
 |--------|---------|------------|
 | `Correctness.lean` | `decrypt(encrypt(g, m)) = some m` | DEVELOPMENT.md §4.2 |
 | `InvariantAttack.lean` | Separating invariant implies adversary with Adv = 1/2 | DEVELOPMENT.md §4.4 |
-| `OIAImpliesCPA.lean` | OIA implies IND-1-CPA security | DEVELOPMENT.md §8.1 |
+| `OIAImpliesCPA.lean` | OIA implies IND-1-CPA security (`oia_implies_1cpa`); distinct-challenge corollary `oia_implies_1cpa_distinct` for the classical game (Workstream K1, F-AUDIT-2026-04-21-M1) | DEVELOPMENT.md §8.1 |
 
 ### Layer 4: Concrete Construction (`Construction/`)
 

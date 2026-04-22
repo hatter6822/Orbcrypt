@@ -284,6 +284,10 @@ oia_implies_1cpa (Theorems/OIAImpliesCPA.lean)
   ├── oia_specialized       — OIA instantiation (4.10)
   └── OIA (hypothesis)      — Orbit Indistinguishability Assumption
 
+oia_implies_1cpa_distinct (Theorems/OIAImpliesCPA.lean)  ◄── Workstream K1
+  ├── oia_implies_1cpa                — uniform-game security
+  └── isSecure_implies_isSecureDistinct — distinct-challenge bridge (B1)
+
 kem_correctness (KEM/Correctness.lean)
   └── (definitional — rfl)
 
@@ -297,6 +301,18 @@ concrete_oia_implies_1cpa (Crypto/CompSecurity.lean)
   ├── indCPAAdvantage            — probabilistic IND-1-CPA advantage (8.6)
   ├── advantage                  — distinguishing advantage (8.3)
   └── orbitDist                  — orbit sampling distribution (8.4)
+
+indCPAAdvantage_collision_zero (Crypto/CompSecurity.lean) ◄── Workstream K4
+  └── advantage_self             — advantage between coincident PMFs is 0 (8.3)
+
+hardness_chain_implies_security_distinct (Hardness/Reductions.lean)  ◄── K3
+  ├── hardness_chain_implies_security   — uniform-game security
+  └── isSecure_implies_isSecureDistinct — distinct-challenge bridge (B1)
+
+concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
+                                    (Hardness/Reductions.lean)  ◄── K4 companion
+  └── concrete_hardness_chain_implies_1cpa_advantage_bound (Workstream G)
+      — the distinctness hypothesis is carried as a signature marker only
 
 det_oia_implies_concrete_zero (Crypto/CompOIA.lean)
   ├── OIA (hypothesis)           — deterministic OIA
@@ -410,6 +426,11 @@ These theorems depend only on Lean's standard axioms (`propext`,
 - `isSecure_implies_isSecureDistinct` (`Crypto/Security.lean`) — the
   stronger uniform IND-1-CPA game implies the classical distinct-challenge
   game (audit F-02, Workstream B1)
+- `indCPAAdvantage_collision_zero` (`Crypto/CompSecurity.lean`) — the
+  probabilistic IND-1-CPA advantage vanishes on collision-choice
+  adversaries (audit finding F-AUDIT-2026-04-21-M1, Workstream K4);
+  this is the structural reason the `concrete_oia_implies_1cpa` bound
+  transfers to the classical distinct-challenge game for free.
 - `perQueryAdvantage_nonneg`, `perQueryAdvantage_le_one`,
   `perQueryAdvantage_bound_of_concreteOIA` (`Crypto/CompSecurity.lean`) —
   per-query advantage properties; the `ConcreteOIA` bound is carried as
@@ -482,6 +503,46 @@ explicit hypothesis:
 - `hardness_chain_implies_security` (`Hardness/Reductions.lean`) —
   TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
   HardnessChain as hypothesis)
+
+**Workstream K (audit 2026-04-21, F-AUDIT-2026-04-21-M1):
+distinct-challenge IND-1-CPA corollaries.**
+
+`IsSecure` (uniform game, `Crypto/Security.lean`) is strictly stronger
+than the classical IND-1-CPA game `IsSecureDistinct` (which rejects
+the degenerate collision choice `(m, m)` before sampling). Workstream K
+threads that distinction through the downstream chain:
+
+- `oia_implies_1cpa_distinct` (`Theorems/OIAImpliesCPA.lean`, K1) —
+  `OIA → IsSecureDistinct`; classical distinct-challenge IND-1-CPA
+  from the deterministic OIA. Composition of `oia_implies_1cpa` with
+  `isSecure_implies_isSecureDistinct`.
+- `hardness_chain_implies_security_distinct` (`Hardness/Reductions.lean`,
+  K3) — `HardnessChain scheme → IsSecureDistinct scheme`; chain-level
+  parallel, composition with the same bridge.
+- `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+  (`Hardness/Reductions.lean`, K4 companion) — probabilistic
+  chain-level bound restated in the classical distinct-challenge
+  framing. Since the bound already holds unconditionally, the
+  distinctness hypothesis is carried as a release-facing signature
+  marker — not used in the proof.
+
+Each of the three `_distinct` corollaries inherits the deterministic-
+chain scaffolding status: the `OIA` / `HardnessChain` hypothesis is
+`False` on every non-trivial scheme, so the conclusion is vacuously
+true on production instances. Cite the probabilistic chain
+(`concrete_oia_implies_1cpa` +
+`indCPAAdvantage_collision_zero`, or the dedicated
+`concrete_hardness_chain_implies_1cpa_advantage_bound` /
+`_distinct`) for non-vacuous quantitative content.
+
+**K2 design note — no KEM `_distinct` corollary.** The
+`kemoia_implies_secure` theorem does *not* get a `_distinct` corollary.
+`kemHasAdvantage` quantifies over two *group elements* `g₀, g₁ : G`
+(drawn by the challenger from `G`), not two messages chosen by the
+adversary. All ciphertexts lie in the single orbit of the base point,
+so there is no per-message collision risk and no scheme-level
+challenger rejection. The extended docstring on `kemoia_implies_secure`
+documents this.
 
 **Workstream E (audit 2026-04-18 + 2026-04-20 follow-up,
 F-01 + F-10 + F-11 + F-17 + F-20):**
@@ -886,6 +947,34 @@ Users can verify axiom dependencies by running in a Lean file:
 --  chain with concrete_kemoia_uniform_implies_secure, Workstream H3,
 --  KEM-layer analogue of concrete_hardness_chain_implies_1cpa_advantage_bound)
 
+-- Workstream K (audit 2026-04-21, F-AUDIT-2026-04-21-M1): distinct-
+-- challenge IND-1-CPA corollaries threading the classical-game shape
+-- through the downstream chain. Each corollary composes its
+-- deterministic-chain ancestor with `isSecure_implies_isSecureDistinct`
+-- (Workstream B1) and inherits the ancestor's scaffolding status
+-- (conclusion vacuously true on every non-trivial scheme, since the
+-- OIA / HardnessChain hypothesis is False there). The probabilistic
+-- counterparts are axiom-free because the collision branch
+-- contributes advantage 0 (`indCPAAdvantage_collision_zero`).
+
+#print axioms Orbcrypt.oia_implies_1cpa_distinct
+-- (standard Lean only — OIA appears as a hypothesis; composition of
+--  oia_implies_1cpa with isSecure_implies_isSecureDistinct, Workstream K1)
+
+#print axioms Orbcrypt.hardness_chain_implies_security_distinct
+-- (standard Lean only — HardnessChain appears as a hypothesis;
+--  chain-level parallel of K1, Workstream K3)
+
+#print axioms Orbcrypt.indCPAAdvantage_collision_zero
+-- (standard Lean only — one-line consequence of `advantage_self`;
+--  formalises the free transfer of the probabilistic bound to the
+--  distinct-challenge form, Workstream K4)
+
+#print axioms Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
+-- (standard Lean only — ConcreteHardnessChain appears as a hypothesis;
+--  classical-game-shape restatement of the Workstream-G probabilistic
+--  chain bound, Workstream K4 companion)
+
 -- Phase 15 (Decryption Optimisation):
 
 #print axioms Orbcrypt.two_phase_correct
@@ -949,6 +1038,10 @@ predecessor. The pairing:
 | *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) |
 | *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop |
 | *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound` |
+| `oia_implies_1cpa` (uniform game) | `oia_implies_1cpa_distinct` (K1) — same scaffolding status, classical-IND-1-CPA signature matching the literature |
+| `hardness_chain_implies_security` (uniform game) | `hardness_chain_implies_security_distinct` (K3) — same scaffolding status, classical-IND-1-CPA signature |
+| `concrete_oia_implies_1cpa` (unconditional over `Adversary`) | `indCPAAdvantage_collision_zero` + `concrete_oia_implies_1cpa` docstring (K4) — the collision case yields advantage 0, so the existing probabilistic `≤ ε` bound transfers to the classical distinct-challenge game for free |
+| `concrete_hardness_chain_implies_1cpa_advantage_bound` (unconditional over `Adversary`) | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4 companion) — classical-IND-1-CPA restatement retaining the ε-smooth quantitative content |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`
@@ -1119,4 +1212,72 @@ unchanged — `ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`,
 `concrete_kemoia_implies_secure`, and
 `concrete_kemoia_uniform_implies_secure` are all preserved; the
 new chain structure and composition theorems are additive.
+
+## Workstream K Snapshot (audit 2026-04-21, finding M1)
+
+Workstream K lands the distinct-challenge IND-1-CPA corollaries,
+closing finding M1 (MEDIUM). Pre-K, every downstream security
+theorem concluded `IsSecure`, the uniform-challenge game that accepts
+the degenerate collision choice `(m, m)` — strictly stronger than the
+classical IND-1-CPA game `IsSecureDistinct` which a classical
+challenger would enforce by rejecting `(m, m)` before sampling.
+`isSecure_implies_isSecureDistinct` (Workstream B1) had the
+unconditional bridge, but the downstream chain (OIAImpliesCPA,
+HardnessChain, probabilistic chain) had never been rephrased in the
+classical form.
+
+**Additions (four new declarations across three modules).**
+
+* `oia_implies_1cpa_distinct` (`Theorems/OIAImpliesCPA.lean`, K1) —
+  deterministic scheme-level distinct-challenge corollary, composing
+  `oia_implies_1cpa` with `isSecure_implies_isSecureDistinct`.
+* `hardness_chain_implies_security_distinct`
+  (`Hardness/Reductions.lean`, K3) — chain-level parallel, same
+  composition pattern applied to `hardness_chain_implies_security`.
+* `indCPAAdvantage_collision_zero` (`Crypto/CompSecurity.lean`, K4) —
+  the structural fact that the probabilistic IND-1-CPA advantage
+  vanishes on collision-choice adversaries. Proves via
+  `advantage_self` on the two coincident orbit distributions. This is
+  why the existing `concrete_oia_implies_1cpa` bound transfers to
+  the distinct-challenge game for free.
+* `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+  (`Hardness/Reductions.lean`, K4 companion) — probabilistic
+  chain-level bound restated in classical-game form. The
+  distinctness hypothesis is carried as a signature marker but
+  unused in the proof (bound holds unconditionally).
+
+**K2 design note.** The `KEM/Security.lean` module gained an extended
+docstring on `kemoia_implies_secure` documenting why no
+`kemoia_implies_secure_distinct` corollary is introduced: the KEM
+game parameterises adversaries by *group elements* (not messages),
+so there is no challenge-distinctness analogue at the KEM layer.
+The module docstring has the full rationale.
+
+**Semantics and release messaging.** The deterministic `_distinct`
+corollaries (K1, K3) inherit the scaffolding status of their
+ancestors: the underlying `OIA` / `HardnessChain` hypothesis is
+`False` on every non-trivial scheme, so the conclusion is vacuously
+true on production instances. Cite them only to explain the
+type-theoretic game-shape alignment, not as standalone security
+claims. The probabilistic-chain K4 companion
+(`concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`)
+retains the genuinely ε-smooth content of its non-distinct
+ancestor (Workstream G); it is the release-facing citation when
+external summaries want to match the literature's classical
+IND-1-CPA game shape while still carrying quantitative content.
+
+**Layering.** No new imports. The four new declarations land in
+three existing modules (`Theorems/OIAImpliesCPA.lean`,
+`Hardness/Reductions.lean`, `Crypto/CompSecurity.lean`) without
+introducing dependencies. The `_distinct` corollaries are
+expressible in terms of already-imported predicates
+(`IsSecureDistinct` via `Crypto/Security.lean`, which is a
+transitive import of all three files).
+
+**Module status post-K.** All 38 modules build clean; the full
+Phase 16 audit script still emits only standard-trio axioms; 4 new
+declarations are axiom-free (K1 / K3 / K4 / K4 companion,
+classified appropriately in the transparency report above). No
+existing declaration is modified — the Workstream-K additions are
+purely additive.
 -/

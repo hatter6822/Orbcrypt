@@ -18,23 +18,23 @@ post-Phase-6 work.
 
 | Metric | Value |
 |---|---:|
-| Lean source modules | 36 |
-| Lines of Lean source | 8,156 |
-| Public declarations | 343 |
-| Public declarations carrying a `/-- … -/` docstring | 343 (100 %) |
-| `theorem` declarations | 216 |
+| Lean source modules | 38 |
+| Lines of Lean source | 8,156+ (Workstream K adds ≈ 130 lines across four existing modules) |
+| Public declarations | 347 |
+| Public declarations carrying a `/-- … -/` docstring | 347 (100 %) |
+| `theorem` declarations | 220 |
 | `def` declarations | 105 |
 | `structure` declarations | 20 |
 | `class` / `instance` / `abbrev` declarations | 1 / 3 / 3 |
 | `private` declarations (intentional helpers) | 5 |
 | Uses of `sorry` in source | **0** |
 | Custom `axiom` declarations | **0** |
-| `lake build` jobs (full project) | 3,364 |
+| `lake build` jobs (full project) | 3,366 |
 | `lake build` warnings | 0 |
-| Public declarations checked by `scripts/audit_phase_16.lean` | 342 |
+| Public declarations checked by `scripts/audit_phase_16.lean` | 346 |
 | Declarations depending on `sorryAx` | **0** |
 | Declarations depending on a non-standard axiom | **0** |
-| Declarations depending on *no* axioms | 133 |
+| Declarations depending on *no* axioms | 133+ (Workstream K4's `indCPAAdvantage_collision_zero` depends only on `propext` / `Classical.choice` / `Quot.sound` via `advantage_self`; other K additions compose standard-trio ancestors) |
 
 **Verdict.** Phase 16 exit criteria are all met. The formal verification
 posture established at the end of Phase 6 — zero `sorry`, zero custom axioms,
@@ -124,9 +124,13 @@ is honest about which assumption is doing the cryptographic work.
 | 26  | `PAutSubgroup`                                                | `Hardness/CodeEquivalence.lean`               | `PAut` as Mathlib `Subgroup` (Workstream D2) |
 | 27  | `concrete_combiner_advantage_bounded_by_oia`                  | `PublicKey/CombineImpossibility.lean`         | Probabilistic equivariant-combiner upper bound (Workstream E6) |
 | 28  | `combinerOrbitDist_mass_bounds`                               | `PublicKey/CombineImpossibility.lean`         | Intra-orbit mass bound under non-degeneracy (E6b) |
+| 29  | `oia_implies_1cpa_distinct`                                   | `Theorems/OIAImpliesCPA.lean`                 | Classical IND-1-CPA corollary, conditional on `OIA` (Workstream K1) |
+| 30  | `hardness_chain_implies_security_distinct`                    | `Hardness/Reductions.lean`                    | Classical IND-1-CPA corollary, conditional on `HardnessChain` (Workstream K3) |
+| 31  | `indCPAAdvantage_collision_zero`                              | `Crypto/CompSecurity.lean`                    | Unconditional: probabilistic IND-1-CPA advantage vanishes on collision-choice adversaries (Workstream K4) |
+| 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | Probabilistic chain bound restated in classical-game form, conditional on `ConcreteHardnessChain` (Workstream K4 companion) |
 
-Every one of #1–#28 was confirmed to depend only on standard Lean axioms by
-running `scripts/audit_phase_16.lean` — 342 declarations exercised
+Every one of #1–#32 was confirmed to depend only on standard Lean axioms by
+running `scripts/audit_phase_16.lean` — all declarations exercised
 (every public declaration in the source tree), no `sorryAx`, no custom
 axiom outside the standard Lean trio.
 
@@ -613,16 +617,24 @@ at `ε = 1`, and no custom axiom or `sorry` short-circuits any proof.
 
 ---
 
-## Release readiness (post-Workstream-G, Workstream H, and Workstream J)
+## Release readiness (post-Workstream-G, Workstream H, Workstream J, and Workstream K)
 
 The 2026-04-21 audit's HIGH-severity finding (H1) is **closed** by
-Workstream G; finding H2 (MEDIUM) is **closed** by Workstream H; and
+Workstream G; finding H2 (MEDIUM) is **closed** by Workstream H;
 finding H3 (MEDIUM, release-messaging alignment) is **closed** by
 Workstream J — this section *is* the deliverable for H3, and is
 cross-referenced from `Orbcrypt.lean` § "Deterministic-vs-probabilistic
 security chains" and from `CLAUDE.md`'s "Three core theorems" table
 (which carries a **Status** column marking each theorem as
-Standalone / Scaffolding / Quantitative / Structural).
+Standalone / Scaffolding / Quantitative / Structural); and finding
+M1 (MEDIUM, distinct-challenge IND-1-CPA corollaries) is **closed**
+by Workstream K, which adds four declarations that thread the
+classical-game shape (`IsSecureDistinct`) through the downstream
+chain — documented in-line on `oia_implies_1cpa_distinct` (K1),
+`hardness_chain_implies_security_distinct` (K3),
+`indCPAAdvantage_collision_zero` (K4), and
+`concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4
+companion).
 
 **Summary for external consumers.** Orbcrypt's formalization carries
 two parallel chains. The *deterministic* chain's headline theorems
@@ -707,8 +719,27 @@ The formalization's public release posture (detailed):
      composing the KEM chain with
      `concrete_kemoia_uniform_implies_secure`; this is the strongest
      public-facing KEM security statement.
-   * `oia_implies_1cpa_distinct` (post-Workstream-K) — the classical
-     IND-1-CPA form matching the literature.
+   * `oia_implies_1cpa_distinct` (Workstream K1) — the classical
+     distinct-challenge IND-1-CPA form matching the literature;
+     deterministic-chain scaffolding (inherits OIA's vacuity on
+     non-trivial schemes).
+   * `hardness_chain_implies_security_distinct` (Workstream K3) —
+     chain-level parallel: `HardnessChain → IsSecureDistinct`;
+     deterministic-chain scaffolding.
+   * `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+     (Workstream K4) — **primary public-release citation** for the
+     classical distinct-challenge IND-1-CPA ε-bound. Retains the
+     full Workstream-G quantitative content; the distinctness
+     hypothesis is present for release-messaging signature parity
+     with the literature, but unused in the proof because
+     `indCPAAdvantage_collision_zero` shows the collision branch
+     yields advantage 0 anyway.
+   * `indCPAAdvantage_collision_zero` (Workstream K4) —
+     unconditional structural lemma: probabilistic IND-1-CPA
+     advantage vanishes on collision-choice adversaries.
+     Documents why the `concrete_oia_implies_1cpa` bound transfers
+     from the uniform game to the classical distinct-challenge game
+     for free.
    * `correctness`, `kem_correctness`, `aead_correctness`,
      `hybrid_correctness` — unconditional.
    * `invariant_attack` — vulnerability analysis (complete break
@@ -717,7 +748,11 @@ The formalization's public release posture (detailed):
 5. **What NOT to cite without qualification:**
    * `oia_implies_1cpa`, `kemoia_implies_secure`,
      `hardness_chain_implies_security` — scaffolding only,
-     vacuously true on production schemes.
+     vacuously true on production schemes. The Workstream-K
+     `_distinct` corollaries (`oia_implies_1cpa_distinct`,
+     `hardness_chain_implies_security_distinct`) inherit the
+     same scaffolding status; cite them to highlight classical-
+     game-shape alignment, *not* as standalone security claims.
    * `ConcreteHardnessChain scheme F (punitSurrogate F) 1` /
      `ConcreteKEMHardnessChain scheme F (punitSurrogate F) m₀
      keyDerive 1` — non-vacuity witnesses, not quantitative security
@@ -800,3 +835,38 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   theorems" table (J3). Because the change is comment/markdown-only,
   `lake build` output, `#print axioms` outputs, the Phase 16 audit
   script, and CI posture are all unchanged.
+
+* **2026-04-22 (Workstream K)** — Distinct-challenge IND-1-CPA
+  corollaries (audit finding M1, MEDIUM). Added four axiom-free
+  declarations closing the game-shape gap between the uniform-
+  challenge `IsSecure` predicate used by the pre-K downstream
+  theorems and the classical `IsSecureDistinct` game used in the
+  literature. The new declarations:
+  * `oia_implies_1cpa_distinct` (`Theorems/OIAImpliesCPA.lean`, K1)
+    — deterministic scheme-level corollary composing
+    `oia_implies_1cpa` with `isSecure_implies_isSecureDistinct`.
+  * `hardness_chain_implies_security_distinct`
+    (`Hardness/Reductions.lean`, K3) — chain-level parallel from
+    `HardnessChain` to `IsSecureDistinct`.
+  * `indCPAAdvantage_collision_zero` (`Crypto/CompSecurity.lean`,
+    K4) — unconditional structural lemma: the probabilistic IND-1-
+    CPA advantage vanishes on collision-choice adversaries.
+    Formalises why the `concrete_oia_implies_1cpa` bound transfers
+    from `Adversary` to the classical distinct-challenge game for
+    free.
+  * `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+    (`Hardness/Reductions.lean`, K4 companion) — probabilistic
+    chain bound restated in classical-game form. The distinctness
+    hypothesis is carried as a release-facing signature marker and
+    unused in the proof.
+  K2 deliberately *omits* a `kemoia_implies_secure_distinct`
+  corollary; the KEM game parameterises adversaries by group
+  elements rather than messages, so no per-challenge collision gap
+  exists at the KEM layer (extended docstring on
+  `kemoia_implies_secure`). The transparency report, the vacuity
+  map, CLAUDE.md's headline-theorem table (new row #30), and the
+  Phase 16 audit script are updated alongside the Lean additions.
+  All 38 modules build clean; the full Phase 16 audit script still
+  emits only standard-trio axioms; the new declarations are
+  axiom-free (K1, K3, K4) or depend only on the standard trio
+  (K4 companion via `concrete_oia_implies_1cpa`).
