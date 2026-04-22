@@ -642,10 +642,19 @@ The formalization's public release posture:
    keyDerive ε`, which bundles a scheme-level Workstream-G chain
    with a `ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀
    keyDerive ε ε` field (the abstract scheme-to-KEM reduction Prop).
-   `concreteKEMHardnessChain_implies_kemUniform` delivers
-   `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε`. This
-   replaces the pre-H pattern (where KEM consumers had to assemble
-   the scheme-to-KEM step by hand) with a single structure
+   Two composition theorems expose the chain's content:
+   * `concreteKEMHardnessChain_implies_kemUniform` delivers the
+     probabilistic KEM-OIA predicate `ConcreteKEMOIA_uniform
+     (scheme.toKEM m₀ keyDerive) ε`.
+   * `concrete_kem_hardness_chain_implies_kem_advantage_bound`
+     composes that further with `concrete_kemoia_uniform_implies_
+     secure` to deliver the end-to-end KEM adversary bound
+     `kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ ε`
+     for every adversary and every reference encapsulation — the
+     KEM-layer parallel of the scheme-level
+     `concrete_hardness_chain_implies_1cpa_advantage_bound`.
+   This replaces the pre-H pattern (where KEM consumers had to
+   assemble the scheme-to-KEM step by hand) with a single structure
    parameterised by the KEM's anchor and key-derivation choice. The
    scheme-to-KEM reduction Prop at `ε < 1` is a research-scope
    discharge (typically via random-oracle idealisation of `keyDerive`);
@@ -656,8 +665,13 @@ The formalization's public release posture:
    * `concrete_hardness_chain_implies_1cpa_advantage_bound` — the
      scheme-level quantitative bound under caller-supplied hardness.
    * `concreteKEMHardnessChain_implies_kemUniform` (post-Workstream-H) —
-     the KEM-layer quantitative bound matching the same hardness
-     profile.
+     the KEM-layer probabilistic KEM-OIA bound matching the same
+     hardness profile.
+   * `concrete_kem_hardness_chain_implies_kem_advantage_bound`
+     (post-Workstream-H) — the KEM-layer end-to-end adversary bound
+     composing the KEM chain with
+     `concrete_kemoia_uniform_implies_secure`; this is the strongest
+     public-facing KEM security statement.
    * `oia_implies_1cpa_distinct` (post-Workstream-K) — the classical
      IND-1-CPA form matching the literature.
    * `correctness`, `kem_correctness`, `aead_correctness`,

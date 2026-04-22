@@ -55,6 +55,12 @@ Prop, then proves a quantitative security reduction (KEM version of
   witness at ε = 1 via `punitSurrogate` + dimension-0 trivial
   encoders, matching the scheme-level
   `ConcreteHardnessChain.tight_one_exists`.
+* `Orbcrypt.concrete_kem_hardness_chain_implies_kem_advantage_bound` —
+  end-to-end KEM-layer adversary bound: composes the KEM chain with
+  `concrete_kemoia_uniform_implies_secure` to deliver
+  `kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ ε`,
+  mirroring the scheme-level
+  `concrete_hardness_chain_implies_1cpa_advantage_bound`.
 
 ## Relationship to KEMOIA (Phase 7)
 
@@ -675,5 +681,43 @@ theorem tight_one_exists
          scheme m₀ keyDerive 1 }⟩
 
 end ConcreteKEMHardnessChain
+
+/-- **Probabilistic KEM-layer security bound from the hardness chain.**
+
+    Given a `ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε`, every
+    KEM adversary `A` has uniform-form advantage at most `ε` at every
+    reference encapsulation `g_ref`.
+
+    This is the KEM-layer analogue of
+    `concrete_hardness_chain_implies_1cpa_advantage_bound`: that
+    theorem composes the scheme-level chain with
+    `concrete_oia_implies_1cpa` to deliver `indCPAAdvantage ≤ ε`; this
+    theorem composes the KEM-level chain with
+    `concrete_kemoia_uniform_implies_secure` to deliver
+    `kemAdvantage_uniform ≤ ε`.
+
+    **Proof.** Two-step composition. First
+    `concreteKEMHardnessChain_implies_kemUniform hc` extracts the
+    `ConcreteKEMOIA_uniform` predicate at bound `ε`. Then
+    `concrete_kemoia_uniform_implies_secure` applies that predicate to
+    any specific adversary + reference group element, delivering the
+    pointwise advantage bound.
+
+    **Non-vacuity.** At ε = 1 this is always true (advantage ≤ 1 for
+    any adversary), inhabited via `ConcreteKEMHardnessChain.tight_one_
+    exists` composed with this theorem. At ε < 1 the bound reflects
+    the caller-supplied chain's quantitative hardness. -/
+theorem concrete_kem_hardness_chain_implies_kem_advantage_bound
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    {scheme : OrbitEncScheme G X M}
+    {F : Type*} [Fintype F] [DecidableEq F]
+    {S : SurrogateTensor F}
+    {K : Type*} {m₀ : M} {keyDerive : X → K} {ε : ℝ}
+    (hc : ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε)
+    (A : KEMAdversary X K) (g_ref : G) :
+    kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ ε :=
+  concrete_kemoia_uniform_implies_secure (scheme.toKEM m₀ keyDerive) ε
+    (concreteKEMHardnessChain_implies_kemUniform hc) A g_ref
 
 end Orbcrypt

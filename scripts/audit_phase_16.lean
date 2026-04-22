@@ -277,6 +277,7 @@ open Orbcrypt
 #print axioms ConcreteKEMHardnessChain
 #print axioms concreteKEMHardnessChain_implies_kemUniform
 #print axioms ConcreteKEMHardnessChain.tight_one_exists
+#print axioms concrete_kem_hardness_chain_implies_kem_advantage_bound
 
 -- ============================================================================
 -- §8  Key management (Phase 9)
@@ -691,5 +692,21 @@ example {G : Type} {X : Type} {M : Type} {K : Type}
   let ⟨hc⟩ := ConcreteKEMHardnessChain.tight_one_exists
     scheme Bool m₀ keyDerive
   concreteKEMHardnessChain_implies_kemUniform hc
+
+/-- Workstream H end-to-end adversary advantage bound: combining
+    `ConcreteKEMHardnessChain.tight_one_exists` with
+    `concrete_kem_hardness_chain_implies_kem_advantage_bound` yields
+    `kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ 1` for
+    every KEM adversary and reference group element — the KEM-layer
+    parallel of the scheme-level `concrete_hardness_chain_implies_1cpa_
+    advantage_bound` non-vacuity witness. -/
+example {G : Type} {X : Type} {M : Type} {K : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m₀ : M) (keyDerive : X → K)
+    (A : KEMAdversary X K) (g_ref : G) :
+    kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ 1 :=
+  let ⟨hc⟩ := ConcreteKEMHardnessChain.tight_one_exists
+    scheme Bool m₀ keyDerive
+  concrete_kem_hardness_chain_implies_kem_advantage_bound hc A g_ref
 
 end NonVacuityWitnesses

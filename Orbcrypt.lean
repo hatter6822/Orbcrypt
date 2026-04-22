@@ -836,6 +836,11 @@ Users can verify axiom dependencies by running in a Lean file:
 --  ConcreteHardnessChain.tight_one_exists + the _one_right discharge,
 --  Workstream H3)
 
+#print axioms Orbcrypt.concrete_kem_hardness_chain_implies_kem_advantage_bound
+-- (standard Lean only — end-to-end KEM-layer bound; composes the KEM
+--  chain with concrete_kemoia_uniform_implies_secure, Workstream H3,
+--  KEM-layer analogue of concrete_hardness_chain_implies_1cpa_advantage_bound)
+
 -- Phase 15 (Decryption Optimisation):
 
 #print axioms Orbcrypt.two_phase_correct
@@ -898,6 +903,7 @@ predecessor. The pairing:
 | `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
 | *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) |
 | *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop |
+| *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound` |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`
@@ -1026,6 +1032,14 @@ KEM-layer advantage bound.
 * `ConcreteKEMHardnessChain.tight_one_exists` — non-vacuity witness at
   ε = 1 via `punitSurrogate F`, dimension-0 trivial encoders, and the
   `_one_right` discharge.
+* `concrete_kem_hardness_chain_implies_kem_advantage_bound` —
+  end-to-end KEM-layer adversary bound:
+  `kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ ε`.
+  Composes `concreteKEMHardnessChain_implies_kemUniform` with
+  `concrete_kemoia_uniform_implies_secure`. This is the KEM-layer
+  parallel of the scheme-level
+  `concrete_hardness_chain_implies_1cpa_advantage_bound` (Workstream
+  E5).
 
 **Layering.** `Orbcrypt/KEM/CompSecurity.lean` gained a new import
 from `Orbcrypt/Hardness/Reductions.lean` (the KEM chain wraps the
@@ -1051,11 +1065,13 @@ idealised hash family); formalising that is tracked in the audit
 plan as a follow-up parallel to § 15.1's Karp-encoding items.
 
 **Module status post-H.** All 38 modules build clean; the full
-Phase 16 audit script still emits only standard-trio axioms; 5 new
+Phase 16 audit script still emits only standard-trio axioms; 6 new
 declarations were added by Workstream H (one Prop definition, one
-satisfiability witness, one structure, one composition theorem, and
-one non-vacuity witness). The existing KEM-layer API is unchanged —
-`ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`, `concrete_kemoia_implies
-_secure`, and `concrete_kemoia_uniform_implies_secure` are all
-preserved; the new chain structure is additive.
+satisfiability witness, one structure, one chain composition
+theorem, one non-vacuity witness, and one end-to-end adversary-
+bound composition theorem). The existing KEM-layer API is
+unchanged — `ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`,
+`concrete_kemoia_implies_secure`, and
+`concrete_kemoia_uniform_implies_secure` are all preserved; the
+new chain structure and composition theorems are additive.
 -/
