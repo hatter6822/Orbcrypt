@@ -4,6 +4,14 @@
 
 *Extension of the [Orbcrypt Lean 4 Formalization Plan](FORMALIZATION_PLAN.md)*
 
+> **Note (2026-04-22, Workstream L):** This planning doc references
+> the original Phase 7 `kem_key_constant` theorem (deleted by
+> Workstream L5, audit F-AUDIT-2026-04-21-M6). The authoritative
+> key-constancy lemma is now `kem_key_constant_direct`, proved
+> unconditionally from `canonical_isGInvariant`. See `CLAUDE.md`'s
+> Workstream L snapshot for details. This file is retained as a
+> point-in-time record of the original design.
+
 ---
 
 ## Table of Contents

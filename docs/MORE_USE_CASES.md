@@ -71,7 +71,7 @@ that certify correctness or hiding for each.
 |------------------|-----------------|-------------|
 | Per-project access tier | Subgroup action `G_P ≤ S_n` | `subgroupBitstringAction` |
 | Project identifier (what project a commit belongs to) | Orbit class `canon_{G_P}` | `canon_eq_of_mem_orbit` (helper to Theorem 1) |
-| Pseudonymous contributor token | Bundle element from `OrbitalRandomizers G_C t` issued by the project | `oblivious_sample_in_orbit`, `refresh_independent` |
+| Pseudonymous contributor token | Bundle element from `OrbitalRandomizers G_C t` issued by the project | `oblivious_sample_in_orbit`, `refresh_depends_only_on_epoch_range` |
 | Session / ephemeral key for a DEM payload | KEM key `encaps(g).2` | Theorem 4 (`kem_correctness`) |
 | Coordinated vulnerability embargo | Batch-openable commitment (reveal `G_E`) | `canon_eq_implies_orbit_eq`, Theorem 6 |
 | Severity-class-private bug report | Orbit label under a triage-secret group | `concrete_oia_implies_1cpa`, Theorem 6 |
@@ -127,7 +127,7 @@ unlinkable across actions.
   `USE_CASES.md` §2.2.
 * **Formalization handle.** `canon_idem` (stability of the canonical
   form), `canon_eq_of_mem_orbit` (all bundle elements canonicalize
-  equally), `refresh_independent` (epoch-rotation gives structural
+  equally), `refresh_depends_only_on_epoch_range` (epoch-rotation gives structural
   independence).
 
 ### 2.2 Cross-project unlinkability
@@ -514,7 +514,7 @@ and the subscriber exhausts their current bundle.
   accesses within a period are unlinkable (one bundle element per
   access), and the server-side check is a single `canon` call, not
   a signature verification plus a membership lookup.
-* **Formalization handle:** `refresh_independent` (Phase 13), plus
+* **Formalization handle:** `refresh_depends_only_on_epoch_range` (Phase 13), plus
   `seed_kem_correctness` for the wallet-derived KEM.
 
 ### 6.3 Pay-per-LLM-call with sealed query metering
@@ -562,7 +562,7 @@ resolver does not hold.
   readable by a cooperating resolver. The honest statement of the
   capability bound: "delegation is scoped to artefacts already
   encrypted under the handed-out subgroup."
-* `refresh_independent` is *not* the right formal handle here — it
+* `refresh_depends_only_on_epoch_range` is *not* the right formal handle here — it
   concerns per-epoch bundle structural independence, not group
   delegation. The right handle is subgroup rotation; no Lean
   development addresses dispute-scoped rotation yet.
@@ -736,7 +736,7 @@ gated on Lean-formalized theorems:
    Independent of every open problem. This is the single biggest
    practical win from Orbcrypt in a dev-platform setting.
 2. **Deploy wallet-derived pseudonyms (§§2.1, 2.3, 6.4).** Theorem 9
-   plus classical PQ signing. `refresh_independent` bounds bundle
+   plus classical PQ signing. `refresh_depends_only_on_epoch_range` bounds bundle
    rotation semantics.
 3. **Deploy category-sealed routing (§3.2, §5.2).** Theorems 4, 6.
    Requires invariant-hygiene discipline in routing code; defer
@@ -841,7 +841,7 @@ claims were weakened and why.
   `USE_CASES.md` §3.4 (cross-hop DEX routing), which is gated on
   the same open `CommGroupAction` instantiation problem.
 * **§6.5 (dispute resolution).** Rewrote the capability-expiry
-  claim: `refresh_independent` concerns per-epoch bundle
+  claim: `refresh_depends_only_on_epoch_range` concerns per-epoch bundle
   structural independence, not group-delegation expiry. A group
   handed out cannot be cryptographically revoked; time-bounded
   access requires subgroup rotation of the underlying `G_D` on
@@ -866,7 +866,7 @@ All numbered theorem references (Theorems 4, 6, 9, 10, 11, 12, 13,
 `concrete_oia_implies_1cpa`, `seed_kem_correctness`,
 `nonce_reuse_leaks_orbit`, `aead_correctness`, `hybrid_correctness`,
 `csidh_correctness`, `subgroupBitstringAction`, `hgoeKEM`,
-`oblivious_sample_in_orbit`, `refresh_independent`, `INT_CTXT`)
+`oblivious_sample_in_orbit`, `refresh_depends_only_on_epoch_range`, `INT_CTXT`)
 were cross-checked against their Lean sources and the theorem
 registry in `CLAUDE.md`. All exist with the stated meanings.
 Benchmark figures (canon: 172 / 320 / 1186 ms at λ=80/128/256)

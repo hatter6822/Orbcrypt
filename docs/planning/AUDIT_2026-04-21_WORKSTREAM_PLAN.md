@@ -78,10 +78,16 @@ The remaining HIGH-adjacent findings are medium severity: **H2**
 (KEM-layer chain through `ConcreteKEMOIA_uniform` is missing),
 **H3** (the deterministic OIA family is self-disclosed-vacuous on any
 non-trivial scheme — documentation framing only). Medium findings
-**M1–M6** are each small-diff: collision-admitting `IsSecure`, dead
-`SeedKey.expand`, unconstrained `carterWegmanMAC p`, misleadingly-named
-tautology theorems (`RefreshIndependent`, `SymmetricKeyAgreement-
-Limitation`), and a redundant `KEMOIA` conjunct. Low and info findings
+**M1–M6** are variously small-diff and structurally substantial:
+collision-admitting `IsSecure` (M1, small-diff),
+uncertified-compression `SeedKey` (M2, **structurally substantial**:
+the 2026-04-22 revision of Workstream L1 lands a machine-checked
+`compression : Nat.log 2 |Seed| < Nat.log 2 |G|` witness, threading
+`[Fintype Seed]` / `[Fintype G]` through every downstream theorem),
+unconstrained `carterWegmanMAC p` (M3, small-diff),
+misleadingly-named tautology theorems (M4 `RefreshIndependent`,
+M5 `SymmetricKeyAgreementLimitation`, small-diff renames), and a
+redundant `KEMOIA` conjunct (M6, small-diff). Low and info findings
 are polish.
 
 **Release-readiness commitment.** After Workstreams **G** (pre-release
@@ -130,7 +136,7 @@ pre-release-preferred polish but not blockers.
 | **H** | KEM-layer ε-smooth chain via `ConcreteKEMOIA_uniform` | H2 | 4h | **G** |
 | **J** | Release-messaging alignment: deterministic-vacuity framing | H3 | 1.5h | **G**, **K** |
 | **K** | Distinct-challenge IND-1-CPA corollaries | M1 | 2h | none |
-| **L** | Structural + naming hygiene (five sub-items) | M2–M6 | 5h | none |
+| **L** | Structural + naming hygiene (five sub-items; L1 revised 2026-04-22 to witnessed-compression scope) | M2–M6 | ~10h | none |
 | **M** | Low-priority polish (eight sub-items) | L1–L8 | 3h | none |
 | **N** | Info hygiene (lakefile version, CI comment) | I1, I5 | 0.5h | none |
 | — | Total | 22 findings | ≈ 24h | — |
@@ -1110,62 +1116,282 @@ may be landed in any order.
    witnessed by any Lean statement; the structure's `Seed` is
    unconstrained in size.
 
-**Decision.** Two acceptable resolutions; the plan adopts option
-**(a)** — "honest API" — as the smallest diff:
+**Decision (revised 2026-04-22).** The plan now adopts option
+**(b)** — "witnessed compression" — as the principled resolution.
+The earlier preference for option (a) ("honest API") was a
+smallest-diff compromise; it leaves the advertised compression claim
+as a prose-only assertion with no machine-checkable content.
+Under CLAUDE.md's "no half-finished implementations" rule the honest
+resolution is to **land the machine-checkable compression witness**
+and pay the structural cost: every downstream theorem that carries a
+`SeedKey Seed G X` argument must also thread `[Fintype Seed]` and
+`[Fintype G]`, and the `OrbitEncScheme.toSeedKey` bridge must carry
+a proof that the target group is non-trivial (`1 < Fintype.card G`).
 
-- **(a) Honest API.** Drop the compression-ratio framing from the
-  docstring; keep `expand` as a dead field but annotate with "used
-  by downstream consumers (e.g., the GAP implementation) for
-  canonical-form reconstruction; not referenced by any in-tree Lean
-  theorem".
-- **(b) Witnessed compression.** Add `[Fintype Seed]` and a
-  `compression : 8 * Fintype.card Seed < log₂ (Fintype.card G)` proof
-  field. This would add semantic weight but requires inequality
-  lemmas and a Fintype instance for `G` — considerably more scope.
+Option **(a)** is vacated; option **(b)** becomes the authoritative
+plan for Work Units L1-WU1 through L1-WU6 below.
 
-Option **(a)** leaves the API unchanged; option **(b)** is a
-follow-up (post-release).
+#### Corrected formulation (was: `8 * Fintype.card Seed < log₂ (...)`)
 
-#### L1-WU1 — Rewrite `SeedKey` docstring for option (a)
+The original one-line sketch in § 7.1 read
 
-**Change.** In `Orbcrypt/KeyMgmt/SeedKey.lean`'s module docstring,
-replace the "Key size comparison" table with:
+```
+compression : 8 * Fintype.card Seed < log₂ (Fintype.card G)
+```
+
+This is **dimensionally incorrect**. `Fintype.card Seed` counts the
+number of distinct seed values (e.g. `2^256` for a 256-bit seed),
+not the number of bits required to encode a seed. The intended
+semantics — "the seed occupies fewer bits than a group element
+requires to encode" — is captured directly by a **bit-length
+comparison** on the two cardinalities:
+
+```lean
+compression :
+  Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)
+```
+
+For every finite type `T`, `Nat.log 2 (Fintype.card T)` is exactly
+`⌊log₂ |T|⌋` — the number of bits needed in the minimum-length
+fixed-length encoding of a `T`-valued message (minus one, per Mathlib
+convention at powers of two). So `compression` reads "the seed's
+bit-length is strictly smaller than the group's bit-length." The
+factor of `8` in the original sketch was a bytes→bits unit conversion
+that is redundant here because both sides of the inequality are
+already expressed in bits.
+
+The revised formulation has four additional virtues over the naive
+cardinality comparison `Fintype.card Seed < Fintype.card G`:
+
+1. It matches the prose framing of the module docstring's "Key size
+   comparison" table (256 bits vs ~15 M bits), which is a bit-length
+   comparison.
+2. It is strictly weaker, and therefore easier to discharge for the
+   concrete Orbcrypt HGOE instance at λ = 128: we need only
+   `Nat.log 2 (2^256) < Nat.log 2 |G|` i.e. `256 < Nat.log 2 |G|`,
+   which is a standard group-order bound.
+3. It is a *scale-invariant* compression claim: doubling both sides
+   by a constant factor leaves the inequality invariant, which is the
+   right semantics for "compression ratio."
+4. It degrades gracefully to `0 < Nat.log 2 |G|` — i.e. `2 ≤ |G|` —
+   on the `Seed = Unit` bridge, which is the weakest possible
+   non-triviality hypothesis on `G`.
+
+**Trade-off note.** The alternative formulation
+`Fintype.card Seed < Fintype.card G` is mathematically cleaner (no
+`Nat.log` machinery) but asserts *elementwise* compression rather
+than bit-length compression, and would require a stronger hypothesis
+on the bridge (`Fintype.card Unit = 1 < Fintype.card G`, which
+happens to coincide here, but the asymmetry grows for non-singleton
+`Seed`). We pick the bit-length form because it is the one the
+docstring is asserting.
+
+#### L1-WU1 — Introduce `[Fintype Seed]`, `[Fintype G]`, and the `compression` field on `SeedKey`
+
+**Change.** In `Orbcrypt/KeyMgmt/SeedKey.lean`:
+
+```lean
+structure SeedKey (Seed : Type*) (G : Type*) (X : Type*)
+    [Fintype Seed] [Group G] [Fintype G]
+    [MulAction G X] [DecidableEq X] where
+  seed : Seed
+  expand : Seed → CanonicalForm G X
+  sampleGroup : Seed → ℕ → G
+  /-- Bit-length compression witness: the seed's minimum bit-length
+      is strictly smaller than the group's. -/
+  compression :
+    Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)
+```
+
+Add the import `Mathlib.Data.Nat.Log` so `Nat.log` is in scope.
+
+**Acceptance.** `lake build Orbcrypt.KeyMgmt.SeedKey` succeeds after
+L1-WU2–L1-WU5 are landed jointly (this file's downstream theorems
+and bridge cannot compile until they also thread the new typeclasses).
+
+#### L1-WU2 — Thread `[Fintype Seed]` / `[Fintype G]` through every `SeedKey`-consuming theorem
+
+**Change.** Every theorem in `SeedKey.lean` and `Nonce.lean` that
+takes a `SeedKey Seed G X` argument must extend its typeclass context:
+
+```lean
+-- Before:
+theorem seed_kem_correctness [Group G] [MulAction G X] [DecidableEq X]
+    (sk : SeedKey Seed G X) ...
+
+-- After:
+theorem seed_kem_correctness
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
+    (sk : SeedKey Seed G X) ...
+```
+
+Target theorems (exhaustive):
+
+* `Orbcrypt/KeyMgmt/SeedKey.lean`:
+  `seed_kem_correctness`, `seed_determines_key`, `seed_determines_canon`,
+  `toSeedKey_expand`, `toSeedKey_sampleGroup`.
+* `Orbcrypt/KeyMgmt/Nonce.lean` (all theorems and defs taking a
+  `SeedKey` argument):
+  `nonceEncaps`, `nonceEncaps_eq`, `nonceEncaps_fst`, `nonceEncaps_snd`,
+  `nonce_encaps_correctness`, `nonce_reuse_deterministic`,
+  `distinct_nonces_distinct_elements`, `nonce_reuse_leaks_orbit`,
+  `nonceEncaps_mem_orbit`.
+
+**Rationale.** `SeedKey` now takes `[Fintype Seed] [Fintype G]` at the
+structure level, so any `sk : SeedKey Seed G X` term inherits those
+obligations. Downstream theorems must declare them to construct the
+term at all. No proof body changes beyond this signature update.
+
+**Acceptance.** `lake build Orbcrypt.KeyMgmt.SeedKey` and
+`lake build Orbcrypt.KeyMgmt.Nonce` both succeed.
+
+#### L1-WU3 — Update the `OrbitEncScheme.toSeedKey` bridge
+
+**Change.** The backward-compat bridge builds a `SeedKey Unit G X`.
+`Fintype Unit` is already provided by Mathlib, so we add
+`[Fintype G]` plus an explicit non-triviality hypothesis:
+
+```lean
+def OrbitEncScheme.toSeedKey
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (sampleG : ℕ → G)
+    (hGroupNontrivial : 1 < Fintype.card G) : SeedKey Unit G X where
+  seed := ()
+  expand := fun () => scheme.canonForm
+  sampleGroup := fun () => sampleG
+  compression := by
+    -- `Fintype.card Unit = 1`, so `Nat.log 2 1 = 0`;
+    -- `hGroupNontrivial` gives `2 ≤ Fintype.card G`, so
+    -- `0 < Nat.log 2 (Fintype.card G)` by `Nat.log_pos`.
+    have hUnit : Nat.log 2 (Fintype.card Unit) = 0 := by
+      simp
+    rw [hUnit]
+    exact Nat.log_pos (by decide) hGroupNontrivial
+```
+
+The companion theorems `toSeedKey_expand` and `toSeedKey_sampleGroup`
+must thread the new `hGroupNontrivial` through their statements (they
+take the bridge's output as input).
+
+**Rationale.** The `Unit`-seed bridge certifies `compression` at the
+weakest possible `|G|` hypothesis: `2 ≤ |G|`. Every non-trivial
+Orbcrypt deployment satisfies this (|G| is astronomical in practice),
+so the hypothesis is free on the critical path.
+
+**Acceptance.** `lake build Orbcrypt.KeyMgmt.SeedKey` succeeds with
+the bridge producing a well-typed `SeedKey Unit G X`.
+
+#### L1-WU4 — Rewrite the module docstring to reflect the witnessed compression
+
+**Change.** Replace the "Key size comparison" table in
+`Orbcrypt/KeyMgmt/SeedKey.lean` with a self-contained explanation of
+the `compression` field:
 
 ```text
 ## Compression semantics
 
-This module specifies the **seed-key API** but does not formally
-witness compression. A concrete instance whose `Seed` is
-significantly smaller than `G` — e.g., the GAP HGOE implementation
-where `Seed = Fin 256 → Bool` (256 bits) and `G` is a subgroup of
-`S_n` of order ≥ 2¹²⁸ — realises the advertised compression, but
-the Lean level only asserts that seed-based key expansion preserves
-KEM correctness (`seed_kem_correctness`).
+The `compression` field on `SeedKey` formally witnesses a bit-length
+strict inequality between the seed space and the group:
 
-The `expand` field carries the deterministic seed-to-canonical-form
-map for downstream consumers; no in-tree theorem references it
-beyond the backward-compat bridge `toSeedKey_expand`.
+    Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)
+
+Read: "the number of bits required to encode a seed is strictly less
+than the number of bits required to encode a group element."
+
+### Key size comparison (with `compression` certifying the inequality)
+
+| Representation | Size (λ = 128) | Bit-length source |
+|----------------|---------------|-------------------|
+| Full SGS       | ~1.8 MB (~15 M bits) | `Nat.log 2 \|G\|`  |
+| Seed key       | 256 bits       | `Nat.log 2 \|Seed\|` |
+| Compression    | field-certified | `compression` field |
+
+At λ = 128 the GAP HGOE implementation uses `Seed = Fin 256 → Bool`
+(256 bits) and `|G|` a subgroup of `S_n` of order ≥ 2¹²⁸. The
+bit-length witness `256 < Nat.log 2 |G|` is discharged by the
+concrete group-order bound.
+
+### Why a witness, not just prose
+
+Landing `compression` as a structure field makes the "compression
+ratio" claim a first-class, machine-checked obligation on every
+`SeedKey` instance, not an untracked prose assertion in this file.
+A concrete consumer (the GAP harness) cannot inhabit a `SeedKey`
+whose seed space is larger than the group — a class of sloppy
+deployments the pre-L1 API tacitly allowed.
 ```
 
-**Acceptance.** `lake build Orbcrypt.KeyMgmt.SeedKey` succeeds.
+**Acceptance.** Manual review + module docstring lint.
 
-#### L1-WU2 — Tighten `seed_determines_*` docstrings
+#### L1-WU5 — Tighten the `seed_determines_*` docstrings
 
 **Change.** Reword the docstrings to reflect the theorems' actual
 content: "given equal seeds *and* equal expansion/sampling functions,
-outputs agree by pointwise rewrite". Note that these are rewrite
-lemmas, not constraints on the seed-to-key relationship.
+outputs agree by pointwise rewrite." Note that these are structural
+rewrite lemmas, not constraints on the seed-to-key relationship.
+Unlike the `compression` field, `seed_determines_*` is a
+decomposition identity, not a security guarantee.
 
 **Acceptance.** Manual review.
 
-#### L1-WU3 — Add compression-bound tracking note
+#### L1-WU6 — Update audit scripts and transparency report
+
+**Files.** `scripts/audit_phase_16.lean`,
+`scripts/audit_print_axioms.lean`, `Orbcrypt.lean`.
+
+**Change.**
+1. The `#print axioms SeedKey` output now includes
+   `Fintype.card` via `Nat.log`'s standard dependencies; verify the
+   axiom set remains the standard trio (`propext`, `Classical.choice`,
+   `Quot.sound`).
+2. Add a non-vacuity witness in
+   `scripts/audit_phase_16.lean`'s `NonVacuityWitnesses` namespace:
+   build a concrete `SeedKey (Fin 2) (Equiv.Perm (Fin 2)) Unit` with
+   `compression` discharged by `decide`, confirming the witness is
+   exercisable.
+3. Extend the `Orbcrypt.lean` axiom-transparency report with a
+   Workstream-L1 snapshot describing the bit-length compression
+   witness.
+
+**Acceptance.** `lake env lean scripts/audit_phase_16.lean` succeeds
+with the new witness; axiom-set whitelist unchanged.
+
+#### L1-WU7 — Update CLAUDE.md change log
 
 **File.** `CLAUDE.md`.
 
-**Change.** Add a one-paragraph tracking note under Phase 9: "Formal
-compression-ratio witness via `[Fintype Seed]` is tracked as
-post-release Workstream L1-b; the current module asserts only
-`seed_kem_correctness`, not a quantitative size bound."
+**Change.** Append a Workstream-L1 entry under the development-status
+block following the Workstream-K precedent. Describe the signature
+changes, the corrected formulation, and the non-vacuity witness.
+Note that the previously-tracked "post-release Workstream L1-b"
+follow-up is subsumed by this workstream — the witness has landed.
+
+#### Implementation order (dependency graph)
+
+L1-WU1 (structure change) → L1-WU2 (downstream signatures) →
+L1-WU3 (bridge) → L1-WU5 (docstrings) → L1-WU4 (module docstring) →
+L1-WU6 (audit scripts) → L1-WU7 (CLAUDE.md).
+
+L1-WU1 alone breaks the build until L1-WU2 and L1-WU3 land, so these
+three must be kept in a single commit. L1-WU4–WU7 are additive and
+can land in separate commits if desired.
+
+#### Acceptance for L1 as a whole
+
+1. `lake build` succeeds for every module (zero warnings, zero
+   errors).
+2. `scripts/audit_phase_16.lean` runs clean: standard-trio axioms
+   only on every Workstream-L1 declaration; non-vacuity witness
+   elaborates on a concrete instance.
+3. `grep -rn "sorry" Orbcrypt/KeyMgmt/` returns empty.
+4. Every theorem in `SeedKey.lean` and `Nonce.lean` carries
+   `[Fintype Seed]` and `[Fintype G]` in its typeclass context.
+5. The `OrbitEncScheme.toSeedKey` bridge requires and consumes an
+   explicit `1 < Fintype.card G` hypothesis.
+6. The module docstring's "Key size comparison" section cites the
+   `compression` field as the machine-checked witness.
 
 ### 7.2 L2 — `carterWegmanMAC` primality hygiene (M3)
 
@@ -1888,8 +2114,10 @@ tasks; the interfaces they discharge are landed by this plan):
 
 Optional post-release engineering:
 
-- [ ] Workstream L1-b: formal compression-ratio witness on `SeedKey`
-      via `[Fintype Seed]` + inequality proof.
+- [ ] ~~Workstream L1-b: formal compression-ratio witness on `SeedKey`
+      via `[Fintype Seed]` + inequality proof.~~ **Subsumed by the
+      revised Workstream L1 (2026-04-22): the `compression` field
+      now lives on `SeedKey` directly.**
 - [ ] E8b: discharge `h_step` in `indQCPA_bound_via_hybrid` from a
       single-query `ConcreteOIA` (marginal-independence step).
 
@@ -1936,7 +2164,7 @@ duplicated.
 | H2 | MEDIUM | H | H1–H4 | `KEM/CompSecurity.lean` |
 | H3 | MEDIUM | J | J1–J3 | docs only |
 | M1 | MEDIUM | K | K1–K5 | `Theorems/OIAImpliesCPA.lean`, `KEM/Security.lean`, `Hardness/Reductions.lean`, `Crypto/CompSecurity.lean` |
-| M2 | MEDIUM | L1 | L1-WU1–WU3 | `KeyMgmt/SeedKey.lean` |
+| M2 | MEDIUM | L1 | L1-WU1–WU7 | `KeyMgmt/SeedKey.lean`, `KeyMgmt/Nonce.lean` |
 | M3 | MEDIUM | L2 | L2-WU1–WU3 | `AEAD/CarterWegmanMAC.lean` |
 | M4 | MEDIUM | L3 | L3-WU1–WU3 | `PublicKey/ObliviousSampling.lean` |
 | M5 | MEDIUM | L4 | L4-WU1–WU2 | `PublicKey/KEMAgreement.lean` |
@@ -2023,9 +2251,13 @@ These items are smaller in scope and could conceivably be folded into
 future audit workstreams, but are not covered by the 2026-04-21 audit
 findings:
 
-- **Formal `SeedKey` compression witness** (Workstream L1-b): a
+- ~~**Formal `SeedKey` compression witness** (Workstream L1-b): a
   witnessed inequality `|Seed| ≪ |G|` with concrete instance
-  exhibits. Listed in CLAUDE.md as L1-b tracking.
+  exhibits. Listed in CLAUDE.md as L1-b tracking.~~
+  **Resolved by the revised Workstream L1 (2026-04-22):** the
+  `compression : Nat.log 2 (Fintype.card Seed) < Nat.log 2
+  (Fintype.card G)` field is now part of `SeedKey`, with a
+  non-vacuity witness exhibited in `scripts/audit_phase_16.lean`.
 
 ## 16. Signoff
 

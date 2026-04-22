@@ -131,7 +131,7 @@ hiding from `concreteOIA_zero_implies_perfect` (perfect at ε=0) and
 
 **Open.** Trust-minimizing the reveal authority — threshold-sharing `G`
 over the permutation representation — is natural but not yet
-formalized. Phase 13's `refresh_independent` is a partial step.
+formalized. Phase 13's `refresh_depends_only_on_epoch_range` is a partial step.
 
 ### 1.3 CSIDH-style pair-keys for post-quantum DH on-chain
 
@@ -244,7 +244,7 @@ point under a DAO-secret `G`. Each member is provisioned with a *signed
 action, the member publishes the next bundle element (or a public
 combiner output — subject to the `CombineImpossibility` constraint,
 see §0); after exhausting the bundle, the member requests a refresh
-via `refreshRandomizers`, which `refresh_independent` shows is
+via `refreshRandomizers`, which `refresh_depends_only_on_epoch_range` shows is
 structurally independent of prior epochs. The DAO contract, which holds
 `G`, canonicalizes each post to recover the member's class. "Same user"
 is detectable inside the DAO (by canonical form); outside observers
@@ -263,7 +263,7 @@ observers even after collecting many.
 establish pseudonym consistency on canonical forms;
 `invariant_const_on_orbit` ensures any DAO-computed invariant
 (e.g. reputation score) is a well-defined function of the pseudonym
-class. `refresh_independent` certifies that refreshed bundles do not
+class. `refresh_depends_only_on_epoch_range` certifies that refreshed bundles do not
 correlate across epochs. Revocation is the DAO contract removing the
 member's canonical form from its authorized set — `G` does not need to
 rotate.
@@ -406,7 +406,7 @@ across the bundle. Compared to FHE-based private DeFi, the on-chain
 cost is one canonicalization per withdrawal, not one FHE evaluation.
 
 **Formalization handle.** `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`
-(rotation preserves orbit and canonical form); `refresh_independent`
+(rotation preserves orbit and canonical form); `refresh_depends_only_on_epoch_range`
 (bundle rotation preserves epoch independence).
 
 ### 3.4 CSIDH-style session keys for cross-hop privacy
@@ -582,14 +582,14 @@ to the open problems that currently block a full deployment.
 | 1.3 CSIDH pair-keys | 17, 18 | concrete `CommGroupAction` instance; atomic-swap needs adaptor-signature layer |
 | 1.4 asset tags | 1, `canon_eq_implies_orbit_eq` | regulator trust model |
 | 2.1 glass-ballot voting | `canon_eq_of_mem_orbit`, 6, hybrid arg | coercion resistance |
-| 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit`, `refresh_independent` | bundle provisioning discipline |
+| 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` | bundle provisioning discipline |
 | 2.3 staged budgets | same as 1.2 | threshold share of `G_p` |
 | 2.4 delegation trees | `subgroupBitstringAction`, `canon_eq_of_mem_orbit` | subgroup rotation UX |
 | 3.1 MEV-sealed auctions | `concreteOIA_zero_implies_perfect`, `canon_encrypt` | sequencer censorship |
 | 3.2 dark pools | `invariant_const_on_orbit`, OIA | operator trust model |
-| 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`, `refresh_independent` | bundle provisioning / refresh economics |
+| 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` | bundle provisioning / refresh economics |
 | 3.4 swap routing | 17, 18 | same as 1.3 |
-| 4.1 orbit follows | `canon_eq_of_mem_orbit`, `refresh_independent`, OIA | bundle distribution; graph-level metadata |
+| 4.1 orbit follows | `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range`, OIA | bundle distribution; graph-level metadata |
 | 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` | deniability class bounded by public invariants; key distribution out of scope |
 | 4.3 private recs | `canonical_isGInvariant` | service must be invariant-free |
 | 4.4 group PSI | `canon_eq_implies_orbit_eq` | delegated canonicalization model |
@@ -739,7 +739,7 @@ lemmas (`canon_idem`, `canon_eq_implies_orbit_eq`,
 `canonical_isGInvariant`, `invariant_const_on_orbit`,
 `concreteOIA_zero_implies_perfect`, `concrete_oia_implies_1cpa`,
 `csidh_correctness`, `csidh_views_agree`, `comm_pke_correctness`,
-`symmetric_key_agreement_limitation`, `refresh_independent`,
+`symmetric_key_agreement_limitation`, `refresh_depends_only_on_epoch_range`,
 `oblivious_sample_in_orbit`, `hybrid_argument`,
 `subgroupBitstringAction`, `same_weight_not_separating`) are all
 present in the sources at the locations cited.

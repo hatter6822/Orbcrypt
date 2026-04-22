@@ -205,11 +205,11 @@ scripts/
               v
   PublicKey.ObliviousSampling ◄── KEM.Syntax, GroupAction.Basic
   (OrbitalRandomizers, obliviousSample, oblivious_sample_in_orbit,
-   refreshRandomizers, refresh_independent)
+   refreshRandomizers, refresh_depends_only_on_epoch_range)
 
   PublicKey.KEMAgreement ◄── KEM.Encapsulate, KEM.Correctness
   (OrbitKeyAgreement, sessionKey, kem_agreement_correctness,
-   SymmetricKeyAgreementLimitation)
+   SessionKeyExpansionIdentity)
 
   PublicKey.CommutativeAction ◄── GroupAction.Basic, GroupAction.Canonical
   (CommGroupAction class, csidh_exchange, csidh_correctness,
@@ -633,7 +633,7 @@ Phase 7 (KEM Reformulation) has been completed:
 - `KEM/Syntax.lean` — `OrbitKEM` structure with `basePoint`, `canonForm`, `keyDerive`; `OrbitEncScheme.toKEM` backward-compatibility bridge
 - `KEM/Encapsulate.lean` — `encaps` (sample g, output ciphertext + key), `decaps` (re-derive key from ciphertext); simp lemmas (`encaps_fst`, `encaps_snd`, `decaps_eq`)
 - `KEM/Correctness.lean` — `kem_correctness` (decaps inverts encaps, proof by `rfl`); `toKEM_correct` (bridge correctness)
-- `KEM/Security.lean` — `KEMAdversary` structure; `kemHasAdvantage` (two-encapsulation distinguishability); `KEMIsSecure` predicate; `kemIsSecure_iff` (unfolding lemma); `KEMOIA` (orbit indistinguishability + key uniformity); `kem_key_constant` (from KEMOIA.2); `kem_key_constant_direct` (from `canonical_isGInvariant`, proving KEMOIA.2 is redundant); `kem_ciphertext_indistinguishable` (from KEMOIA.1); `kemoia_implies_secure` (KEMOIA implies KEM security)
+- `KEM/Security.lean` — `KEMAdversary` structure; `kemHasAdvantage` (two-encapsulation distinguishability); `KEMIsSecure` predicate; `kemIsSecure_iff` (unfolding lemma); `KEMOIA` (orbit indistinguishability; **single-conjunct** post Workstream L5 — the former key-uniformity conjunct was redundant with `kem_key_constant_direct`); `kem_key_constant_direct` (key constancy proved unconditionally from `canonical_isGInvariant`); `kem_ciphertext_indistinguishable` (from `KEMOIA`); `kemoia_implies_secure` (KEMOIA implies KEM security)
 - `Construction/HGOEKEM.lean` — `hgoeKEM` (concrete KEM for S_n subgroups on bitstrings); `hgoe_kem_correctness` (instantiation of abstract correctness); `hgoeScheme_toKEM` (bridge from HGOE scheme to KEM); `hgoeScheme_toKEM_correct` (bridge correctness)
 - All 8 work units (7.1–7.8) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 22 new public declarations across 591 lines
@@ -650,7 +650,7 @@ Phase 8 (Probabilistic Foundations) has been completed:
 - `lake build` succeeds for all 21 modules (zero errors)
 
 Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
-- `KeyMgmt/SeedKey.lean` — `SeedKey` structure (compact seed + deterministic expansion + PRF-based sampling); `seed_kem_correctness` (seed-based KEM correctness, follows from `kem_correctness`); `HGOEKeyExpansion` (7-stage QC code key expansion specification with weight uniformity); `seed_determines_key` (equal seeds → equal key material); `seed_determines_canon` (equal seeds → equal canonical forms); `OrbitEncScheme.toSeedKey` (backward compatibility bridge); `toSeedKey_expand` and `toSeedKey_sampleGroup` (bridge preservation lemmas)
+- `KeyMgmt/SeedKey.lean` — `SeedKey` structure (compact seed + deterministic expansion + PRF-based sampling + **machine-checked bit-length compression witness** `compression : Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)` post Workstream L1; `[Fintype Seed]` and `[Fintype G]` are now typeclass preconditions on the structure); `seed_kem_correctness` (seed-based KEM correctness, follows from `kem_correctness`); `HGOEKeyExpansion` (7-stage QC code key expansion specification with weight uniformity); `seed_determines_key` (equal seeds → equal key material); `seed_determines_canon` (equal seeds → equal canonical forms); `OrbitEncScheme.toSeedKey` (backward compatibility bridge; takes an `hGroupNontrivial : 1 < Fintype.card G` hypothesis post Workstream L1 to discharge the `compression` field); `toSeedKey_expand` and `toSeedKey_sampleGroup` (bridge preservation lemmas)
 - `KeyMgmt/Nonce.lean` — `nonceEncaps` (nonce-based deterministic KEM encapsulation); `nonceDecaps` (nonce-based decapsulation); `nonce_encaps_correctness` (decaps recovers encapsulated key); `nonce_reuse_deterministic` (same nonce → same output, by `rfl`); `distinct_nonces_distinct_elements` (injective PRF → distinct group elements); `nonce_reuse_leaks_orbit` (cross-KEM nonce reuse leaks orbit membership — formal warning theorem); `nonceEncaps_mem_orbit` (ciphertext lies in base point's orbit); simp lemmas for unfolding
 - All 7 work units (9.1–9.7) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 2 new Lean files, 19 new public declarations across 467 lines
@@ -686,8 +686,8 @@ Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
 - `lake build` succeeds for all 29 modules (zero errors)
 
 Phase 13 (Public-Key Extension) has been completed:
-- `PublicKey/ObliviousSampling.lean` — `OrbitalRandomizers` (bundle of orbit samples with membership certificate); `obliviousSample`, `obliviousSample_eq` (simp); `oblivious_sample_in_orbit` (orbit-membership theorem via closure hypothesis); `ObliviousSamplingHiding` (`Prop`-valued sender-privacy requirement, honest docstring about pathological-strength nature); `oblivious_sampling_view_constant` (immediate corollary carrying `ObliviousSamplingHiding` as hypothesis); `refreshRandomizers`, `refreshRandomizers_apply` (simp), `refreshRandomizers_in_orbit`, `refreshRandomizers_orbitalRandomizers` (epoch-indexed bundle constructor) with simp lemmas `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers`; `RefreshIndependent`, `refresh_independent` (structural independence of disjoint epochs)
-- `PublicKey/KEMAgreement.lean` — `OrbitKeyAgreement` (two-party KEM structure with combiner); `encapsA`, `encapsB`, `sessionKey`; `kem_agreement_correctness` (bi-view identity: both decapsulation paths reduce to `sessionKey a b`, strengthened in Workstream A5 / F-19); `kem_agreement_alice_view`, `kem_agreement_bob_view` (each party's post-decap view equals `sessionKey`); `SymmetricKeyAgreementLimitation` Prop + unconditional `symmetric_key_agreement_limitation` structural identity exhibiting `sessionKey` in terms of both parties' secret `keyDerive` and `canonForm.canon` — the machine-checked formal handle on the symmetric-setup limitation
+- `PublicKey/ObliviousSampling.lean` — `OrbitalRandomizers` (bundle of orbit samples with membership certificate); `obliviousSample`, `obliviousSample_eq` (simp); `oblivious_sample_in_orbit` (orbit-membership theorem via closure hypothesis); `ObliviousSamplingHiding` (`Prop`-valued sender-privacy requirement, honest docstring about pathological-strength nature); `oblivious_sampling_view_constant` (immediate corollary carrying `ObliviousSamplingHiding` as hypothesis); `refreshRandomizers`, `refreshRandomizers_apply` (simp), `refreshRandomizers_in_orbit`, `refreshRandomizers_orbitalRandomizers` (epoch-indexed bundle constructor) with simp lemmas `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers`; `RefreshDependsOnlyOnEpochRange`, `refresh_depends_only_on_epoch_range` (structural determinism: refresh output depends only on sampler outputs over the per-epoch index range; renamed from `RefreshIndependent` / `refresh_independent` in Workstream L3, audit F-AUDIT-2026-04-21-M4)
+- `PublicKey/KEMAgreement.lean` — `OrbitKeyAgreement` (two-party KEM structure with combiner); `encapsA`, `encapsB`, `sessionKey`; `kem_agreement_correctness` (bi-view identity: both decapsulation paths reduce to `sessionKey a b`, strengthened in Workstream A5 / F-19); `kem_agreement_alice_view`, `kem_agreement_bob_view` (each party's post-decap view equals `sessionKey`); `SessionKeyExpansionIdentity` Prop + unconditional `sessionKey_expands_to_canon_form` structural decomposition identity exhibiting `sessionKey` in terms of both parties' secret `keyDerive` and `canonForm.canon` (renamed from `SymmetricKeyAgreementLimitation` / `symmetric_key_agreement_limitation` in Workstream L4, audit F-AUDIT-2026-04-21-M5; the identity is a `rfl`-level decomposition, not an impossibility claim)
 - `PublicKey/CommutativeAction.lean` — `CommGroupAction` (typeclass extending `MulAction` with commutativity); `csidh_exchange` with simp lemmas `csidh_exchange_alice/bob/shared`; `csidh_correctness` (`a • b • x = b • a • x`); `csidh_views_agree`; `CommOrbitPKE` (public-key structure with `pk_valid` field); `encrypt`, `decrypt` + simp lemmas; `comm_pke_correctness` (CSIDH-style PKE correctness); `comm_pke_shared_secret` (sender/recipient views match); `CommGroupAction.selfAction` (`def`, not `instance`, for `CommGroup` acting on itself, to avoid typeclass diamonds); `selfAction_comm` theorem witnessing satisfiability
 - `docs/PUBLIC_KEY_ANALYSIS.md` — feasibility analysis document covering: (1) oblivious sampling viability with open `combine` problem, (2) KEM agreement limitation (symmetric setup), (3) CSIDH-style commutative action path with open concrete instantiation, (4) fundamental non-commutativity obstacle, (5) summary table and Phase 13 theorem registry
 - All 7 work units (13.1–13.7) implemented with zero `sorry`, zero warnings, zero custom axioms
@@ -802,7 +802,8 @@ Phase 16 (Formal Verification of New Components) has been completed:
   (16.9), theorem inventory (16.10b), known limitations (16.10d:
   OIA/CompOIA assumption, GIReducesToCE/TI as Karp-claim Props,
   `h_step` hypothesis on `indQCPA_bound_via_hybrid`,
-  `ObliviousSamplingHiding` strength, `SymmetricKeyAgreementLimitation`,
+  `ObliviousSamplingHiding` strength, `SessionKeyExpansionIdentity`
+  (formerly `SymmetricKeyAgreementLimitation`),
   Carter-Wegman as satisfiability witness only, multi-query KEM-CCA
   out of scope), and the Phase 16 exit-criteria checklist.
 - All 10 work units (16.1–16.10) complete with **zero source-file
@@ -1661,6 +1662,150 @@ posture established by Workstream H is preserved; public
 declaration count rises from 343 to 347 (four new theorems,
 all axiom-free or depending only on the standard Lean trio).
 
+Workstream L (Audit 2026-04-21 — structural & naming hygiene, M2–M6,
+MEDIUM) has been completed:
+
+- **L1 (M2) — `SeedKey` witnessed compression** (plan revised
+  2026-04-22 to adopt option (b) — the earlier "honest API"
+  resolution was vacated as a small-diff compromise that left
+  compression uncertified). `Orbcrypt/KeyMgmt/SeedKey.lean`:
+  `SeedKey` now takes `[Fintype Seed]` and `[Fintype G]` at the
+  structure level and carries a new field
+  `compression : Nat.log 2 (Fintype.card Seed) < Nat.log 2
+  (Fintype.card G)` — a machine-checked bit-length strict
+  inequality certifying the "fewer bits of seed than bits of
+  group element" claim advertised by the module docstring. Every
+  downstream theorem (`seed_kem_correctness`,
+  `seed_determines_key`, `seed_determines_canon`, `nonceEncaps*`,
+  `nonce_encaps_correctness`, `nonce_reuse_deterministic`,
+  `distinct_nonces_distinct_elements`, `nonce_reuse_leaks_orbit`,
+  `nonceEncaps_mem_orbit`) now threads `[Fintype Seed]` and
+  `[Fintype G]` in its typeclass context. The
+  `OrbitEncScheme.toSeedKey` bridge now takes an explicit
+  `hGroupNontrivial : 1 < Fintype.card G` hypothesis and
+  discharges `compression` at `Seed = Unit` via
+  `Nat.log_pos`. Non-vacuity witness: a concrete
+  `SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit` exhibited in
+  `scripts/audit_phase_16.lean` discharges `compression` by
+  `decide` (|Fin 2| = 2, `Nat.log 2 2 = 1`; |Perm (Fin 3)| = 6,
+  `Nat.log 2 6 = 2`). Import added:
+  `Mathlib.Data.Nat.Log`. The previously-tracked post-release
+  follow-up "Workstream L1-b" is **subsumed**: the compression
+  witness has landed.
+
+  **Corrected formulation (audit-plan update).** The plan's
+  one-line option (b) sketch read
+  `compression : 8 * Fintype.card Seed < log₂ (Fintype.card G)`,
+  which is dimensionally incorrect (it multiplies the raw seed
+  cardinality by 8 and compares to `log₂|G|`). The implementation
+  uses the bit-length form
+  `Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)` —
+  a scale-invariant compression claim that matches the docstring's
+  prose framing and corrects the typo. See
+  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 for
+  the detailed rationale.
+
+- **L2 (M3) — `carterWegmanMAC` primality hygiene.**
+  `Orbcrypt/AEAD/CarterWegmanMAC.lean`: `carterWegmanHash`,
+  `carterWegmanMAC`, `carterWegman_authKEM`, and
+  `carterWegmanMAC_int_ctxt` all gain a `[NeZero p]` typeclass
+  constraint on the modulus. `ZMod 0 = ℤ` is the integer ring —
+  infinite, not a proper finite type — so `[NeZero p]` rules
+  out the degenerate `p = 0` branch at elaboration time without
+  demanding primality. `[NeZero 1]` is provided automatically by
+  Mathlib's `instance : NeZero (n+1)`, so the audit script's
+  `p = 1` witness continues to elaborate. Docstring expanded
+  with a "Naming note" clarifying that `carterWegmanMAC` names
+  the **linear hash shape** `k₁ · m + k₂`, not the Carter–Wegman
+  universal-hash security guarantee (which would require `p`
+  prime and probabilistic key sampling). `scripts/audit_c_work-
+  stream.lean` updated to pass `[NeZero p]` on the hash-shape
+  example.
+
+- **L3 (M4) — `RefreshIndependent` rename.**
+  `Orbcrypt/PublicKey/ObliviousSampling.lean`: the `Prop`
+  `RefreshIndependent` and its companion theorem
+  `refresh_independent` were renamed to
+  `RefreshDependsOnlyOnEpochRange` and
+  `refresh_depends_only_on_epoch_range` respectively. The
+  previous names suggested a cryptographic independence claim;
+  the content is a `funext`-structural determinism witness
+  (refresh output depends only on sampler outputs over the
+  per-epoch index range). Docstrings updated with a
+  "Naming corrective" note. Downstream references updated in
+  `Orbcrypt.lean`, `scripts/audit_phase_16.lean`,
+  `scripts/audit_print_axioms.lean`, `CLAUDE.md`,
+  `DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
+  `docs/USE_CASES.md`, `docs/MORE_USE_CASES.md`,
+  `docs/VERIFICATION_REPORT.md`,
+  `formalization/FORMALIZATION_PLAN.md`, and
+  `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md`.
+
+- **L4 (M5) — `SymmetricKeyAgreementLimitation` rename.**
+  `Orbcrypt/PublicKey/KEMAgreement.lean`: the `Prop`
+  `SymmetricKeyAgreementLimitation` and its companion theorem
+  `symmetric_key_agreement_limitation` were renamed to
+  `SessionKeyExpansionIdentity` and
+  `sessionKey_expands_to_canon_form` respectively. The previous
+  names suggested a negative impossibility result; the content
+  is a `rfl`-level definitional decomposition identity
+  exhibiting `sessionKey a b` as the combiner applied to each
+  KEM's secret `keyDerive ∘ canonForm.canon` outputs. Docstrings
+  updated with a "Naming corrective" note; the separate
+  impossibility discussion is maintained in
+  `docs/PUBLIC_KEY_ANALYSIS.md` and is out of scope for this
+  module. Downstream references updated in the same fileset as
+  L3.
+
+- **L5 (M6) — `KEMOIA` redundant-conjunct removal.**
+  `Orbcrypt/KEM/Security.lean`: `KEMOIA` is now single-conjunct
+  (orbit indistinguishability only). The pre-L5 second conjunct
+  "key uniformity across the orbit" was unconditionally
+  provable from `canonical_isGInvariant` (witnessed by the
+  still-present `kem_key_constant_direct`), so it carried no
+  assumption content. `kem_key_constant` — which extracted
+  `hOIA.2 g` from the old definition — is **deleted**
+  (CLAUDE.md's "no backwards-compat shims" directive);
+  `kem_key_constant_direct` is the authoritative form.
+  `kemoia_implies_secure` and `kem_ciphertext_indistinguishable`
+  updated to take `hOIA` as a single predicate (no `.1` / `.2`
+  extraction). `det_kemoia_implies_concreteKEMOIA_zero` in
+  `KEM/CompSecurity.lean` updated in the same way, now invoking
+  `kem_key_constant_direct` where it previously extracted
+  `hOIA.2`. Zero `#print axioms` changes on the headline
+  theorems; the axiom set stays the standard trio.
+
+Traceability: findings M2 (L1), M3 (L2), M4 (L3), M5 (L4), and
+M6 (L5) are resolved. See
+`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7 for the
+specification; Appendix A for the finding-to-work-unit mapping.
+External release claims about "compressed seed-based KEM key" now
+track a machine-checked structural witness rather than untracked
+prose; the renamed declarations accurately describe their content;
+the `KEMOIA` definition is now minimal.
+
+Verification: the Phase 16 audit script (`scripts/audit_phase_16.lean`)
+exercises every Workstream-L declaration via `#print axioms`; the
+L1 non-vacuity witnesses materialise a concrete
+`SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit` and run
+`seed_kem_correctness` on it, plus the `OrbitEncScheme.toSeedKey`
+bridge on a generic scheme with `hGroupNontrivial` discharged by
+`decide`. Every Workstream-L declaration depends only on
+standard-trio axioms (`propext`, `Classical.choice`,
+`Quot.sound`); none depend on `sorryAx` or a custom axiom.
+
+Patch version: `lakefile.lean` bumped from `0.1.5` to `0.1.6` for
+Workstream L — the L1 structural change (new `compression` field on
+`SeedKey`, new typeclass arguments on the structure and every
+downstream theorem, new `hGroupNontrivial` hypothesis on the
+`toSeedKey` bridge) is an API break that warrants the patch-version
+bump; L2–L5 are additive renames / minor-hypothesis additions but
+are landed in the same release for atomicity. Public declaration
+count: `kem_key_constant` removed (-1), `compression` field added
+(+1 on the `SeedKey` structure); net declaration-count change is
+zero for Workstream L. The 38-module total is unchanged (no new
+`.lean` files; additions are within existing modules).
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
@@ -1690,7 +1835,9 @@ all axiom-free or depending only on the standard Lean trio).
 - `#print axioms hybrid_correctness` — standard Lean only (follows from kem_correctness + DEM.correct)
 - `#print axioms hardness_chain_implies_security` — standard Lean only (HardnessChain is a hypothesis)
 - `#print axioms oblivious_sample_in_orbit` — standard Lean only (closure proof is a hypothesis)
-- `#print axioms refresh_independent` — standard Lean only (structural)
+- `#print axioms refresh_depends_only_on_epoch_range` — standard Lean only (structural;
+  renamed from `refresh_independent` in Workstream L3 to reflect structural
+  determinism, not cryptographic independence)
 - `#print axioms kem_agreement_correctness` — standard Lean only (follows from kem_correctness)
 - `#print axioms csidh_correctness` — standard Lean only (extracts `CommGroupAction.comm`)
 - `#print axioms comm_pke_correctness` — standard Lean only (uses `CommGroupAction.comm` and `pk_valid`)

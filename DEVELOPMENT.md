@@ -1207,15 +1207,18 @@ candidate paths is now machine-checked in
 `Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}.lean`:
 
 - `OrbitalRandomizers`, `obliviousSample`, `oblivious_sample_in_orbit`,
-  `refreshRandomizers`, `refresh_independent` — oblivious sampling with
-  per-epoch refresh. The orbit-preserving, G-hiding `combine` operation
-  is carried as a parameter with a closure hypothesis — finding a concrete
-  instance is an **open problem** (see §10.1 of
+  `refreshRandomizers`, `refresh_depends_only_on_epoch_range` — oblivious
+  sampling with per-epoch refresh. The orbit-preserving, G-hiding `combine`
+  operation is carried as a parameter with a closure hypothesis — finding
+  a concrete instance is an **open problem** (see §10.1 of
   [`docs/PUBLIC_KEY_ANALYSIS.md`](docs/PUBLIC_KEY_ANALYSIS.md)).
 - `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness` — two-party
   agreement via combined KEM keys. **Works, but is not true public-key**:
-  both parties still require symmetric KEM material
-  (`SymmetricKeyAgreementLimitation`).
+  both parties still require symmetric KEM material — the session-key
+  formula's dependence on both parties' secret state is exhibited by
+  the `SessionKeyExpansionIdentity` decomposition (renamed from
+  `SymmetricKeyAgreementLimitation` in Workstream L4, audit
+  F-AUDIT-2026-04-21-M5).
 - `CommGroupAction`, `csidh_exchange`, `csidh_correctness`, `CommOrbitPKE`,
   `comm_pke_correctness` — CSIDH-style framework. Unconditional correctness;
   **concrete hardness requires an isogeny-like commutative action** outside

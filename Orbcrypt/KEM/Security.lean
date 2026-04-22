@@ -15,10 +15,13 @@ that the KEM-OIA assumption implies security. The proof proceeds in three
 steps:
 
 1. **Key constancy** (7.6a): the derived key is the same for all group
-   elements (provable from `canonical_isGInvariant`, also extractable from
-   KEMOIA.2).
-2. **Ciphertext indistinguishability** (7.6b): under KEMOIA, no function
-   distinguishes orbit elements.
+   elements. Proved unconditionally from `canonical_isGInvariant` by
+   `kem_key_constant_direct` — no `KEMOIA` extraction needed. (Pre-L5
+   this step was split between `kem_key_constant` and
+   `kem_key_constant_direct`; the former is deleted post-L5 because
+   it was strictly redundant — see `KEMOIA`'s docstring.)
+2. **Ciphertext indistinguishability** (7.6b): under `KEMOIA` (now
+   single-conjunct post-L5), no function distinguishes orbit elements.
 3. **Security assembly** (7.6c): combining the above to show no adversary
    has advantage.
 
@@ -40,8 +43,14 @@ with real-vs-random key distinguishing.
 * `Orbcrypt.kemHasAdvantage` — adversary distinguishes two encapsulations
 * `Orbcrypt.KEMIsSecure` — no adversary has advantage
 * `Orbcrypt.KEMOIA` — KEM variant of the Orbit Indistinguishability Assumption
-* `Orbcrypt.kem_key_constant` — derived key is constant (from KEMOIA.2)
-* `Orbcrypt.kem_key_constant_direct` — same, proved from `canonical_isGInvariant`
+  (single-conjunct form since audit F-AUDIT-2026-04-21-M6 / Workstream L5:
+  the earlier key-uniformity conjunct was redundant with
+  `kem_key_constant_direct` — see the `KEMOIA` docstring).
+* `Orbcrypt.kem_key_constant_direct` — derived key is constant across the orbit,
+  proved directly from `canonical_isGInvariant` without any `KEMOIA` hypothesis.
+  (The pre-L5 `kem_key_constant`, which extracted the second conjunct of
+  `KEMOIA`, has been removed as an unnecessary shim; the direct form is the
+  authoritative statement.)
 * `Orbcrypt.kem_ciphertext_indistinguishable` — ciphertexts indistinguishable
 * `Orbcrypt.kemoia_implies_secure` — **KEMOIA implies KEM security**
 * `Orbcrypt.kemIsSecure_iff` — unfolding lemma for `KEMIsSecure`
@@ -159,52 +168,49 @@ theorem kemIsSecure_iff [Group G] [MulAction G X] [DecidableEq X]
 /--
 KEM variant of the Orbit Indistinguishability Assumption.
 
-Two conjuncts:
-1. **Orbit indistinguishability:** No Boolean function distinguishes orbit
-   elements. This is the original OIA restricted to a single orbit.
-2. **Key uniformity:** The derived key is the same for all orbit elements.
-   This follows from canonical form G-invariance + deterministic `keyDerive`,
-   so the second conjunct is provable from `canonical_isGInvariant`
-   (see `kem_key_constant_direct`). It is included in the definition for
-   convenient extraction in proofs.
+**Single-conjunct form (audit F-AUDIT-2026-04-21-M6 / Workstream L5,
+2026-04-22).** Previously this definition carried a second "key
+uniformity" conjunct asserting that the derived key is constant
+across the orbit. That conjunct is **unconditionally provable** from
+`canonical_isGInvariant` (see `kem_key_constant_direct` below) and
+therefore contributed no assumption content. It has been dropped:
+`KEMOIA kem` is now precisely the orbit-indistinguishability
+predicate, and downstream proofs that previously extracted the
+second conjunct (e.g., `kemoia_implies_secure`) now invoke
+`kem_key_constant_direct` directly.
 
-**Strength:** Like the original `OIA`, the first conjunct quantifies over
-ALL Boolean functions, making `KEMOIA` `False` for non-trivial schemes
-(where the orbit has more than one element). The security theorem is
-therefore vacuously true for such schemes — matching the original
+Semantic content: no Boolean function distinguishes orbit elements
+(the original OIA restricted to a single orbit).
+
+**Strength:** Like the original `OIA`, the quantification over ALL
+Boolean functions makes `KEMOIA` `False` for non-trivial schemes
+(where the orbit has more than one element). The security theorem
+is therefore vacuously true for such schemes — matching the original
 `oia_implies_1cpa`. Phase 8 addresses this with probabilistic OIA.
 
-**Why a `Prop` definition (not an `axiom`):** Same rationale as `OIA` in
-`Crypto/OIA.lean` — a Lean `axiom` would assert KEMOIA for ALL group actions,
-including trivial ones where the claim is provably false.
+**Why a `Prop` definition (not an `axiom`):** Same rationale as `OIA`
+in `Crypto/OIA.lean` — a Lean `axiom` would assert KEMOIA for ALL
+group actions, including trivial ones where the claim is provably
+false.
 -/
 def KEMOIA [Group G] [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) : Prop :=
-  (∀ (f : X → Bool) (g₀ g₁ : G),
-    f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint)) ∧
-  (∀ (g : G), kem.keyDerive (kem.canonForm.canon (g • kem.basePoint)) =
-    kem.keyDerive (kem.canonForm.canon kem.basePoint))
+  ∀ (f : X → Bool) (g₀ g₁ : G),
+    f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint)
 
 -- ============================================================================
 -- Work Unit 7.6a: Key Constancy Lemma
 -- ============================================================================
 
 /--
-Under KEMOIA, the derived key is the same regardless of which group element
-was used for encapsulation.
-
-This is a direct extraction from the second KEMOIA conjunct.
--/
-theorem kem_key_constant [Group G] [MulAction G X] [DecidableEq X]
-    (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) (g : G) :
-    kem.keyDerive (kem.canonForm.canon (g • kem.basePoint)) =
-    kem.keyDerive (kem.canonForm.canon kem.basePoint) :=
-  hOIA.2 g
-
-/--
 Key constancy proved directly from `canonical_isGInvariant`, without
-assuming KEMOIA. This demonstrates that the second conjunct of KEMOIA
-is redundant — it is always provable from the structure of `OrbitKEM`.
+assuming any `KEMOIA` hypothesis. This is the authoritative form —
+the previous extraction-from-`KEMOIA.2` variant was removed in
+Workstream L5 along with the redundant second conjunct of `KEMOIA`.
+
+The derived key is the same regardless of which group element was
+used for encapsulation, because the canonical form is G-invariant
+and `keyDerive` is deterministic.
 -/
 theorem kem_key_constant_direct [Group G] [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (g : G) :
@@ -219,12 +225,14 @@ theorem kem_key_constant_direct [Group G] [MulAction G X] [DecidableEq X]
 /--
 Under KEMOIA, no Boolean function can distinguish orbit elements.
 
-This is a direct extraction from the first KEMOIA conjunct.
+Post Workstream L5, `KEMOIA` is precisely the orbit-indistinguishability
+predicate, so this theorem is a direct forwarding of the hypothesis (no
+conjunct extraction).
 -/
 theorem kem_ciphertext_indistinguishable [Group G] [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) (f : X → Bool) (g₀ g₁ : G) :
     f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint) :=
-  hOIA.1 f g₀ g₁
+  hOIA f g₀ g₁
 
 -- ============================================================================
 -- Work Unit 7.6c: Main Security Theorem
@@ -236,14 +244,18 @@ theorem kem_ciphertext_indistinguishable [Group G] [MulAction G X] [DecidableEq 
 If the KEM-OIA holds, no adversary can distinguish two different
 encapsulations. This is the KEM analogue of `oia_implies_1cpa`.
 
-**Proof strategy:**
+**Proof strategy (post-Workstream-L5 simplification):**
 1. Introduce adversary `A` and assume `kemHasAdvantage kem A`.
 2. Destructure to get `g₀`, `g₁`, and the inequality `hNeq`.
-3. Apply KEMOIA.2 (key constancy): both derived keys equal
-   `keyDerive(canon(basePoint))`. Rewrite `hNeq` to use this constant key.
-4. Apply KEMOIA.1 (orbit indistinguishability): the adversary's guess
-   function (partially applied to `basePoint` and the constant key) is
-   a Boolean function on `X`, so it must give the same value on
+3. Apply `kem_key_constant_direct`: both derived keys equal
+   `keyDerive(canon(basePoint))`. Rewrite `hNeq` to use this constant
+   key. (Pre-L5 this step invoked `hOIA.2`, the now-removed second
+   conjunct of `KEMOIA`; post-L5 the fact is proved unconditionally
+   from `canonical_isGInvariant`.)
+4. Apply `hOIA` (which post-L5 is precisely the
+   orbit-indistinguishability predicate): the adversary's guess
+   function (partially applied to `basePoint` and the constant key)
+   is a Boolean function on `X`, so it must give the same value on
    `g₀ • basePoint` and `g₁ • basePoint`.
 5. This equality contradicts `hNeq`.
 
@@ -283,12 +295,16 @@ theorem kemoia_implies_secure [Group G] [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) : KEMIsSecure kem := by
   -- Introduce adversary and assume advantage for contradiction
   intro A ⟨g₀, g₁, hNeq⟩
-  -- Step 1: Apply key constancy — both keys equal keyDerive(canon(basePoint))
+  -- Step 1: Apply key constancy — both keys equal keyDerive(canon(basePoint)).
+  -- Post-Workstream-L5 we use `kem_key_constant_direct`, which proves the
+  -- constancy unconditionally from `canonical_isGInvariant`; no `hOIA`
+  -- extraction is needed for this step.
   apply hNeq
-  rw [hOIA.2 g₀, hOIA.2 g₁]
-  -- Step 2: Apply orbit indistinguishability — guess is constant across orbit
-  -- The function (fun c => A.guess basePoint c constant_key) is X → Bool
-  exact hOIA.1 (fun c => A.guess kem.basePoint c
+  rw [kem_key_constant_direct kem g₀, kem_key_constant_direct kem g₁]
+  -- Step 2: Apply orbit indistinguishability — guess is constant across orbit.
+  -- `hOIA` is now the single-conjunct form (orbit indistinguishability),
+  -- applied directly without a `.1` extraction.
+  exact hOIA (fun c => A.guess kem.basePoint c
     (kem.keyDerive (kem.canonForm.canon kem.basePoint))) g₀ g₁
 
 end Orbcrypt

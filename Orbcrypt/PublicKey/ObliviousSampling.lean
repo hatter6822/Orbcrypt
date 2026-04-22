@@ -19,8 +19,13 @@ This module addresses three units of the public-key extension workstream:
 * **13.2 — Oblivious Sampling Correctness** (`oblivious_sample_in_orbit`,
   plus the sender-privacy `Prop`, `ObliviousSamplingHiding`).
 * **13.3 — Randomizer Refresh Protocol** (`refreshRandomizers`, together with
-  `refreshRandomizers_in_orbit` and the epoch-independence predicate
-  `RefreshIndependent`).
+  `refreshRandomizers_in_orbit` and the structural
+  **epoch-range-determinism** predicate `RefreshDependsOnlyOnEpochRange`).
+  The name captures the actual content of the predicate: the refresh
+  bundle depends only on the sampler's outputs over the per-epoch
+  index range, *not* on any cryptographic independence notion (see
+  the naming-corrective audit note in the docstring for
+  `RefreshDependsOnlyOnEpochRange`).
 
 ## Open problem
 
@@ -217,7 +222,7 @@ bundle an `OrbitalRandomizers` certificate for free
 **Why this signature.** The sampler is parameterised by a single `ℕ` index so
 it can be backed by a keystream or PRF (see `Orbcrypt.KeyMgmt.SeedKey`). Epochs
 are distinct contiguous slices of the index space, which makes independence
-easy to state (see `RefreshIndependent`).
+easy to state (see `RefreshDependsOnlyOnEpochRange`).
 -/
 def refreshRandomizers [Group G] [MulAction G X]
     (G_elem_sampler : ℕ → G) (basePoint : X) (t : ℕ) (epoch : ℕ) :
@@ -276,25 +281,36 @@ theorem refreshRandomizers_orbitalRandomizers_randomizers
     refreshRandomizers G_elem_sampler basePoint t epoch := rfl
 
 /--
-**Refresh independence (as a Prop).**
+**Refresh depends only on the per-epoch index range (as a Prop).**
 
-Two distinct epochs draw from disjoint index ranges of the sampler. If the
-sampler is modelled as a pseudo-random function (PRF), the outputs on disjoint
-domains are computationally independent. We formalise the structural side of
-this: the refreshed bundles for distinct epochs are determined entirely by
-disjoint sampler index ranges, so any "information leak" must come from the
-sampler itself — not from the refresh protocol.
+*Naming corrective (audit F-AUDIT-2026-04-21-M4 / Workstream L3,
+2026-04-22).* The previous name `RefreshIndependent` (and
+`refresh_independent`) suggested a cryptographic independence claim.
+The theorem below, however, is a `funext`-structural identity: if two
+samplers agree on the per-epoch index ranges, their refresh bundles
+for those epochs agree. No cryptographic independence is asserted —
+the result is a structural determinism witness, hence the current
+name `RefreshDependsOnlyOnEpochRange`.
 
-The Prop states this as: *for any Boolean observation on the combined output
-of two bundles, swapping the sampler for any other function that agrees on
-both epochs' index ranges gives the same observation.*
+Two distinct epochs draw from disjoint index ranges of the sampler. If
+the sampler is modelled as a pseudo-random function (PRF), the outputs
+on disjoint domains are computationally independent. We formalise the
+**structural** side of this: the refreshed bundles for distinct
+epochs are determined entirely by their disjoint sampler index ranges,
+so any "information leak" across epochs must come from the sampler
+itself — not from the refresh protocol.
 
-**Scope.** This captures the structural requirement. The actual *pseudorandom*
-property is a computational assumption on `G_elem_sampler` (see
-`Orbcrypt.KeyMgmt.SeedKey` for the PRF design) and is out of scope for this
-deterministic module.
+The Prop states this as: *for any two samplers agreeing on both
+epochs' index ranges, the refresh bundles for each epoch under either
+sampler are pointwise equal.*
+
+**Scope.** This captures the **structural** requirement. The actual
+*pseudorandom* property — that distinct-epoch outputs are
+computationally independent — is a computational assumption on
+`G_elem_sampler` (see `Orbcrypt.KeyMgmt.SeedKey` for the PRF design)
+and is out of scope for this deterministic module.
 -/
-def RefreshIndependent [Group G] [MulAction G X]
+def RefreshDependsOnlyOnEpochRange [Group G] [MulAction G X]
     (basePoint : X) (t : ℕ) (epoch₁ epoch₂ : ℕ) : Prop :=
   ∀ (sampler₁ sampler₂ : ℕ → G),
     (∀ i : Fin t, sampler₁ (epoch₁ * t + i.val) =
@@ -307,15 +323,22 @@ def RefreshIndependent [Group G] [MulAction G X]
      refreshRandomizers sampler₂ basePoint t epoch₂)
 
 /--
-`RefreshIndependent` is unconditionally true: the refresh protocol uses only
-the sampler outputs on the per-epoch index ranges. This is the **structural
-independence** statement — the refresh protocol introduces no side channels
-beyond the sampler itself. Computational independence (PRF security) is an
-additional, separate hypothesis about the sampler.
+`RefreshDependsOnlyOnEpochRange` is unconditionally true: the refresh
+protocol uses only the sampler outputs on the per-epoch index ranges.
+
+This is the **structural determinism** statement — the refresh
+protocol introduces no side channels beyond the sampler itself.
+Computational independence (PRF security) is an additional, separate
+hypothesis about the sampler and is **not** proved here.
+
+*Naming corrective (audit F-AUDIT-2026-04-21-M4 / Workstream L3):* the
+previous name `refresh_independent` suggested a cryptographic
+independence result. The content is structural, and the name now
+reflects that.
 -/
-theorem refresh_independent [Group G] [MulAction G X]
+theorem refresh_depends_only_on_epoch_range [Group G] [MulAction G X]
     (basePoint : X) (t : ℕ) (epoch₁ epoch₂ : ℕ) :
-    RefreshIndependent (G := G) basePoint t epoch₁ epoch₂ := by
+    RefreshDependsOnlyOnEpochRange (G := G) basePoint t epoch₁ epoch₂ := by
   intro sampler₁ sampler₂ hAgree₁ hAgree₂
   -- `refreshRandomizers` is pointwise `sampler (epoch * t + i.val) • basePoint`;
   -- agreement on this index range makes the two functions equal.

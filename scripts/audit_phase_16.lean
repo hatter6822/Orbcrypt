@@ -164,12 +164,16 @@ open Orbcrypt
 #print axioms toKEM_correct
 
 -- KEM.Security
+-- Note: `kem_key_constant` was removed in Workstream L5 (audit
+-- F-AUDIT-2026-04-21-M6) because its extraction from `hOIA.2` is now
+-- redundant — the post-L5 `KEMOIA` is single-conjunct (orbit
+-- indistinguishability only). `kem_key_constant_direct` proves key
+-- constancy unconditionally from `canonical_isGInvariant`.
 #print axioms KEMAdversary
 #print axioms kemHasAdvantage
 #print axioms KEMIsSecure
 #print axioms kemIsSecure_iff
 #print axioms KEMOIA
-#print axioms kem_key_constant
 #print axioms kem_key_constant_direct
 #print axioms kem_ciphertext_indistinguishable
 #print axioms kemoia_implies_secure
@@ -480,8 +484,13 @@ open Orbcrypt
 #print axioms refreshRandomizers_orbitalRandomizers
 #print axioms refreshRandomizers_orbitalRandomizers_basePoint
 #print axioms refreshRandomizers_orbitalRandomizers_randomizers
-#print axioms RefreshIndependent
-#print axioms refresh_independent
+-- Post Workstream L3 (audit F-AUDIT-2026-04-21-M4), renamed from
+-- `RefreshIndependent` / `refresh_independent` to
+-- `RefreshDependsOnlyOnEpochRange` / `refresh_depends_only_on_epoch_range`
+-- to reflect that the content is a structural determinism witness, not
+-- a cryptographic independence claim.
+#print axioms RefreshDependsOnlyOnEpochRange
+#print axioms refresh_depends_only_on_epoch_range
 
 -- PublicKey.KEMAgreement
 #print axioms OrbitKeyAgreement
@@ -491,8 +500,13 @@ open Orbcrypt
 #print axioms kem_agreement_correctness
 #print axioms kem_agreement_alice_view
 #print axioms kem_agreement_bob_view
-#print axioms SymmetricKeyAgreementLimitation
-#print axioms symmetric_key_agreement_limitation
+-- Post Workstream L4 (audit F-AUDIT-2026-04-21-M5), renamed from
+-- `SymmetricKeyAgreementLimitation` / `symmetric_key_agreement_limitation`
+-- to `SessionKeyExpansionIdentity` / `sessionKey_expands_to_canon_form`
+-- to reflect that the content is a definitional decomposition identity,
+-- not an impossibility claim.
+#print axioms SessionKeyExpansionIdentity
+#print axioms sessionKey_expands_to_canon_form
 
 -- PublicKey.CommutativeAction
 #print axioms CommGroupAction
@@ -793,5 +807,79 @@ example {G : Type} {X : Type} {M : Type}
   let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
   concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
     scheme 1 hc A hDistinct
+
+-- ============================================================================
+-- Workstream L1 (audit F-AUDIT-2026-04-21-M2): `SeedKey` witnessed
+-- compression — non-vacuity witnesses
+-- ============================================================================
+
+/-- A concrete `CanonicalForm` on the singleton space `Unit` under the
+    six-element permutation group `Equiv.Perm (Fin 3)`. The group acts
+    trivially on `Unit` (every permutation fixes the unique point), so
+    every field collapses by `Subsingleton.elim`.
+
+    Used by the `SeedKey` witness below to exhibit a
+    `SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit` whose `compression`
+    field is discharged by `decide`. -/
+def trivialCanonForm_Perm3_Unit :
+    CanonicalForm (Equiv.Perm (Fin 3)) Unit where
+  canon := id
+  mem_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
+  orbit_iff := fun _ _ => by simp
+
+/-- **Non-vacuity witness for the Workstream L1 `SeedKey.compression`
+    field.** Builds a concrete
+    `SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit` with `compression`
+    discharged by `decide`:
+
+    * `Fintype.card (Fin 2) = 2`, so `Nat.log 2 (Fintype.card (Fin 2)) = 1`.
+    * `Fintype.card (Equiv.Perm (Fin 3)) = 3! = 6`, so
+      `Nat.log 2 (Fintype.card (Equiv.Perm (Fin 3))) = 2`.
+    * `1 < 2` discharges the compression inequality.
+
+    Exercises the structure-level compression obligation introduced in
+    Workstream L1: if a consumer attempts to build a `SeedKey` whose
+    seed space has at least as many bits as the group, the
+    `compression` field fails to elaborate, blocking the construction
+    at compile time. -/
+def trivialSeedKey :
+    SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit where
+  seed := 0
+  expand := fun _ => trivialCanonForm_Perm3_Unit
+  sampleGroup := fun _ _ => 1
+  compression := by decide
+
+/-- A trivial `OrbitKEM` over `Equiv.Perm (Fin 3)` acting on `Unit`,
+    used as the target of `seed_kem_correctness` in the Workstream L1
+    non-vacuity witness below. -/
+def trivialKEM_Perm3_Unit : OrbitKEM (Equiv.Perm (Fin 3)) Unit Unit where
+  basePoint := ()
+  canonForm := trivialCanonForm_Perm3_Unit
+  keyDerive := fun _ => ()
+
+/-- Exercise `seed_kem_correctness` on the Workstream L1 non-vacuity
+    witness: `decaps` recovers the key encapsulated by `encaps` under
+    the derived group element. Confirms the post-L1 signature (threading
+    `[Fintype Seed]` and `[Fintype G]` through the theorem) elaborates
+    on a concrete instance. -/
+example (n : ℕ) :
+    decaps trivialKEM_Perm3_Unit
+      (encaps trivialKEM_Perm3_Unit
+        (trivialSeedKey.sampleGroup trivialSeedKey.seed n)).1 =
+    (encaps trivialKEM_Perm3_Unit
+      (trivialSeedKey.sampleGroup trivialSeedKey.seed n)).2 :=
+  seed_kem_correctness trivialSeedKey trivialKEM_Perm3_Unit n
+
+/-- Exercise the `OrbitEncScheme.toSeedKey` bridge: the bridge's
+    `compression` field is discharged by `Nat.log_pos` from the
+    supplied `1 < Fintype.card G` hypothesis. We instantiate on a
+    scheme where `G = Equiv.Perm (Fin 3)` (|G| = 6 > 1) and
+    confirm the resulting `SeedKey Unit G X` elaborates. -/
+example {X : Type} {M : Type}
+    [MulAction (Equiv.Perm (Fin 3)) X] [DecidableEq X]
+    (scheme : OrbitEncScheme (Equiv.Perm (Fin 3)) X M)
+    (sampleG : ℕ → Equiv.Perm (Fin 3)) :
+    SeedKey Unit (Equiv.Perm (Fin 3)) X :=
+  scheme.toSeedKey sampleG (by decide)
 
 end NonVacuityWitnesses

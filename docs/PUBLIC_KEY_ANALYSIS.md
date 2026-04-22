@@ -61,9 +61,11 @@ that the output is a bona fide orbit element — i.e. a valid ciphertext.
   invariant under the sender's index choice.
 * `refreshRandomizers`, `refreshRandomizers_in_orbit` — epoch-indexed fresh
   bundles with orbit certificates.
-* `refresh_independent` — structural independence: the refreshed output on
-  an epoch depends only on the sampler's outputs at that epoch's index
-  range.
+* `refresh_depends_only_on_epoch_range` — structural determinism: the
+  refreshed output on an epoch depends only on the sampler's outputs at
+  that epoch's index range. (Renamed from `refresh_independent` in
+  Workstream L3, audit F-AUDIT-2026-04-21-M4; the theorem is structural,
+  not a cryptographic independence claim.)
 
 All proofs go through with zero `sorry` and standard Lean axioms only.
 
@@ -200,7 +202,7 @@ such combiner is known.
 | Algebraic framework formalised | ✅ |
 | Orbit-membership theorem | ✅ (`oblivious_sample_in_orbit`) |
 | Refresh protocol formalised | ✅ |
-| Structural refresh-independence | ✅ (`refresh_independent`) |
+| Structural refresh-determinism | ✅ (`refresh_depends_only_on_epoch_range`) |
 | No-go for equivariant non-degenerate combiners | ✅ (`equivariant_combiner_breaks_oia`) |
 | OIA forces equivariant combiners to be constant in `snd` | ✅ (`oia_forces_combine_constant_on_orbit`) |
 | Collapse of the `obliviousSample` sender flow | ✅ (`oblivious_sample_equivariant_obstruction`) |
@@ -252,13 +254,17 @@ agree.
   `kem_agreement_alice_view`.
 * `kem_agreement_alice_view`, `kem_agreement_bob_view` — each party's
   post-decapsulation view equals `sessionKey`.
-* `SymmetricKeyAgreementLimitation` (Prop) + `symmetric_key_agreement_limitation`
+* `SessionKeyExpansionIdentity` (Prop) + `sessionKey_expands_to_canon_form`
   — an **unconditional structural identity** making explicit that
   `sessionKey a b` factorises as
   `combiner (kem_A.keyDerive (canon (a • bp_A))) (kem_B.keyDerive (canon (b • bp_B)))`.
   Both `keyDerive` and `canonForm.canon` are private fields of the
   respective KEMs, so the formula references *both parties'* secret
   state — the machine-checked handle on the "symmetric setup" limitation.
+  (Renamed from `SymmetricKeyAgreementLimitation` /
+  `symmetric_key_agreement_limitation` in Workstream L4, audit
+  F-AUDIT-2026-04-21-M5; the content is a decomposition identity,
+  not an impossibility proof.)
 
 Correctness follows directly from `kem_correctness` applied to each KEM.
 
@@ -287,7 +293,7 @@ hard step from encryption to setup.
 | Two-party structure formalised | ✅ |
 | Correctness (both views reduce to `sessionKey`) | ✅ (`kem_agreement_correctness`) |
 | Public-key distribution | ❌ Setup is symmetric |
-| Formal limitation statement | ✅ (`SymmetricKeyAgreementLimitation`) |
+| Formal decomposition identity | ✅ (`SessionKeyExpansionIdentity`) |
 
 ---
 
@@ -457,10 +463,10 @@ The most plausible paths forward are therefore:
 | `refreshRandomizers_apply` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
-| `refresh_independent` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
+| `refresh_depends_only_on_epoch_range` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `kem_agreement_correctness` | `PublicKey/KEMAgreement.lean` | Inherits from `kem_correctness` (standard Lean only) |
 | `kem_agreement_alice_view` / `..._bob_view` | `PublicKey/KEMAgreement.lean` | Standard Lean only |
-| `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Standard Lean only (structural identity unfolding `sessionKey` to combiner of `keyDerive ∘ canonForm.canon`) |
+| `sessionKey_expands_to_canon_form` | `PublicKey/KEMAgreement.lean` | Standard Lean only (structural identity unfolding `sessionKey` to combiner of `keyDerive ∘ canonForm.canon`) |
 | `csidh_exchange_alice` / `csidh_exchange_bob` / `csidh_exchange_shared` (simp) | `PublicKey/CommutativeAction.lean` | Standard Lean only |
 | `csidh_correctness` | `PublicKey/CommutativeAction.lean` | Standard Lean (extracts `CommGroupAction.comm` typeclass axiom) |
 | `csidh_views_agree` | `PublicKey/CommutativeAction.lean` | Standard Lean only |

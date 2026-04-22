@@ -228,8 +228,8 @@ Instantiation with S\_n acting on bitstrings.
 
 | Module | Key Content |
 |--------|-------------|
-| `ObliviousSampling.lean` | `OrbitalRandomizers`, `obliviousSample`, `oblivious_sample_in_orbit`, `refreshRandomizers`, `refresh_independent`, `ObliviousSamplingHiding` |
-| `KEMAgreement.lean` | `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness`, `SymmetricKeyAgreementLimitation` |
+| `ObliviousSampling.lean` | `OrbitalRandomizers`, `obliviousSample`, `oblivious_sample_in_orbit`, `refreshRandomizers`, `refresh_depends_only_on_epoch_range` (renamed from `refresh_independent` in Workstream L3), `ObliviousSamplingHiding` |
+| `KEMAgreement.lean` | `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness`, `SessionKeyExpansionIdentity` (renamed from `SymmetricKeyAgreementLimitation` in Workstream L4) |
 | `CommutativeAction.lean` | `CommGroupAction` (typeclass), `csidh_exchange`, `csidh_correctness`, `csidh_views_agree`, `CommOrbitPKE`, `comm_pke_correctness`, `comm_pke_shared_secret`, `CommGroupAction.selfAction` (def, not instance), `selfAction_comm` |
 
 ---

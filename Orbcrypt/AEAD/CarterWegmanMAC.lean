@@ -17,14 +17,32 @@ obligation introduced in Workstream C1.
   `decide`-equality against a user-supplied tagging function. Any such MAC
   satisfies `verify_inj` by `of_decide_eq_true`, and `correct` by `decide`-
   reflexivity.
-* `Orbcrypt.carterWegmanHash` — the Carter–Wegman universal hash function
-  `(k₁, k₂) ↦ k₁ * m + k₂` over `ZMod p`.
+* `Orbcrypt.carterWegmanHash` — the linear hash function
+  `(k₁, k₂) ↦ k₁ * m + k₂` over `ZMod p`. Carrying the *shape* of the
+  Carter–Wegman universal-hash function, but **not** its universal-hash
+  *guarantee* (which requires primality of `p` and probabilistic key
+  sampling).
 * `Orbcrypt.carterWegmanMAC` — a concrete `MAC (ZMod p × ZMod p) (ZMod p)
   (ZMod p)` built from `carterWegmanHash` via `deterministicTagMAC`.
 * `Orbcrypt.carterWegman_authKEM` — the AEAD composition of an `OrbitKEM`
   whose ciphertext space is `ZMod p` with `carterWegmanMAC`.
 * `Orbcrypt.carterWegmanMAC_int_ctxt` — specialisation of
   `authEncrypt_is_int_ctxt` to the Carter–Wegman composition.
+
+## Naming note (audit F-AUDIT-2026-04-21-M3 / Workstream L2)
+
+The identifier `carterWegmanMAC` names the **linear hash shape**
+`k₁ · m + k₂` over `ZMod p`. The Carter–Wegman universal-hash
+**security guarantee** requires (i) `p` prime, (ii) probabilistic key
+sampling, and (iii) a 2-universal pair-collision analysis — none of
+which are asserted by this Lean definition. What the definition *does*
+assert is that the resulting MAC satisfies `MAC.correct` and
+`MAC.verify_inj`, which is everything `INT_CTXT` needs to elaborate.
+
+Consumers who want the CW universal-hash property must add
+`[Fact (Nat.Prime p)]` and a probabilistic-key-sampling argument **on
+top of** this MAC; the base construction is the deterministic
+linear-hash MAC, not the cryptographic primitive.
 
 ## Scope
 
@@ -41,9 +59,23 @@ permutation orbit on `Bitstring n`, so this MAC witness is not a drop-in
 replacement for the production AEAD composition. Its purpose is purely to
 show that the `MAC` + `AuthOrbitKEM` + `INT_CTXT` chain is inhabitable.
 
+## `[NeZero p]` typeclass constraint
+
+All `carterWegman*` definitions take a `[NeZero p]` typeclass constraint
+on the modulus. `ZMod 0 = ℤ` is the integer ring — infinite, not a
+proper finite type, and in particular cannot support a valid universal
+hash even in principle. `[NeZero p]` rules out `p = 0` at elaboration
+time without demanding primality (which is over-restrictive for the
+Lean `correct` and `verify_inj` obligations — both hold for any
+`NeZero p`). Mathlib provides `instance : NeZero (n+1)` for every
+`n : ℕ`, so `[NeZero 1]` resolves automatically for the audit script's
+`p = 1` witness (`audit_c_workstream.lean`).
+
 ## References
 
 * docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C4
+* docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 7.2 — Workstream L2
+  (primality hygiene via `[NeZero p]`, 2026-04-22)
 * Carter, J. L. & Wegman, M. N. (1979). "Universal classes of hash functions."
   J. Comput. Syst. Sci. 18(2): 143–154.
 -/
@@ -82,26 +114,41 @@ def deterministicTagMAC [DecidableEq Tag] (f : K → Msg → Tag) :
 -- ============================================================================
 
 /--
-The Carter–Wegman universal hash: `cw (k₁, k₂) m = k₁ * m + k₂` over `ZMod p`.
+The Carter–Wegman linear hash shape: `cw (k₁, k₂) m = k₁ * m + k₂` over
+`ZMod p`. Carries the *shape* of the Carter–Wegman universal-hash
+function, but **not** its universal-hash *guarantee* (which requires
+primality of `p` and probabilistic key sampling, neither of which is
+asserted here).
+
+`[NeZero p]` (audit F-AUDIT-2026-04-21-M3 / Workstream L2) rules out
+`p = 0` at elaboration time — `ZMod 0 = ℤ` is the integer ring, not a
+proper finite type, and admits no valid universal-hash semantics even
+in principle.
 
 Named as a plain function (not bundled) so that the resulting MAC's tag
 unfolds definitionally — useful for `decide`-based checks downstream.
 -/
-def carterWegmanHash (p : ℕ) (k : ZMod p × ZMod p) (m : ZMod p) : ZMod p :=
+def carterWegmanHash (p : ℕ) [NeZero p]
+    (k : ZMod p × ZMod p) (m : ZMod p) : ZMod p :=
   k.1 * m + k.2
 
 /--
-A concrete `MAC` instance over `ZMod p` using the Carter–Wegman universal
+A concrete `MAC` instance over `ZMod p` using the Carter–Wegman linear
 hash as its tagging function. Both `correct` and `verify_inj` follow
 immediately from the `deterministicTagMAC` template; there is no new proof
 obligation at this layer.
+
+`[NeZero p]` (audit F-AUDIT-2026-04-21-M3 / Workstream L2) rules out
+the degenerate `ZMod 0 = ℤ` branch. The name `carterWegmanMAC` reflects
+the **hash shape**, not the universal-hash security property — see the
+module-level "Naming note" for details.
 
 **Satisfiability witness (audit F-07, Workstream C4):** inhabiting
 `MAC (ZMod p × ZMod p) (ZMod p) (ZMod p)` discharges the `verify_inj`
 requirement introduced in Workstream C1 and therefore shows it is not
 vacuous.
 -/
-def carterWegmanMAC (p : ℕ) :
+def carterWegmanMAC (p : ℕ) [NeZero p] :
     MAC (ZMod p × ZMod p) (ZMod p) (ZMod p) :=
   deterministicTagMAC (carterWegmanHash p)
 
@@ -125,7 +172,8 @@ must equal the KEM's `X`. Consumers must therefore supply a KEM whose
 ciphertext space is literally `ZMod p` — typically via an explicit
 `MulAction G (ZMod p)` instance.
 -/
-def carterWegman_authKEM {G : Type*} [Group G] (p : ℕ) [MulAction G (ZMod p)]
+def carterWegman_authKEM {G : Type*} [Group G] (p : ℕ) [NeZero p]
+    [MulAction G (ZMod p)]
     (kem : OrbitKEM G (ZMod p) (ZMod p × ZMod p)) :
     AuthOrbitKEM G (ZMod p) (ZMod p × ZMod p) (ZMod p) where
   kem := kem
@@ -144,7 +192,7 @@ This is the concrete witness completing Workstream C4: `INT_CTXT` is
 non-vacuously inhabited for the intended model.
 -/
 theorem carterWegmanMAC_int_ctxt {G : Type*} [Group G]
-    (p : ℕ) [MulAction G (ZMod p)]
+    (p : ℕ) [NeZero p] [MulAction G (ZMod p)]
     (kem : OrbitKEM G (ZMod p) (ZMod p × ZMod p))
     (hOrbitCover : ∀ c : ZMod p, c ∈ MulAction.orbit G kem.basePoint) :
     INT_CTXT (carterWegman_authKEM p kem) :=

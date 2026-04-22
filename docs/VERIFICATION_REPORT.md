@@ -543,14 +543,17 @@ limitations, each documented in source and tracked as future work:
    `oblivious_sampling_view_constant` corollary carries it as a
    hypothesis.
 
-5. **`SymmetricKeyAgreementLimitation`** is an unconditional structural
-   identity exhibiting that the KEM agreement protocol is symmetric-
-   setup. This is a *limitation in expressive power* of the symmetric
-   scheme, not a security flaw — it documents that this particular
-   construction does not (and is not intended to) provide public-key
-   functionality on its own. Three candidate paths to public-key are
-   formalised in `PublicKey/{ObliviousSampling,KEMAgreement,Commutative
-   Action}.lean` and analysed in `docs/PUBLIC_KEY_ANALYSIS.md`.
+5. **`SessionKeyExpansionIdentity`** (renamed from
+   `SymmetricKeyAgreementLimitation` in Workstream L4, audit
+   F-AUDIT-2026-04-21-M5) is an unconditional structural identity
+   exhibiting that the KEM agreement protocol's session key is a
+   combiner applied to each party's secret `keyDerive ∘ canonForm.canon`
+   output. This is a *decomposition identity* exposing the
+   symmetric-setup dependency on both parties' secret state — *not* a
+   standalone impossibility claim against public-key variants. Three
+   candidate paths to public-key are formalised in
+   `PublicKey/{ObliviousSampling,KEMAgreement,CommutativeAction}.lean`
+   and analysed in `docs/PUBLIC_KEY_ANALYSIS.md`.
 
 6. **`carterWegmanMAC_int_ctxt` is a satisfiability witness, not a
    production-grade MAC.** The Carter-Wegman MAC is information-
@@ -870,3 +873,83 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   emits only standard-trio axioms; the new declarations are
   axiom-free (K1, K3, K4) or depend only on the standard trio
   (K4 companion via `concrete_oia_implies_1cpa`).
+
+* **2026-04-22 (Workstream L)** — Structural & naming hygiene
+  (audit findings M2–M6, MEDIUM). Five sub-workstreams landed in
+  a single patch release (`lakefile.lean` `0.1.5` → `0.1.6`):
+
+  * **L1 (M2) — `SeedKey` witnessed compression.** Plan revised
+    2026-04-22 to adopt option (b) (was option (a), the
+    smallest-diff "honest API" compromise; vacated as leaving the
+    compression claim uncertified). `Orbcrypt/KeyMgmt/SeedKey.lean`:
+    the `SeedKey` structure now carries `[Fintype Seed]` and
+    `[Fintype G]` at the structure level and a new field
+    `compression : Nat.log 2 (Fintype.card Seed) <
+    Nat.log 2 (Fintype.card G)`. All downstream theorems in
+    `SeedKey.lean` and `Nonce.lean` threaded the new typeclasses;
+    `OrbitEncScheme.toSeedKey` takes an `hGroupNontrivial :
+    1 < Fintype.card G` hypothesis and discharges `compression`
+    via `Nat.log_pos`. Non-vacuity witness added to
+    `scripts/audit_phase_16.lean`: a concrete
+    `SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit` with
+    `compression` discharged by `decide`, plus a bridge example.
+    The plan's one-line option (b) sketch was dimensionally
+    incorrect (`8 * Fintype.card Seed < log₂ (...)`); the
+    implementation uses the bit-length form, matching the
+    docstring's prose framing.
+
+  * **L2 (M3) — `carterWegmanMAC` primality hygiene.**
+    `Orbcrypt/AEAD/CarterWegmanMAC.lean`: `[NeZero p]` added to
+    `carterWegmanHash`, `carterWegmanMAC`, `carterWegman_authKEM`,
+    and `carterWegmanMAC_int_ctxt`. Docstring expanded with a
+    "Naming note" clarifying `carterWegmanMAC` names the linear
+    hash shape, not the Carter–Wegman universal-hash security
+    guarantee. `scripts/audit_c_workstream.lean`'s hash-shape
+    example updated.
+
+  * **L3 (M4) — `RefreshIndependent` rename.**
+    `Orbcrypt/PublicKey/ObliviousSampling.lean`:
+    `RefreshIndependent` / `refresh_independent` renamed to
+    `RefreshDependsOnlyOnEpochRange` /
+    `refresh_depends_only_on_epoch_range`. Content is
+    structural determinism, not cryptographic independence —
+    rename reflects that.
+
+  * **L4 (M5) — `SymmetricKeyAgreementLimitation` rename.**
+    `Orbcrypt/PublicKey/KEMAgreement.lean`:
+    `SymmetricKeyAgreementLimitation` /
+    `symmetric_key_agreement_limitation` renamed to
+    `SessionKeyExpansionIdentity` /
+    `sessionKey_expands_to_canon_form`. Content is a `rfl`-level
+    decomposition identity, not an impossibility claim — rename
+    reflects that.
+
+  * **L5 (M6) — `KEMOIA` redundant-conjunct removal.**
+    `Orbcrypt/KEM/Security.lean`: `KEMOIA` now single-conjunct
+    (orbit indistinguishability only). The removed second
+    conjunct "key uniformity across the orbit" was
+    unconditionally provable from `canonical_isGInvariant`, so
+    it carried no assumption content. Pre-L5 `kem_key_constant`
+    (extracting the second conjunct) **deleted**
+    (no backwards-compat shim per CLAUDE.md); `kem_key_constant_
+    direct` is the authoritative form. `kemoia_implies_secure`
+    and `det_kemoia_implies_concreteKEMOIA_zero` updated to use
+    `kem_key_constant_direct` and single-conjunct `hOIA` forward
+    application.
+
+  **Traceability.** Findings M2–M6 resolved. See
+  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7 for the
+  specification; Appendix A for the finding-to-work-unit mapping.
+  Every renamed declaration propagated through `Orbcrypt.lean`,
+  `CLAUDE.md`, `DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
+  `docs/USE_CASES.md`, `docs/MORE_USE_CASES.md`, this report,
+  `formalization/FORMALIZATION_PLAN.md`,
+  `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md`, and the two
+  audit scripts (`scripts/audit_phase_16.lean`,
+  `scripts/audit_print_axioms.lean`).
+
+  **Verification.** All 38 modules build clean post-Workstream-L;
+  the Phase 16 audit script emits only standard-trio axioms; every
+  new and renamed Workstream-L declaration is axiom-free or
+  standard-trio-only; the new L1 non-vacuity witnesses elaborate
+  on concrete instances.

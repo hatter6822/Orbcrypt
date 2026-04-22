@@ -113,8 +113,10 @@ example : MAC Bool ℕ String := deterministicTagMAC toyHashBNS
 example : MAC ℕ Unit Bool := deterministicTagMAC (fun n _ => n % 2 == 0)
 
 -- Instantiation (iii): the Carter–Wegman witness is an instance of
--- `deterministicTagMAC`.
-example (p : ℕ) :
+-- `deterministicTagMAC`. `[NeZero p]` (audit
+-- F-AUDIT-2026-04-21-M3 / Workstream L2) rules out the degenerate
+-- `ZMod 0 = ℤ` branch at elaboration time.
+example (p : ℕ) [NeZero p] :
     carterWegmanMAC p = deterministicTagMAC (carterWegmanHash p) := rfl
 
 end C4TemplateCheck
