@@ -631,10 +631,11 @@ For completeness, a few applications *not* to reach for:
 * **Key exchange between strangers without a trusted setup.** In the
   symmetric-orbit setting, `OrbitKeyAgreement` requires both parties to
   hold their respective KEMs' canonicalization capability; the
-  structural identity `symmetric_key_agreement_limitation` exhibits
-  this dependency as a machine-checked equation. The CSIDH-style
-  variant (§1.3) can bypass the limitation *if* a concrete
-  `CommGroupAction` with a plausible hardness assumption is
+  structural identity `sessionKey_expands_to_canon_form` (renamed from
+  `symmetric_key_agreement_limitation` in Workstream L4) exhibits this
+  dependency as a machine-checked equation. The CSIDH-style variant
+  (§1.3) can bypass the limitation *if* a concrete `CommGroupAction`
+  with a plausible hardness assumption is
   instantiated — an open problem per `docs/PUBLIC_KEY_ANALYSIS.md` §3.
   This is a structural observation, not a lower bound.
 * **Password-equivalent low-entropy secrets.** OIA is a

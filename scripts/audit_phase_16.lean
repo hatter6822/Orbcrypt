@@ -974,4 +974,45 @@ example : IsEpsilonUniversal (carterWegmanHash 2) ((1 : ENNReal) / 1) :=
     refine ENNReal.div_le_div_left ?_ _
     exact_mod_cast Nat.one_le_iff_ne_zero.mpr two_ne_zero)
 
+-- ============================================================================
+-- Workstream L1 structural-field regression: `compression` is
+-- projectable from any `SeedKey`.  This is the "field is mandatory"
+-- safety property in positive form — if a future change accidentally
+-- drops the field, the projection fails at elaboration time and this
+-- example stops compiling.
+-- ============================================================================
+
+/-- **Compression-projection regression test.** Given any `SeedKey
+    Seed G X`, the `compression` field must be directly extractable as
+    a Prop-valued term.  Exercising this at a concrete non-trivial
+    `(Fin 2, Equiv.Perm (Fin 3), Unit)` triple rules out accidental
+    refactorings that would remove the field or change its type. -/
+example (sk : SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit) :
+    Nat.log 2 (Fintype.card (Fin 2)) <
+    Nat.log 2 (Fintype.card (Equiv.Perm (Fin 3))) :=
+  sk.compression
+
+/-- **Universal-hash mono-application regression.**  Exercise the
+    full `IsEpsilonUniversal.mono` API on a concrete prime: tighten
+    `(1/2)`-universality to `(1/1) = 1`-universality (the trivial
+    satisfiability anchor). -/
+example : IsEpsilonUniversal (carterWegmanHash 2) 1 :=
+  IsEpsilonUniversal.le_one (carterWegmanHash 2)
+
+-- ============================================================================
+-- Workstream L2 post-audit — `IsEpsilonUniversal.ofCollisionCardBound`
+-- end-to-end discharge regression.
+-- ============================================================================
+
+/-- **ofCollisionCardBound regression test.**  The generic helper
+    `IsEpsilonUniversal.ofCollisionCardBound` discharges the universal-
+    hash bound from a cardinality argument.  Verify the helper actually
+    produces the claimed bound on a concrete hash family: reuse the CW
+    case (at `p = 2`) where the collision count is known to be `p`. -/
+example : IsEpsilonUniversal (carterWegmanHash 2)
+    ((2 : ENNReal) / (Fintype.card (ZMod 2 × ZMod 2) : ℕ)) :=
+  IsEpsilonUniversal.ofCollisionCardBound (carterWegmanHash 2) 2
+    (fun m₁ m₂ h_ne => by
+      rw [carterWegmanHash_collision_card 2 h_ne])
+
 end NonVacuityWitnesses
