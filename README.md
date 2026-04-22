@@ -34,10 +34,25 @@ consolidated end-to-end verification report in
 [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md), the
 comprehensive `#print axioms` audit script in
 [`scripts/audit_phase_16.lean`](scripts/audit_phase_16.lean) exercising
-every public declaration (342 total, zero `sorryAx`, zero custom
-axioms), and a CI regression sentinel that de-wraps Lean's multi-line
-axiom lists before scanning so a custom axiom cannot hide on a
-continuation line.
+every public declaration (346+ total post-Workstream-K, zero `sorryAx`,
+zero custom axioms), and a CI regression sentinel that de-wraps Lean's
+multi-line axiom lists before scanning so a custom axiom cannot hide on
+a continuation line.
+
+Workstream K (audit 2026-04-21, finding M1) threaded the classical
+distinct-challenge IND-1-CPA game shape (`IsSecureDistinct`) through
+the downstream security chain: the `_distinct`-suffixed corollaries
+(`oia_implies_1cpa_distinct`,
+`hardness_chain_implies_security_distinct`,
+`concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`)
+compose their uniform-game ancestors with
+`isSecure_implies_isSecureDistinct` (Workstream B1); the
+`indCPAAdvantage_collision_zero` lemma formalises why the probabilistic
+bound `≤ ε` holds unconditionally for every adversary (collision
+branch contributes advantage 0). The KEM layer deliberately omits a
+`_distinct` corollary because its game parameterises adversaries by
+group elements rather than messages (see the extended docstring on
+`kemoia_implies_secure`).
 
 All headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
 
@@ -61,6 +76,10 @@ All headline results are machine-checked with zero `sorry`, zero warnings, zero 
 | 16 | `two_phase_correct` — fast (cyclic ∘ residual) canonical form agrees with full IF the strong `TwoPhaseDecomposition` predicate holds | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` carried as a hypothesis; not satisfied by the default fallback group) |
 | 17 | `two_phase_kem_correctness` — two-phase KEM decapsulation recovers the encapsulated key (conditional on `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` is a hypothesis) |
 | 18 | `fast_kem_round_trip` — actual KEM correctness for `(FastEncaps, FastDecaps)`: orbit-constancy of `fastCanon` suffices | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`IsOrbitConstant` is a hypothesis; satisfied by the GAP `FastCanonicalImage` whenever the cyclic subgroup is normal in G) |
+| 19 | `oia_implies_1cpa_distinct` — classical distinct-challenge IND-1-CPA from OIA (Workstream K1) | `Theorems/OIAImpliesCPA.lean` | Zero custom axioms (OIA is a hypothesis; composes `oia_implies_1cpa` with `isSecure_implies_isSecureDistinct`) |
+| 20 | `hardness_chain_implies_security_distinct` — classical distinct-challenge form of the TI-hardness chain (Workstream K3) | `Hardness/Reductions.lean` | Zero custom axioms (HardnessChain is a hypothesis) |
+| 21 | `indCPAAdvantage_collision_zero` — collision-case adversaries yield probabilistic IND-1-CPA advantage `0`; formalises the free transfer of the `≤ ε` bound to the classical game (Workstream K4) | `Crypto/CompSecurity.lean` | Standard Lean only (one-line corollary of `advantage_self`) |
+| 22 | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` — probabilistic chain bound in classical-game form (Workstream K4 companion) | `Hardness/Reductions.lean` | Zero custom axioms (ConcreteHardnessChain is a hypothesis) |
 
 ### Axiom Transparency
 
@@ -85,14 +104,14 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 
 ### Build Stats
 
-- 36 Lean source files + root import file
-- 343 public declarations (def / theorem / structure / class / instance / abbrev), all with docstrings
-- 342 declarations exercised by `scripts/audit_phase_16.lean` with `#print axioms` (every public declaration; 133 depend on *no* axioms, 209 depend only on the standard Lean trio)
+- 38 Lean source files + root import file
+- 347 public declarations (def / theorem / structure / class / instance / abbrev), all with docstrings
+- 346 declarations exercised by `scripts/audit_phase_16.lean` with `#print axioms` (every public declaration; all depend only on the standard Lean trio `propext` / `Classical.choice` / `Quot.sound`, or on *no* axioms at all)
 - Zero `sorry`, zero custom axioms, zero warnings
-- `lake build Orbcrypt` runs 3,364 jobs successfully
+- `lake build Orbcrypt` runs 3,366 jobs successfully
 - Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
 - GitHub Actions CI on every push (build + sorry scan + axiom-decl scan + Phase 16 audit regression sentinel)
-- Package version: `0.1.4` (see `lakefile.lean`)
+- Package version: `0.1.5` (see `lakefile.lean`)
 
 ## Build
 

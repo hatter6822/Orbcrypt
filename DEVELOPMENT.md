@@ -868,6 +868,45 @@ collisions that the classical game rejects. Downstream probabilistic
 theorems (Phase 8) use the advantage-bounded formulation
 `indCPAAdvantage ≤ ε`, which is independent of this structural choice.
 
+**Classical distinct-challenge corollaries (audit F-AUDIT-2026-04-21-M1
+/ Workstream K).** For release-facing citations that prefer the
+literature's IND-1-CPA game shape, the formalization carries
+`_distinct`-suffixed corollaries composing each uniform-game security
+theorem with `isSecure_implies_isSecureDistinct`:
+
+- `oia_implies_1cpa_distinct : OIA scheme → IsSecureDistinct scheme`
+  (Workstream K1, `Theorems/OIAImpliesCPA.lean`).
+- `hardness_chain_implies_security_distinct : HardnessChain scheme →
+  IsSecureDistinct scheme` (Workstream K3, `Hardness/Reductions.lean`).
+- `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+  (Workstream K4 companion, `Hardness/Reductions.lean`) —
+  probabilistic chain bound restated in classical-game form.
+
+The corresponding structural lemma `indCPAAdvantage_collision_zero`
+(Workstream K4, `Crypto/CompSecurity.lean`) witnesses that a
+collision-choice adversary always has probabilistic advantage `0`,
+which formalises why the `ConcreteOIA(ε) → indCPAAdvantage ≤ ε` bound
+transfers from the uniform game to the classical distinct-challenge
+game for free — no new theorem with a distinctness hypothesis is
+required at the probabilistic level.
+
+The deterministic scaffolding corollaries (K1, K3) inherit the
+vacuity of their `OIA` / `HardnessChain` ancestors; cite them only
+to explain type-theoretic game-shape alignment, not as standalone
+security claims. The probabilistic K4 companion retains the
+genuinely ε-smooth content of `concrete_hardness_chain_implies_1cpa_
+advantage_bound` (Workstream G) — distinctness is attached as a
+release-facing signature marker only.
+
+**K2 design note — no KEM `_distinct` corollary.** The KEM-layer
+security game (`kemHasAdvantage` in `KEM/Security.lean`) parameterises
+adversaries by *group elements* rather than messages; every
+encapsulation operates on the single base point `kem.basePoint`. There
+is no per-message collision gap analogous to the scheme-level
+`(m, m)` issue, so no `kemoia_implies_secure_distinct` corollary is
+introduced. The extended docstring on `kemoia_implies_secure`
+documents this design decision.
+
 ### 8.2 Multi-Query Security (Full IND-CPA)
 
 In the full IND-CPA game, the adversary has adaptive access to an encryption

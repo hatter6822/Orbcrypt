@@ -738,15 +738,45 @@ example {G : Type} {X : Type} {M : Type}
     IsSecureDistinct scheme :=
   hardness_chain_implies_security_distinct scheme hChain
 
-/-- Workstream K4 non-vacuity: `indCPAAdvantage_collision_zero` fires
-    unconditionally on any adversary whose `choose` happens to return a
-    collision. Constructed here via a concrete adversary whose `choose`
-    is `(fun _ => (m, m))` for a single-message scheme on `Unit`. -/
+/-- Workstream K4 non-vacuity (structural): `indCPAAdvantage_collision_zero`
+    accepts any scheme + adversary pair satisfying the collision
+    hypothesis and delivers `indCPAAdvantage scheme A = 0`. Exercises
+    the lemma on a freely-quantified input; a signature drift would
+    fail to elaborate. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M)
+    (hCollision : (A.choose scheme.reps).1 = (A.choose scheme.reps).2) :
+    indCPAAdvantage scheme A = 0 :=
+  indCPAAdvantage_collision_zero scheme A hCollision
+
+/-- Workstream K4 non-vacuity (concrete adversary): constructs a
+    `collisionAdversary` on the singleton message space `Unit` whose
+    `choose` always returns `((), ())`, and confirms
+    `indCPAAdvantage_collision_zero` forces its advantage to be
+    exactly zero. This is a genuine witness of the lemma firing on
+    a concrete input, not merely a signature check. -/
 example : True := by
-  -- The lemma itself is exercised in the structural type-check of
-  -- the `#print axioms` above. No further concrete instantiation is
-  -- required because the hypothesis `hCollision` discharges the
-  -- conclusion by `advantage_self` regardless of the scheme.
+  -- Build a trivial scheme on `Unit` under the one-element
+  -- permutation group; all messages collide since `Unit` has only
+  -- one inhabitant.
+  let trivialScheme : OrbitEncScheme (Equiv.Perm (Fin 1)) Unit Unit :=
+    { reps := fun _ => ()
+      reps_distinct := fun _ _ h => (h (Subsingleton.elim _ _)).elim
+      canonForm :=
+        { canon := id
+          mem_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
+          orbit_iff := fun _ _ => by simp } }
+  let collisionAdv : Adversary Unit Unit :=
+    { choose := fun _ => ((), ())
+      guess := fun _ _ => true }
+  -- The collision hypothesis holds by `rfl` since both projections
+  -- are `()`; feed it to the lemma to get `indCPAAdvantage = 0`.
+  have hZero : indCPAAdvantage trivialScheme collisionAdv = 0 :=
+    indCPAAdvantage_collision_zero trivialScheme collisionAdv rfl
+  -- Return `True`; the meaningful assertion lives in `hZero`, whose
+  -- existence (together with its dependency on the lemma) is what
+  -- this example actually proves.
   trivial
 
 /-- Workstream K4 companion non-vacuity: fires the
