@@ -572,6 +572,27 @@ limitations, each documented in source and tracked as future work:
    the `*_viaEncoding` Props landed by Workstream G without further
    structural refactor.
 
+9. **`ConcreteKEMHardnessChain` at ε < 1 requires a scheme-to-KEM
+   reduction witness.** Post-Workstream-H (audit
+   F-AUDIT-2026-04-21-H2, MEDIUM), the KEM-layer chain
+   `ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε` bundles a
+   scheme-level Workstream-G chain with a
+   `ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀ keyDerive ε ε`
+   field. The scheme-to-KEM reduction is **not** a free algebraic
+   consequence of `ConcreteOIA scheme ε`: the scheme-level predicate
+   bounds the advantage between two *orbit distributions*, whereas
+   the KEM uniform predicate bounds the advantage between a *uniform
+   orbit distribution* and a *point mass on a specific orbit
+   element*. Non-vacuity at ε = 1 is witnessed by
+   `ConcreteKEMHardnessChain.tight_one_exists` via
+   `concreteOIAImpliesConcreteKEMOIAUniform_one_right`. **For ε < 1**,
+   the caller must supply a concrete scheme-to-KEM reduction witness
+   at the specific `(m₀, keyDerive)` pair — typically under a
+   random-oracle idealisation of `keyDerive`. Concrete formalisation
+   of this witness is a research-scope follow-up parallel to item 8
+   above and tracked in the audit plan § 15.1 alongside the encoder
+   follow-ups.
+
 These items are *known and documented*, not silent gaps. The
 formalization is internally consistent: every conditional theorem
 states its assumptions, every probabilistic predicate is satisfiable
@@ -579,10 +600,11 @@ at `ε = 1`, and no custom axiom or `sorry` short-circuits any proof.
 
 ---
 
-## Release readiness (post-Workstream-G)
+## Release readiness (post-Workstream-G and Workstream H)
 
 The 2026-04-21 audit's HIGH-severity finding (H1) is **closed** by
-Workstream G. The formalization's public release posture:
+Workstream G; finding H2 (MEDIUM) is **closed** by Workstream H.
+The formalization's public release posture:
 
 1. **Deterministic chain** (Phases 3, 4, 7, 10, 12). Built from
    `Prop`-valued OIA variants (`OIA`, `KEMOIA`, `TensorOIA`, `CEOIA`,
@@ -615,9 +637,41 @@ Workstream G. The formalization's public release posture:
    TI-hardness of surrogate S and reductions via encoders (encTC,
    encCG)" should cite `concrete_hardness_chain_implies_1cpa_advantage_bound`.
 
-3. **What to cite externally:**
+3. **KEM-layer chain** (Workstream H, finding H2). The chain lifts
+   to the KEM layer via `ConcreteKEMHardnessChain scheme F S m₀
+   keyDerive ε`, which bundles a scheme-level Workstream-G chain
+   with a `ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀
+   keyDerive ε ε` field (the abstract scheme-to-KEM reduction Prop).
+   Two composition theorems expose the chain's content:
+   * `concreteKEMHardnessChain_implies_kemUniform` delivers the
+     probabilistic KEM-OIA predicate `ConcreteKEMOIA_uniform
+     (scheme.toKEM m₀ keyDerive) ε`.
+   * `concrete_kem_hardness_chain_implies_kem_advantage_bound`
+     composes that further with `concrete_kemoia_uniform_implies_
+     secure` to deliver the end-to-end KEM adversary bound
+     `kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ ε`
+     for every adversary and every reference encapsulation — the
+     KEM-layer parallel of the scheme-level
+     `concrete_hardness_chain_implies_1cpa_advantage_bound`.
+   This replaces the pre-H pattern (where KEM consumers had to
+   assemble the scheme-to-KEM step by hand) with a single structure
+   parameterised by the KEM's anchor and key-derivation choice. The
+   scheme-to-KEM reduction Prop at `ε < 1` is a research-scope
+   discharge (typically via random-oracle idealisation of `keyDerive`);
+   the chain is inhabited at ε = 1 via
+   `ConcreteKEMHardnessChain.tight_one_exists`.
+
+4. **What to cite externally:**
    * `concrete_hardness_chain_implies_1cpa_advantage_bound` — the
-     quantitative bound under caller-supplied hardness.
+     scheme-level quantitative bound under caller-supplied hardness.
+   * `concreteKEMHardnessChain_implies_kemUniform` (post-Workstream-H) —
+     the KEM-layer probabilistic KEM-OIA bound matching the same
+     hardness profile.
+   * `concrete_kem_hardness_chain_implies_kem_advantage_bound`
+     (post-Workstream-H) — the KEM-layer end-to-end adversary bound
+     composing the KEM chain with
+     `concrete_kemoia_uniform_implies_secure`; this is the strongest
+     public-facing KEM security statement.
    * `oia_implies_1cpa_distinct` (post-Workstream-K) — the classical
      IND-1-CPA form matching the literature.
    * `correctness`, `kem_correctness`, `aead_correctness`,
@@ -625,12 +679,14 @@ Workstream G. The formalization's public release posture:
    * `invariant_attack` — vulnerability analysis (complete break
      under separating invariant).
 
-4. **What NOT to cite without qualification:**
+5. **What NOT to cite without qualification:**
    * `oia_implies_1cpa`, `kemoia_implies_secure`,
      `hardness_chain_implies_security` — scaffolding only,
      vacuously true on production schemes.
-   * `ConcreteHardnessChain scheme F (punitSurrogate F) 1` — the
-     non-vacuity witness, not a quantitative security claim.
+   * `ConcreteHardnessChain scheme F (punitSurrogate F) 1` /
+     `ConcreteKEMHardnessChain scheme F (punitSurrogate F) m₀
+     keyDerive 1` — non-vacuity witnesses, not quantitative security
+     claims.
    * `ObliviousSamplingHiding`, `ConcreteKEMOIA` (point-mass form) —
      self-disclosed as pathological-strength or collapsed on
      [0, 1).

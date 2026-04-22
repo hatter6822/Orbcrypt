@@ -439,8 +439,9 @@ The entire formalization exists to machine-check three results. Understand what 
 | 26 | **Fast-KEM Round-Trip (orbit-constancy)** | `fast_kem_round_trip : keyDerive (fastCanon (g • basePoint)) = keyDerive (fastCanon basePoint)` (given `IsOrbitConstant G fastCanon`) | `Optimization/TwoPhaseDecrypt.lean` | The actual correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair: orbit-constancy of the fast canonical form is sufficient for round-trip correctness, and orbit-constancy IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G (Phase 15.3, post-landing audit) |
 | 27 | **Surrogate-Bound Hardness Chain (non-vacuous)** | `ConcreteHardnessChain.concreteOIA_from_chain hc : ConcreteOIA scheme ε` for `hc : ConcreteHardnessChain scheme F S ε` with explicit `S : SurrogateTensor F` and encoder fields `encTC, encCG`; `tight_one_exists` witnesses inhabitation at ε = 1 via `punitSurrogate F` and dimension-0 trivial encoders | `Hardness/Reductions.lean` | Closes audit finding H1 (2026-04-21, HIGH). Pre-G the chain's `UniversalConcreteTensorOIA εT` implicitly quantified over every `G_TI : Type` including PUnit, making the Prop collapse at εT < 1. Fix B binds the surrogate; Fix C adds per-encoding reduction Props (`*_viaEncoding`) naming explicit encoder functions. Composition threads advantage through the chain image `encCG ∘ encTC`, not a universal hypothesis (Workstream G) |
 | 28 | **Per-Encoding Reduction Props (Fix C)** | `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding S enc εT εC`, `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding enc εC εG`, `ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme encTC encCG εG ε` | `Hardness/Reductions.lean` | Each reduction Prop names an explicit encoder function and asserts hardness transfer *through* that encoder. Satisfiable at ε = 1 via the `*_one_one` witnesses (conclusion is unconditionally true); non-trivial ε < 1 discharges require concrete encoder witnesses (CFI, Grochow–Qiao — research-scope, audit plan § 15.1). This is the "cryptographically cleanest" formulation the audit calls for (Workstream G / Fix C) |
+| 29 | **KEM-Layer ε-Smooth Hardness Chain** | `concreteKEMHardnessChain_implies_kemUniform : ConcreteKEMHardnessChain scheme F S m₀ keyDerive ε → ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε`; `concrete_kem_hardness_chain_implies_kem_advantage_bound : ConcreteKEMHardnessChain … → kemAdvantage_uniform … ≤ ε` (end-to-end adversary bound); `ConcreteKEMHardnessChain.tight_one_exists` witnesses inhabitation at ε = 1 via `punitSurrogate F`, dimension-0 trivial encoders, and the `_one_right` discharge | `KEM/CompSecurity.lean` | Closes audit finding H2 (2026-04-21, MEDIUM). Pre-H, the KEM surface carried `concrete_kemoia_implies_secure` (point-mass, collapses on `[0, 1)`) and `concrete_kemoia_uniform_implies_secure` (uniform, ε-smooth) but **no chain-level entry point** from TI-hardness. Workstream H adds the abstract scheme-to-KEM reduction Prop `ConcreteOIAImpliesConcreteKEMOIAUniform` (H1) with trivial `ε' = 1` discharge `concreteOIAImpliesConcreteKEMOIAUniform_one_right` (H2), the packaged `ConcreteKEMHardnessChain` (H3) composing it with the Workstream-G scheme-level chain, and the end-to-end adversary-bound corollary mirroring `concrete_hardness_chain_implies_1cpa_advantage_bound` (Workstream H) |
 
-Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures. The Phase 15 decryption-optimisation formalisation (theorems 24–26) covers the GAP fast-decryption pipeline (`implementation/gap/orbcrypt_fast_dec.g`): theorems #24–#25 formalise the strong "fast = slow" decomposition as a conditional, theorem #26 captures the actual KEM correctness story via orbit-constancy of the fast canonical form. Post-landing audit (this commit) confirmed empirically that the strong decomposition does not hold for the default fallback group, so the production correctness argument runs through #26. The Workstream G refactor (theorems 27–28, audit 2026-04-21 finding H1) closes the pre-G PUnit collapse in `UniversalConcreteTensorOIA` by binding a `SurrogateTensor F` parameter (Fix B) and introducing per-encoding reduction Props that name explicit encoder functions (Fix C); the chain is now honestly ε-parametric in both the surrogate choice and the encoder witnesses.
+Together these establish: the scheme is correct, its failure mode is precisely characterized, and under a stated assumption it is secure. The KEM reformulation (theorems 4–5) provides the same guarantees in the modern KEM+DEM hybrid encryption paradigm. The probabilistic foundations (theorems 6–8) replace the vacuously-true deterministic security with meaningful computational security guarantees. The key management results (theorems 9–11) prove that seed-based key compression and nonce-based encryption preserve correctness while formally characterizing nonce-misuse risks. The AEAD layer (theorems 12–13) adds integrity protection and support for arbitrary-length messages via standard KEM+DEM composition; the INT-CTXT results (theorems 19–20, Workstream C) strengthen it by machine-checking ciphertext integrity against an enriched MAC abstraction with tag uniqueness (`verify_inj`) and exhibiting a concrete Carter–Wegman witness. The public-key extension (theorems 15–18, Phase 13) provides algebraic scaffolding for three candidate paths from the symmetric scheme to public-key orbit encryption — with an accompanying feasibility analysis (`docs/PUBLIC_KEY_ANALYSIS.md`) that documents which paths are viable, bounded, or open. The Code Equivalence API (theorems 21–23, Workstream D) closes audit findings F-08 and F-16 by promoting `ArePermEquivalent` to a Mathlib `Setoid` and `PAut` to a Mathlib `Subgroup`, and by proving the full coset set identity that underlies LESS-style signatures. The Phase 15 decryption-optimisation formalisation (theorems 24–26) covers the GAP fast-decryption pipeline (`implementation/gap/orbcrypt_fast_dec.g`): theorems #24–#25 formalise the strong "fast = slow" decomposition as a conditional, theorem #26 captures the actual KEM correctness story via orbit-constancy of the fast canonical form. Post-landing audit (this commit) confirmed empirically that the strong decomposition does not hold for the default fallback group, so the production correctness argument runs through #26. The Workstream G refactor (theorems 27–28, audit 2026-04-21 finding H1) closes the pre-G PUnit collapse in `UniversalConcreteTensorOIA` by binding a `SurrogateTensor F` parameter (Fix B) and introducing per-encoding reduction Props that name explicit encoder functions (Fix C); the chain is now honestly ε-parametric in both the surrogate choice and the encoder witnesses. Workstream H (theorem 29, audit 2026-04-21 finding H2) lifts the Workstream-G chain to the KEM layer by introducing `ConcreteOIAImpliesConcreteKEMOIAUniform` (H1) as the abstract scheme-to-KEM reduction Prop, discharging its `ε' = 1` satisfiability witness (H2), and packaging both with the scheme-level chain into `ConcreteKEMHardnessChain` (H3); `concreteKEMHardnessChain_implies_kemUniform` delivers `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε` from TI-hardness at the caller-supplied surrogate, encoders, and keyDerive, and `concrete_kem_hardness_chain_implies_kem_advantage_bound` composes one more step with `concrete_kemoia_uniform_implies_secure` to deliver the end-to-end KEM adversary bound `kemAdvantage_uniform … ≤ ε` — mirroring the scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound` and closing the KEM-layer chain gap that the MEDIUM-severity finding H2 flagged.
 
 ## Mathlib integration
 
@@ -1368,6 +1369,89 @@ existing 38-module count and does not introduce new `.lean` source
 files — the changes are restricted to `Hardness/TensorAction.lean`,
 `Hardness/Reductions.lean`, and audit scripts.
 
+Workstream H (Audit 2026-04-21 — KEM-layer ε-smooth hardness chain,
+H2, MEDIUM) has been completed:
+- `Orbcrypt/KEM/CompSecurity.lean` — (H1) `ConcreteOIAImpliesConcrete-
+  KEMOIAUniform scheme m₀ keyDerive ε ε'` — the Prop-valued abstract
+  scheme-to-KEM reduction. Parameterised by the KEM's anchor message
+  `m₀ : M` and key derivation `keyDerive : X → K`. States that a
+  `ConcreteOIA scheme ε` bound transfers to `ConcreteKEMOIA_uniform
+  (scheme.toKEM m₀ keyDerive) ε'`. Carried as an abstract obligation
+  matching the Workstream-G per-encoding reduction Prop pattern — the
+  scheme-to-KEM transfer is not a free algebraic consequence of
+  `ConcreteOIA`, so concrete discharges (e.g. random-oracle
+  `keyDerive` idealisations) supply the Prop. (H2)
+  `concreteOIAImpliesConcreteKEMOIAUniform_one_right` — satisfiability
+  witness at `ε' = 1` unconditionally, via `concreteKEMOIA_uniform_
+  one`. The KEM-layer analogue of Workstream G's `*_one_one`
+  anchors; what `ConcreteKEMHardnessChain.tight_one_exists` uses.
+- `Orbcrypt/KEM/CompSecurity.lean` — (H3) `ConcreteKEMHardnessChain
+  scheme F S m₀ keyDerive ε` structure bundling a scheme-level
+  `ConcreteHardnessChain scheme F S ε` (Workstream G) with a
+  `ConcreteOIAImpliesConcreteKEMOIAUniform scheme m₀ keyDerive ε ε`
+  field. `concreteKEMHardnessChain_implies_kemUniform` is the
+  composition theorem delivering `ConcreteKEMOIA_uniform
+  (scheme.toKEM m₀ keyDerive) ε` by feeding the chain's
+  `ConcreteHardnessChain.concreteOIA_from_chain` output through the
+  scheme-to-KEM field. `ConcreteKEMHardnessChain.tight_one_exists`
+  inhabits the structure at ε = 1 via `punitSurrogate F`,
+  dimension-0 trivial encoders, and the `_one_right` discharge.
+  `concrete_kem_hardness_chain_implies_kem_advantage_bound` is the
+  end-to-end KEM-layer adversary bound, composing
+  `concreteKEMHardnessChain_implies_kemUniform` with
+  `concrete_kemoia_uniform_implies_secure` to deliver
+  `kemAdvantage_uniform (scheme.toKEM m₀ keyDerive) A g_ref ≤ ε` —
+  the KEM-layer parallel of the scheme-level
+  `concrete_hardness_chain_implies_1cpa_advantage_bound`.
+- `Orbcrypt/KEM/CompSecurity.lean` gains an import of
+  `Orbcrypt.Hardness.Reductions` (no cycle — `Hardness/Reductions`
+  does not import `KEM/CompSecurity`). This places the KEM chain
+  above the scheme chain in the module dependency graph, matching
+  the cryptographic layering: KEM security rests on scheme security
+  rests on TI-hardness.
+- `scripts/audit_phase_16.lean` — six new `#print axioms` entries
+  for the Workstream-H declarations; four new concrete `example`
+  bindings in the `NonVacuityWitnesses` section exercising the
+  `_one_right` Prop discharge, the `tight_one_exists` witness, the
+  chain → `ConcreteKEMOIA_uniform` composition, and the end-to-end
+  chain → `kemAdvantage_uniform` adversary bound. Type-checking the
+  script is the machine-checkable verification that each headline
+  result accepts well-typed inputs.
+- `Orbcrypt.lean` — transparency-report block extended with five new
+  `#print axioms` entries; the "Vacuity map" table gained a row
+  mapping the previously-missing KEM-layer chain to
+  `concreteKEMHardnessChain_implies_kemUniform`; a new "Workstream H
+  Snapshot (audit 2026-04-21, finding H2)" section at the end of
+  the axiom-transparency report describes the H1 / H2 / H3 additions,
+  the new import edge, the cryptographic interpretation, and the
+  research-scope follow-ups for ε < 1 discharges.
+- `docs/VERIFICATION_REPORT.md` — "Known limitations" section gains
+  a note on the Workstream-H status: the KEM-layer chain is
+  inhabited at ε = 1 via the trivial `_one_right` discharge; ε < 1
+  requires concrete `keyDerive`-specific reasoning (random-oracle
+  models etc.), tracked as a research follow-up parallel to
+  Workstream G's encoder items.
+
+Traceability: finding H2 (AUDIT-2026-04-21-H2, MEDIUM) is resolved.
+The pre-H "no chain-level entry point for `ConcreteKEMOIA_uniform`"
+gap is closed at the abstraction level: concrete discharges at
+ε < 1 slot directly into `ConcreteKEMHardnessChain`'s `scheme_to_kem`
+field without further structural refactor. No existing API is
+removed; `ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`,
+`concrete_kemoia_implies_secure`, and `concrete_kemoia_uniform_
+implies_secure` are preserved.
+
+Verification: the full Phase-16 audit script (`scripts/audit_phase_16.
+lean`) emits only standard-trio axioms (`propext`, `Classical.
+choice`, `Quot.sound`) or "does not depend on any axioms" for every
+Workstream-H declaration; the Nonempty witness and composition
+pipeline elaborate on the singleton model at `F = Bool`.
+
+Patch version: `lakefile.lean` retains `0.1.5`; Workstream H is
+additive to the 38-module count and does not introduce new `.lean`
+source files — the changes are restricted to
+`Orbcrypt/KEM/CompSecurity.lean`, audit scripts, and documentation.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
@@ -1433,6 +1517,12 @@ files — the changes are restricted to `Hardness/TensorAction.lean`,
 - `#print axioms Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` — standard Lean only (per-encoding GI → scheme-OIA reduction Prop, consumes chain-image hardness; Workstream G / Fix C)
 - `#print axioms Orbcrypt.ConcreteHardnessChain.tight_one_exists` — standard Lean only (inhabits chain at ε = 1 via `punitSurrogate` + dimension-0 trivial encoders; Workstream G)
 - `#print axioms Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound` — standard Lean only (composes `concreteOIA_from_chain` with `concrete_oia_implies_1cpa`; post-Workstream-G signature threads `SurrogateTensor` via the chain structure)
+- `#print axioms Orbcrypt.ConcreteOIAImpliesConcreteKEMOIAUniform` — standard Lean only (Prop-valued scheme-to-KEM reduction; audit 2026-04-21 H2, Workstream H1)
+- `#print axioms Orbcrypt.concreteOIAImpliesConcreteKEMOIAUniform_one_right` — standard Lean only (satisfiability witness at `ε' = 1` via `concreteKEMOIA_uniform_one`; audit 2026-04-21 H2, Workstream H2)
+- `#print axioms Orbcrypt.ConcreteKEMHardnessChain` — standard Lean only (KEM-layer ε-smooth chain structure bundling scheme-level `ConcreteHardnessChain` with the scheme-to-KEM reduction Prop; audit 2026-04-21 H2, Workstream H3)
+- `#print axioms Orbcrypt.concreteKEMHardnessChain_implies_kemUniform` — standard Lean only (composes `ConcreteHardnessChain.concreteOIA_from_chain` with the scheme-to-KEM field to deliver `ConcreteKEMOIA_uniform (scheme.toKEM m₀ keyDerive) ε`; audit 2026-04-21 H2, Workstream H3)
+- `#print axioms Orbcrypt.ConcreteKEMHardnessChain.tight_one_exists` — standard Lean only (inhabits the KEM chain at ε = 1 via `ConcreteHardnessChain.tight_one_exists` + `_one_right` discharge; audit 2026-04-21 H2, Workstream H3)
+- `#print axioms Orbcrypt.concrete_kem_hardness_chain_implies_kem_advantage_bound` — standard Lean only (end-to-end KEM-layer adversary bound: composes `concreteKEMHardnessChain_implies_kemUniform` with `concrete_kemoia_uniform_implies_secure`; KEM analogue of `concrete_hardness_chain_implies_1cpa_advantage_bound`; audit 2026-04-21 H2, Workstream H3)
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
