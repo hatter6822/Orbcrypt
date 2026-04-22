@@ -255,18 +255,21 @@ theorem concreteKEMOIA_mono [Group G] [Fintype G] [Nonempty G]
 
 /-- **Bridge theorem.** The deterministic `KEMOIA` of `KEM/Security.lean`
     implies `ConcreteKEMOIA kem 0`: when no Boolean function distinguishes
-    orbit elements *and* the derived key is constant across the orbit, the
-    point-mass advantage between any two encapsulation outputs is zero.
+    orbit elements, the point-mass advantage between any two encapsulation
+    outputs is zero. Key constancy across the orbit — previously provided
+    by the now-removed second conjunct of `KEMOIA` — is proved
+    unconditionally via `kem_key_constant_direct` (Workstream L5).
 
-    **Proof strategy.**
+    **Proof strategy (post-Workstream-L5 simplification).**
     1. Specialise the Boolean distinguisher `D : X × K → Bool` to a single
        orbit element by fixing the key argument to the canonical key
        `keyDerive (canon basePoint)`.
-    2. Use `KEMOIA.2` (key constancy) to rewrite each encapsulation's key
-       component to the canonical key.
-    3. Use `KEMOIA.1` (orbit indistinguishability) applied to the partially
-       applied distinguisher `fun c => D (c, canonical_key)` to conclude
-       `D (encaps kem g₀) = D (encaps kem g₁)` as Booleans.
+    2. Use `kem_key_constant_direct` (unconditionally, no `hOIA` extraction)
+       to rewrite each encapsulation's key component to the canonical key.
+    3. Use `hOIA` (which post-L5 is precisely the orbit-indistinguishability
+       predicate) applied to the partially applied distinguisher
+       `fun c => D (c, canonical_key)` to conclude `D (encaps kem g₀) =
+       D (encaps kem g₁)` as Booleans.
     4. Point-mass advantages with equal Boolean outputs are zero. -/
 theorem det_kemoia_implies_concreteKEMOIA_zero
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
@@ -275,20 +278,20 @@ theorem det_kemoia_implies_concreteKEMOIA_zero
   intro D g₀ g₁
   -- Goal: advantage D (pure (encaps g₀)) (pure (encaps g₁)) ≤ 0.
   -- Since advantage ≥ 0, suffices to show the two point-mass Booleans agree.
-  have hkey0 := hOIA.2 g₀
-  have hkey1 := hOIA.2 g₁
+  have hkey0 := kem_key_constant_direct kem g₀
+  have hkey1 := kem_key_constant_direct kem g₁
   -- The canonical key of basePoint is the common value.
   set kbp := kem.keyDerive (kem.canonForm.canon kem.basePoint) with hkbp
   -- encaps kem g unfolds to (g • basePoint, keyDerive (canon (g • basePoint))).
-  -- Via hOIA.2, the second component is kbp regardless of g.
+  -- Via `kem_key_constant_direct`, the second component is kbp regardless of g.
   have heq0 : encaps kem g₀ = (g₀ • kem.basePoint, kbp) := by
     simp only [encaps, hkey0]
   have heq1 : encaps kem g₁ = (g₁ • kem.basePoint, kbp) := by
     simp only [encaps, hkey1]
   -- Build the partially applied Boolean distinguisher fixing the key to kbp.
   let f : X → Bool := fun c => D (c, kbp)
-  -- hOIA.1 applied to f gives f (g₀ • bp) = f (g₁ • bp).
-  have hf : f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint) := hOIA.1 f g₀ g₁
+  -- hOIA (now single-conjunct) applied to f gives f (g₀ • bp) = f (g₁ • bp).
+  have hf : f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint) := hOIA f g₀ g₁
   -- Rewrite D (encaps g₀) and D (encaps g₁) through the equalities.
   have hD : D (encaps kem g₀) = D (encaps kem g₁) := by
     rw [heq0, heq1]; exact hf

@@ -261,10 +261,10 @@ Track C: 13.5 (CommAction) → 13.6 (CommPKE)           → 13.7 (Analysis)
 | `oblivious_sample_in_orbit` | `PublicKey/ObliviousSampling.lean` | Orbit-membership theorem (direct application of `hClosed`) |
 | `ObliviousSamplingHiding`, `oblivious_sampling_view_constant` | `PublicKey/ObliviousSampling.lean` | Sender-privacy predicate + corollary |
 | `refreshRandomizers`, `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Epoch-indexed bundle with orbit proof |
-| `RefreshIndependent`, `refresh_independent` | `PublicKey/ObliviousSampling.lean` | Structural independence of disjoint epochs |
+| `RefreshDependsOnlyOnEpochRange`, `refresh_depends_only_on_epoch_range` (renamed from `RefreshIndependent` / `refresh_independent` in Workstream L3) | `PublicKey/ObliviousSampling.lean` | Structural determinism of disjoint epochs |
 | `OrbitKeyAgreement` structure, `sessionKey` | `PublicKey/KEMAgreement.lean` | Two-party key agreement |
 | `kem_agreement_correctness`, `..._alice_view`, `..._bob_view` | `PublicKey/KEMAgreement.lean` | Both parties' views match |
-| `SymmetricKeyAgreementLimitation`, `symmetric_key_agreement_limitation` | `PublicKey/KEMAgreement.lean` | Unconditional structural identity exhibiting `sessionKey a b` as `combiner(k_A, k_B)` with each `k_x` = `kem_x.keyDerive(canon_x(x • bp_x))`, making formal that computing the session key requires both parties' secret `keyDerive` and `canonForm.canon` |
+| `SessionKeyExpansionIdentity`, `sessionKey_expands_to_canon_form` (renamed from `SymmetricKeyAgreementLimitation` / `symmetric_key_agreement_limitation` in Workstream L4) | `PublicKey/KEMAgreement.lean` | Unconditional structural identity exhibiting `sessionKey a b` as `combiner(k_A, k_B)` with each `k_x` = `kem_x.keyDerive(canon_x(x • bp_x))`, making formal that computing the session key requires both parties' secret `keyDerive` and `canonForm.canon` |
 | `refreshRandomizers_orbitalRandomizers_basePoint` / `..._randomizers` | `PublicKey/ObliviousSampling.lean` | Structural unfolding of the refreshed bundle's fields |
 | `selfAction_comm` | `PublicKey/CommutativeAction.lean` | Witness that `CommGroupAction` is satisfiable for every `CommGroup` |
 | `CommGroupAction` (typeclass) | `PublicKey/CommutativeAction.lean` | `MulAction` + commutativity |

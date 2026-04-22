@@ -18,6 +18,7 @@ import Orbcrypt.KEM.Security
 import Orbcrypt.Probability.Monad
 import Orbcrypt.Probability.Negligible
 import Orbcrypt.Probability.Advantage
+import Orbcrypt.Probability.UniversalHash
 
 import Orbcrypt.Crypto.CompOIA
 import Orbcrypt.Crypto.CompSecurity
@@ -121,13 +122,16 @@ Mathlib.Probability.Distributions.Uniform
           ▼
   Probability.Monad ◄── PMF wrappers (uniformPMF, probTrue)
           │
-          ├────────────────────────┐
-          ▼                        ▼
-  Probability.Advantage    Probability.Negligible
-  ◄── advantage, triangle  ◄── IsNegligible
-  ◄── hybrid_argument      ◄── add closure
-          │                        │
-          ├────────────────────────┘
+          ├──────────────────┬────────────────────┐
+          ▼                  ▼                    ▼
+  Probability.Advantage  Probability.Negligible  Probability.UniversalHash
+  ◄── advantage, triangle  ◄── IsNegligible      ◄── IsEpsilonUniversal
+  ◄── hybrid_argument      ◄── add closure       ◄── probTrue_uniformPMF_decide_eq
+          │                  │                    │
+          ├──────────────────┘                    │
+          │                                       │
+          │                                       └─── AEAD.CarterWegmanMAC
+          │                                            (post-audit universal-hash)
           ▼
   Crypto.CompOIA ◄── Crypto.OIA
   ◄── orbitDist, ConcreteOIA, CompOIA
@@ -167,7 +171,12 @@ AEAD.MAC ◄── Mathlib.Tactic
   ◄── hybrid_correctness
 
   AEAD.CarterWegmanMAC ◄── AEAD.MAC, AEAD.AEAD, Mathlib.Data.ZMod.Basic
-  ◄── deterministicTagMAC, carterWegmanMAC
+                       ◄── Probability.UniversalHash (post-audit)
+  ◄── deterministicTagMAC, carterWegmanHash, carterWegmanMAC
+  ◄── carterWegmanHash_collision_iff, carterWegmanHash_collision_card
+  ◄── carterWegmanHash_isUniversal [Fact (Nat.Prime p)]
+      (headline: CW is `(1/p)`-universal over the prime field `ZMod p`,
+       L-workstream post-audit, 2026-04-22)
   ◄── carterWegman_authKEM, carterWegmanMAC_int_ctxt (Workstream C4)
 
   Mathlib.GroupTheory.Perm.Basic
@@ -192,12 +201,12 @@ AEAD.MAC ◄── Mathlib.Tactic
   ◄── oblivious_sample_in_orbit
   ◄── ObliviousSamplingHiding, oblivious_sampling_view_constant
   ◄── refreshRandomizers, refreshRandomizers_in_orbit
-  ◄── RefreshIndependent, refresh_independent
+  ◄── RefreshDependsOnlyOnEpochRange, refresh_depends_only_on_epoch_range
 
   PublicKey.KEMAgreement ◄── KEM.Encapsulate, KEM.Correctness
   ◄── OrbitKeyAgreement, sessionKey
   ◄── kem_agreement_correctness
-  ◄── SymmetricKeyAgreementLimitation
+  ◄── SessionKeyExpansionIdentity, sessionKey_expands_to_canon_form
 
   PublicKey.CommutativeAction ◄── GroupAction.Basic, GroupAction.Canonical
   ◄── CommGroupAction (class), csidh_exchange
@@ -292,9 +301,14 @@ kem_correctness (KEM/Correctness.lean)
   └── (definitional — rfl)
 
 kemoia_implies_secure (KEM/Security.lean)
-  ├── kem_key_constant                — key constancy from KEMOIA.2 (7.6a)
-  ├── kem_ciphertext_indistinguishable — orbit indist. from KEMOIA.1 (7.6b)
+  ├── kem_key_constant_direct         — key constancy unconditionally from
+  │                                     `canonical_isGInvariant` (post-L5;
+  │                                     pre-L5 this step extracted `KEMOIA.2`)
+  ├── kem_ciphertext_indistinguishable — orbit indist. from `KEMOIA`
+  │                                     (single-conjunct form post-L5)
   └── KEMOIA (hypothesis)             — KEM Orbit Indist. Assumption
+                                        (single-conjunct form post Workstream
+                                        L5 / audit F-AUDIT-2026-04-21-M6)
 
 concrete_oia_implies_1cpa (Crypto/CompSecurity.lean)
   ├── ConcreteOIA (hypothesis)   — probabilistic orbit indistinguishability
@@ -361,8 +375,11 @@ hybrid_correctness (AEAD/Modes.lean)
 oblivious_sample_in_orbit (PublicKey/ObliviousSampling.lean)
   └── OrbitalRandomizers.in_orbit — randomizer orbit certificate (13.1)
 
-refresh_independent (PublicKey/ObliviousSampling.lean)
+refresh_depends_only_on_epoch_range (PublicKey/ObliviousSampling.lean)
   └── (structural — `funext` + hypothesis)
+  ── renamed from `refresh_independent` in Workstream L3 (audit
+     F-AUDIT-2026-04-21-M4) to reflect that the content is structural
+     determinism, not cryptographic independence.
 
 kem_agreement_correctness (PublicKey/KEMAgreement.lean)
   └── kem_correctness             — KEM correctness (7.3)
@@ -661,16 +678,22 @@ typeclass axiom rather than a Lean `axiom`:
   deterministic hiding requirement; documented as pathological-strength
   and not expected to hold for non-trivial bundles without a
   probabilistic refinement).
-- `refresh_independent` (`PublicKey/ObliviousSampling.lean`) — structural
-  independence of epoch-refreshed randomizer bundles (unconditional; PRF
-  security remains a separate sampler-level assumption).
+- `refresh_depends_only_on_epoch_range`
+  (`PublicKey/ObliviousSampling.lean`) — structural
+  determinism of epoch-refreshed randomizer bundles (unconditional; PRF
+  security remains a separate sampler-level assumption). Renamed from
+  `refresh_independent` in Workstream L3 (audit
+  F-AUDIT-2026-04-21-M4) to reflect that the content is structural,
+  not cryptographic.
 - `kem_agreement_correctness` (`PublicKey/KEMAgreement.lean`) — follows
   from `kem_correctness`; establishes that two formulations of the
   session-key computation coincide.
-- `symmetric_key_agreement_limitation` (`PublicKey/KEMAgreement.lean`)
+- `sessionKey_expands_to_canon_form` (`PublicKey/KEMAgreement.lean`)
   — an unconditional structural identity exhibiting the session-key
-  formula in terms of both parties' `keyDerive` and `canonForm.canon`,
-  making formal that the protocol is symmetric-setup.
+  formula in terms of both parties' `keyDerive` and `canonForm.canon`.
+  Renamed from `symmetric_key_agreement_limitation` in Workstream L4
+  (audit F-AUDIT-2026-04-21-M5) because the content is a
+  decomposition identity, not an impossibility claim.
 - `csidh_correctness` and `comm_pke_correctness`
   (`PublicKey/CommutativeAction.lean`) — extract the `CommGroupAction.comm`
   typeclass axiom (not a Lean `axiom`; each concrete instance discharges it
@@ -728,7 +751,18 @@ Users can verify axiom dependencies by running in a Lean file:
 --  the `hOrbitCover` orbit-cover condition is carried as a hypothesis)
 
 #print axioms Orbcrypt.carterWegmanMAC_int_ctxt
--- (standard Lean only — direct specialisation of authEncrypt_is_int_ctxt)
+-- (standard Lean only — direct specialisation of authEncrypt_is_int_ctxt;
+--  post-audit now requires `[Fact (Nat.Prime p)]`)
+
+#print axioms Orbcrypt.carterWegmanHash_isUniversal
+-- (standard Lean only — Carter–Wegman 1977 `(1/p)`-universality;
+--  L-workstream post-audit headline, 2026-04-22)
+
+#print axioms Orbcrypt.IsEpsilonUniversal
+-- (standard Lean only — Prop-valued ε-universality definition)
+
+#print axioms Orbcrypt.probTrue_uniformPMF_decide_eq
+-- (standard Lean only — counting form of uniform probability)
 
 #print axioms Orbcrypt.hybrid_correctness
 -- (standard Lean only — follows from kem_correctness + DEM.correct)
@@ -739,7 +773,7 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.oblivious_sample_in_orbit
 -- (standard Lean only — closure proof is a hypothesis)
 
-#print axioms Orbcrypt.refresh_independent
+#print axioms Orbcrypt.refresh_depends_only_on_epoch_range
 -- (standard Lean only — structural)
 
 #print axioms Orbcrypt.kem_agreement_correctness
@@ -1280,4 +1314,141 @@ declarations are axiom-free (K1 / K3 / K4 / K4 companion,
 classified appropriately in the transparency report above). No
 existing declaration is modified — the Workstream-K additions are
 purely additive.
+
+## Workstream L Snapshot (audit 2026-04-21, findings M2–M6)
+
+Workstream L is the 2026-04-22 structural & naming hygiene batch,
+closing audit findings M2–M6 (MEDIUM). It spans five sub-items
+landed atomically in a single patch release (`lakefile.lean`
+`0.1.5` → `0.1.6`):
+
+### L1 — `SeedKey` witnessed compression (M2)
+
+The module `Orbcrypt/KeyMgmt/SeedKey.lean` now carries a
+machine-checkable compression witness. The `SeedKey` structure
+takes `[Fintype Seed]` and `[Fintype G]` at the structure level
+and has a new field
+`compression : Nat.log 2 (Fintype.card Seed) <
+Nat.log 2 (Fintype.card G)`, certifying "fewer bits of seed than
+bits of group element." The plan originally contemplated option
+(a) ("honest API" — drop the compression claim from the
+docstring), but on 2026-04-22 the plan was revised to adopt
+option (b) (witnessed compression) because leaving the claim
+uncertified violates CLAUDE.md's "no half-finished
+implementations" rule. The one-line sketch in the plan
+(`8 * Fintype.card Seed < log₂ (Fintype.card G)`) was
+dimensionally incorrect; the implementation uses the bit-length
+form `Nat.log 2 (Fintype.card Seed) < Nat.log 2
+(Fintype.card G)`.
+
+Every downstream theorem in `SeedKey.lean` and `Nonce.lean`
+threads `[Fintype Seed]` and `[Fintype G]`. The
+`OrbitEncScheme.toSeedKey` bridge takes an `hGroupNontrivial :
+1 < Fintype.card G` hypothesis and discharges `compression` at
+`Seed = Unit` via `Nat.log_pos`. A concrete
+`SeedKey (Fin 2) (Equiv.Perm (Fin 3)) Unit` witness in
+`scripts/audit_phase_16.lean` discharges `compression` by
+`decide` (`Nat.log 2 2 = 1 < 2 = Nat.log 2 6`).
+
+### L2 — Carter–Wegman universal-hash MAC (M3, upgraded post-audit)
+
+`Orbcrypt/AEAD/CarterWegmanMAC.lean` is the canonical Carter–Wegman
+universal-hash MAC.  The L-workstream post-audit pass (2026-04-22)
+upgraded the initial landing:
+
+* **Initial landing.** `[NeZero p]` + docstring disclaimer that
+  `carterWegmanMAC` names the "linear hash shape, not the
+  universal-hash security property."  This failed CLAUDE.md's
+  **"Security-by-docstring prohibition"** rule: an identifier that
+  names a cryptographic primitive must *prove* the security
+  property, not disclaim it.
+
+* **Post-audit upgrade.** `[Fact (Nat.Prime p)]` replaces `[NeZero p]`
+  on all `carterWegman*` definitions.  A new module
+  `Orbcrypt/Probability/UniversalHash.lean` defines `IsEpsilonUniversal
+  (h : K → Msg → Tag) (ε : ℝ≥0∞)`, the Carter–Wegman 1977 ε-universal
+  pair-collision bound.  The headline theorem
+  `carterWegmanHash_isUniversal` proves the CW linear hash family is
+  `(1/p)`-universal over the prime field `ZMod p`.  The proof proceeds
+  by counting: the collision set `{k : (ZMod p)² | h k m₁ = h k m₂}`
+  for distinct `m₁ ≠ m₂` has cardinality exactly `p`
+  (`carterWegmanHash_collision_card`), and the uniform distribution
+  over `(ZMod p)²` assigns probability `p/p² = 1/p` to this set.
+
+The primality constraint is **mathematical, not cosmetic**: it is
+the precondition for `ZMod p` to be a field, which is required for
+the algebraic collision analysis `k₁ · (m₁ - m₂) = 0 → k₁ = 0`
+(`mul_eq_zero` in a field + `m₁ - m₂ ≠ 0`).  Dropping primality
+would leave the MAC structure without the universal-hash Prop the
+name promises.
+
+Mathlib provides `fact_prime_two : Fact (Nat.Prime 2)` and
+`fact_prime_three : Fact (Nat.Prime 3)`, so the audit scripts at
+`p = 2, p = 3` auto-resolve the Fact.  The former audit script
+instantiation at `p = 1` (not prime) is replaced by `p = 2` in
+`scripts/audit_c_workstream.lean`.
+
+### L3 — `RefreshIndependent` rename (M4)
+
+`Orbcrypt/PublicKey/ObliviousSampling.lean`: `RefreshIndependent`
+/ `refresh_independent` renamed to `RefreshDependsOnlyOnEpochRange`
+/ `refresh_depends_only_on_epoch_range`. The content is a
+`funext`-structural identity (not a cryptographic independence
+claim), and the name now reflects that. Downstream references
+updated across source, audit scripts, and docs.
+
+### L4 — `SymmetricKeyAgreementLimitation` rename (M5)
+
+`Orbcrypt/PublicKey/KEMAgreement.lean`:
+`SymmetricKeyAgreementLimitation` /
+`symmetric_key_agreement_limitation` renamed to
+`SessionKeyExpansionIdentity` / `sessionKey_expands_to_canon_form`.
+The content is a `rfl`-level decomposition identity exhibiting
+`sessionKey a b` as the combiner of both parties' secret
+`keyDerive ∘ canonForm.canon` outputs — **not** an impossibility
+claim. A separate impossibility discussion lives in
+`docs/PUBLIC_KEY_ANALYSIS.md` and is out of scope for this
+module.
+
+### L5 — `KEMOIA` redundant-conjunct removal (M6)
+
+`Orbcrypt/KEM/Security.lean`: `KEMOIA` is now **single-conjunct**
+(orbit indistinguishability only). The pre-L5 second conjunct
+"key uniformity across the orbit" was unconditionally provable
+from `canonical_isGInvariant` via the still-present
+`kem_key_constant_direct`, so it carried no assumption content.
+Pre-L5 `kem_key_constant` (which extracted `hOIA.2 g`) is
+**deleted** — CLAUDE.md forbids backwards-compat shims;
+`kem_key_constant_direct` is the authoritative form.
+`kemoia_implies_secure` and
+`det_kemoia_implies_concreteKEMOIA_zero` updated to invoke
+`kem_key_constant_direct` where they previously extracted
+`hOIA.2`, and to use `hOIA` directly (not `hOIA.1`) for the
+single-conjunct orbit indistinguishability.
+
+### Module status post-L
+
+All 38 modules build clean (38-module total unchanged — no new
+`.lean` files; Workstream L's changes land inside existing
+modules). Every Workstream-L declaration depends only on
+standard-trio axioms (`propext`, `Classical.choice`,
+`Quot.sound`); none depend on `sorryAx` or a custom axiom. Net
+declaration count delta: `kem_key_constant` removed (−1),
+`compression` structure field added (+1); zero net change.
+
+### Vacuity map (Workstream L additions)
+
+* `SeedKey.compression` — **unconditional structural field**
+  (no hypothesis). Discharged per-instance by `decide` (concrete
+  Fintype) or `Nat.log_pos` (bridge).
+* `RefreshDependsOnlyOnEpochRange` — **unconditionally true**
+  per `refresh_depends_only_on_epoch_range`; structural.
+* `SessionKeyExpansionIdentity` — **unconditionally true** per
+  `sessionKey_expands_to_canon_form`; a `rfl`-level identity.
+* `KEMOIA` (single-conjunct) — inherits the **scaffolding**
+  status of the orbit-indistinguishability conjunct; `False` on
+  every non-trivial scheme (the `decide (x = basePoint)`
+  distinguisher refutes it). Workstream E's `ConcreteKEMOIA` /
+  `ConcreteKEMOIA_uniform` remain the quantitative KEM-layer
+  predicates.
 -/

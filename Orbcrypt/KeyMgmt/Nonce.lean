@@ -70,7 +70,8 @@ and then performs standard KEM encapsulation `encaps kem g`.
 KEM is safe (deterministic repetition) but wasteful. Nonce reuse across
 different KEMs may leak orbit membership (see `nonce_reuse_leaks_orbit`).
 -/
-def nonceEncaps [Group G] [MulAction G X] [DecidableEq X]
+def nonceEncaps
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem : OrbitKEM G X K)
     (nonce : ℕ) : X × K :=
   encaps kem (sk.sampleGroup sk.seed nonce)
@@ -88,7 +89,8 @@ def nonceDecaps [Group G] [MulAction G X] [DecidableEq X]
 
 /-- Unfold nonce encapsulation to standard encapsulation with derived group element. -/
 @[simp]
-theorem nonceEncaps_eq [Group G] [MulAction G X] [DecidableEq X]
+theorem nonceEncaps_eq
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
     nonceEncaps sk kem nonce = encaps kem (sk.sampleGroup sk.seed nonce) := rfl
 
@@ -100,13 +102,15 @@ theorem nonceDecaps_eq [Group G] [MulAction G X] [DecidableEq X]
 
 /-- Unfold the ciphertext component of nonce encapsulation. -/
 @[simp]
-theorem nonceEncaps_fst [Group G] [MulAction G X] [DecidableEq X]
+theorem nonceEncaps_fst
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
     (nonceEncaps sk kem nonce).1 = sk.sampleGroup sk.seed nonce • kem.basePoint := rfl
 
 /-- Unfold the key component of nonce encapsulation. -/
 @[simp]
-theorem nonceEncaps_snd [Group G] [MulAction G X] [DecidableEq X]
+theorem nonceEncaps_snd
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
     (nonceEncaps sk kem nonce).2 =
     kem.keyDerive (kem.canonForm.canon
@@ -124,7 +128,8 @@ This follows directly from `kem_correctness` — the deterministic derivation
 of the group element does not affect correctness (which depends only on
 canonical form invariance under the group action).
 -/
-theorem nonce_encaps_correctness [Group G] [MulAction G X] [DecidableEq X]
+theorem nonce_encaps_correctness
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
     nonceDecaps kem (nonceEncaps sk kem nonce).1 =
     (nonceEncaps sk kem nonce).2 :=
@@ -144,7 +149,8 @@ fully determined by (seed, sampleGroup, kem, nonce). No new information
 leaks from a repeated nonce because the output is exactly the same. The
 adversary learns nothing beyond what the first encapsulation already revealed.
 -/
-theorem nonce_reuse_deterministic [Group G] [MulAction G X] [DecidableEq X]
+theorem nonce_reuse_deterministic
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk₁ sk₂ : SeedKey Seed G X)
     (hSeed : sk₁.seed = sk₂.seed)
     (hSample : sk₁.sampleGroup = sk₂.sampleGroup)
@@ -161,7 +167,8 @@ If the seed-key's `sampleGroup` function is injective in the nonce parameter
 This is the foundation for security: each encapsulation uses a "fresh" group
 element, preventing replay attacks.
 -/
-theorem distinct_nonces_distinct_elements [Group G] [MulAction G X] [DecidableEq X]
+theorem distinct_nonces_distinct_elements
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X)
     (hInj : Function.Injective (sk.sampleGroup sk.seed))
     (n₁ n₂ : ℕ) (hne : n₁ ≠ n₂) :
@@ -188,7 +195,8 @@ nonce reuse breaks orbit indistinguishability.
 - By hypothesis, the base points are in different orbits.
 - Therefore the ciphertexts are in different orbits.
 -/
-theorem nonce_reuse_leaks_orbit [Group G] [MulAction G X] [DecidableEq X]
+theorem nonce_reuse_leaks_orbit
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem₁ kem₂ : OrbitKEM G X K)
     (nonce : ℕ)
     (hDiffOrbit : MulAction.orbit G kem₁.basePoint ≠
@@ -206,7 +214,8 @@ theorem nonce_reuse_leaks_orbit [Group G] [MulAction G X] [DecidableEq X]
 **Nonce-based encapsulation produces ciphertexts in the base point's orbit.**
 The ciphertext `g • basePoint` is always in the orbit of `basePoint`.
 -/
-theorem nonceEncaps_mem_orbit [Group G] [MulAction G X] [DecidableEq X]
+theorem nonceEncaps_mem_orbit
+    [Fintype Seed] [Group G] [Fintype G] [MulAction G X] [DecidableEq X]
     (sk : SeedKey Seed G X) (kem : OrbitKEM G X K) (nonce : ℕ) :
     (nonceEncaps sk kem nonce).1 ∈ MulAction.orbit G kem.basePoint := by
   simp only [nonceEncaps_fst]

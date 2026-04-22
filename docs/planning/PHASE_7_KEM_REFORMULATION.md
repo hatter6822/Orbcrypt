@@ -4,6 +4,17 @@
 
 *Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
+> **Note (2026-04-22, Workstream L5):** Work Unit 7.6a's original
+> `kem_key_constant` theorem (which extracted the second conjunct of
+> `KEMOIA`) was deleted by Workstream L5 (audit
+> F-AUDIT-2026-04-21-M6). The extraction was redundant because the
+> key-constancy fact is provable unconditionally from
+> `canonical_isGInvariant`, and `KEMOIA` is now single-conjunct
+> (orbit indistinguishability only). The authoritative key-constancy
+> lemma is `kem_key_constant_direct`. See `CLAUDE.md`'s Workstream L
+> snapshot for the full rationale. This planning doc is retained as
+> a point-in-time record of the original Phase 7 design.
+
 ---
 
 ## Overview

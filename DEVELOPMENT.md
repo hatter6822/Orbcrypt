@@ -1145,13 +1145,37 @@ remains maximally general; concrete instances (e.g. the Carter–Wegman
 witness in `Orbcrypt/AEAD/CarterWegmanMAC.lean`) discharge it when their
 ciphertext space is naturally transitive.
 
-The concrete `MAC` witness (Workstream C4) is a Carter–Wegman
-universal-hash MAC over `ZMod p × ZMod p`: `tag (k₁, k₂) m = k₁ * m + k₂`
-with `verify k m t := decide (t = tag k m)`. `verify_inj` holds
-by `of_decide_eq_true`. The witness is deliberately the
-**simplest-possible** satisfying instance and is not intended for
-production use; real-world MACs (HMAC, Poly1305) require a probabilistic
-refinement of the MAC interface that is future work.
+The concrete `MAC` witness (Workstream C4, strengthened by the
+L-workstream post-audit pass on 2026-04-22) is the Carter–Wegman
+universal-hash MAC over `ZMod p × ZMod p`: `tag (k₁, k₂) m = k₁ · m + k₂`
+with `verify k m t := decide (t = tag k m)`. `verify_inj` holds by
+`of_decide_eq_true`.
+
+**Universal-hash guarantee (post-audit).** The module
+`Orbcrypt/Probability/UniversalHash.lean` defines the
+ε-universal hash Prop `IsEpsilonUniversal`, and the headline theorem
+`carterWegmanHash_isUniversal` proves the CW linear hash family is
+`(1/p)`-universal over the prime field `ZMod p`. Primality is
+enforced at the type level via `[Fact (Nat.Prime p)]`, required so
+that `ZMod p` is a field (the collision-analysis precondition:
+`m₁ ≠ m₂ → m₁ - m₂` is a unit). The proof sequence is:
+
+1. `carterWegmanHash_collision_iff`: `h k m₁ = h k m₂ ↔ k.1 = 0`
+   for `m₁ ≠ m₂`, via `mul_eq_zero` in the field.
+2. `carterWegmanHash_collision_card`: the collision set has
+   cardinality exactly `p`, via a bijection with `{0} × ZMod p`.
+3. `carterWegmanHash_isUniversal`: `Pr[collision] ≤ p / p² = 1/p`.
+
+The `verify_inj` field plus the ε-universal property is the
+information-theoretic foundation of the Wegman–Carter 1981
+unconditionally-secure one-time MAC reduction (which relates
+per-pair collision probability to per-query forgery probability).
+That reduction is a separate, future work item; the universal-hash
+Prop and its CW instance are the foundational pieces.
+
+Real-world MACs (HMAC, Poly1305) require a probabilistic refinement
+of the MAC interface with computational-hardness assumptions; that
+is orthogonal to the information-theoretic guarantee proved here.
 
 ---
 
@@ -1207,15 +1231,18 @@ candidate paths is now machine-checked in
 `Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}.lean`:
 
 - `OrbitalRandomizers`, `obliviousSample`, `oblivious_sample_in_orbit`,
-  `refreshRandomizers`, `refresh_independent` — oblivious sampling with
-  per-epoch refresh. The orbit-preserving, G-hiding `combine` operation
-  is carried as a parameter with a closure hypothesis — finding a concrete
-  instance is an **open problem** (see §10.1 of
+  `refreshRandomizers`, `refresh_depends_only_on_epoch_range` — oblivious
+  sampling with per-epoch refresh. The orbit-preserving, G-hiding `combine`
+  operation is carried as a parameter with a closure hypothesis — finding
+  a concrete instance is an **open problem** (see §10.1 of
   [`docs/PUBLIC_KEY_ANALYSIS.md`](docs/PUBLIC_KEY_ANALYSIS.md)).
 - `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness` — two-party
   agreement via combined KEM keys. **Works, but is not true public-key**:
-  both parties still require symmetric KEM material
-  (`SymmetricKeyAgreementLimitation`).
+  both parties still require symmetric KEM material — the session-key
+  formula's dependence on both parties' secret state is exhibited by
+  the `SessionKeyExpansionIdentity` decomposition (renamed from
+  `SymmetricKeyAgreementLimitation` in Workstream L4, audit
+  F-AUDIT-2026-04-21-M5).
 - `CommGroupAction`, `csidh_exchange`, `csidh_correctness`, `CommOrbitPKE`,
   `comm_pke_correctness` — CSIDH-style framework. Unconditional correctness;
   **concrete hardness requires an isogeny-like commutative action** outside

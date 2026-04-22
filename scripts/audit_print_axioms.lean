@@ -36,7 +36,7 @@ open Orbcrypt
 #print axioms hybrid_correctness
 #print axioms hardness_chain_implies_security
 #print axioms oblivious_sample_in_orbit
-#print axioms refresh_independent
+#print axioms refresh_depends_only_on_epoch_range
 #print axioms kem_agreement_correctness
 #print axioms kem_agreement_alice_view
 #print axioms kem_agreement_bob_view

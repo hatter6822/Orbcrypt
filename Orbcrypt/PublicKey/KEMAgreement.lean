@@ -75,8 +75,11 @@ Both `k_A` and `k_B` reference the respective KEM's *secret*
 requires access to *both* KEMs' secret state (`keyDerive` and
 `canonForm.canon` fields). Publishing only the base points and
 ciphertexts does not suffice — this is made formal by
-`SymmetricKeyAgreementLimitation` below, which states and proves the
-exact structural identity.
+`SessionKeyExpansionIdentity` below, which exhibits `sessionKey`
+literally as a combiner of both parties' `keyDerive`/`canonForm.canon`
+outputs. Separately, an impossibility claim for public-key orbit
+encryption is discussed in `docs/PUBLIC_KEY_ANALYSIS.md` and is out
+of scope for this module.
 -/
 structure OrbitKeyAgreement (G_A : Type*) (G_B : Type*) (X : Type*) (K : Type*)
     [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
@@ -183,33 +186,38 @@ theorem kem_agreement_correctness
   ⟨kem_agreement_bob_view agr a b, kem_agreement_alice_view agr a b⟩
 
 /--
-**Fundamental limitation (as a Prop): session-key computation requires both
-parties' full KEM state.**
+**Session-key decomposition identity (as a Prop).**
 
-The session key is *not* a public-key–style derivation from the two parties'
-ciphertexts. It decomposes as
+*Naming corrective (audit F-AUDIT-2026-04-21-M5 / Workstream L4,
+2026-04-22).* The previous name `SymmetricKeyAgreementLimitation`
+(and its companion theorem `symmetric_key_agreement_limitation`)
+suggested a negative impossibility result. The content is purely a
+`rfl`-level decomposition identity: it exhibits `sessionKey a b`
+literally as the combiner applied to each KEM's secret
+`keyDerive ∘ canonForm.canon` outputs. The name now reflects that
+the Prop is a **definitional identity**, not an impossibility proof.
+
+The session key is *not* a public-key–style derivation from the two
+parties' ciphertexts. It decomposes as
 
   `sessionKey a b = combiner (k_A) (k_B)`
 
 where `k_A = kem_A.keyDerive (kem_A.canonForm.canon (a • kem_A.basePoint))`
 (and symmetrically for `k_B`). Computing either key requires the
-corresponding KEM's `keyDerive` and `canonForm.canon` — both of which are
-secret. Hence an adversary holding only the published base points and
-ciphertexts cannot evaluate `sessionKey`.
+corresponding KEM's `keyDerive` and `canonForm.canon` — both of which
+are secret. Hence an adversary holding only the published base points
+and ciphertexts cannot evaluate `sessionKey`. This decomposition is
+the structural motivation for the commutative path
+(`Orbcrypt.PublicKey.CommutativeAction`).
 
-This Prop exposes that decomposition as a universal equation. It is the
-**structural** limitation that motivates the commutative path
-(`Orbcrypt.PublicKey.CommutativeAction`), where the equivalent derivation
-factors through a commutative action and only one party's secret is
-needed to encapsulate.
-
-**Why this is a limitation, not a security claim.** The Prop does not
-assert hardness of anything — it asserts that the session-key formula
-references secret state on both sides. The absence of a public-key
-algorithm that avoids this dependency is what is documented (informally)
-in `docs/PUBLIC_KEY_ANALYSIS.md`.
+**Why this is an identity, not a security claim.** The Prop is
+definitional (provable by `rfl` after unfolding `sessionKey` and
+`encaps`). It does **not** assert hardness of anything, and it is
+**not** a standalone impossibility theorem for public-key orbit
+encryption. A separate impossibility discussion is maintained in
+`docs/PUBLIC_KEY_ANALYSIS.md` and is out of scope for this module.
 -/
-def SymmetricKeyAgreementLimitation
+def SessionKeyExpansionIdentity
     [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
     [DecidableEq X] (agr : OrbitKeyAgreement G_A G_B X K) : Prop :=
   ∀ (a : G_A) (b : G_B),
@@ -221,16 +229,21 @@ def SymmetricKeyAgreementLimitation
           (agr.kem_B.canonForm.canon (b • agr.kem_B.basePoint)))
 
 /--
-`SymmetricKeyAgreementLimitation` holds for every `OrbitKeyAgreement`: this
-is a structural identity following from the definitions of `sessionKey` and
-`encaps`. The identity exhibits both parties' canonical forms inside the
-session-key formula, making explicit that the protocol cannot be used in a
-public-key fashion.
+`SessionKeyExpansionIdentity` holds for every `OrbitKeyAgreement`: this
+is a structural identity following from the definitions of `sessionKey`
+and `encaps`. The identity exhibits both parties' canonical forms inside
+the session-key formula, making explicit that the protocol's joint key
+is literally the combiner of the two per-party KEM outputs.
+
+*Naming corrective (audit F-AUDIT-2026-04-21-M5 / Workstream L4):* the
+previous name `symmetric_key_agreement_limitation` suggested an
+impossibility result. The content is a definitional identity, and the
+name now reflects that.
 -/
-theorem symmetric_key_agreement_limitation
+theorem sessionKey_expands_to_canon_form
     [Group G_A] [Group G_B] [MulAction G_A X] [MulAction G_B X]
     [DecidableEq X] (agr : OrbitKeyAgreement G_A G_B X K) :
-    SymmetricKeyAgreementLimitation agr := by
+    SessionKeyExpansionIdentity agr := by
   intro a b
   -- Unfold `sessionKey`, then `encaps` on each side.
   show agr.combiner (encaps agr.kem_A a).2 (encaps agr.kem_B b).2 =
