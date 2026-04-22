@@ -493,12 +493,25 @@ assumptions themselves — those are carried as explicit hypotheses on
 the conditional theorems. The following items are deliberate
 limitations, each documented in source and tracked as future work:
 
-1. **OIA is an unproven assumption** (and necessarily so — the security
-   reduction is to a hardness problem). `oia_implies_1cpa` carries
-   `OIA` as a hypothesis. The deterministic `OIA` is `False` for any
-   non-trivial scheme; the probabilistic counterpart `ConcreteOIA(ε)`
-   is satisfiable for `ε ∈ (0, 1]` but its hardness reduces to
-   tensor isomorphism, not proven within Lean.
+1. **Deterministic OIA is vacuous — the deterministic chain is
+   scaffolding, not a security claim.** `oia_implies_1cpa`,
+   `kemoia_implies_secure`, and `hardness_chain_implies_security`
+   carry `OIA`, `KEMOIA`, and `HardnessChain` as hypotheses. Each of
+   these hypotheses quantifies over every Boolean distinguisher
+   (including orbit-membership oracles like
+   `decide (x = reps m₀)`), making the predicate **False on every
+   non-trivial scheme** — the premise collapses under any scheme
+   with distinct orbit representatives. Hence the deterministic
+   headline theorems are vacuously true on production instances
+   (proof by ex-falso) and serve as *algebraic scaffolding*:
+   type-theoretic templates whose existence we verify, not
+   standalone security guarantees. The probabilistic counterparts
+   (`ConcreteOIA(ε)`, `ConcreteKEMOIA_uniform(ε)`,
+   `ConcreteHardnessChain scheme F S ε`) are satisfiable for
+   `ε ∈ (0, 1]` and carry the quantitative security content. See
+   the "Release readiness" section below and `Orbcrypt.lean` §
+   "Deterministic-vs-probabilistic security chains" for the
+   release-messaging framing (Workstream J, audit finding H3).
 
 2. **`GIReducesToCE` and `GIReducesToTI` are reduction *claims*, not
    proofs.** They are `Prop`-valued definitions that point at LESS /
@@ -600,11 +613,33 @@ at `ε = 1`, and no custom axiom or `sorry` short-circuits any proof.
 
 ---
 
-## Release readiness (post-Workstream-G and Workstream H)
+## Release readiness (post-Workstream-G, Workstream H, and Workstream J)
 
 The 2026-04-21 audit's HIGH-severity finding (H1) is **closed** by
-Workstream G; finding H2 (MEDIUM) is **closed** by Workstream H.
-The formalization's public release posture:
+Workstream G; finding H2 (MEDIUM) is **closed** by Workstream H; and
+finding H3 (MEDIUM, release-messaging alignment) is **closed** by
+Workstream J — this section *is* the deliverable for H3, and is
+cross-referenced from `Orbcrypt.lean` § "Deterministic-vs-probabilistic
+security chains" and from `CLAUDE.md`'s "Three core theorems" table
+(which carries a **Status** column marking each theorem as
+Standalone / Scaffolding / Quantitative / Structural).
+
+**Summary for external consumers.** Orbcrypt's formalization carries
+two parallel chains. The *deterministic* chain's headline theorems
+(`oia_implies_1cpa`, `kemoia_implies_secure`,
+`hardness_chain_implies_security`) are vacuously true on every
+production scheme — they are **scaffolding**, not security claims, and
+should be cited only in the context of the type-theoretic structure
+that they exemplify. The *probabilistic* chain
+(`concrete_oia_implies_1cpa`,
+`concrete_hardness_chain_implies_1cpa_advantage_bound`,
+`concreteKEMHardnessChain_implies_kemUniform`,
+`concrete_kem_hardness_chain_implies_kem_advantage_bound`) carries the
+**quantitative** security content, subject to caller-supplied hardness
+witnesses (surrogate, encoders, scheme-to-KEM reduction) as enumerated
+in "Known limitations" items 8 and 9.
+
+The formalization's public release posture (detailed):
 
 1. **Deterministic chain** (Phases 3, 4, 7, 10, 12). Built from
    `Prop`-valued OIA variants (`OIA`, `KEMOIA`, `TensorOIA`, `CEOIA`,
@@ -745,3 +780,23 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   substantively-quantitative probabilistic chain. Audit scripts
   extended with `#print axioms` for all new declarations; all
   emit only standard-trio axioms.
+
+* **2026-04-22 (Workstream J)** — Release-messaging alignment
+  (audit finding H3, MEDIUM). Documentation-only, no Lean source
+  changes. Rewrote "Known limitations" item 1 to make the
+  deterministic chain's scaffolding status explicit (previously
+  only disclosed via cross-reference to `Crypto/OIA.lean`).
+  Rewrote the "Release readiness" header with a one-paragraph
+  summary aimed at external consumers, distinguishing
+  **Scaffolding** (deterministic chain — `oia_implies_1cpa`,
+  `kemoia_implies_secure`, `hardness_chain_implies_security`) from
+  **Quantitative** (probabilistic chain —
+  `concrete_hardness_chain_implies_1cpa_advantage_bound`,
+  `concreteKEMHardnessChain_implies_kemUniform`,
+  `concrete_kem_hardness_chain_implies_kem_advantage_bound`).
+  Cross-referenced the new `Orbcrypt.lean` §
+  "Deterministic-vs-probabilistic security chains" subsection (J1)
+  and the new **Status** column in `CLAUDE.md`'s "Three core
+  theorems" table (J3). Because the change is comment/markdown-only,
+  `lake build` output, `#print axioms` outputs, the Phase 16 audit
+  script, and CI posture are all unchanged.

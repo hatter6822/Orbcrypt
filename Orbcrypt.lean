@@ -219,6 +219,51 @@ AEAD.MAC ◄── Mathlib.Tactic
   ◄── IsOrbitConstant, orbit_constant_encaps_eq_basePoint
 ```
 
+## Deterministic-vs-probabilistic security chains
+
+Orbcrypt's formalization carries *two* parallel security chains. Knowing
+which chain a headline theorem belongs to is essential for reading the
+results correctly — the deterministic chain is algebraic scaffolding, the
+probabilistic chain is the substantive security content.
+
+1. **Deterministic chain** (Phases 3, 4, 7, 10, 12). Built from
+   `Prop`-valued OIA variants (`OIA`, `KEMOIA`, `TensorOIA`, `CEOIA`,
+   `GIOIA`). Each quantifies over every Boolean distinguisher,
+   including orbit-membership oracles. These predicates are
+   **False on every non-trivial scheme** (as documented in
+   `Crypto/OIA.lean`); consequently the downstream theorems
+   `oia_implies_1cpa`, `kemoia_implies_secure`,
+   `hardness_chain_implies_security` are vacuously true on
+   production instances. They are **algebraic scaffolding** —
+   type-theoretic templates whose existence we verify, not
+   standalone security claims. Their role in the formalization is to
+   fix the *shape* of an OIA-style reduction argument and to serve as
+   reference types that the probabilistic predicates refine.
+
+2. **Probabilistic chain** (Phase 8, Workstream E, Workstream G,
+   Workstream H). Built from `ConcreteOIA`,
+   `ConcreteKEMOIA_uniform`, `ConcreteHardnessChain`,
+   `ConcreteKEMHardnessChain`, and related ε-bounded predicates on
+   the PMF-valued orbit distributions. These admit genuinely
+   ε-smooth values (at ε = 0 they collapse to the deterministic
+   form; at ε = 1 they are trivially inhabited; intermediate ε ∈
+   (0, 1) parameterises concrete security). The probabilistic chain
+   is the **substantive security content**, subject to a
+   caller-supplied `SurrogateTensor` (Workstream G) or explicit
+   GI/CE hardness assumption (plus, for the KEM layer, a caller-
+   supplied scheme-to-KEM reduction witness at the chosen
+   `(m₀, keyDerive)` pair — Workstream H).
+
+External release claims of the form "Orbcrypt is IND-1-CPA secure
+under TI-hardness" should cite the probabilistic chain
+(`concrete_hardness_chain_implies_1cpa_advantage_bound` at the
+scheme level, `concrete_kem_hardness_chain_implies_kem_advantage_bound`
+at the KEM level), not the deterministic one. See
+`docs/VERIFICATION_REPORT.md` § "Release readiness" for the exact
+citations and the `CLAUDE.md` "Three core theorems" table's
+**Status** column (Standalone / Scaffolding / Quantitative) for the
+per-theorem classification.
+
 ## Headline Theorem Dependencies
 
 ```text
