@@ -1071,3 +1071,70 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   `SurrogateTensor` via the `SurrogateTensor.{0}`-pinned
   `punitSurrogate`; public-declaration count unchanged
   (347, per Workstream K); no new `.lean` files.
+
+* **2026-04-23 (Workstream N)** — Info hygiene (audit findings I1,
+  I5, INFO). Two actionable sub-items landed in a single
+  documentation-and-CI-comment-only pass (no `lakefile.lean`
+  version bump; no Lean-source, audit-script, or public-API
+  changes):
+
+  * **N1 (I1) — Phase 15 version-bump documentation.** The
+    Phase 15 landing commit (`540d187`, 2026-04-20) bumped
+    `lakefile.lean` from `0.1.4` to `0.1.5` to capture the two
+    new `Optimization/` modules (`QCCanonical.lean`,
+    `TwoPhaseDecrypt.lean`), the three new headline theorems
+    (#24 `two_phase_correct`, #25 `two_phase_kem_correctness`,
+    #26 `fast_kem_round_trip`), their supporting declarations,
+    and the Phase-15.3 post-landing orbit-constancy refactor
+    that delivered theorem #26 and
+    `fast_canon_composition_orbit_constant`. This bump was
+    undocumented in the CLAUDE.md per-workstream version log,
+    which jumped directly from Workstream E's `0.1.3 → 0.1.4`
+    entry to Workstream L's `0.1.5 → 0.1.6` entry. N1 closes
+    the log gap by adding a "Phase 15 (Decryption Optimisation
+    Formalisation) has been completed" subsection between the
+    Phase 14 and Phase 16 snapshots in `CLAUDE.md`, whose final
+    bullet explicitly records the `0.1.4 → 0.1.5` bump
+    rationale. The lakefile's current version (`0.1.6`) is
+    unchanged.
+
+  * **N5 (I5) — CI nested-block-comment disclaimer.**
+    `.github/workflows/lean4-build.yml` "Verify no sorry" step
+    gained an explicit disclaimer directly below the existing
+    F-03 comment block. The disclaimer illustrates the
+    non-greedy `/-.*?-/` regex's nested-comment failure mode
+    with a concrete
+    `/- outer /- inner sorry -/ still outer -/` example and
+    directs maintainers to `lake build` (which uses Lean's own
+    parser) as the ground-truth fallback whenever any future
+    `.lean` source requires nested block comments. The optional
+    engineering upgrade to a Perl recursive pattern is
+    cross-referenced to
+    `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.3.
+
+  * **N2 (I2), N3 (I3), N4 (I4) — no-action items.** The audit
+    plan identifies three other INFO-class findings as
+    self-disclosed and not requiring code changes:
+    `TwoPhaseDecomposition`'s empirical-falsity caveat is
+    already disclosed at theorem #25's docstring and in the
+    Phase 15 section; `indQCPA_bound_via_hybrid`'s `h_step`
+    hypothesis gap is already tracked in
+    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b;
+    `scripts/setup_lean_env.sh` passed its audit with no
+    findings.
+
+  **Traceability.** Findings I1 and I5 resolved. See
+  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 9 for
+  the specification; Appendix A for the finding-to-work-unit
+  mapping.
+
+  **Verification.** No Lean sources, audit scripts, or public
+  declarations are added, removed, or modified by Workstream
+  N. All 38 modules continue to build clean; the Phase 16
+  audit script output is unchanged; the CI's "Verify no sorry"
+  step is unaffected (only its explanatory comment grew — the
+  actual `perl -0777 -pe` strip-and-grep command is
+  byte-identical); `lake build` is a no-op for comment-level
+  edits to `.github/workflows/lean4-build.yml`. Public
+  declaration count remains 347 (per Workstream K); no new
+  `.lean` files.

@@ -1861,6 +1861,22 @@ hypothetical. The docstring should note this.)
 
 ## 9. Workstream N — info hygiene (I1, I5)
 
+**Status (2026-04-23): COMPLETED.** Both actionable sub-items — N1
+(lakefile version reconciliation, I1) and N5 (CI nested-block-comment
+disclaimer, I5) — landed on branch
+`claude/complete-info-hygiene-workstream-LwySB`; sub-items N2, N3, N4
+are no-action as planned. See CLAUDE.md § "Workstream N (Audit
+2026-04-21 — info hygiene, I1 + I5, INFO) has been completed
+(2026-04-23)" for the landing snapshot. No Lean-source changes and
+no audit-script changes were required; `lake build` output is
+byte-identical to pre-N; the Phase 16 audit-script `#print axioms`
+posture is unchanged. The CLAUDE.md per-workstream version log is
+now monotonic (E `0.1.3 → 0.1.4`, Phase 15 `0.1.4 → 0.1.5`, L
+`0.1.5 → 0.1.6`, with M and N retaining `0.1.6`). The CI YAML
+carries an explicit nested-block-comment disclaimer alongside the
+existing F-03 comment block, cross-referencing § 15.3 below as the
+optional Perl-recursive upgrade path.
+
 ### 9.1 N1 — lakefile version reconciliation (I1)
 
 **Problem.** `lakefile.lean` carries `version := v!"0.1.5"`; the
@@ -2282,6 +2298,20 @@ findings:
   `compression : Nat.log 2 (Fintype.card Seed) < Nat.log 2
   (Fintype.card G)` field is now part of `SeedKey`, with a
   non-vacuity witness exhibited in `scripts/audit_phase_16.lean`.
+
+- **Perl-recursive upgrade for the CI nested-block-comment scan.**
+  Referenced by Workstream N5 (I5) in
+  `.github/workflows/lean4-build.yml`'s "Verify no sorry" step and
+  by the CLAUDE.md Workstream-N snapshot. The current non-greedy
+  `/-.*?-/` Perl regex does not handle Lean-style nested block
+  comments (`/- outer /- inner -/ outer -/`). Since no such nested
+  blocks exist in `Orbcrypt/**/*.lean` today, the regex is sound on
+  the present tree and the CI disclaimer suffices. If a future
+  workstream introduces nested comments, upgrade the strip regex to
+  a Perl recursive pattern such as
+  `(?:/- (?:(?> [^/-]+ | /(?!-) | -(?!/) | (?R))* ) -/)`. The
+  ground-truth fallback — `lake build`, which uses Lean's own
+  parser — remains authoritative regardless.
 
 ## 16. Signoff
 

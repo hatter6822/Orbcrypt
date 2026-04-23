@@ -56,6 +56,34 @@ jobs:
         # nested block comments; a future extension could use a Perl
         # recursive pattern, but no nested-comment usage exists in this
         # tree (verified via `grep -c '/-' Orbcrypt/**/*.lean`).
+        #
+        # Audit finding I5 (Workstream N5, 2026-04-21) — nested-block
+        # disclaimer. The non-greedy `/-.*?-/` pattern above does *not*
+        # parse nested Lean block comments. Specifically, a source fragment
+        # of the form
+        #
+        #     /- outer /- inner sorry -/ still outer -/
+        #
+        # matches `/- outer /- inner sorry -/` as the first non-greedy
+        # span (outermost `/-` to *first* `-/`, which is the inner one),
+        # strips it, and leaves the literal trailer ` still outer -/`
+        # un-stripped. The trailer has no leading `/-` anchor, so no
+        # further match fires. In this concrete example the word `sorry`
+        # lived inside the stripped span, so the scan is safe — but the
+        # symmetric case, where the *outer* block carries the `sorry`
+        # tactic and the *inner* block carries innocuous prose, leaves
+        # an un-stripped fragment whose match/skip semantics differ from
+        # Lean's parser. The safe rule is: if you ever introduce a
+        # nested `/- … /- … -/ … -/` block in `Orbcrypt/**/*.lean`, do
+        # NOT rely solely on this regex check — run `lake build` locally
+        # (or let the "Build" step above do it), which uses Lean's own
+        # parser and is definitive about `sorry` occurrences regardless
+        # of comment nesting. The audit-plan follow-up
+        # (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.3
+        # "optional engineering follow-ups") is to upgrade the strip to
+        # a Perl recursive pattern such as
+        # `(?:/- (?:(?> [^/-]+ | /(?!-) | -(?!/) | (?R))* ) -/)` once
+        # a source file actually needs nested block comments.
         run: |
           set -e
           fail=0
