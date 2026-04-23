@@ -581,7 +581,7 @@ might bundle `kd` into a typeclass or require a specific relationship
 to `canonForm.canon` (e.g. "`kd` factors through `canonForm.canon`");
 the current form is permissive. Not blocking; documented.
 
-### 3.13 `Orbcrypt/KEM/Encapsulate.lean` (92 lines)
+### 3.13 `Orbcrypt/KEM/Encapsulate.lean` (86 lines)
 
 Reviewed in full.
 
@@ -610,7 +610,7 @@ theorem. Alternatively, add a checked variant
 CVE-class gap in the primitive abstraction relative to real-world
 usage and is tracked as finding E-04.
 
-### 3.14 `Orbcrypt/KEM/Correctness.lean` (73 lines)
+### 3.14 `Orbcrypt/KEM/Correctness.lean` (72 lines)
 
 Reviewed in full.
 
