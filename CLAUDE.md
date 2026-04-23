@@ -792,6 +792,87 @@ Phase 14 (Parameter Selection & Benchmarks) has been completed:
   GAP artefacts + docs only. `lake build` unchanged from Phase 13
   (still 32 modules, zero errors).
 
+Phase 15 (Decryption Optimisation Formalisation) has been completed:
+- `implementation/gap/orbcrypt_fast_dec.g` — nine-section GAP reference
+  for the fast-decryption pipeline:
+  * 15.1a `MinimalBlockRotation` + helpers (lex-minimal b-bit rotation)
+  * 15.1b `QCCyclicReduce` over a length-n = b·ell support set (O(n))
+  * 15.1c `ValidateQCCyclicIdempotent` + `TimeQCCyclicReduce`
+  * 15.2  `QCCyclicSubgroup` + `ComputeResidualGroup` (transversal of
+    `(G ∩ (Z/bZ)^ell)` inside G, with size diagnostics)
+  * 15.3  `ExtendKEMKeyWithFastDec`, `FastCanonicalImage`, `FastDecaps`,
+    `FastDecapsSafe`, `CompareFastVsSlow` (empirical regression harness
+    vs `HGOEDecaps`)
+  * 15.4  `ParityCheckFromGenerator`, `SyndromeOf`, `SyndromeDecaps`,
+    `ValidateSyndromeUniqueness` (multi-orbit distinctness check)
+  * 15.6  `OrbitSampleList`, `OrbitHash`, `OrbitHashDecaps`,
+    `ValidateOrbitHashConsistency`, `MeasureOrbitHashCollision`
+  * 15.7  `CompareDecryptionMethods`, `PrintDecryptionComparison`,
+    `WritePhase15CSV`, `RunPhase15Comparison` (writes
+    `docs/benchmarks/phase15_decryption.csv`)
+  * Section 9 `RunPhase15SelfTest` smoke test.
+- `Orbcrypt/Optimization/QCCanonical.lean` — `QCCyclicCanonical`
+  abbreviation for a `CanonicalForm` parameterised over a cyclic
+  subgroup of S_n acting on `Bitstring n`; `qc_invariant_under_cyclic`,
+  `qc_canon_idem` re-exported as Phase-15 ergonomics wrappers around
+  the Phase-2 `CanonicalForm` API.
+- `Orbcrypt/Optimization/TwoPhaseDecrypt.lean` — `TwoPhaseDecomposition`
+  predicate (carried as the explicit hypothesis `hDecomp` on every
+  downstream theorem) plus `two_phase_correct`, `full_canon_invariant`,
+  `two_phase_invariant_under_G`, `two_phase_kem_decaps`,
+  `two_phase_kem_correctness`. Orbit-constancy layer (`IsOrbitConstant`,
+  `orbit_constant_encaps_eq_basePoint`, `fast_kem_round_trip`,
+  `fast_canon_composition_orbit_constant`) added by the Phase 15.3
+  post-landing audit after empirically confirming that the strong
+  `TwoPhaseDecomposition` does not hold for the default fallback group
+  (lex-min and the residual transversal action don't commute). The
+  actual GAP correctness story runs through `fast_kem_round_trip`;
+  `two_phase_kem_correctness` is retained as the strong-agreement
+  conditional documented at theorem #25.
+- `docs/benchmarks/phase15_decryption.csv` — per-method timing table
+  emitted by `WritePhase15CSV`, covering full-KEM / fast / syndrome /
+  orbit-hash decapsulation speeds at the §14 balanced tier.
+- Headline theorems #24 `two_phase_correct`, #25
+  `two_phase_kem_correctness` (conditional), and #26
+  `fast_kem_round_trip` landed with this phase; all three depend only
+  on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`) — see the axiom-transparency block below.
+- `Orbcrypt.lean` dependency graph + axiom-transparency block extended
+  with the `Optimization/` layer and nine `#print axioms` assertions
+  (`two_phase_correct`, `two_phase_kem_correctness`,
+  `full_canon_invariant`, `orbit_constant_encaps_eq_basePoint`,
+  `qc_invariant_under_cyclic`, `qc_canon_idem`, `fast_kem_round_trip`,
+  `fast_canon_composition_orbit_constant`, and
+  `two_phase_invariant_under_G`).
+- All 7 work units (15.1–15.7) implemented with zero `sorry`, zero
+  warnings, zero custom axioms. `lake build` succeeds for all 38
+  modules (36 pre-Phase-15 + `Optimization/QCCanonical.lean` and
+  `Optimization/TwoPhaseDecrypt.lean`, zero errors). Phase 15 is the
+  point at which the module count stabilises at 38; subsequent audit
+  workstreams (G, H, J, K, L, M, N) are additive to declarations
+  within existing modules and do not introduce new `.lean` source
+  files.
+- Patch version: `lakefile.lean` bumped from `0.1.4` to `0.1.5` in
+  the Phase 15 landing commit to capture the two new `Optimization/`
+  modules, the three new headline theorems #24 `two_phase_correct`,
+  #25 `two_phase_kem_correctness` (conditional), and #26
+  `fast_kem_round_trip`, along with their supporting declarations
+  (`QCCyclicCanonical`, `qc_invariant_under_cyclic`,
+  `qc_canon_idem`, `TwoPhaseDecomposition`, `full_canon_invariant`,
+  `two_phase_invariant_under_G`, `two_phase_kem_decaps`,
+  `IsOrbitConstant`, `orbit_constant_encaps_eq_basePoint`, and
+  `fast_canon_composition_orbit_constant`). Theorem #26 and
+  `fast_canon_composition_orbit_constant` were added by the
+  Phase-15.3 orbit-constancy refactor that ran as a post-landing
+  audit after empirically confirming that the strong
+  `TwoPhaseDecomposition` does not hold on the default fallback
+  group. This entry (landed by Workstream N1, audit finding I1,
+  2026-04-23) closes the version-log gap flagged by the
+  Workstream-N plan — the pre-N CLAUDE.md change log jumped from
+  Workstream E's `0.1.3 → 0.1.4` bump directly to Workstream L's
+  `0.1.5 → 0.1.6` bump without documenting this intermediate
+  `0.1.4 → 0.1.5` increment.
+
 Phase 16 (Formal Verification of New Components) has been completed:
 - `scripts/audit_phase_16.lean` — new consolidated audit script. Runs
   `#print axioms` on **342 declarations** — every public `def`,
@@ -1984,6 +2065,78 @@ for every existing caller because every existing caller lands at
 `u := 0`). The 38-module total, the zero-sorry / zero-custom-axiom
 posture, and the 347 public-declaration count from Workstream K
 are all preserved.
+
+Workstream N (Audit 2026-04-21 — info hygiene, I1 + I5, INFO) has
+been completed (2026-04-23):
+
+- **N1 (I1) — Phase 15 version-bump documentation.** The Phase 15
+  landing commit (`540d187`, 2026-04-20) bumped
+  `lakefile.lean`'s `version` field from `0.1.4` to `0.1.5` to
+  capture the two new `Optimization/` modules
+  (`QCCanonical.lean`, `TwoPhaseDecrypt.lean`), the three new
+  headline theorems (#24 `two_phase_correct`, #25
+  `two_phase_kem_correctness`, #26 `fast_kem_round_trip`), their
+  supporting declarations, and the Phase-15.3 post-landing
+  orbit-constancy refactor that delivered theorem #26 and
+  `fast_canon_composition_orbit_constant`. This bump was
+  previously undocumented in the CLAUDE.md per-workstream version
+  log, which jumped directly from Workstream E's `0.1.3 → 0.1.4`
+  entry to Workstream L's `0.1.5 → 0.1.6` entry with no
+  intermediate line. N1 closes that log gap by adding a "Phase 15
+  (Decryption Optimisation Formalisation) has been completed"
+  subsection above (between the Phase 14 and Phase 16 snapshots)
+  whose final bullet explicitly records the `0.1.4 → 0.1.5` bump
+  and its rationale. No Lean sources are modified; the lakefile's
+  current version (`0.1.6`, set by Workstream L) is unchanged.
+
+- **N5 (I5) — CI nested-block-comment disclaimer.**
+  `.github/workflows/lean4-build.yml` gained an I5 comment inside
+  the "Verify no sorry" step (directly after the existing F-03
+  comment block). The disclaimer makes the non-greedy
+  `/-.*?-/` regex's nested-comment limitation explicit at the
+  CI-YAML level, illustrates the desynchronising failure mode
+  with a concrete `/- outer /- inner sorry -/ still outer -/`
+  example, and directs maintainers to `lake build` (which uses
+  Lean's own parser and is definitive) as the ground-truth
+  fallback whenever a future `.lean` source needs nested block
+  comments. The optional engineering follow-up of upgrading the
+  regex to a Perl recursive pattern is cross-referenced to
+  audit-plan § 15.3.
+
+- **N2 (I2), N3 (I3), N4 (I4) — no-action items.** The audit
+  plan identifies three other INFO-class findings as
+  self-disclosed and not requiring code changes:
+  * **N2 (I2):** `TwoPhaseDecomposition`'s empirical-falsity
+    caveat is already disclosed in
+    `Orbcrypt/Optimization/TwoPhaseDecrypt.lean`'s module
+    docstring and in the Phase 15 section above;
+  * **N3 (I3):** the `indQCPA_bound_via_hybrid`'s `h_step`
+    hypothesis gap is already tracked in
+    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b;
+  * **N4 (I4):** `scripts/setup_lean_env.sh` passed its audit
+    with no findings.
+  None of these require any source or doc change. They are
+  listed here for completeness so the N1 / N5 additions are not
+  misread as the full Workstream-N deliverable.
+
+Traceability: findings I1 and I5 are resolved. See
+`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 9 for the
+specification; Appendix A for the finding-to-work-unit mapping.
+
+Verification: Workstream N makes no Lean-source or audit-script
+changes. The Phase 16 audit script (`scripts/audit_phase_16.lean`)
+output is unchanged; `lake build` is a no-op for comment-level
+edits to `.github/workflows/lean4-build.yml`; the CI's
+"Verify no sorry" step is not affected because only the
+explanatory comment grew — the actual `perl -0777 -pe`
+strip-and-grep command is byte-identical. No existing theorem's
+signature, proof, or axiom dependencies change; no declarations
+are added, removed, or renamed.
+
+Patch version: `lakefile.lean` retains `0.1.6`; Workstream N is
+a documentation-only and CI-comment-only pass. The 38-module
+total, the zero-sorry / zero-custom-axiom posture, and the 347
+public-declaration count are all preserved.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`

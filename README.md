@@ -111,7 +111,7 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 - `lake build Orbcrypt` runs 3,366 jobs successfully
 - Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
 - GitHub Actions CI on every push (build + sorry scan + axiom-decl scan + Phase 16 audit regression sentinel)
-- Package version: `0.1.5` (see `lakefile.lean`)
+- Package version: `0.1.6` (see `lakefile.lean`; bumped by Workstream L, audit findings M2–M6)
 
 ## Build
 
