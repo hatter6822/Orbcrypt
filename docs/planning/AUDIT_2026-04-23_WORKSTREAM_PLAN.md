@@ -44,18 +44,33 @@ would ambiguate, the finding ID is written with its source-audit prefix
 - § 1 — Finding taxonomy
 - § 2 — Finding → workstream mapping
 - § 3 — Workstream summary
+  - § 3.1 — Workstream dependency graph (critical path + parallelism)
 - § 4 — **Workstream A** — Release-messaging reconciliation (docs-only; V1-9 policy)
+  - § 4.4 — Risk register and rollback
 - § 5 — **Workstream B** — `INT_CTXT` orbit-cover refactor (V1-1)
+  - § 5.4 — Work units (B1a, B1b, B2, B3, B4)
+  - § 5.5 — Risk register and rollback
 - § 6 — **Workstream C** — Multi-query hybrid reconciliation (V1-8)
+  - § 6.4 — Risk register and rollback
 - § 7 — **Workstream D** — Toolchain decision + `lakefile.lean` hygiene (V1-6)
 - § 8 — **Workstream E** — Formal vacuity witnesses (V1-11)
+  - § 8.3 — Work units with full proof bodies
+  - § 8.4 — Risk register and rollback
 - § 9 — **Workstream F** — Concrete `CanonicalForm` from lex-min (V1-10)
+  - § 9.4 — Work units (F1, F2, F3a–d with proof bodies, F4)
+  - § 9.5 — Risk register and rollback
 - § 10 — **Workstream G** — λ-parameterised `HGOEKeyExpansion` (V1-13)
 - § 11 — **Workstream H** — Safe decapsulation + computable decryption (V1-12, V1-14)
+  - § 11.4 — Work units (H1, H2, H3a–c with proof bodies)
+  - § 11.5 — Risk register and rollback
 - § 12 — **Workstream I** — Naming hygiene (V1-15)
 - § 13 — **Workstream J** — Invariant-attack framing + negligible-function closure (V1-4, V1-16)
 - § 14 — **Workstream K** — Root-file split + legacy script relocation (V1-17, V1-18, V1-21)
+  - § 14.3 — Work units (K1a–c, K2a–c, K3, K4, K5, K6, K7)
+  - § 14.4 — Risk register and rollback
 - § 15 — **Workstream L** — Medium-severity structural cleanup
+  - § 15.4 — PR grouping (nine module-aligned PRs)
+  - § 15.5 — Risk register
 - § 16 — **Workstream M** — Low-severity cosmetic polish
 - § 17 — **Workstream N** — Optional pre-release engineering enhancements (V1-19, V1-20, V1-22)
 - § 18 — **Workstream O** — Research & performance catalogue (v1.1+ / v2.0; R-* + Z-*)
@@ -66,6 +81,7 @@ would ambiguate, the finding ID is written with its source-audit prefix
 - § 23 — Signoff
 - Appendix A — Finding-ID → workstream-and-work-unit cross-reference
 - Appendix B — Workstream status tracker
+- Appendix C — Non-vacuity witness Lean snippets (per workstream)
 
 ## 0. Executive summary
 
@@ -219,6 +235,59 @@ the refined `INT_CTXT` signature). Workstream **H** depends on Workstream
 `VERIFICATION_REPORT.md` content to fold into `CHANGELOG.md` /
 `AXIOM_TRANSPARENCY.md`) and Workstream **I** (renames must be stable
 before the docstring snapshots migrate).
+
+### 3.1 Workstream dependency graph
+
+```
+                ┌──────────────────────────────────────────┐
+                │      ~~~ PRE-RELEASE SLATE (blocking) ~~~ │
+                └──────────────────────────────────────────┘
+
+                                       ┌────► N  (auth-hybrid,
+  A ──────┐                             │         ofGame adapter)
+  B ──────┤                             │
+  C ──────┤────►  [v1.0 tag gate]  ─────┤────► release candidate
+  D ──────┤                             │
+  E ──────┘                             │
+                                       │
+                ┌─────────────────────────────────────────┐
+                │     ~~~ PREFERRED PRE-RELEASE ~~~       │
+                └─────────────────────────────────────────┘
+
+  F  (lex-min canon)  ───► H  (decapsSafe, decryptCompute) ───► N
+                              │
+                              └───► polish-gate
+  G  (λ-parametric HGOEKE)  ───────────────────────────────────►
+  I  (renames)  ──────────────┐
+                             ▼
+  J  (invariant-attack,       K  (root split,
+      negligible closures)    legacy migration)
+                                       │
+                                       ▼
+                ┌─────────────────────────────────────────┐
+                │     ~~~ POLISH (non-blocking) ~~~       │
+                └─────────────────────────────────────────┘
+
+  L  (30+ medium docstrings)   ──┐
+  M  (60+ low / info)            ├──► continuous landing
+                                  │
+  O  (research + perf catalogue) ─► v1.1+ / v2.0 roadmap
+```
+
+Read as: an arrow `X ──► Y` means "Y cannot start until X is merged
+into its target branch". Unlinked workstreams are parallel-safe.
+
+**Critical path to v1.0 tag:** any one of **A**, **B**, **C**, **D**,
+**E** (all independent, each ≈ 2–8 h). A single implementer working
+serially lands the blocking slate in ~23 h of coding time; two
+implementers working concurrently land it in ~8 h (bottleneck is
+Workstream A at 8 h). Preferred slate (adding **F → H** and **I, J**)
+adds another ~19 h serial or ~7 h parallel.
+
+**Critical-path longest chain:** `F → H → N` at 6 + 6 + 5 = 17 h. This
+is the longest sequential dependency and determines the earliest
+calendar date for an N-complete release: at least two working days if
+run sequentially, one if parallelised with the critical slate.
 
 ## 4. Workstream A — Release-messaging reconciliation
 
@@ -519,7 +588,19 @@ release-readiness checklist.
 and lists the workstream-status checklist (empty at plan landing;
 populated as workstreams close).
 
-### 4.4 Exit criteria for Workstream A
+### 4.4 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| A-R1 | A reclassification (row #19/#20/#24/#25 Status column update) is later reverted in Workstream **B**; external consumers who pinned to the interim text see churn | Medium | Low | Workstream **A**'s reclassifications are framed as "pre-Workstream-**B** interim" with explicit forward-reference: "post-Workstream-**B**, row #19 upgrades to **Standalone**". The interim text and the post-B text are both pre-committed to this plan. | No code rollback. A single post-B documentation update tightens the Status column; no interim text is ever "wrong", only "superseded". |
+| A-R2 | The "Release messaging policy" forbids citations external reviewers expect (e.g., a marketing page cites `authEncrypt_is_int_ctxt` as "INT-CTXT verified") | Medium | Medium | The policy's wording emphasizes what *can* be cited (Standalone, Quantitative-with-ε) with explicit examples; Conditional / Scaffolding theorems are listed as "cite with caveat" (not "never cite"). The policy is tested against a hypothetical marketing sentence before being finalized. | Amend the policy with an exception table; the correct response is to tighten the policy, not weaken it. |
+| A-R3 | A prose update in `DEVELOPMENT.md` subtly alters the cryptographic specification (as distinct from aligning language) | Low | High | Every Workstream-A edit to `DEVELOPMENT.md` is limited to *removing overclaim* or *adding caveats*; the change set is reviewed against a pre-A snapshot to verify no new specification content is introduced. | `git revert` the offending edit; re-land with narrower scope. |
+| A-R4 | The interim status "Conditional" is incorrectly read as "deprecated / abandoned" by downstream consumers | Low | Low | Every "Conditional" reclassification in `CLAUDE.md`'s headline table includes a one-sentence explanation of the condition (e.g., "requires orbit-cover precondition, Workstream B will absorb into game well-formedness"). | Doc-level remediation via a clarifying pull request; no structural change. |
+
+**Full-workstream rollback.** Workstream A is documentation-only.
+Rollback is always `git revert <commit>`; no code breakage risk.
+
+### 4.5 Exit criteria for Workstream A
 
 1. `CLAUDE.md`'s headline-theorem Status column reads `Conditional`
    for rows #19, #20, #24, #25.
@@ -537,6 +618,9 @@ populated as workstreams close).
    (Workstream **A** introduces no Lean declarations).
 8. `CLAUDE.md`'s per-workstream log includes the 2026-04-23 audit
    cross-reference.
+9. The risk register in § 4.4 has no open items (A-R1 closes once
+   Workstream **B** lands; A-R2 / A-R3 / A-R4 close at plan
+   signoff).
 
 ## 5. Workstream B — `INT_CTXT` orbit-cover refactor
 
@@ -610,30 +694,95 @@ global scheme-level obligation; every `AuthOrbitKEM` now satisfies
 
 ### 5.4 Work units
 
-#### B1 — Refactor `INT_CTXT` predicate signature
+Workstream **B** is a single-module refactor with four downstream
+propagation steps. WUs **B1a** and **B1b** split the in-module work
+(predicate-signature change first, proof-body threading second, so
+the two diffs review independently). WUs **B2**–**B4** propagate to
+consumers and documentation.
+
+#### B1a — Refactor `INT_CTXT` predicate signature (no proof body changes)
 
 **File.** `Orbcrypt/AEAD/AEAD.lean`.
 
-**Change.** Modify the `INT_CTXT` `def` to add the per-challenge
-`hOrbit` hypothesis; remove the top-level `hOrbitCover` from
-`authEncrypt_is_int_ctxt`; thread `hOrbit` through the by-cases
-`verify` branch proof exactly where `hOrbitCover c` was
-previously consumed. The private helpers
-`authDecaps_none_of_verify_false` and
-`keyDerive_canon_eq_of_mem_orbit` are unchanged — they already
-take the orbit-membership fact as a direct hypothesis, not as a
-consequence of `hOrbitCover`.
+**Precise change.** Only the `INT_CTXT` `def` is touched in this
+WU; `authEncrypt_is_int_ctxt` is left in its pre-B1a state and
+will temporarily fail to type-check (the hypothesis `hOrbitCover`
+no longer matches the new predicate shape). This is *intentional*:
+it confines the signature-change diff to one `def`, so a reviewer
+can approve the predicate refinement without also approving the
+proof-body threading in B1b.
+
+Target form:
+
+```lean
+def INT_CTXT
+    {G : Type*} {X : Type*} {K : Type*} {Tag : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (akem : AuthOrbitKEM G X K Tag) : Prop :=
+  ∀ (c : X) (t : Tag)
+    (_hOrbit : c ∈ MulAction.orbit G akem.kem.basePoint)
+    (_hFresh : ∀ g : G, (c, t) ≠ (authEncaps akem g).1),
+    authDecaps akem (c, t) = none
+```
 
 **Acceptance.**
-- `lake build Orbcrypt.AEAD.AEAD` succeeds.
-- `#check @authEncrypt_is_int_ctxt` shows the new signature (no
-  `hOrbitCover` parameter).
-- `#print axioms authEncrypt_is_int_ctxt` emits only
-  `[propext, Classical.choice, Quot.sound]` (unchanged).
+- `lake build Orbcrypt.AEAD.AEAD` **intentionally fails at this
+  WU**; record the build-failure message in the B1a commit body.
+- `#check @INT_CTXT` shows the refactored signature.
 
-**Regression safeguard.** Downstream consumer
-`Orbcrypt/AEAD/CarterWegmanMAC.lean` must be updated in the same
-commit (B2 below).
+**Rollback rule.** If B1b cannot be landed within 24 hours of B1a
+for any reason, **revert B1a** — do not ship the repository with a
+broken build. Workstream **B** is atomic at the B1a + B1b + B2
+granularity; either all three land or none do.
+
+#### B1b — Refactor `authEncrypt_is_int_ctxt` proof body
+
+**File.** `Orbcrypt/AEAD/AEAD.lean`.
+
+**Precise change.** Rewrite `authEncrypt_is_int_ctxt`'s signature
+and proof body to consume the per-challenge `hOrbit` hypothesis
+instead of the top-level `hOrbitCover`. The private helpers
+`authDecaps_none_of_verify_false` (C2a) and
+`keyDerive_canon_eq_of_mem_orbit` (C2b) are **unchanged** — both
+already take a direct orbit-membership fact as input, not a
+universal-`hOrbitCover` consequence.
+
+The proof body's `obtain ⟨g, hg⟩ := MulAction.mem_orbit_iff.mp
+(hOrbitCover c)` line at AEAD.lean:290 is replaced by `obtain
+⟨g, hg⟩ := MulAction.mem_orbit_iff.mp hOrbit` (the `c` is now
+implicit from the per-challenge binder); the later
+`(keyDerive_canon_eq_of_mem_orbit akem (hOrbitCover c)).symm`
+invocation at AEAD.lean:322 becomes
+`(keyDerive_canon_eq_of_mem_orbit akem hOrbit).symm`.
+
+Post-refactor signature:
+
+```lean
+theorem authEncrypt_is_int_ctxt
+    {G : Type*} {X : Type*} {K : Type*} {Tag : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (akem : AuthOrbitKEM G X K Tag) :
+    INT_CTXT akem := by
+  intro c t hOrbit hFresh
+  -- unchanged tactic body, using `hOrbit` where `hOrbitCover c`
+  -- previously appeared
+  ...
+```
+
+**Acceptance.**
+- `lake build Orbcrypt.AEAD.AEAD` **succeeds** at this WU (B1a +
+  B1b together restore the build).
+- `#check @authEncrypt_is_int_ctxt` shows the refactored signature
+  (no `hOrbitCover` parameter).
+- `#print axioms authEncrypt_is_int_ctxt` emits only
+  `[propext, Classical.choice, Quot.sound]` (unchanged from pre-B).
+
+**Regression safeguard.** `authDecaps_none_of_verify_false` and
+`keyDerive_canon_eq_of_mem_orbit` are declared `private` at
+AEAD.lean:282-ish and :299-ish respectively; their non-mutation in
+B1b is part of the acceptance criteria. If a reviewer's feedback
+forces a refactor of those helpers, the refactor belongs in a
+separate PR with its own non-vacuity witness test.
 
 #### B2 — Update Carter–Wegman INT_CTXT witness
 
@@ -697,7 +846,24 @@ R-13 for the `Bitstring n → ZMod p` adapter research.
 **Acceptance.** Row #19 reads **Standalone**; row #20 reads
 **Conditional** with the compatibility disclosure.
 
-### 5.5 Exit criteria for Workstream B
+### 5.5 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| B-R1 | B1a lands but B1b is blocked by reviewer feedback; repository left with broken build | Low | High | WUs B1a + B1b must land in a single PR or two sequential PRs merged within the same 24-hour window. Reviewer must be tagged before B1a is pushed. | `git revert <B1a-commit>` restores the pre-B1a predicate shape; a new PR bundles B1a + B1b together. |
+| B-R2 | The per-challenge `hOrbit` hypothesis semantics diverge from the literature's "honest ciphertext" convention in consumers' mental models | Medium | Medium | Workstream **A** A3 carries the release-messaging note explicitly framing this as "the game rejects out-of-orbit ciphertexts by well-formedness precondition". `docs/VERIFICATION_REPORT.md` cross-links B's refactor with **H**'s `decapsSafe` (same conceptual pairing). | Semantic-only concern; no code rollback required. If consumer confusion persists post-release, a v1.1 polish PR adds a `INT_CTXT_unrestricted` variant that re-introduces the universal hypothesis at the game level. |
+| B-R3 | A future `AuthOrbitKEM` consumer forgets the orbit-membership precondition and invokes `INT_CTXT` on an out-of-orbit ciphertext, producing a statement they mis-interpret as "always `none`" | Low | Medium | `INT_CTXT`'s docstring explicitly declares the caller's obligation; Workstream **H**'s `decapsSafe` (single-point-of-truth for orbit validation) is the canonical consumer. | Doc-level remediation; no rollback. |
+| B-R4 | Carter–Wegman witness (B2) breaks because the post-L2 `[Fact (Nat.Prime p)]` constraint interacts with the new signature | Low | Low | B2 simply removes one argument from the theorem signature; proof body is mechanical `obtain`/`intro` renaming. B2 is a ≤ 20-line diff. | `git revert <B2-commit>` temporarily reverts B2; update `scripts/audit_c_workstream.lean` to fall back to the pre-B signature in its non-vacuity witness. |
+
+**Full-workstream rollback.** If any of the four WUs fails at review
+gate, revert all four atomically and leave the audit finding I-03
+open (with a cross-reference to this plan) until a revised approach
+(e.g., Option B / structural field) is evaluated in a follow-up
+plan. `CLAUDE.md`'s row #19 Status would then be re-labeled
+**Conditional** (the Workstream-A reclassification) until a
+successful refactor.
+
+### 5.6 Exit criteria for Workstream B
 
 1. `lake build` for all 38 modules succeeds.
 2. `INT_CTXT` takes `hOrbit` per-challenge, no `hOrbitCover` at
@@ -708,6 +874,9 @@ R-13 for the `Bitstring n → ZMod p` adapter research.
    **Conditional** with the compatibility caveat.
 5. `Orbcrypt.lean`'s axiom-transparency report is updated with a
    Workstream-B snapshot.
+6. The risk register in § 5.5 has no open items (B-R1 is closed by
+   the successful single-PR merge; B-R2 / B-R3 / B-R4 are
+   doc-level and do not require post-merge action).
 
 ## 6. Workstream C — Multi-query hybrid reconciliation
 
@@ -824,7 +993,21 @@ non-vacuity witness in `scripts/audit_phase_16.lean`; if
 deferred, the deferral is noted in the C3 commit message. This
 plan does NOT require C3 for v1.0.
 
-### 6.4 Exit criteria for Workstream C
+### 6.4 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| C-R1 | External consumers have cached `indQCPA_bound_via_hybrid` via Lean tooling (e.g., LSP) and a rename produces confusing broken references for days | Low | Low | Rename lands in a single atomic PR; the old name is *not* kept as a deprecated alias (per `CLAUDE.md` no-backwards-compat rule). LSP rebuilds on next `lake build`. | Affected parties invoke `lake clean && lake build`. |
+| C-R2 | The renamed `indQCPA_from_perStepBound` carries the same `h_step` hypothesis, but downstream readers continue to mistake it for an unconditional multi-query bound | Medium | Medium | The new name explicitly surfaces the obligation (`from_perStepBound`); the theorem's docstring carries a "**User-supplied hypothesis obligation**" block with explicit discharge-template language. | Additional docstring-level tightening in a follow-up PR; no code rollback. |
+| C-R3 | A future attempt to discharge `h_step` from `ConcreteOIA` (research R-09) finds a subtle counterexample, invalidating the premise of the rename | Very low | Medium | The rename is content-neutral: if R-09 is solvable, the discharge theorem sits next to `indQCPA_from_perStepBound` and consumes it; if R-09 is impossible, the rename is the correct final name. Either way, no revision is needed. | No action; the rename is future-proof. |
+
+**Full-workstream rollback.** If the rename meets external-reviewer
+resistance (e.g., a consumer requests the old name via a pin), the
+rollback is a single `git revert`. The underlying mathematical
+content is unchanged by the rename; reverting does not lose theorem
+content.
+
+### 6.5 Exit criteria for Workstream C
 
 1. `indQCPA_bound_via_hybrid` no longer exists in any `.lean`
    source file; its content is at `indQCPA_from_perStepBound`.
@@ -835,6 +1018,7 @@ plan does NOT require C3 for v1.0.
    trio axioms; the research follow-up (R-09) is tracked in this
    plan's § 18.
 5. `lake build` succeeds; `scripts/audit_phase_16.lean` passes.
+6. The risk register in § 6.4 has no open items.
 
 ## 7. Workstream D — Toolchain decision + `lakefile.lean` hygiene
 
@@ -995,38 +1179,152 @@ on production non-trivial KEMs.
 
 ### 8.3 Work units
 
+Workstream **E** lands two small, axiom-free theorems plus a
+transparency-report update. Each theorem is ≤ 15 lines of Lean;
+the complexity is concentrated in the *decidability-instance plumbing*
+(the distinguisher `fun x => decide (x = scheme.reps m₀)` requires a
+`Decidable (x = scheme.reps m₀)` instance, which follows from
+`[DecidableEq X]` on the scheme's carrier).
+
 #### E1 — Add `det_oia_false_of_distinct_reps`
 
-**File.** `Orbcrypt/Crypto/OIA.lean`, at the bottom of the
-module.
+**File.** `Orbcrypt/Crypto/OIA.lean`, at the bottom of the module
+(after the existing `OIA` def and documentation block).
 
-**Change.** Add the theorem as sketched above. Docstring
-cross-references the audit finding (C-07) and notes the theorem
-is **the machine-checked scaffolding disclosure** — what
-`Orbcrypt.lean`'s vacuity-map table previously asserted in prose.
+**Change.** Add the theorem with the full proof body:
+
+```lean
+/-- **Vacuity witness (audit 2026-04-23 C-07).** The deterministic
+    `OIA` predicate is `False` whenever the scheme exhibits two
+    messages whose representatives are distinct — which is exactly
+    the `reps_distinct` obligation. The distinguisher is the
+    orbit-membership test `fun x => decide (x = scheme.reps m₀)`,
+    which is `true` on the `m₀`-orbit point after identity-element
+    action and `false` on the `m₁`-orbit point.
+
+    This theorem machine-checks the scaffolding disclosure that
+    `Orbcrypt.lean`'s vacuity map previously asserted only in prose.
+    Callers of `oia_implies_1cpa` now have a formal handle on the
+    vacuity: compose this theorem with `absurd` to derive `False`
+    under a hypothesis of the form `OIA scheme ∧ scheme.reps m₀ ≠
+    scheme.reps m₁`. -/
+theorem det_oia_false_of_distinct_reps
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    {m₀ m₁ : M} (hDistinct : scheme.reps m₀ ≠ scheme.reps m₁) :
+    ¬ OIA scheme := by
+  intro hOIA
+  -- Apply OIA to the membership-at-m₀ Boolean distinguisher, at
+  -- identity group elements, on the (m₀, m₁) message pair.
+  have h := hOIA (fun x => decide (x = scheme.reps m₀)) m₀ m₁ 1 1
+  -- Identity action reduces `1 • reps mᵢ` to `reps mᵢ`.
+  simp only [one_smul] at h
+  -- The LHS decide evaluates to `true` (reflexivity); the RHS to
+  -- `false` (distinctness). Contradiction.
+  have hLHS : decide (scheme.reps m₀ = scheme.reps m₀) = true :=
+    decide_eq_true (Eq.refl _)
+  have hRHS : decide (scheme.reps m₁ = scheme.reps m₀) = false :=
+    decide_eq_false (fun heq => hDistinct heq.symm)
+  rw [hLHS, hRHS] at h
+  exact Bool.true_eq_false_iff.mp h |>.elim
+```
+
+**Rationale for each tactic step.**
+- `intro hOIA` — destructure the Prop-valued `OIA`, making its
+  universal-over-`(f, m₀, m₁, g₀, g₁)` body available.
+- `hOIA _ m₀ m₁ 1 1` — instantiate with identity group elements.
+  This is the *minimal* instantiation; more elaborate choices (any
+  `(g₀, g₁)`) also work but `1 • x = x` is the cleanest rewrite.
+- `simp only [one_smul]` — reduces `1 • scheme.reps mᵢ` to
+  `scheme.reps mᵢ` on both sides.
+- `decide_eq_true (Eq.refl _)` — the Mathlib-standard idiom for
+  discharging `decide P = true` when `P` holds definitionally.
+- The final contradiction is
+  `Bool.true_eq_false_iff.mp h` (`h : true = false`).
+
+**Decidability obligation.** The `DecidableEq X` typeclass instance
+is already on `scheme`'s context (every scheme-level theorem in the
+codebase carries it); no new instance is needed. The per-theorem
+elaboration of `decide (x = scheme.reps m₀)` uses
+`instDecidableEq` transparently.
 
 **Acceptance.**
-- `lake build Orbcrypt.Crypto.OIA` succeeds.
-- `#print axioms det_oia_false_of_distinct_reps` emits only
-  standard-trio axioms.
+- `lake build Orbcrypt.Crypto.OIA` succeeds, zero warnings.
+- `#print axioms Orbcrypt.det_oia_false_of_distinct_reps` emits
+  `'Orbcrypt.det_oia_false_of_distinct_reps' depends on axioms:
+  [propext, Classical.choice, Quot.sound]` (standard trio; the
+  `decide` tactics introduce `Classical.choice` via the
+  `Decidable.decide`-elaboration path).
 - A non-vacuity `example` in `scripts/audit_phase_16.lean`
-  exhibits the theorem applied to a concrete toy scheme with
-  two distinct reps.
+  exhibits the theorem applied to the in-tree toy scheme from
+  `§ 12 NonVacuityWitnesses`: two-message scheme over `Unit × Unit`
+  with reps `⟨true, false⟩` and `⟨false, true⟩` (distinct by
+  construction).
 
 #### E2 — Add `det_kemoia_false_of_nontrivial_orbit`
 
-**File.** `Orbcrypt/KEM/Security.lean`, at the bottom.
+**File.** `Orbcrypt/KEM/Security.lean`, at the bottom of the
+module.
 
-**Change.** Parallel theorem at the KEM layer. Hypothesis is the
-existence of two group elements producing distinct ciphertexts
-on the basepoint. Proof mirrors E1 using the distinguisher
-`fun c => decide (c = g₀ • basePoint)` for some witnessing
-`g₀`.
+**Change.** The KEM-layer analogue. The KEM game quantifies over
+group elements (not messages); the vacuity hypothesis is therefore
+the existence of two distinct *ciphertexts* on the basepoint's
+orbit — equivalently, two group elements `g₀, g₁ : G` with
+`g₀ • basePoint ≠ g₁ • basePoint`.
+
+```lean
+/-- **Vacuity witness (audit 2026-04-23 E-06).** The deterministic
+    `KEMOIA` predicate is `False` whenever the KEM's basepoint
+    orbit is non-trivial — i.e., there exist two group elements
+    producing distinct ciphertexts. Distinguisher:
+    `fun c => decide (c = g₀ • basePoint)`.
+
+    Parallel to `det_oia_false_of_distinct_reps` at the KEM layer.
+    The hypothesis `∃ g₀ g₁ : G, g₀ • kem.basePoint ≠ g₁ •
+    kem.basePoint` holds on every realistic KEM (production HGOE
+    has |orbit| ≫ 2); the witness theorem machine-checks the
+    scaffolding disclosure. -/
+theorem det_kemoia_false_of_nontrivial_orbit
+    {G : Type*} {X : Type*} {K : Type*}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K)
+    {g₀ g₁ : G}
+    (hDistinct : g₀ • kem.basePoint ≠ g₁ • kem.basePoint) :
+    ¬ KEMOIA kem := by
+  intro hKEMOIA
+  -- Apply KEMOIA to the membership-at-(g₀ • basePoint) distinguisher.
+  have h := hKEMOIA
+    (fun c => decide (c = g₀ • kem.basePoint)) g₀ g₁
+  -- The LHS decide is `true` (reflexivity on `g₀ • basePoint`).
+  -- The RHS decide is `false` (distinctness hypothesis).
+  have hLHS : decide (g₀ • kem.basePoint = g₀ • kem.basePoint) = true :=
+    decide_eq_true (Eq.refl _)
+  have hRHS : decide (g₁ • kem.basePoint = g₀ • kem.basePoint) = false :=
+    decide_eq_false (fun heq => hDistinct heq.symm)
+  rw [hLHS, hRHS] at h
+  exact Bool.true_eq_false_iff.mp h |>.elim
+```
+
+**Note on `KEMOIA`'s single-conjunct form.** Post-Workstream-L5
+(2026-04-21), `KEMOIA` is a single-conjunct orbit
+indistinguishability predicate; the former key-uniformity conjunct
+was unconditional and was removed. E2's proof therefore does not
+need to thread `hKEMOIA.1`/`.2` destructuring — it applies the
+single Prop directly.
+
+**Decidability obligation.** Identical to E1 — `DecidableEq X` is
+already on every KEM-level theorem's context.
 
 **Acceptance.**
 - `lake build Orbcrypt.KEM.Security` succeeds.
-- `#print axioms` emits only standard-trio axioms.
-- Non-vacuity `example` added to the audit script.
+- `#print axioms Orbcrypt.det_kemoia_false_of_nontrivial_orbit`
+  emits the standard trio.
+- A non-vacuity `example` in `scripts/audit_phase_16.lean`
+  exhibits the theorem on a concrete toy KEM with a permutation
+  group `{1, σ}` where `σ ≠ 1`, `σ • basePoint ≠ basePoint`.
+  This uses the `Equiv.swap`-based witness already in
+  `§ 12 NonVacuityWitnesses`.
 
 #### E3 — Update `Orbcrypt.lean` vacuity-map + transparency report
 
@@ -1042,7 +1340,21 @@ section at the end of the transparency report.
 Scaffolding theorem to its machine-checked vacuity witness
 theorem (E1 / E2).
 
-### 8.4 Exit criteria for Workstream E
+### 8.4 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| E-R1 | The `decide` elaboration path introduces `Classical.choice` in `#print axioms` output unexpectedly | Low | Low | The proof sketches in § 8.3 explicitly use `decide_eq_true` / `decide_eq_false` with `Eq.refl` / lambda discharge — both paths already introduce `Classical.choice` in-tree (as evidenced by Phase 16 audit). The standard trio is expected and acceptable. | If somehow the axioms expand beyond the standard trio, switch to a `rfl`-based discharge via `Bool.decide_True` / `Bool.decide_False` explicit rewrites. |
+| E-R2 | `simp only [one_smul]` does not fire because the `MulAction` instance is elaborated via coercion (e.g., `↥G` with subgroup coercion) | Medium | Low | Fall back to `rw [one_smul, one_smul]` or to explicit `MulAction.one_smul` invocations. The proof body is short enough that the tactic-flavor is easy to adjust. | Proof-body edit only. |
+| E-R3 | `det_kemoia_false_of_nontrivial_orbit` hypothesis `g₀ • kem.basePoint ≠ g₁ • kem.basePoint` is satisfied by every production KEM but requires an explicit witness for the non-vacuity example; finding a witness on the in-tree toy KEM is non-trivial | Medium | Low | The Phase-16 `§ 12 NonVacuityWitnesses` block already constructs an `Equiv.swap 0 1`-based toy action on `ZMod 2` (Workstream C post-L2); the same construction witnesses `σ • 0 ≠ 1 • 0`. Reuse. | Use a different witness group (e.g., `Subgroup.closure {Equiv.swap 0 1}` on `Fin 3 → Bool`); structural, not proof-body, change. |
+| E-R4 | A future `KEMOIA` refactor adds a second conjunct (unlikely post-L5 but possible), and E2's proof no longer destructures correctly | Very low | Medium | E2's proof is written against the post-L5 single-conjunct form explicitly; a future refactor would need to update E2 in the same PR. | If the refactor lands separately, a follow-up PR adjusts E2's `intro hKEMOIA` pattern to destructure. |
+
+**Full-workstream rollback.** E1 + E2 + E3 land in one atomic PR.
+If review blocks the PR, the scaffolding disclosure reverts to
+prose-only (pre-E state); Workstream A's release-messaging policy
+remains authoritative for external citations.
+
+### 8.5 Exit criteria for Workstream E
 
 1. `det_oia_false_of_distinct_reps` and
    `det_kemoia_false_of_nontrivial_orbit` land with standard-trio
@@ -1053,6 +1365,7 @@ theorem (E1 / E2).
 4. `lake build` succeeds for all modules; `CLAUDE.md` gains a
    Workstream-E snapshot and both theorems appear in the
    "zero-custom-axiom" exit-criteria list.
+5. The risk register in § 8.4 has no open items.
 
 ## 9. Workstream F — Concrete `CanonicalForm` from lex-min
 
@@ -1155,24 +1468,202 @@ is in the finset by construction, and the finset is the orbit.
 - `canon` is computable (modulo `DecidableEq` / `Fintype` typeclass
   obligations, which are inputs).
 
-#### F3 — Prove `orbit_iff`
+#### F3a — Helper lemma: orbit membership implies `toFinset` membership
 
 **File.** Per F1 decision.
 
-**Change.** Prove that `canon x = canon y ↔ orbit x = orbit y`.
-Forward direction: if `min' (orbit x) = min' (orbit y)`, the
-shared `min'` lives in both orbits, so the orbits coincide
-(orbits partition). Reverse direction: equal orbits have equal
-`toFinset`, hence equal `min'`.
+**Change.** Add a helper lemma `mem_orbit_toFinset_iff` proving that
+the `.toFinset` of `MulAction.orbit (↥G) x` contains `y` iff `y ∈
+MulAction.orbit (↥G) x`. This is a thin wrapper around
+`Set.mem_toFinset` but having it named at the module level makes
+the downstream proofs (F3b, F3c) dramatically cleaner.
+
+```lean
+private lemma mem_orbit_toFinset_iff
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n)))
+    [Fintype (MulAction.orbit (↥G) x)] (x y : Bitstring n) :
+    y ∈ (MulAction.orbit (↥G) x).toFinset ↔
+    y ∈ MulAction.orbit (↥G) x :=
+  Set.mem_toFinset
+```
+
+**Decidability / `Fintype` obligation.** `(MulAction.orbit (↥G) x)`
+is a `Set (Bitstring n)`. Converting to a `Finset` via `.toFinset`
+requires `Fintype ↥(MulAction.orbit (↥G) x)`. This instance is
+derivable from `[Fintype (Bitstring n)]` (automatic since
+`Bitstring n = Fin n → Bool`) plus `[DecidablePred (· ∈ MulAction.orbit (↥G) x)]`
+(which requires `[DecidableEq (Bitstring n)]` plus `[Fintype (↥G)]`).
+
+**Action item.** If the derived instance is not found automatically
+by Lean's typeclass search, add an explicit `instance` block at the
+top of the file:
+
+```lean
+instance {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n))) [Fintype (↥G)]
+    (x : Bitstring n) : Fintype (MulAction.orbit (↥G) x) :=
+  Set.Finite.fintype (Set.Finite.map _ (Set.toFinite _))
+```
+
+(The exact incantation depends on Mathlib's precise `Set.Finite`
+API; a grep for `MulAction.orbit.*Fintype` in Mathlib finds the
+canonical form.)
 
 **Acceptance.**
-- `#print axioms CanonicalForm.ofLexMin` emits only standard-
-  trio axioms.
-- A non-vacuity `example` in `scripts/audit_phase_16.lean`
-  exhibits a concrete `CanonicalForm.ofLexMin` for `n = 3`,
-  `G = ⟨Equiv.swap 0 1⟩` subgroup, and verifies `canon ![true,
-  false, true] = ![false, true, true]` (or similar concrete
-  computation).
+- `lake build` on the new module succeeds.
+- `#print axioms mem_orbit_toFinset_iff` emits only standard-trio
+  axioms.
+
+#### F3b — Prove `orbit_iff` forward direction (`canon x = canon y → orbit x = orbit y`)
+
+**File.** Per F1 decision, inside the `CanonicalForm.ofLexMin`
+definition's `orbit_iff` field.
+
+**Proof strategy.**
+1. Let `m := canon x = canon y` (the shared lex-min value).
+2. By `Finset.min'_mem` + `mem_orbit_toFinset_iff`, `m ∈ orbit x`
+   and `m ∈ orbit y`.
+3. By `MulAction.orbit_eq_iff.mpr`, `m ∈ orbit x` implies
+   `orbit m = orbit x`; symmetrically `orbit m = orbit y`.
+4. Transitivity: `orbit x = orbit m = orbit y`.
+
+**Explicit Lean body.**
+
+```lean
+-- Forward direction
+intro h_canon_eq
+-- Extract: min' of orbit x is the shared value m
+set m := (MulAction.orbit (↥G) x).toFinset.min' ⟨x, by
+  exact MulAction.mem_orbit_self x⟩ with hm_def
+-- m is in orbit x (by min'_mem)
+have hm_x : m ∈ MulAction.orbit (↥G) x :=
+  (mem_orbit_toFinset_iff G x m).mp (Finset.min'_mem _ _)
+-- m = min' orbit y as well (from h_canon_eq)
+have hm_y : m ∈ MulAction.orbit (↥G) y := by
+  rw [hm_def]
+  rw [h_canon_eq]  -- canon x = canon y reduces LHS to RHS shape
+  exact (mem_orbit_toFinset_iff G y _).mp (Finset.min'_mem _ _)
+-- Conclude orbit x = orbit y via transitivity through m's orbit
+rw [← MulAction.orbit_eq_iff.mpr hm_x,
+    ← MulAction.orbit_eq_iff.mpr hm_y]
+```
+
+**Subtle point: `set … with hm_def` vs. `let`.** The `set` tactic
+creates a definitional equation `hm_def : m = …` that can be used
+by `rw` in either direction. This is important because step 4
+rewrites `orbit m` on both sides via the symmetric equations.
+
+**Acceptance.**
+- The forward-direction proof compiles.
+- `#print axioms` emits only standard-trio axioms.
+
+#### F3c — Prove `orbit_iff` reverse direction (`orbit x = orbit y → canon x = canon y`)
+
+**File.** Per F1 decision, continuing inside the same `orbit_iff`
+field after F3b.
+
+**Proof strategy.**
+1. Hypothesis: `orbit x = orbit y` (as `Set (Bitstring n)`).
+2. The `.toFinset` operation is `Set`-injective on finite sets:
+   equal sets give equal finsets.
+3. Equal finsets give equal `min'` values (with the trivial
+   non-empty-finset witnesses).
+
+**Explicit Lean body.**
+
+```lean
+-- Reverse direction
+intro h_orbit_eq
+-- Show the two toFinsets are equal (as Finsets)
+have h_toFinset_eq : (MulAction.orbit (↥G) x).toFinset =
+    (MulAction.orbit (↥G) y).toFinset := by
+  ext z
+  rw [mem_orbit_toFinset_iff, mem_orbit_toFinset_iff]
+  constructor
+  · intro hz; rw [← h_orbit_eq]; exact hz
+  · intro hz; rw [h_orbit_eq]; exact hz
+-- Equal toFinsets give equal min' values. Mathlib's
+-- Finset.min'_congr does this under a non-empty-witness constraint.
+rw [show (fun (s : Finset (Bitstring n)) (h : s.Nonempty) => s.min' h) =
+    Finset.min' from rfl]
+congr 1
+exact h_toFinset_eq
+```
+
+**Subtle point: `Finset.min'` and proof-irrelevance.** `Finset.min'`
+takes a non-emptiness proof as a second argument. When the
+underlying finset is the same, any two non-emptiness proofs give
+the same `min'` (by proof-irrelevance for `Prop`-valued
+arguments to functions). The `congr 1` tactic reduces the goal to
+the finset-equality hypothesis.
+
+**Alternative shorter body** (if `congr 1` does not close the
+non-emptiness-proof subgoal automatically):
+
+```lean
+intro h_orbit_eq
+simp only [h_orbit_eq]
+```
+
+Because `canon x` is definitionally
+`(MulAction.orbit (↥G) x).toFinset.min' ⟨x, _⟩` and the orbit
+equation `h_orbit_eq : orbit G x = orbit G y` rewrites the
+`toFinset` directly, `simp only [h_orbit_eq]` may close the goal
+in one line. The F3 implementer selects whichever form compiles
+cleanest; both are proof-equivalent.
+
+**Acceptance.**
+- The reverse-direction proof compiles.
+- Combined with F3b, the `orbit_iff` field of
+  `CanonicalForm.ofLexMin` is fully discharged.
+- `#print axioms Orbcrypt.CanonicalForm.ofLexMin` emits only
+  standard-trio axioms.
+- **No `sorry` in the tree**: the WU F3a + F3b + F3c sequence
+  replaces the illustrative `sorry` in § 9.3 entirely.
+
+#### F3d — Concrete-instance non-vacuity witness
+
+**File.** `scripts/audit_phase_16.lean`.
+
+**Change.** Add to `§ 12 NonVacuityWitnesses` a worked example:
+
+```lean
+-- Non-vacuity witness for CanonicalForm.ofLexMin (audit F-04 / V1-10)
+section LexMinWitness
+open Orbcrypt
+
+/-- A concrete subgroup of S_3 for which ofLexMin exhibits a
+    computable canonical form. -/
+example : ∃ (G : Subgroup (Equiv.Perm (Fin 3))),
+    True := by
+  -- The subgroup generated by the swap (0 1)
+  let σ : Equiv.Perm (Fin 3) := Equiv.swap 0 1
+  refine ⟨Subgroup.closure {σ}, trivial⟩
+
+/-- The lex-min canonical form of `![true, false, true]` under the
+    subgroup `⟨Equiv.swap 0 1⟩` is `![false, true, true]` (swapping
+    positions 0 and 1 gives the lex-smaller bit pattern). -/
+-- Evaluation test (expected to reduce by `decide` at compile time):
+example :
+    let σ : Equiv.Perm (Fin 3) := Equiv.swap 0 1
+    let G : Subgroup (Equiv.Perm (Fin 3)) := Subgroup.closure {σ}
+    let can := CanonicalForm.ofLexMin G
+    can.canon ![true, false, true] = ![false, true, true] := by
+  decide
+end LexMinWitness
+```
+
+**Acceptance.**
+- The `decide` call terminates in reasonable time (~seconds at
+  n = 3).
+- The non-vacuity witness is a machine-checked demonstration that
+  `ofLexMin` computes concrete canonical forms — not merely that
+  it type-checks.
+
+**Alternative if `decide` is too slow.** If the `decide` call
+exceeds the 60-second default, replace with `native_decide`; if
+that too is slow, reduce to `n = 2` (`⟨Equiv.swap 0 1⟩` on
+`Bitstring 2`). The non-vacuity witness's *purpose* is confirming
+computation, not stress-testing.
 
 #### F4 — Convenience constructor in HGOE
 
@@ -1191,17 +1682,37 @@ required to migrate.
   correctness chain using `ofLexMin` to eliminate the
   `can` parameter.
 
-### 9.5 Exit criteria for Workstream F
+### 9.5 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| F-R1 | `Fintype (MulAction.orbit (↥G) x)` instance is not found by automatic typeclass search | Medium | Low | F3a adds an explicit instance block as fallback; a one-line typeclass declaration resolves this. | Add the explicit instance locally; if Mathlib's API has changed, use `Set.Fintype.ofFinset` idiom. |
+| F-R2 | `simp only [h_orbit_eq]` in F3c does not close the goal cleanly because `canon` unfolds through multiple layers | Low | Low | F3c provides two alternative proof bodies (congr-based + simp-based); the implementer picks whichever compiles. | If neither works, fall back to the four-line explicit proof using `Finset.min'` equality plus `h_orbit_eq` rewrite on the `toFinset` argument — a mechanical expansion of the `congr 1` tactic. |
+| F-R3 | `decide` in F3d's non-vacuity witness exceeds the CI time limit | Low | Low | F3d documents a `native_decide` fallback and an `n = 2` size reduction. | If both fail, replace the witness with a proof-level `rfl` after manually evaluating `canon` on both sides; the goal is computation demonstration, not stress testing. |
+| F-R4 | `Finset.min'` on `Bitstring n = Fin n → Bool` requires a `LinearOrder` instance not automatically provided | Medium | Medium | Mathlib has `Pi.linearOrder` for `Fin n → Bool` (via `Bool.linearOrder` + Pi instance). Verify the instance is found; if not, derive via `Lex.linearOrder` with an explicit lex coercion. | If the instance path is non-trivial, switch from `Finset.min'` (which needs `LinearOrder`) to `Finset.min` (which needs only `LE` + decidable equality), but then canonical form might be `Option`-valued; wrap with a `Classical.choice` fallback. |
+
+**Full-workstream rollback.** F is a preferred-pre-release item, not
+a blocker. If F3a–F3c cannot be completed within the 4-hour effort
+estimate (e.g., Mathlib API surprises), park the work with a note in
+§ 20 (Release-readiness checklist) and defer to v1.1; do not push a
+partial `CanonicalForm.ofLexMin`.
+
+### 9.6 Exit criteria for Workstream F
 
 1. `CanonicalForm.ofLexMin` is a computable `def` landing with
    standard-trio axioms only.
-2. A concrete non-vacuity witness exhibits the constructor on a
-   small instance.
+2. A concrete non-vacuity witness (F3d) exhibits the constructor
+   on a small instance and evaluates `canon` by `decide` /
+   `native_decide`.
 3. `hgoeScheme.ofLexMin` eliminates the `can` parameter for
    callers who use the lex-min convention.
 4. `CLAUDE.md` gains a Workstream-F snapshot; the headline
    theorem table references the new constructor in the
    `CanonicalForm`-related rows.
+5. No `sorry` in the tree: WUs F3a + F3b + F3c together discharge
+   the `orbit_iff` obligation that § 9.3's illustrative sketch
+   deliberately left as `sorry`.
+6. The risk register in § 9.5 has no open items.
 
 ## 10. Workstream G — λ-parameterised `HGOEKeyExpansion`
 
@@ -1410,37 +1921,188 @@ is always in orbit by construction) with `kem_correctness`.
 
 **Acceptance.** `#print axioms` emits only standard-trio.
 
-#### H3 — Implement `decryptCompute`
+#### H3a — Implement `decryptCompute` (the computable search)
 
 **File.** `Orbcrypt/Crypto/Scheme.lean`.
 
-**Change.** `decryptCompute` searches `Finset.univ : Finset M`
-for a message whose `scheme.reps m`'s canonical form matches `c`'s.
-Returns `some m` on match, `none` otherwise. Requires
-`[Fintype M]` + `[DecidableEq M]` (in addition to the existing
-typeclass obligations).
+**Precise change.** Add the `decryptCompute` function, using
+`Finset.univ.filter` to locate candidate messages and
+`Finset.min'` (or `Finset.choose`) to pick a unique witness. Note
+that `decrypt`'s "ciphertext matches some representative" predicate
+is:
+
+```lean
+∃ m : M, canon (reps m) = canon c
+```
+
+The `decryptCompute` search mirrors this with a **decidable**
+filter predicate:
+
+```lean
+/-- Computable decryption: iterates over the finite message
+    space, selecting the unique `m` whose orbit representative has
+    the same canonical form as `c`. Returns `none` when no such
+    message exists (malformed ciphertext).
+
+    Honest ciphertexts always produce `some m`; malformed
+    ciphertexts (e.g. `c ∉ orbit (reps m)` for any `m`) produce
+    `none`. Agreement with `decrypt` is proved in
+    `decryptCompute_eq_decrypt` (H3b). -/
+def decryptCompute
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [MulAction G X] [DecidableEq X]
+    [Fintype M] [DecidableEq M]
+    (scheme : OrbitEncScheme G X M) (c : X) : Option M :=
+  let candidates : Finset M :=
+    (Finset.univ : Finset M).filter
+      (fun m => scheme.canonForm.canon (scheme.reps m) =
+                scheme.canonForm.canon c)
+  if h : candidates.Nonempty then
+    some (candidates.min' h)
+  else
+    none
+```
+
+**Why `min'` and not `choose`?** `Finset.choose` requires a
+uniqueness proof at construction time, which is exactly what
+`reps_distinct` provides — but `choose`'s type signature bundles
+the uniqueness proof as an obligation that must be discharged
+*before* the `Option` is returned. Using `min'` (which requires
+only `LinearOrder M` and non-emptiness) avoids that coupling: the
+uniqueness proof is used in H3b's agreement theorem, not in the
+function definition. `min'` is canonical and computable.
+
+**Alternative: `Finset.filter.toList.head?`** would also work but
+carries less useful simp-normal-form structure. `min'` is the
+Mathlib-idiomatic form.
+
+**Decidability obligation.** The filter predicate
+`scheme.canonForm.canon (scheme.reps m) = scheme.canonForm.canon c`
+is `DecidableEq X` by `[DecidableEq X]`. `Finset.filter` requires
+`DecidablePred p`; this is inferred automatically.
+
+**LinearOrder obligation on `M`.** `Finset.min'` requires
+`[LinearOrder M]`. Production message spaces (`Fin 2`, `Bool`, etc.)
+have this trivially. For arbitrary `M`, the typeclass is usually
+derivable. If the consumer has no `LinearOrder M`, fall back to
+`Finset.choose` (which requires the uniqueness obligation but not
+`LinearOrder`).
 
 **Acceptance.**
 - `lake build Orbcrypt.Crypto.Scheme` succeeds.
-- The function is computable (no `noncomputable` keyword).
-- `#print axioms decryptCompute` emits only standard-trio
-  axioms.
+- The function is **computable** (no `noncomputable` keyword).
+- `#check @decryptCompute` shows the new typeclass context
+  (`[Fintype M] [DecidableEq M] [LinearOrder M]`).
+- `#print axioms decryptCompute` emits only standard-trio axioms.
 
-#### H4 — Prove `decryptCompute = decrypt` on matching ciphertexts
+#### H3b — Prove `decryptCompute_eq_decrypt` (agreement theorem)
 
 **File.** `Orbcrypt/Crypto/Scheme.lean` or
-`Orbcrypt/Theorems/Correctness.lean`.
+`Orbcrypt/Theorems/Correctness.lean` (preferred: the latter, to
+keep `Scheme.lean` focused on definitions).
 
-**Change.** Prove `decryptCompute scheme c = decrypt scheme c`
-whenever the ciphertext has a matching orbit representative.
-Discharge uses uniqueness of the matching representative
-(from `reps_distinct`) + agreement between
-`Finset.univ.find?` (or equivalent) and `Exists.choose` under
-classical choice.
+**Proof strategy.**
 
-**Acceptance.** `#print axioms` emits only standard-trio axioms;
-agreement theorem exercised in the audit script's non-vacuity
-witness block.
+The agreement theorem states:
+
+```lean
+theorem decryptCompute_eq_decrypt
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [MulAction G X] [DecidableEq X]
+    [Fintype M] [DecidableEq M] [LinearOrder M]
+    (scheme : OrbitEncScheme G X M) (c : X) :
+    decryptCompute scheme c = decrypt scheme c
+```
+
+The proof splits on whether any message representative matches:
+
+```lean
+  unfold decryptCompute decrypt
+  split_ifs with h_cand_nonempty h_exists
+  · -- Both definitions found a match; uniqueness closes the goal.
+    -- `candidates.min'` = the unique `m` s.t. canon (reps m) = canon c
+    -- `h_exists.choose` = the same unique m by reps_distinct.
+    congr 1
+    -- Extract the unique-candidate property.
+    have h_unique : ∀ m₁ m₂ : M,
+        scheme.canonForm.canon (scheme.reps m₁) = scheme.canonForm.canon c →
+        scheme.canonForm.canon (scheme.reps m₂) = scheme.canonForm.canon c →
+        m₁ = m₂ := by
+      intro m₁ m₂ h₁ h₂
+      by_contra h_ne
+      -- Distinct messages have distinct reps, hence distinct orbits,
+      -- hence distinct canonical forms — contradiction with h₁ + h₂.
+      have h_distinct := scheme.reps_distinct m₁ m₂ h_ne
+      have h_same_canon : scheme.canonForm.canon (scheme.reps m₁) =
+                          scheme.canonForm.canon (scheme.reps m₂) :=
+        h₁.trans h₂.symm
+      -- canon_eq_implies_orbit_eq (from GroupAction/Canonical.lean)
+      -- closes the gap: equal canons imply equal orbits.
+      exact h_distinct (scheme.canonForm.canon_eq_implies_orbit_eq
+                        h_same_canon)
+    -- Now: candidates.min' is a filter witness, and h_exists.choose
+    -- is a classical witness; both satisfy the matching predicate.
+    exact h_unique _ _
+      ((Finset.mem_filter.mp (Finset.min'_mem _ h_cand_nonempty)).2)
+      (h_exists.choose_spec)
+  · -- candidates nonempty but no classical witness — contradiction.
+    exfalso
+    obtain ⟨m, hm⟩ := h_cand_nonempty
+    apply h_exists
+    exact ⟨m, (Finset.mem_filter.mp hm).2⟩
+  · -- classical witness exists but candidates empty — contradiction.
+    exfalso
+    apply h_cand_nonempty
+    exact ⟨h_exists.choose, Finset.mem_filter.mpr
+      ⟨Finset.mem_univ _, h_exists.choose_spec⟩⟩
+  · -- neither found; both return `none`.
+    rfl
+```
+
+**Critical helper.** `canon_eq_implies_orbit_eq` (from
+`Orbcrypt/GroupAction/Canonical.lean:71`) proves equal canonical
+forms imply equal orbits. This is the *uniqueness bridge* between
+the filter-based search and the classical witness.
+
+**Decidability note.** The `split_ifs with h_cand_nonempty h_exists`
+uses the propositional `Decidable`-instance on
+`candidates.Nonempty` and on `∃ m, canon (reps m) = canon c`. Both
+are decidable under `[Fintype M]` + `[DecidableEq X]`.
+
+**Acceptance.**
+- `lake build Orbcrypt.Theorems.Correctness` succeeds.
+- `#print axioms decryptCompute_eq_decrypt` emits only
+  standard-trio axioms.
+- A non-vacuity `example` in `scripts/audit_phase_16.lean`
+  exhibits `decryptCompute scheme (encrypt scheme g m) = some m`
+  on a small toy instance.
+
+#### H3c — Prove `decryptCompute_encrypt` (reflexivity corollary)
+
+**File.** `Orbcrypt/Theorems/Correctness.lean`.
+
+**Change.** A thin corollary mirroring `correctness` but for the
+computable variant:
+
+```lean
+theorem decryptCompute_encrypt
+    [Group G] [MulAction G X] [DecidableEq X]
+    [Fintype M] [DecidableEq M] [LinearOrder M]
+    (scheme : OrbitEncScheme G X M) (m : M) (g : G) :
+    decryptCompute scheme (encrypt scheme g m) = some m := by
+  rw [decryptCompute_eq_decrypt]
+  exact correctness scheme m g
+```
+
+**Acceptance.**
+- `lake build` succeeds.
+- `#print axioms` emits only standard-trio axioms.
+- Non-vacuity witness added to the audit script.
+
+#### H4 — [RESERVED — rolled into H3b]
+
+This WU is subsumed by H3b; the numbering is preserved for
+cross-reference with the audit's V1-12 item. No separate work.
 
 #### H5 — Update audit scripts
 
@@ -1455,7 +2117,23 @@ witness block.
 
 **Acceptance.** All examples type-check; axiom output unchanged.
 
-### 11.5 Exit criteria for Workstream H
+### 11.5 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| H-R1 | `[LinearOrder M]` is not available on `Fin k` instances automatically and blocks `decryptCompute` elaboration at concrete call sites | Low | Low | Mathlib provides `LinearOrder (Fin n)` globally; `Bool` is a `LinearOrder`; product types inherit it lexicographically. Verified at plan authoring. If a future consumer uses `M := SomeRecord` without `LinearOrder`, they can supply a `Finset.choose`-based variant. | Add a typeclass-instance fallback path `Finset.choose (by exact …)` using the uniqueness proof; this is a drop-in replacement keeping the function signature stable. |
+| H-R2 | Workstream **F**'s `CanonicalForm.ofLexMin` arrives after Workstream **H** starts; H3b needs the concrete canon form for its non-vacuity witness | Low | Medium | H depends on F per § 3.1; the work order enforces F-before-H. | If H must start early, use the abstract `CanonicalForm` for H3b's witness; the non-vacuity example in § H5 degrades from "concrete computation" to "type-checks against the abstract structure". |
+| H-R3 | The `split_ifs with h_cand_nonempty h_exists` tactic in H3b generates four cases; one of the contradiction branches fails to close because the decidability instance is classical-opaque | Medium | Low | H3b's proof body provides explicit `exfalso` + constructive-contradiction tactics for the mixed cases. If elaboration still fails, split into per-branch `by_cases` manually. | Proof-body edit only. |
+| H-R4 | `decryptCompute` is correct but dramatically slower than the GAP implementation (the search is linear in `|M|`) | Certain | Low | This is the expected state: `decryptCompute` is a reference algorithm, not a performance benchmark. Production deployment uses the GAP/C implementation (Phase 15). The docstring explicitly discloses this. | No action. |
+| H-R5 | `decapsSafe`'s orbit-membership decidability `∃ g : G, g • basePoint = c` requires `[Fintype G]` and may not elaborate under a subgroup `↥G` coercion | Medium | Medium | The typeclass instance `Fintype ↥G` is standard; `DecidableEq X` is already present. If elaboration fails, the explicit `Finset.decidableBAll` / `Finset.decidableExistsOfFinset` form from Mathlib closes it. | Proof-body edit; no structural change. |
+
+**Full-workstream rollback.** H is a preferred-pre-release item.
+If H3a / H3b cannot be completed within scope, the workstream
+splits: H1 + H2 (decapsSafe) can land independently without H3;
+H3 defers to v1.1 with a tracking item in § 18 Z-07 (C/C++ fast
+path provides equivalent behaviour externally).
+
+### 11.6 Exit criteria for Workstream H
 
 1. `decapsSafe` and `decryptCompute` land as computable `def`s
    with standard-trio axiom dependencies.
@@ -1467,6 +2145,7 @@ witness block.
    gain cross-references to the safe/computable variants; the
    headline table adds new rows if the maintainer chooses (not
    required).
+5. The risk register in § 11.5 has no open items.
 
 ## 12. Workstream I — Naming hygiene
 
@@ -1863,55 +2542,180 @@ explains the historical-reference status and directs users to
 
 ### 14.3 Work units
 
-#### K1 — Extract per-workstream snapshots to `docs/CHANGELOG.md`
+**Migration protocol invariant.** The K1–K3 sequence modifies
+`Orbcrypt.lean`'s docstring incrementally. After every WU in the
+K1–K3 sequence, `lake build Orbcrypt` must succeed and
+`scripts/audit_phase_16.lean` must produce unchanged output. This
+is enforceable because the docstring content is purely comments
+and has no impact on the kernel — regression risk is bounded to
+broken cross-references between the new documents and the
+existing `VERIFICATION_REPORT.md` / audit scripts.
 
-**File.** `docs/CHANGELOG.md` (new); `Orbcrypt.lean` (edit).
+#### K1a — Create skeleton `docs/CHANGELOG.md`
 
-**Change.** Cut all per-workstream and per-phase snapshot
-paragraphs from `Orbcrypt.lean`'s module docstring (from
-"Workstream A" through "Workstream N Snapshot"). Paste into
-`CHANGELOG.md` under reverse-chronological headings. The
-migrated text is unchanged (no rewriting); only the location
-changes.
+**File.** `docs/CHANGELOG.md` (new).
+
+**Change.** Write an empty skeleton with sections in
+reverse-chronological order:
+
+```markdown
+# Orbcrypt changelog
+
+Per-workstream and per-phase development snapshots. Each entry
+mirrors the content previously embedded in `Orbcrypt.lean`'s
+module docstring; the authoritative source for each snapshot is
+the corresponding commit history.
+
+## Workstream N (2026-04-23) — Info hygiene
+<snapshot body>
+
+## Workstream M (2026-04-23) — Low-priority polish
+<snapshot body>
+
+[... down to Phase 1]
+```
+
+The skeleton has section headers but no bodies yet; K1b fills
+the bodies.
+
+**Acceptance.** The file exists; headers are in place; bodies
+are empty.
+
+#### K1b — Migrate snapshot bodies from `Orbcrypt.lean` to `CHANGELOG.md`
+
+**Files.** `docs/CHANGELOG.md`, `Orbcrypt.lean`.
+
+**Migration recipe.**
+1. Identify each per-workstream / per-phase snapshot block in
+   `Orbcrypt.lean`'s docstring via `grep -n "Workstream [A-N]\|Phase [0-9]" Orbcrypt.lean`.
+2. For each block, `cut` the content (preserving exact wording
+   — **no rewriting**; this is a location change, not an edit)
+   and paste into the corresponding `CHANGELOG.md` section
+   body.
+3. Leave a single-line pointer in `Orbcrypt.lean` at each
+   former snapshot location: `-- Workstream A snapshot: see
+   docs/CHANGELOG.md#workstream-a-<date>`.
 
 **Acceptance.**
 - `CHANGELOG.md` contains every snapshot previously in
-  `Orbcrypt.lean`.
-- `Orbcrypt.lean`'s remaining docstring is under 400 lines.
+  `Orbcrypt.lean` (grep for distinguishing phrases to verify).
+- `Orbcrypt.lean`'s line count drops from 1585 to ≤ 400.
+- `lake build Orbcrypt` succeeds (comments only — no semantic
+  impact).
 
-#### K2 — Extract axiom-transparency cookbook to
-`docs/AXIOM_TRANSPARENCY.md`
+#### K1c — Cross-reference audit
 
-**File.** `docs/AXIOM_TRANSPARENCY.md` (new); `Orbcrypt.lean`
-(edit).
+**File.** Sweep across `docs/**/*.md`, `CLAUDE.md`,
+`Orbcrypt.lean`, `scripts/**/*.lean`.
 
-**Change.** Cut the axiom-transparency report, the `#print
-axioms` cookbook, and the vacuity map from `Orbcrypt.lean`.
-Paste into `AXIOM_TRANSPARENCY.md`. Add a top-level "How to
-verify" section pointing at `scripts/audit_phase_16.lean` as
-the CI ground truth.
+**Change.** Update every cross-reference that previously pointed
+into `Orbcrypt.lean`'s snapshot sections to now point into
+`docs/CHANGELOG.md` (with appropriate `#fragment` anchors).
+
+**Acceptance.**
+- `grep -rn "Orbcrypt\.lean.*Workstream\|Orbcrypt\.lean.*Phase"`
+  returns no cross-references that predate K1b.
+- All new cross-references are valid (GitHub preview renders
+  the anchor links correctly).
+
+#### K2a — Create skeleton `docs/AXIOM_TRANSPARENCY.md`
+
+**File.** `docs/AXIOM_TRANSPARENCY.md` (new).
+
+**Change.** Skeleton with the structure:
+
+```markdown
+# Orbcrypt axiom-transparency report
+
+## How to verify
+<pointer to scripts/audit_phase_16.lean>
+
+## Zero-custom-axiom posture
+<statement + scan procedure>
+
+## Deterministic-vs-probabilistic security chains
+<framing from Workstream J 2026-04-21>
+
+## Vacuity map
+<table>
+
+## `#print axioms` cookbook
+<62+ entries>
+
+## Workstream snapshots (cross-reference to CHANGELOG.md)
+<cross-links>
+```
+
+Bodies empty; K2b fills.
+
+**Acceptance.** File exists with headers.
+
+#### K2b — Migrate transparency content
+
+**Files.** `docs/AXIOM_TRANSPARENCY.md`, `Orbcrypt.lean`.
+
+**Migration recipe.** Cut from `Orbcrypt.lean`:
+1. The axiom-transparency report (~200 lines).
+2. The "Deterministic-vs-probabilistic security chains" framing.
+3. The vacuity map table.
+4. The `#print axioms` cookbook (62+ `#print axioms
+   <declaration>` stanzas).
+
+Paste into `AXIOM_TRANSPARENCY.md`. Leave a pointer in
+`Orbcrypt.lean`: `-- Axiom-transparency report: see
+docs/AXIOM_TRANSPARENCY.md`.
 
 **Acceptance.**
 - `AXIOM_TRANSPARENCY.md` contains every `#print axioms`
   reference previously in `Orbcrypt.lean`.
-- `Orbcrypt.lean` retains a short "See `docs/AXIOM_TRANSPARENCY.md`"
-  pointer.
+- `Orbcrypt.lean`'s line count drops further (from ≤ 400 after
+  K1b to ≤ 200).
 
-#### K3 — Trim `Orbcrypt.lean` to ≤ 200 lines
+#### K2c — `#print axioms` cookbook cross-check
+
+**File.** `scripts/audit_phase_16.lean`, `docs/AXIOM_TRANSPARENCY.md`.
+
+**Change.** Every declaration mentioned in the cookbook (`#print
+axioms <name>` line) must also be exercised by the corresponding
+`#print axioms` line in `scripts/audit_phase_16.lean`. This is
+the gate that ensures the migrated cookbook stays
+machine-checkable.
+
+**Acceptance.**
+- A `diff` of declaration names between `AXIOM_TRANSPARENCY.md`'s
+  cookbook and `scripts/audit_phase_16.lean`'s `#print axioms`
+  lines is empty.
+- Add an optional CI step that regenerates the cookbook from
+  the audit script output (not required for v1.0 tag; but
+  noted as future polish).
+
+#### K3 — Final trim of `Orbcrypt.lean` to ≤ 200 lines
 
 **File.** `Orbcrypt.lean`.
 
-**Change.** After K1 + K2, the remaining content is:
+**Change.** After K1a–K2c, the remaining content should be:
 - 52 `import` lines (unchanged).
-- A condensed module-header docstring (~120 lines) with: a
-  one-paragraph project overview, the high-level dependency
-  graph, and explicit cross-references to `docs/CHANGELOG.md`,
-  `docs/AXIOM_TRANSPARENCY.md`, and `docs/VERIFICATION_REPORT.md`.
+- A condensed module-header docstring (~100–120 lines) with:
+  * One-paragraph project overview.
+  * The high-level dependency graph (~30 lines, ASCII or
+    mermaid per K4 decision).
+  * Explicit cross-references to `docs/CHANGELOG.md`,
+    `docs/AXIOM_TRANSPARENCY.md`, and
+    `docs/VERIFICATION_REPORT.md`.
+  * The "Three core theorems" reference list (brief, linking
+    to the authoritative headline-table in
+    `CLAUDE.md` / `VERIFICATION_REPORT.md`).
 - No per-workstream snapshots, no `#print axioms` cookbook.
+
+If the file exceeds 200 lines after K3's natural trim, make one
+additional pass removing any still-inlined examples, dependency
+graph expansions, etc. The hard target is `wc -l Orbcrypt.lean`
+≤ 200.
 
 **Acceptance.**
 - `wc -l Orbcrypt.lean` ≤ 200.
-- `lake build` succeeds (no build-graph impact — comments only).
+- `lake build` succeeds.
+- `scripts/audit_phase_16.lean` outputs unchanged from pre-K.
 - CI's existing `sorry` / axiom scans pass unchanged.
 
 #### K4 — Replace ASCII dependency graph with a machine-generatable one
@@ -1967,7 +2771,23 @@ move list.
 **Acceptance.** CI still passes. `CLAUDE.md` reflects the new
 documentation layout.
 
-### 14.4 Exit criteria for Workstream K
+### 14.4 Risk register and rollback
+
+| # | Risk | Likelihood | Severity | Mitigation | Rollback |
+|---|------|-----------|----------|------------|----------|
+| K-R1 | A cross-reference in `CLAUDE.md` / `VERIFICATION_REPORT.md` / a prior audit-plan document references a line range in `Orbcrypt.lean` (e.g., "see `Orbcrypt.lean:860`") that becomes invalid after K3's trim | High | Low | K1c explicitly sweeps all cross-references. The sweep uses `grep -rn "Orbcrypt\.lean:[0-9]"` to find every line-number reference; each is updated to point to the correct new location (`CHANGELOG.md#anchor` or `AXIOM_TRANSPARENCY.md#anchor`). | Running the sweep is the normal flow; a forgotten reference is caught by the CI link-checker (if enabled) or by reader report. A follow-up PR tightens. |
+| K-R2 | Git history for the migrated text is lost when content moves between files (no `git log --follow` tracking) | Certain | Low | The migration uses explicit `git mv` + content-split commits; where that is not possible (cross-file migration), the K1b/K2b commit messages explicitly cite the pre-migration line range. Readers who need historical context can `git log -p -- Orbcrypt.lean` on the pre-K range. | No rollback needed; accept the known limitation. |
+| K-R3 | K5's `git mv` of legacy audit scripts breaks an external consumer's CI that imports them by path | Very low | Medium | Legacy scripts are self-disclosed as non-CI; no in-tree consumer imports them. External consumers reading `scripts/audit_b_workstream.lean` were never guaranteed stability (the audit-plan precedent is `status: historical`). K6's `scripts/legacy/README.md` provides the redirect. | `git revert <K5-commit>` restores the old paths; a subsequent v1.1 revisits the migration with stronger consumer coordination. |
+| K-R4 | K3's target of "≤ 200 lines" is not achievable without sacrificing useful content in `Orbcrypt.lean`'s header | Low | Low | The target is a heuristic, not a hard gate. If the content is genuinely >200 lines after K3 trims, document the overage in the K3 commit and accept the higher line count. The true goal is "not 1585 lines". | Acceptance-criterion relaxation via commit-message annotation. |
+| K-R5 | The K1b-migrated snapshots in `docs/CHANGELOG.md` drift from reality as future workstreams land (CHANGELOG.md gets stale) | High | Low | `CHANGELOG.md` is the *canonical* source for workstream snapshots post-K. Future workstreams write to `CHANGELOG.md` directly, not to `Orbcrypt.lean`. The root file's pointer comment indicates where to write. | The "canonical source" convention is enforced by the Workstream-K snapshot entry; drift is a subsequent-workstream hygiene issue, not a K failure. |
+
+**Full-workstream rollback.** K is a polish-slate item, not a
+blocker. If the migration is disruptive (e.g., K-R1 cascades), the
+fallback is to land only K1a + K2a (skeleton files) and leave
+`Orbcrypt.lean` at its current 1585-line size, documenting the
+deferral in § 20 (Release-readiness checklist).
+
+### 14.5 Exit criteria for Workstream K
 
 1. `Orbcrypt.lean` ≤ 200 lines.
 2. `docs/CHANGELOG.md` and `docs/AXIOM_TRANSPARENCY.md` exist
@@ -1979,6 +2799,11 @@ documentation layout.
    unchanged.
 6. `CLAUDE.md` gains a Workstream-K snapshot cross-linking the
    three new documentation files.
+7. The risk register in § 14.4 has no open items (K-R1 closed by
+   the K1c sweep; K-R2 accepted; K-R3 closed by verification of no
+   in-tree consumers; K-R4 accepted or closed by line-count
+   compliance; K-R5 closed by the canonical-source convention
+   entry in `CLAUDE.md`).
 
 ## 15. Workstream L — Medium-severity structural cleanup
 
@@ -2044,7 +2869,44 @@ Each row above is a single-file, one-to-three-commit work unit:
 C-03, etc. Commits per work unit are grouped by module (one PR
 per module, ≥ 3 commits each).
 
-### 15.4 Exit criteria for Workstream L
+### 15.4 PR grouping
+
+To limit review friction and prevent merge-conflict storms, the
+30+ L-workstream findings land across **nine module-aligned PRs**.
+Each PR carries multiple commits but keeps all edits within a
+single source file (and its immediate docstring-affecting
+documentation cross-references, if any).
+
+| PR # | Module(s) | Findings covered | Est. effort |
+|------|-----------|------------------|-------------|
+| L-PR1 | `GroupAction/{Canonical, Invariant}.lean` | B-04, B-06 | 30 min |
+| L-PR2 | `Crypto/{Scheme, Security, CompOIA, CompSecurity}.lean` | C-02, C-03, C-04, C-06, C-11, C-12, C-14, C-16, D-02 | 2 h |
+| L-PR3 | `KEM/{Syntax, Correctness, CompSecurity}.lean` | E-01, E-02, E-05, E-12 | 1 h |
+| L-PR4 | `Construction/{Permutation, HGOE, HGOEKEM}.lean` | F-02, F-05, F-08 | 1 h |
+| L-PR5 | `Probability/{Monad, Advantage}.lean` | G-01, G-02, G-06/G-08 | 45 min |
+| L-PR6 | `KeyMgmt/Nonce.lean` | H-05, H-06, H-07 | 45 min |
+| L-PR7 | `AEAD/{MAC, AEAD, Modes, CarterWegmanMAC}.lean` | I-02, I-05, I-06, I-09 | 1 h |
+| L-PR8 | `Hardness/{Encoding, CodeEquivalence, TensorAction, Reductions}.lean` | J-01, J-06, J-07, J-11, J-13 | 1 h |
+| L-PR9 | `PublicKey/{ObliviousSampling, CommutativeAction, CombineImpossibility}.lean` + `Optimization/*.lean` | K-04, K-08, K-10, K-11, L-02, L-05 | 1 h |
+
+**Parallel landing.** All nine PRs are reviewer-independent (no
+PR modifies a file another PR modifies). They can land in any
+order; reviewers can process them in parallel.
+
+**Hygiene gate for each PR:** every PR's review checklist must
+include a per-file naming-hygiene grep (per `CLAUDE.md`
+naming discipline) and a post-merge `#print axioms` spot-check
+for any declaration whose docstring was touched.
+
+### 15.5 Risk register
+
+| # | Risk | Likelihood | Severity | Mitigation |
+|---|------|-----------|----------|------------|
+| L-R1 | A docstring addition accidentally drifts from the corresponding Lean content (e.g. a "note: this theorem proves X" when it actually proves X') | Medium | Medium | Every L-workstream docstring change is paired with a grep-level cross-check: the reviewer confirms the change's claim matches the theorem's statement in-file. |
+| L-R2 | Two L-PRs introduce conflicting docstring additions to a shared module (unlikely given the PR grouping, but possible for cross-cutting findings) | Low | Low | PR grouping enforces disjoint file sets; cross-cutting findings (e.g. C-06 which overlaps with Workstream A) are assigned to the higher-priority workstream. |
+| L-R3 | A "Recommendation" in the finding table is contested by a reviewer (e.g., "keep `nonceDecaps` alias" vs. "delete") | Low | Low | Each contested Recommendation defaults to the minimally-invasive option (docstring-only); any structural change (delete, rename, refactor) migrates to Workstream I or to a follow-up polish PR. |
+
+### 15.6 Exit criteria for Workstream L
 
 1. Every MEDIUM-severity finding listed above has a landed diff.
 2. `lake build` succeeds; `#print axioms` outputs unchanged.
@@ -2261,7 +3123,9 @@ All should emit standard-trio axioms only.
 
 Each workstream that adds a structural predicate or
 Proposition-valued assumption ships a matching `example` in
-`scripts/audit_phase_16.lean` confirming non-vacuity:
+`scripts/audit_phase_16.lean` confirming non-vacuity. **The
+canonical source for each witness snippet is Appendix C**; the
+list below is a summary cross-reference:
 
 - **A** (docs-only): no witness.
 - **B**: `INT_CTXT` exercised on a toy `AuthOrbitKEM` where the
@@ -2624,5 +3488,172 @@ merge).
 | **M** (LOW / INFO polish) | pending | — | — |
 | **N** (optional engineering) | pending | — | — |
 | **O** (research + performance catalogue) | tracking (never closes) | — | — |
+
+## Appendix C — Non-vacuity witness Lean snippets
+
+This appendix assembles the concrete Lean `example` snippets that
+every new declaration landed by this plan must be exercised
+against in `scripts/audit_phase_16.lean`'s `§ 12
+NonVacuityWitnesses` section. Each snippet is a drop-in
+specification; implementers copy the snippet into the audit script
+under the workstream's own subsection, replacing placeholder names
+with actual ones as workstream edits land.
+
+**General convention.** Every snippet evaluates to `example : T := …`
+where `T` is the declaration's type instantiated on the in-tree
+`toyScheme` / `toyKEM` model (over `Unit` or `Fin 2` / `Bool`
+carriers) already present in the audit script. This ensures every
+non-vacuity test is self-contained, runnable via `lake env lean
+scripts/audit_phase_16.lean`, and does not introduce any new
+module dependencies.
+
+### C.1 Workstream B — refactored `INT_CTXT`
+
+```lean
+-- Non-vacuity: INT_CTXT (post-B) on a singleton-orbit toy KEM.
+example : INT_CTXT toyAuthKEM := by
+  intro c t hOrbit hFresh
+  -- On the singleton orbit, `c = basePoint` and authDecaps reduces
+  -- to a decidable equality on tags; hFresh closes the case.
+  exact toyAuthKEM_intctxt_singleton c t hOrbit hFresh
+```
+
+### C.2 Workstream C — renamed `indQCPA_from_perStepBound`
+
+```lean
+-- Non-vacuity: the renamed theorem applies to the toyScheme at
+-- Q = 2 with a trivial per-step bound.
+example :
+    indQCPAAdvantage toyScheme (toyMultiQueryAdversary 2) ≤ 2 * (1 : ℝ) :=
+  indQCPA_from_perStepBound (Q := 2) toyScheme (1 : ℝ)
+    (toyMultiQueryAdversary 2)
+    (by intro i _; exact ⟨0, by linarith⟩)
+```
+
+### C.3 Workstream E — vacuity witnesses
+
+```lean
+-- Non-vacuity: det_oia_false_of_distinct_reps on the toyScheme
+example : ¬ OIA toyScheme :=
+  det_oia_false_of_distinct_reps toyScheme toyScheme_reps_distinct
+
+-- Non-vacuity: det_kemoia_false_of_nontrivial_orbit on toyKEM
+example : ¬ KEMOIA toyKEM :=
+  det_kemoia_false_of_nontrivial_orbit toyKEM
+    toyKEM_basePoint_orbit_nontrivial
+```
+
+### C.4 Workstream F — `CanonicalForm.ofLexMin` concrete computation
+
+```lean
+-- Non-vacuity: ofLexMin computes a lex-min on a concrete bitstring
+example :
+    let σ : Equiv.Perm (Fin 3) := Equiv.swap 0 1
+    let G : Subgroup (Equiv.Perm (Fin 3)) := Subgroup.closure {σ}
+    let can : CanonicalForm (↥G) (Bitstring 3) := CanonicalForm.ofLexMin G
+    can.canon ![true, false, true] = ![false, true, true] := by
+  decide
+```
+
+### C.5 Workstream G — λ-parameterised `HGOEKeyExpansion`
+
+```lean
+-- Non-vacuity: HGOEKeyExpansion instantiates at λ = 80
+example :
+    Nonempty (HGOEKeyExpansion (lam := 80) (n := 256) toyMessageSpace) :=
+  ⟨toyHGOEKeyExpansion_80⟩
+
+-- Non-vacuity: HGOEKeyExpansion also instantiates at λ = 256
+example :
+    Nonempty (HGOEKeyExpansion (lam := 256) (n := 1024) toyMessageSpace) :=
+  ⟨toyHGOEKeyExpansion_256⟩
+```
+
+### C.6 Workstream H — `decapsSafe` and `decryptCompute`
+
+```lean
+-- Non-vacuity: decapsSafe on in-orbit ciphertext returns some
+example :
+    decapsSafe toyKEM (toyKEM.basePoint) = some (decaps toyKEM toyKEM.basePoint) :=
+  decapsSafe_eq_some_of_mem_orbit toyKEM
+    (MulAction.mem_orbit_self toyKEM.basePoint)
+
+-- Non-vacuity: decapsSafe on out-of-orbit ciphertext returns none
+example (c : toyKEM.X) (hOff : c ∉ MulAction.orbit _ toyKEM.basePoint) :
+    decapsSafe toyKEM c = none :=
+  decapsSafe_eq_none_of_not_mem_orbit toyKEM hOff
+
+-- Non-vacuity: decryptCompute agrees with decrypt on an honest ciphertext
+example (m : toyScheme.M) (g : toyScheme.G) :
+    decryptCompute toyScheme (encrypt toyScheme g m) =
+    decrypt toyScheme (encrypt toyScheme g m) :=
+  decryptCompute_eq_decrypt toyScheme _
+
+-- Non-vacuity: the reflexivity corollary
+example (m : toyScheme.M) (g : toyScheme.G) :
+    decryptCompute toyScheme (encrypt toyScheme g m) = some m :=
+  decryptCompute_encrypt toyScheme m g
+```
+
+### C.7 Workstream I — renamed declarations
+
+```lean
+-- Non-vacuity: renamed `_meaningful` → `_le_one` theorems
+example : indCPAAdvantage toyScheme toyAdversary ≤ 1 :=
+  indCPAAdvantage_le_one toyScheme toyAdversary
+
+example (g₀ g₁ : toyKEM.G) :
+    kemAdvantage toyKEM toyKEMAdversary g₀ g₁ ≤ 1 :=
+  kemAdvantage_le_one toyKEM toyKEMAdversary g₀ g₁
+
+-- Non-vacuity: the renamed GI ≤ CE scaffolding sketch Prop
+example (h : GIReducesToCE_Sketch) : GIReducesToCE_Sketch := h
+```
+
+### C.8 Workstream J — invariant-framing + negligible closures
+
+```lean
+-- Non-vacuity: `IsNegligible.of_le`
+example {f g : ℕ → ℝ}
+    (hg : IsNegligible g)
+    (hle : ∀ n, |f n| ≤ g n) :
+    IsNegligible f :=
+  hg.of_le hle
+
+-- Non-vacuity: `IsNegligible.const_mul`
+example {f : ℕ → ℝ} (hf : IsNegligible f) (C : ℝ) :
+    IsNegligible (fun n => C * f n) :=
+  hf.const_mul C
+```
+
+### C.9 Workstream N — `authHybridEncrypt` / `KEMAdversary.ofGame`
+
+```lean
+-- Non-vacuity: authenticated hybrid correctness
+example (m : toyDEM.Msg) (g : toyAuthKEM.kem.G) :
+    authHybridDecrypt toyAuthKEM toyDEM
+      (authHybridEncrypt toyAuthKEM toyDEM g m) = some m :=
+  authHybridCorrectness toyAuthKEM toyDEM m g
+
+-- Non-vacuity: KEMAdversary.ofGame transports scheme adversaries
+example :
+    Nonempty (KEMAdversary toyKEM) :=
+  ⟨KEMAdversary.ofGame toyScheme toyAdversary⟩
+```
+
+### C.10 Audit-script integration
+
+Every snippet above lives under
+`scripts/audit_phase_16.lean` `§ 12 NonVacuityWitnesses`,
+**grouped by workstream** under a `/-! ## Workstream <letter>
+non-vacuity witnesses -/` section header. The audit script's
+CI entry (§ 19.1) will type-check every snippet as part of the
+normal `lake env lean scripts/audit_phase_16.lean` invocation.
+
+**Author discipline.** When a workstream lands, the implementer
+adds the corresponding C.n snippets to the audit script in the
+*same* PR as the Lean declarations they witness. A PR that adds
+a new headline theorem *without* a non-vacuity witness in the
+audit script fails the review checklist in § 19.4.
 
 **End of plan.**
