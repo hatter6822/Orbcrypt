@@ -582,6 +582,31 @@ theorem concrete_combiner_advantage_bounded_by_oia
     the cross-orbit witness is problem-specific (tied to the combiner's
     structure) and must be exhibited per combiner.
 
+    **Negative example (audit 2026-04-21 finding L8 / Workstream M).**
+    Consider a hypothetical scheme where two distinct messages `m₀, m₁`
+    share an orbit — i.e. `orbit G (reps m₀) = orbit G (reps m₁)`. Then
+    under uniform `g ∈ G` sampling:
+    `combinerOrbitDist scheme m_bp comb m₀ = combinerOrbitDist scheme
+    m_bp comb m₁` as PMFs (the two push-forwards agree pointwise
+    because `g • reps m₀` and `g • reps m₁` cover the same orbit). Any
+    Boolean distinguisher therefore has **advantage 0** between the
+    two distributions, despite `combinerOrbitDist_mass_bounds` giving
+    `≥ 1/|G|` mass on both Booleans for each of `m_bp`'s orbit
+    distribution. This illustrates cleanly that intra-orbit mass
+    bounds do not imply cross-orbit advantage lower bounds.
+
+    **Why the example is hypothetical.** The `reps_distinct` field of
+    `OrbitEncScheme` prohibits the shared-orbit case at the scheme
+    level — it *requires* `orbit G (reps m₀) ≠ orbit G (reps m₁)` for
+    `m₀ ≠ m₁` (see `Crypto/Scheme.lean`). So the negative example does
+    not arise in any well-formed `OrbitEncScheme`; it is exhibited
+    here purely as an illustration of the *information-theoretic gap*
+    between intra-orbit mass bounds and cross-orbit advantages.
+    Concrete discharges of cross-orbit advantage lower bounds for
+    Orbcrypt schemes must therefore use problem-specific structure
+    (e.g. that the combiner's output on `m₁`'s orbit is constant or
+    concentrated) rather than relying on this lemma alone.
+
     **Proof technique.** Bound each mass by the single-summand term at
     the relevant witness group element (`g = 1` for the `true` branch,
     `g = g_w` for the `false` branch), using `ENNReal.le_tsum` on the

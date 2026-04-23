@@ -128,7 +128,31 @@ Formalizes DEVELOPMENT.md §4.4 and the lesson of COUNTEREXAMPLE.md.
 2. Unfold `hasAdvantage` and the adversary's `choose`.
 3. Witness `g₀ = 1, g₁ = 1` (identity elements simplify via `one_smul`).
 4. Show the two guesses differ: one is `true` (for `m₀`), the other is
-   `false` (for `m₁`, using `hSep`). -/
+   `false` (for `m₁`, using `hSep`).
+
+**Advantage-mapping note (audit 2026-04-21 finding L5 / Workstream M).**
+This theorem proves *deterministic advantage = 1* — i.e. the adversary
+distinguishes perfectly on at least one specific pair `(g₀, g₁)` of
+group elements (`hasAdvantage` is the existential of two group
+elements producing disagreeing guesses). Three conventions for
+"adversary advantage" appear in the cryptographic literature, and all
+three agree on the "complete break" outcome witnessed here:
+* **Two-distribution convention** (probabilistic game, see
+  `Probability/Advantage.lean`): `Adv = |Pr[D=1 | d₀] - Pr[D=1 | d₁]|`.
+  Deterministic advantage 1 corresponds to probabilistic advantage 1
+  (the distinguisher always outputs the correct bit).
+* **Centred convention**: `Adv = |Pr[correct] - 1/2|`. Deterministic
+  advantage 1 corresponds to centred advantage 1/2 (the maximum:
+  always correct means `Pr[correct] = 1`).
+* **Deterministic convention** (this module): the existence of a
+  specific `(g₀, g₁)` pair for which the adversary's two guesses
+  differ. This is the *strongest* form — it asserts a
+  witness-specific gap, not an average gap.
+Consumers computing concrete security parameters from Orbcrypt should
+note which convention their downstream analysis uses; the three
+conventions agree on "complete break" but differ by a factor of 2
+between the two-distribution and centred conventions for intermediate
+advantages. -/
 theorem invariant_attack [Group G] [MulAction G X] [DecidableEq X]
     [DecidableEq Y]
     (scheme : OrbitEncScheme G X M)
