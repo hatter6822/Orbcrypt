@@ -32,7 +32,24 @@ namespace Orbcrypt
 
 /-- A function `f : ℕ → ℝ` is **negligible** if for every positive integer `c`,
     there exists a threshold `n₀` such that for all `n ≥ n₀`,
-    `|f(n)| < n⁻ᶜ`. -/
+    `|f(n)| < n⁻ᶜ`.
+
+    **Convention at `n = 0` (audit 2026-04-21 finding L7 / Workstream M).**
+    Lean's extended-arithmetic convention assigns `(0 : ℝ)⁻¹ = 0`, so
+    the clause `|f n| < (n : ℝ)⁻¹ ^ c` reduces at `n = 0` to
+    * `|f 0| < 0 ^ c`, which is `|f 0| < 0` for `c ≥ 1` (trivially false),
+    * `|f 0| < (0 : ℝ)⁻¹ ^ 0 = 1` at `c = 0` (possibly true).
+
+    All in-tree proofs of `IsNegligible f` (see `isNegligible_zero`,
+    `isNegligible_const_zero`, and the `IsNegligible.add` /
+    `IsNegligible.mul_const` closure lemmas) choose `n₀ ≥ 1` to
+    side-step the `n = 0` edge case. The intended semantics of the
+    definition is the standard "eventually" form from Katz & Lindell:
+    the `n = 0` case carries no content and is a harmless artefact of
+    Lean's total `(·)⁻¹` convention, not a design decision. Downstream
+    consumers that need a uniform behaviour at `n = 0` can either
+    choose `n₀ ≥ 1` themselves (matching the in-tree proofs) or
+    explicitly handle the edge case. -/
 def IsNegligible (f : ℕ → ℝ) : Prop :=
   ∀ (c : ℕ), ∃ n₀ : ℕ, ∀ n : ℕ, n₀ ≤ n → |f n| < (n : ℝ)⁻¹ ^ c
 

@@ -85,12 +85,22 @@ theorem hgoe_correctness {M : Type*} [Fintype M] [DecidableEq M]
 
 /-- Hamming weight is invariant under any subgroup of S_n.
     This follows because the subgroup action is defined via coercion to S_n,
-    and Hamming weight is invariant under the full S_n action. -/
+    and Hamming weight is invariant under the full S_n action.
+
+    **Style note (audit 2026-04-21 finding L6 / Workstream M).** The
+    subgroup element is introduced with a plain binder `g` and coerced
+    to `Equiv.Perm (Fin n)` via `↑g`. The earlier form used the
+    anonymous destructuring pattern `⟨σ, _⟩`, which silently discarded
+    the membership proof `hσ : σ ∈ G`; the new form names `g`
+    explicitly and relies on the `subgroupBitstringAction` instance
+    (defined above) to transport the action through the subgroup
+    inclusion `G.subtype`. The two forms are proof-equivalent; the
+    current form is the Mathlib-idiomatic style. -/
 theorem hammingWeight_invariant_subgroup
     (G : Subgroup (Equiv.Perm (Fin n))) :
     IsGInvariant (G := ↥G) (hammingWeight (n := n)) := by
-  intro ⟨σ, _⟩ x
-  exact hammingWeight_invariant σ x
+  intro g x
+  exact hammingWeight_invariant (↑g : Equiv.Perm (Fin n)) x
 
 /-- Hamming weight IS a valid attack when representatives have different weights.
     Formalizes the counterexample from COUNTEREXAMPLE.md: if

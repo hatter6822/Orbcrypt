@@ -162,7 +162,16 @@ theorem hybrid_argument {α : Type*} (n : ℕ) (hybrids : ℕ → PMF α)
     telescoping *sum* bound) plus the identity `Σᵢ₌₀^{Q-1} ε = Q · ε`. It
     is the atomic building block used by Workstream E8's multi-query
     IND-Q-CPA security reduction to telescope `Q` ConcreteOIA-bounded
-    per-step advantages. -/
+    per-step advantages.
+
+    **Note (audit 2026-04-21 finding L2 / Workstream M).** No `0 ≤ ε`
+    hypothesis is carried on the signature. For `ε < 0`, the per-step
+    bound `h_step` is unsatisfiable (advantage is always `≥ 0` via
+    `advantage_nonneg`), so the conclusion `advantage D (hybrids 0)
+    (hybrids Q) ≤ (Q : ℝ) * ε` holds vacuously (its hypothesis is
+    `False`). The intended use case is `ε ∈ [0, 1]`; the library does
+    not enforce this at the type level because the `ε < 0` branch is
+    harmless. -/
 theorem hybrid_argument_uniform {α : Type*} (Q : ℕ) (hybrids : ℕ → PMF α)
     (D : α → Bool) (ε : ℝ)
     (h_step : ∀ i, i < Q → advantage D (hybrids i) (hybrids (i + 1)) ≤ ε) :

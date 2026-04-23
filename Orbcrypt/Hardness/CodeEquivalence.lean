@@ -318,7 +318,24 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
     encoding would discharge both the deterministic claim and the
     per-encoding Prop simultaneously; it is a research-scope follow-up
     (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
-    in the root-file "Hardness parameter Props" section for transparency. -/
+    in the root-file "Hardness parameter Props" section for transparency.
+
+    **Degenerate-encoder disclosure (audit 2026-04-21 finding L4 /
+    Workstream M).** Because this Prop states the reduction at the
+    *orbit-equivalence level* (not at the advantage level), it admits
+    degenerate encoders — e.g. `encode _ _ := ∅`, under which both
+    sides of the iff are vacuously false (no graph pair satisfies the
+    `σ i, σ j` relation nontrivially on a 0-dimensional codomain, and
+    no codes `∅` are permutation equivalent in a strong enough sense
+    to yield a distinguisher). This is intentional: `GIReducesToCE` is
+    a *scaffolding* Prop expressing the *existence* of a Karp
+    reduction, paired with external documentation of which reductions
+    are believed to exist in the research literature. Quantitative
+    hardness transfer at ε < 1 lives in the probabilistic counterpart
+    `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding` (which names an
+    explicit encoder), *not* in this Prop. Callers seeking
+    cryptographically meaningful hardness transfer should cite the
+    probabilistic per-encoding Prop. -/
 def GIReducesToCE : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Finset (Fin (dim m) → Bool)),

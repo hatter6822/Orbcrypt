@@ -39,6 +39,12 @@ the strongest in the Orbcrypt reduction chain.
 
 namespace Orbcrypt
 
+-- Module-level universe variable. Used below by `SurrogateTensor F`'s
+-- `carrier : Type u` field and propagated to every downstream Prop /
+-- structure that consumes the surrogate (audit 2026-04-21 finding L1 /
+-- Workstream M1).
+universe u
+
 -- Open Matrix and Finset only in the helper section to avoid
 -- ambiguity with MulAction.mul_smul in the action section.
 open Finset
@@ -305,7 +311,21 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
     the deterministic claim and the per-encoding Prop simultaneously;
     it is a research-scope follow-up
     (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
-    in the root-file "Hardness parameter Props" section for transparency. -/
+    in the root-file "Hardness parameter Props" section for transparency.
+
+    **Degenerate-encoder disclosure (audit 2026-04-21 finding L4 /
+    Workstream M).** Like `GIReducesToCE`, this Prop states the
+    reduction at the *orbit-equivalence level* rather than the
+    advantage level, and therefore admits degenerate encoders (e.g. a
+    constant map `encode _ _ := fun _ _ _ => 0` into a 0-dimensional
+    tensor space). This is by design: `GIReducesToTI` is an
+    *algebraic-scaffolding* Prop expressing the *existence* of a Karp
+    reduction, not a bound-preserving advantage transfer. Quantitative
+    hardness transfer lives in the probabilistic counterpart
+    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` (which names an
+    explicit encoder and a per-layer ε), *not* in this Prop. Cite the
+    probabilistic per-encoding Prop for release-facing security
+    claims. -/
 def GIReducesToTI : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) F),
@@ -428,10 +448,25 @@ end ConcreteTensor
     `surrogateTensor_fintype`, `surrogateTensor_nonempty`,
     `surrogateTensor_mulAction`). Downstream defs referencing
     `S.carrier` or `Tensor3 n F` pick up the instances automatically
-    via typeclass inference — no manual `letI` threading is required. -/
+    via typeclass inference — no manual `letI` threading is required.
+
+    **Universe polymorphism (audit 2026-04-21 finding L1 / Workstream M1).**
+    `carrier` is declared as `Type u` (where `u` is the module-level
+    universe variable, see `universe u` at the top of the module).
+    Pre-Workstream-M, the field was fixed at `Type` (universe 0);
+    post-Workstream-G, downstream `MulAction`-consuming Props already
+    quantified over `Type*`, so binding the carrier to a specific
+    universe level served no purpose. The generalisation lets callers
+    supply finite groups inhabiting any universe (e.g. an index-type
+    coming from `Fin m` lives in `Type 0`, while a subgroup of a
+    matrix group over a universe-polymorphic field may land in
+    `Type u`). `punitSurrogate F` still discharges non-vacuity
+    because `PUnit` is itself universe-polymorphic
+    (`PUnit.{u+1} : Type u`). -/
 structure SurrogateTensor (F : Type*) where
-  /-- The underlying group carrier. -/
-  carrier : Type
+  /-- The underlying group carrier. Universe-polymorphic (audit L1 /
+      Workstream M1). -/
+  carrier : Type u
   /-- `Group` instance on the carrier. -/
   groupInst : Group carrier
   /-- `Fintype` instance on the carrier. -/
@@ -470,8 +505,18 @@ instance surrogateTensor_mulAction {F : Type*} (S : SurrogateTensor F)
     universal tensor-hardness Prop to collapse. After Fix B, using
     `PUnit` as the surrogate is an *explicit caller choice* — it
     simply declares that the chain's hardness input is trivial, which
-    is the correct cryptographic reading. -/
-def punitSurrogate (F : Type*) : SurrogateTensor F where
+    is the correct cryptographic reading.
+
+    **Universe choice (audit 2026-04-21 finding L1 / Workstream M1).**
+    Post-M1, `SurrogateTensor.{u}` is universe-polymorphic in the
+    carrier universe `u`. `punitSurrogate` fixes `u := 0` by returning
+    `SurrogateTensor.{0} F` with `carrier := PUnit` (which elaborates
+    to `PUnit.{1} : Type 0`). This matches every in-tree non-vacuity
+    use site, which works at `Type 0` because the scheme side
+    (`OrbitEncScheme G X M`) quantifies `G, X, M` at independent
+    universes. Callers wanting a surrogate at a higher universe
+    supply their own `SurrogateTensor.{v} F` value. -/
+def punitSurrogate (F : Type*) : SurrogateTensor.{0} F where
   carrier := PUnit
   groupInst := inferInstance
   fintypeInst := inferInstance

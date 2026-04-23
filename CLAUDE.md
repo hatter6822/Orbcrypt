@@ -1868,6 +1868,123 @@ count: `kem_key_constant` removed (-1), `compression` field added
 zero for Workstream L. The 38-module total is unchanged (no new
 `.lean` files; additions are within existing modules).
 
+Workstream M (Audit 2026-04-21 — low-priority polish, L1–L8, LOW)
+has been completed (2026-04-23):
+
+- **M1 (L1) — `SurrogateTensor.carrier` universe polymorphism.**
+  `Orbcrypt/Hardness/TensorAction.lean`: the `carrier` field is
+  generalised from `Type` (universe 0) to `Type u` via a
+  module-level `universe u` declaration. The four typeclass-forwarding
+  instances (`surrogateTensor_group`, `_fintype`, `_nonempty`,
+  `_mulAction`) and every downstream consumer
+  (`UniversalConcreteTensorOIA`,
+  `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
+  `ConcreteHardnessChain`, `ConcreteKEMHardnessChain`) inherit the
+  generalisation transparently — their existing `Type*`-polymorphic
+  signatures already accept a universe-polymorphic carrier.
+  `punitSurrogate F` is explicitly pinned to `SurrogateTensor.{0} F`
+  (returning a PUnit-based witness at `Type 0`) so that audit-script
+  non-vacuity examples elaborate without manual universe threading.
+  Callers wanting surrogates at higher universes supply their own
+  `SurrogateTensor.{u} F` value.
+
+- **M2 (L2) — `hybrid_argument_uniform` docstring.**
+  `Orbcrypt/Probability/Advantage.lean`: the docstring now states
+  explicitly that no `0 ≤ ε` hypothesis is carried on the
+  signature, and that for `ε < 0` the per-step bound `h_step` is
+  unsatisfiable (advantage is always `≥ 0` via `advantage_nonneg`)
+  so the conclusion holds vacuously. Intended use case
+  `ε ∈ [0, 1]` is documented.
+
+- **M3 (L3) — Deterministic-reduction existentials.**
+  `Orbcrypt/Hardness/Reductions.lean`: the docstrings of
+  `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`, and
+  `GIOIAImpliesOIA` now disclose that their existentials admit
+  trivial satisfiers (`k = 0, C₀ = C₁ = ∅` / `k = 0` on adjacency
+  matrices) and that the deterministic chain is *algebraic
+  scaffolding*, not quantitative hardness transfer. Each docstring
+  points callers at the Workstream G per-encoding probabilistic
+  counterpart (`*_viaEncoding`) as the non-vacuous ε-smooth form.
+
+- **M4 (L4) — Degenerate encoders in `GIReducesToCE` /
+  `GIReducesToTI`.** `Orbcrypt/Hardness/CodeEquivalence.lean` and
+  `Orbcrypt/Hardness/TensorAction.lean`: the docstrings now
+  disclose that both deterministic Karp-claim Props admit
+  degenerate encoders (e.g. `encode _ := ∅` / constant 0-dimensional
+  tensors) because they state reductions at the *orbit-equivalence
+  level*, not the advantage level — intentionally scaffolding
+  Props expressing the *existence* of a Karp reduction.
+  Quantitative hardness transfer at ε < 1 lives in the Workstream
+  G probabilistic counterparts.
+
+- **M5 (L5) — Invariant-attack advantage framing.**
+  `Orbcrypt/Theorems/InvariantAttack.lean`: the `invariant_attack`
+  docstring now enumerates the three literature conventions for
+  "adversary advantage" (two-distribution `|Pr - Pr|`, centred
+  `|Pr - 1/2|`, deterministic "specific witness pair") and
+  explains that all three agree on the "complete break" outcome
+  witnessed here but differ by a factor of 2 on intermediate
+  advantages. Consumers computing concrete security parameters
+  should note which convention their downstream analysis uses.
+
+- **M6 (L6) — `hammingWeight_invariant_subgroup` pattern cleanup.**
+  `Orbcrypt/Construction/HGOE.lean`: the anonymous destructuring
+  pattern `⟨σ, _⟩` (which silently discarded the membership proof)
+  is replaced with a named binder `g` plus an explicit coercion
+  `↑g : Equiv.Perm (Fin n)`. The two forms are proof-equivalent;
+  the new form is Mathlib-idiomatic style. `#print axioms
+  hammingWeight_invariant_subgroup` is unchanged
+  (`[propext, Classical.choice, Quot.sound]`).
+
+- **M7 (L7) — `IsNegligible` `n = 0` convention.**
+  `Orbcrypt/Probability/Negligible.lean`: the `IsNegligible`
+  docstring now documents Lean's `(0 : ℝ)⁻¹ = 0` convention and
+  its effect at `n = 0`: the clause `|f n| < (n : ℝ)⁻¹ ^ c`
+  reduces to `|f 0| < 0` for `c ≥ 1` (trivially false), or
+  `|f 0| < 1` at `c = 0`. All in-tree proofs of `IsNegligible f`
+  choose `n₀ ≥ 1` to side-step the edge case; the intended
+  semantics is the standard "eventually" form from Katz & Lindell.
+
+- **M8 (L8) — `combinerOrbitDist_mass_bounds` negative example.**
+  `Orbcrypt/PublicKey/CombineImpossibility.lean`: the
+  `combinerOrbitDist_mass_bounds` docstring now includes a concrete
+  negative example (two hypothetical messages sharing an orbit
+  under `G` would yield `combinerOrbitDist m₀ = combinerOrbitDist
+  m₁` as PMFs, so any distinguisher has advantage 0 despite the
+  mass-bound lower bound). The example is hypothetical because
+  `OrbitEncScheme.reps_distinct` prohibits the shared-orbit case,
+  but it illustrates the information-theoretic gap that any
+  concrete cross-orbit advantage lower bound must bridge with
+  problem-specific structure.
+
+Traceability: findings L1 (M1), L2 (M2), L3 (M3), L4 (M4), L5
+(M5), L6 (M6), L7 (M7), and L8 (M8) are resolved. Seven of the
+eight sub-items are documentation-only docstring refinements; the
+eighth (M1) is a source-level universe polymorphism generalisation
+of `SurrogateTensor F`. No headline theorems are added, removed, or
+restated; no public API surface changes; no new modules. See
+`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 8 for the
+specification; Appendix A for the finding-to-work-unit mapping.
+
+Verification: the Phase 16 audit script
+(`scripts/audit_phase_16.lean`) continues to produce only
+standard-trio axiom dumps (`propext`, `Classical.choice`,
+`Quot.sound`) or "does not depend on any axioms" on every
+Workstream-G / H / K surrogate-consuming declaration after the M1
+universe generalisation; `Nonempty (ConcreteHardnessChain scheme F
+(punitSurrogate F) 1)` still elaborates via the
+`SurrogateTensor.{0}`-pinned `punitSurrogate`. `lake build`
+succeeds (3,367 jobs, zero warnings, zero errors).
+
+Patch version: `lakefile.lean` retains `0.1.6`; Workstream M is
+additive (docstring-only for seven sub-items, source-level
+universe polymorphism for M1 without any public-API break — the
+generalisation from `Type` to `Type u` is backwards-compatible
+for every existing caller because every existing caller lands at
+`u := 0`). The 38-module total, the zero-sorry / zero-custom-axiom
+posture, and the 347 public-declaration count from Workstream K
+are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
