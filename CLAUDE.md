@@ -2561,12 +2561,19 @@ V1-8 / C-13 / D10, HIGH) has been completed:
   retained as deprecated aliases (`CLAUDE.md`'s
   no-backwards-compat rule).
 - `scripts/audit_phase_16.lean` — (C1, C2, audit-plan § C.2)
-  `#print axioms` entries renamed; three new non-vacuity examples
+  `#print axioms` entries renamed; five new non-vacuity examples
   in the `NonVacuityWitnesses` namespace exercise the renamed
-  theorem: a general-signature witness that accepts any scheme /
-  adversary / per-step bound, the C.2 template from the audit plan
-  instantiated at Q = 2 / ε = 1 with the per-step bound discharged
-  by `advantage_le_one`, and a Q = 1 regression witness.
+  theorem: (1) a general-signature witness that accepts any scheme /
+  adversary / per-step bound, (2) the C.2 template from the audit
+  plan instantiated at Q = 2 / ε = 1 with the per-step bound
+  discharged by `advantage_le_one` (parameterised), (3) a Q = 1
+  regression witness (parameterised); plus two audit-strengthening
+  additions: (4) a concrete Q = 2 / ε = 1 witness on
+  `trivialScheme` + a `MultiQueryAdversary Unit Unit 2` that
+  exercises the full instance-elaboration pipeline on a known-good
+  set of typeclass arguments, and (5) a concrete Q = 1 companion
+  witness firing `indQCPA_from_perStepBound_recovers_single_query`
+  on the same concrete scheme.
 - `scripts/audit_e_workstream.lean` — (C1) legacy per-workstream
   script's `#print axioms` lines renamed with a comment explaining
   the Workstream-C rename. The script remains exercised as a

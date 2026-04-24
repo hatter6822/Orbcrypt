@@ -878,6 +878,66 @@ example {G : Type} {X : Type} {M : Type}
     indQCPAAdvantage scheme A ≤ ε :=
   indQCPA_from_perStepBound_recovers_single_query scheme ε A h_step
 
+/-- Workstream C concrete non-vacuity (audit plan § C.2 template): a
+    trivial two-query adversary on a `Unit`-based scheme fires
+    `indQCPA_from_perStepBound` at `Q = 2`, `ε = 1`. The per-step
+    hypothesis `h_step` is discharged by `advantage_le_one` because
+    any advantage is trivially `≤ 1`. This exercises the full
+    instance-elaboration pipeline on a concrete set of typeclass
+    arguments (`Equiv.Perm (Fin 1)` Group + Fintype + Nonempty;
+    `Unit` MulAction + DecidableEq) — a parameterised witness only
+    proves the theorem is callable in principle; this concrete
+    witness proves Lean can actually resolve the instances on at
+    least one known-good input. -/
+example : True := by
+  let trivialScheme : OrbitEncScheme (Equiv.Perm (Fin 1)) Unit Unit :=
+    { reps := fun _ => ()
+      reps_distinct := fun _ _ h => (h (Subsingleton.elim _ _)).elim
+      canonForm :=
+        { canon := id
+          mem_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
+          orbit_iff := fun _ _ => by simp } }
+  let trivialMultiAdv : MultiQueryAdversary Unit Unit 2 :=
+    { choose := fun _ _ => ((), ())
+      guess := fun _ _ => true }
+  -- Fire `indQCPA_from_perStepBound` on the concrete (scheme, adversary)
+  -- pair. The `h_step` discharge uses `advantage_le_one` because every
+  -- advantage is in `[0, 1]`. The conclusion `≤ 2 * 1` is trivially
+  -- implied by `indQCPAAdvantage_le_one`, but that's not the point —
+  -- the point is that `indQCPA_from_perStepBound` accepts this exact
+  -- argument list and produces the expected conclusion shape.
+  have hBound : indQCPAAdvantage trivialScheme trivialMultiAdv ≤
+      (2 : ℝ) * 1 :=
+    indQCPA_from_perStepBound (Q := 2) trivialScheme 1 trivialMultiAdv
+      (fun _ _ => advantage_le_one _ _ _)
+  -- Return `True`; the meaningful assertion lives in `hBound`, whose
+  -- existence proves the renamed theorem is non-vacuously inhabited on
+  -- a concrete input.
+  trivial
+
+/-- Workstream C concrete non-vacuity (companion form): the Q = 1
+    regression sentinel `indQCPA_from_perStepBound_recovers_single_query`
+    fires on a concrete one-query adversary over the `Unit` scheme,
+    with `h_step` again discharged by `advantage_le_one` at ε = 1. This
+    confirms the companion theorem also accepts concrete inputs, not
+    just parameterised ones. -/
+example : True := by
+  let trivialScheme : OrbitEncScheme (Equiv.Perm (Fin 1)) Unit Unit :=
+    { reps := fun _ => ()
+      reps_distinct := fun _ _ h => (h (Subsingleton.elim _ _)).elim
+      canonForm :=
+        { canon := id
+          mem_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
+          orbit_iff := fun _ _ => by simp } }
+  let trivialSingleAdv : MultiQueryAdversary Unit Unit 1 :=
+    { choose := fun _ _ => ((), ())
+      guess := fun _ _ => true }
+  have hBound : indQCPAAdvantage trivialScheme trivialSingleAdv ≤
+      (1 : ℝ) :=
+    indQCPA_from_perStepBound_recovers_single_query trivialScheme 1
+      trivialSingleAdv (advantage_le_one _ _ _)
+  trivial
+
 -- ============================================================================
 -- Workstream L1 (audit F-AUDIT-2026-04-21-M2): `SeedKey` witnessed
 -- compression — non-vacuity witnesses

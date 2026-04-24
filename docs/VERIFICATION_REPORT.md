@@ -1588,13 +1588,24 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   * **Audit-script updates (`scripts/audit_phase_16.lean`,
     `scripts/audit_e_workstream.lean`).**  `#print axioms`
     entries renamed in both scripts. `audit_phase_16.lean` gains
-    three new non-vacuity `example` blocks in the
+    five new non-vacuity `example` blocks in the
     `NonVacuityWitnesses` namespace exercising the renamed
-    theorem: a general-signature witness on an arbitrary scheme /
-    adversary / per-step bound, the audit-plan § C.2 template
-    instantiated to Q = 2 / ε = 1 with the per-step bound
-    discharged by `advantage_le_one`, and a Q = 1 regression
-    sentinel fitting `indQCPA_from_perStepBound_recovers_single_query`.
+    theorem: (1) a general-signature parameterised witness on an
+    arbitrary scheme / adversary / per-step bound, (2) the
+    audit-plan § C.2 template (parameterised) instantiated to
+    Q = 2 / ε = 1 with the per-step bound discharged by
+    `advantage_le_one`, (3) a parameterised Q = 1 regression
+    sentinel fitting
+    `indQCPA_from_perStepBound_recovers_single_query`, (4) a
+    concrete Q = 2 / ε = 1 witness on `trivialScheme`
+    (`Equiv.Perm (Fin 1)` acting on `Unit`) with a concrete
+    `MultiQueryAdversary Unit Unit 2` — this exercises the
+    full typeclass instance-elaboration pipeline (Group +
+    Fintype + Nonempty + MulAction + DecidableEq) on a
+    known-good input, which a parameterised witness does not —
+    and (5) a concrete Q = 1 companion witness on the same
+    concrete scheme firing
+    `indQCPA_from_perStepBound_recovers_single_query`.
 
   * **Documentation surfaces.** This report: headline-results
     table row #23 renamed; the Phase 8 "Key theorems" bullet list
@@ -1620,8 +1631,9 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   **Verification.** `lake build` succeeds for all 38 modules
   post-rename; `scripts/audit_phase_16.lean` emits unchanged
   axiom outputs (only-standard-trio) for the two renamed
-  theorems. The three new non-vacuity witnesses elaborate in CI.
-  Public declaration count unchanged at 347. The zero-sorry /
+  theorems. The five new non-vacuity witnesses (three
+  parameterised + two concrete) elaborate in CI. Public
+  declaration count unchanged at 347. The zero-sorry /
   zero-custom-axiom posture is preserved; the 38-module total is
   unchanged (no new or removed modules).
 

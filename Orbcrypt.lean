@@ -1795,11 +1795,22 @@ updated in this landing.
   explicit release-messaging disclosures of the `h_step`
   obligation and the R-09 research pointer.
 * **`scripts/audit_phase_16.lean`** — `#print axioms` entries
-  renamed; three new non-vacuity examples under the
-  `NonVacuityWitnesses` namespace exercise (a) the renamed
-  theorem on a general scheme / adversary, (b) the C.2
-  audit-plan template at Q = 2 / ε = 1, and (c) the Q = 1
-  regression sentinel.
+  renamed; five new non-vacuity examples under the
+  `NonVacuityWitnesses` namespace exercise the renamed theorem:
+  (a) parameterised general-signature witness over any scheme /
+  adversary, (b) parameterised C.2 audit-plan template at
+  Q = 2 / ε = 1 with the per-step bound discharged by
+  `advantage_le_one`, (c) parameterised Q = 1 regression
+  sentinel, (d) concrete Q = 2 / ε = 1 witness on
+  `trivialScheme` (`Equiv.Perm (Fin 1)` acting on `Unit`) with
+  a concrete `MultiQueryAdversary Unit Unit 2`, exercising the
+  full typeclass-instance elaboration pipeline, and (e) concrete
+  Q = 1 companion witness on the same concrete scheme firing
+  `indQCPA_from_perStepBound_recovers_single_query`. The
+  parameterised witnesses (a–c) prove signature-universality
+  over every valid typeclass bundle; the concrete witnesses
+  (d–e) prove Lean can actually synthesise the typeclass
+  instances on a known-good input.
 * **`scripts/audit_e_workstream.lean`** — legacy per-workstream
   script's `#print axioms` lines renamed.
 * **`Orbcrypt.lean`** — dependency listing + axiom-transparency
@@ -1832,8 +1843,8 @@ updated in this landing.
 * `#print axioms
   Orbcrypt.indQCPA_from_perStepBound_recovers_single_query`
   emits only the standard trio — unchanged from pre-C.
-* `scripts/audit_phase_16.lean` passes with three new non-vacuity
-  witnesses (§ 12.C).
+* `scripts/audit_phase_16.lean` passes with five new non-vacuity
+  witnesses (§ 12.C): three parameterised + two concrete.
 
 ### Consumer migration
 
