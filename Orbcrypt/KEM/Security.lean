@@ -307,4 +307,64 @@ theorem kemoia_implies_secure [Group G] [MulAction G X] [DecidableEq X]
   exact hOIA (fun c => A.guess kem.basePoint c
     (kem.keyDerive (kem.canonForm.canon kem.basePoint))) g₀ g₁
 
+-- ============================================================================
+-- Workstream E2 (audit 2026-04-23, finding E-06): machine-checked
+-- vacuity witness for the deterministic KEMOIA.
+-- ============================================================================
+
+/--
+**Vacuity witness (audit 2026-04-23 E-06).** The deterministic `KEMOIA`
+predicate is `False` whenever the KEM's base-point orbit is
+non-trivial — i.e., there exist two group elements `g₀, g₁ : G`
+producing distinct ciphertexts `g₀ • basePoint ≠ g₁ • basePoint`.
+This hypothesis holds on every realistic KEM (production HGOE has
+`|orbit| ≫ 2`); the witness theorem machine-checks the scaffolding
+disclosure that the `KEMOIA` and `Orbcrypt.lean` vacuity-map
+docstrings previously asserted only in prose.
+
+The distinguisher is the membership-at-`g₀ • basePoint` Boolean
+test `fun c => decide (c = g₀ • kem.basePoint)`. On the LHS it
+evaluates to `true` (reflexivity); on the RHS — by the distinctness
+hypothesis — it evaluates to `false`; contradiction.
+
+Parallel scheme-layer witness: `det_oia_false_of_distinct_reps` in
+`Orbcrypt/Crypto/OIA.lean`.
+
+**Note on `KEMOIA`'s single-conjunct form.** Post-Workstream-L5
+(audit F-AUDIT-2026-04-21-M6, 2026-04-22), `KEMOIA` is a
+single-conjunct orbit-indistinguishability predicate; the former
+key-uniformity conjunct was unconditional (provable from
+`canonical_isGInvariant`) and was removed. This proof therefore
+applies the single `hKEMOIA` Prop directly, without a `.1` / `.2`
+destructuring step.
+
+**Release-messaging status.** Standalone (unconditional on the
+orbit-non-triviality hypothesis). Safe to cite directly as formal
+evidence that the deterministic KEM chain is scaffolding, not
+substantive security content.
+-/
+theorem det_kemoia_false_of_nontrivial_orbit [Group G] [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K)
+    {g₀ g₁ : G}
+    (hDistinct : g₀ • kem.basePoint ≠ g₁ • kem.basePoint) :
+    ¬ KEMOIA kem := by
+  -- Assume KEMOIA and derive a contradiction via the
+  -- membership-at-`g₀ • basePoint` Boolean distinguisher.
+  intro hKEMOIA
+  have h := hKEMOIA
+    (fun c => decide (c = g₀ • kem.basePoint)) g₀ g₁
+  -- LHS decides `g₀ • basePoint = g₀ • basePoint` ⇒ `true`.
+  have hLHS :
+      decide (g₀ • kem.basePoint = g₀ • kem.basePoint) = true :=
+    decide_eq_true (Eq.refl _)
+  -- RHS decides `g₁ • basePoint = g₀ • basePoint` ⇒ `false` (by
+  -- distinctness symmetry).
+  have hRHS :
+      decide (g₁ • kem.basePoint = g₀ • kem.basePoint) = false :=
+    decide_eq_false (fun heq => hDistinct heq.symm)
+  rw [hLHS, hRHS] at h
+  -- `h : true = false` is impossible; `Bool.noConfusion` closes any
+  -- goal (here `False`) from a constructor mismatch.
+  exact Bool.noConfusion h
+
 end Orbcrypt

@@ -217,8 +217,10 @@ is honest about which assumption is doing the cryptographic work.
 | 30  | `hardness_chain_implies_security_distinct`                    | `Hardness/Reductions.lean`                    | Classical IND-1-CPA corollary, conditional on `HardnessChain` (Workstream K3) |
 | 31  | `indCPAAdvantage_collision_zero`                              | `Crypto/CompSecurity.lean`                    | Unconditional: probabilistic IND-1-CPA advantage vanishes on collision-choice adversaries (Workstream K4) |
 | 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | **Quantitative** — classical IND-1-CPA form of the probabilistic chain bound (Workstream K4 companion), conditional on `ConcreteHardnessChain`; same ε = 1 inhabitation posture as row #22 |
+| 33  | `det_oia_false_of_distinct_reps`                              | `Crypto/OIA.lean`                             | **Standalone** — machine-checked vacuity witness for the deterministic `OIA` under the distinct-representatives hypothesis (Workstream E of 2026-04-23 audit, finding C-07). Closes the prose-only vacuity disclosure that previously lived in `Crypto/OIA.lean`'s module docstring. The distinguisher is `fun x => decide (x = scheme.reps m₀)` at identity group elements; LHS decides `true`, RHS decides `false`, contradiction |
+| 34  | `det_kemoia_false_of_nontrivial_orbit`                        | `KEM/Security.lean`                           | **Standalone** — KEM-layer parallel of row #33 (Workstream E of 2026-04-23 audit, finding E-06). Refutes `KEMOIA kem` under the non-trivial base-point-orbit hypothesis `g₀ • basePoint ≠ g₁ • basePoint`; holds on every realistic KEM (production HGOE has `\|orbit\| ≫ 2`). Written against the post-L5 single-conjunct `KEMOIA`; no `.1` / `.2` destructuring |
 
-Every one of #1–#32 was confirmed to depend only on standard Lean axioms by
+Every one of #1–#34 was confirmed to depend only on standard Lean axioms by
 running `scripts/audit_phase_16.lean` — all declarations exercised
 (every public declaration in the source tree), no `sorryAx`, no custom
 axiom outside the standard Lean trio.
@@ -608,13 +610,25 @@ limitations, each documented in source and tracked as future work:
    headline theorems are vacuously true on production instances
    (proof by ex-falso) and serve as *algebraic scaffolding*:
    type-theoretic templates whose existence we verify, not
-   standalone security guarantees. The probabilistic counterparts
+   standalone security guarantees. **As of the 2026-04-23 audit
+   Workstream E (landed 2026-04-24), the vacuity is itself
+   machine-checked**: `det_oia_false_of_distinct_reps` (rows #33
+   above) proves `¬ OIA scheme` whenever
+   `scheme.reps m₀ ≠ scheme.reps m₁`, and
+   `det_kemoia_false_of_nontrivial_orbit` (row #34) proves
+   `¬ KEMOIA kem` whenever the base-point orbit has cardinality ≥ 2.
+   Both theorems depend only on the standard Lean trio and are
+   **Standalone** citations. External prose that previously
+   asserted "OIA is vacuous on every non-trivial scheme" as an
+   informal claim can now cite the two Lean theorems as formal
+   witnesses. The probabilistic counterparts
    (`ConcreteOIA(ε)`, `ConcreteKEMOIA_uniform(ε)`,
-   `ConcreteHardnessChain scheme F S ε`) are satisfiable for
-   `ε ∈ (0, 1]` and carry the quantitative security content. See
-   the "Release readiness" section below and `Orbcrypt.lean` §
-   "Deterministic-vs-probabilistic security chains" for the
-   release-messaging framing (Workstream J, audit finding H3).
+   `ConcreteHardnessChain scheme F S ε`) remain the positive
+   security content — satisfiable for `ε ∈ (0, 1]` and carrying
+   the quantitative bounds. See the "Release readiness" section
+   below and `Orbcrypt.lean` § "Deterministic-vs-probabilistic
+   security chains" for the release-messaging framing (Workstream
+   J, audit finding H3).
 
 2. **`GIReducesToCE` and `GIReducesToTI` are reduction *claims*, not
    proofs.** They are `Prop`-valued definitions that point at LESS /
@@ -1815,3 +1829,101 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   the change in the version log. No Lean source files are
   modified; no new public declarations; the zero-sorry /
   zero-custom-axiom posture is preserved.
+
+* **2026-04-24 (Workstream E of the 2026-04-23 pre-release
+  audit)** — Formal vacuity witnesses (audit findings C-07 /
+  E-06, HIGH). Two new axiom-free theorems land in existing
+  modules, machine-checking vacuity claims that previously lived
+  only in module docstrings.
+
+  * **E1 — `det_oia_false_of_distinct_reps`.** Added at the
+    bottom of `Orbcrypt/Crypto/OIA.lean`, after the existing
+    `OIA` definition and its comprehensive documentation block.
+    Refutes `OIA scheme` under the hypothesis
+    `scheme.reps m₀ ≠ scheme.reps m₁` via the membership-at-
+    `reps m₀` Boolean distinguisher
+    (`fun x => decide (x = scheme.reps m₀)`) instantiated at
+    identity group elements. The LHS `decide` evaluates to `true`
+    by reflexivity; the RHS `decide` evaluates to `false` by the
+    distinctness hypothesis; rewriting yields `true = false`,
+    discharged by `Bool.true_eq_false_iff`. Typeclass context
+    identical to `OIA`; no new imports. Standard-trio axiom
+    dependency only.
+  * **E2 — `det_kemoia_false_of_nontrivial_orbit`.** Added at
+    the bottom of `Orbcrypt/KEM/Security.lean`, after
+    `kemoia_implies_secure`. KEM-layer parallel of E1: refutes
+    `KEMOIA kem` under `g₀ • kem.basePoint ≠ g₁ • kem.basePoint`
+    via `fun c => decide (c = g₀ • kem.basePoint)`. Written
+    against the post-Workstream-L5 single-conjunct `KEMOIA` form
+    (no `.1` / `.2` destructuring). Standard-trio axiom
+    dependency only.
+  * **E3 — Vacuity-map upgrade + transparency report.**
+    `Orbcrypt.lean`'s Vacuity map table is extended from two
+    columns to three by adding "Machine-checked vacuity witness";
+    rows #1–#2 (`OIA`, `KEMOIA`) point at E1 and E2, and the
+    downstream rows (hardness chain, K-distinct corollaries,
+    KEM-layer chain) note that they inherit the same witnesses
+    via their upstream antecedents. Two new `#print axioms`
+    cookbook entries land under a "Workstream E (audit
+    2026-04-23, findings C-07 + E-06)" subsection; a new
+    "Workstream E Snapshot" section is appended at the end of
+    the transparency report.
+  * **Audit script.** `scripts/audit_phase_16.lean` gains two
+    new `#print axioms` entries (adjacent to the existing
+    `#print axioms OIA` and `#print axioms KEMOIA` lines) and
+    two concrete non-vacuity `example` bindings under the
+    `NonVacuityWitnesses` namespace: a two-message
+    `trivialSchemeBool` with `reps := id : Bool → Bool` under
+    the trivial action of `Equiv.Perm (Fin 1)` on `Bool` (each
+    orbit is a singleton, so `reps_distinct` holds and distinct
+    reps discharge the E1 hypothesis by `decide`), and a
+    `trivialKEM_PermZMod2` under the natural `Equiv.Perm (ZMod 2)`
+    action on `ZMod 2` (where `Equiv.swap 0 1 • 0 = 1 ≠ 0 =
+    1 • 0` discharges the E2 hypothesis). Both `example` blocks
+    close their `¬ OIA` / `¬ KEMOIA` goals by direct term
+    construction.
+
+  **Documentation surfaces.** This report: headline-results
+  table extended with rows #33 (`det_oia_false_of_distinct_reps`)
+  and #34 (`det_kemoia_false_of_nontrivial_orbit`); "Known
+  limitations" item 1 updated to note the vacuity is now
+  machine-checked; this Document-history entry added.
+  `CLAUDE.md`: headline-theorems table extended with rows #31
+  and #32 (both **Standalone**); `#print axioms` exit-criteria
+  list extended with E1 and E2 entries; Workstream status tracker
+  row for E checked off; Workstream-E snapshot appended after the
+  Workstream-D snapshot. `Orbcrypt.lean`: Vacuity map upgrade;
+  new `#print axioms` subsection; Workstream-E Snapshot section
+  appended at the end of the transparency report.
+  `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 8.5
+  Exit criteria section gains a "Closure status (2026-04-24)"
+  subsection recording the landing; Appendix B Workstream tracker
+  row for E marked **closed**.
+
+  **Traceability.** Audit findings C-07 (HIGH, deterministic-
+  OIA vacuity claimed only in prose) and E-06 (HIGH, deterministic-
+  KEMOIA parallel) resolved. V1-11 release-gate item (§ 20.1)
+  implicitly closed via the two theorem landings. See
+  `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 8 for
+  the workstream specification and § 8.5 for the closed exit
+  criteria.
+
+  **Verification.** `lake build` succeeds for all 38 modules
+  (3,369 jobs — two new theorems add two build nodes); zero
+  warnings / zero errors. `scripts/audit_phase_16.lean` emits
+  only standard-trio or axiom-free outputs for every declaration
+  (including the two new theorems and all four supporting fixture
+  definitions); the two new `example` blocks elaborate and close
+  their goals by direct term construction. The 38-module total is
+  unchanged; public declaration count rises from 347 to 349; the
+  Phase-16 `#print axioms` audit total rises from 342 to 344;
+  the zero-sorry / zero-custom-axiom posture is preserved.
+
+  **Patch version.** `lakefile.lean` bumped from `0.1.9` to
+  `0.1.10` for Workstream E, triggered by the two new public
+  declarations per `CLAUDE.md`'s version-bump discipline. Four
+  supporting fixture declarations (one `MulAction` instance, one
+  `OrbitEncScheme`, one `MulAction` alias, one `OrbitKEM`) land
+  inside `scripts/audit_phase_16.lean` — the audit script is
+  not part of `Orbcrypt.lean`'s public surface, so these do not
+  count toward the public-declaration total.
