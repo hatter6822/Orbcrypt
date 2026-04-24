@@ -106,12 +106,13 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 
 - 38 Lean source files + root import file
 - 347 public declarations (def / theorem / structure / class / instance / abbrev), all with docstrings
-- 346 declarations exercised by `scripts/audit_phase_16.lean` with `#print axioms` (every public declaration; all depend only on the standard Lean trio `propext` / `Classical.choice` / `Quot.sound`, or on *no* axioms at all)
+- 371 declarations exercised by `scripts/audit_phase_16.lean` with `#print axioms` (every public declaration plus auto-generated field accessors and non-vacuity witnesses; all depend only on the standard Lean trio `propext` / `Classical.choice` / `Quot.sound`, or on *no* axioms at all)
 - Zero `sorry`, zero custom axioms, zero warnings
-- `lake build Orbcrypt` runs 3,366 jobs successfully
-- Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1)
+- `lake build Orbcrypt` runs 3,367 jobs successfully
+- Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1; see [Toolchain decision](docs/VERIFICATION_REPORT.md#toolchain-decision-workstream-d) — Workstream D, Scenario C, ships v1.0 off the rc, stable upgrade deferred to v1.1)
+- `lakefile.lean` defensively pins `linter.unusedVariables := true` (Lean core, defensive) and `linter.docPrime := true` (Mathlib, meaningful enable — Workstream D / D3)
 - GitHub Actions CI on every push (build + sorry scan + axiom-decl scan + Phase 16 audit regression sentinel)
-- Package version: `0.1.6` (see `lakefile.lean`; bumped by Workstream L, audit findings M2–M6)
+- Package version: `0.1.9` (see `lakefile.lean`; latest bump by Workstream D of the 2026-04-23 audit, V1-6 / A-01 / A-02 / A-03)
 
 ## Build
 

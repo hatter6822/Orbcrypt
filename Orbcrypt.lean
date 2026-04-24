@@ -1883,4 +1883,138 @@ bump per `CLAUDE.md`'s version-bump discipline. No new public
 declarations are added; no existing declaration's content
 changes; the 38-module total is unchanged; the zero-sorry /
 zero-custom-axiom posture is preserved.
+
+## Workstream D Snapshot (audit 2026-04-23, finding V1-6 / A-01 / A-02 / A-03)
+
+Workstream D of the 2026-04-23 pre-release audit plan closes the
+MEDIUM-severity V1-6 / A-01 / A-02 / A-03 finding cluster that
+flagged a toolchain-vs-documentation gap at the build-
+configuration surface: pre-D `lakefile.lean` carried a stale
+"Last verified: 2026-04-14" comment (superseded by several
+subsequent workstream revalidations), had no explicit "rc by
+design" disclosure, and pinned only `autoImplicit := false` in
+`leanOptions` — so the zero-warning gate was enforced solely
+by the CI's warning-as-error setting, not by the build
+configuration itself.
+
+### Remediation
+
+Workstream D is **build-configuration-only** — no Lean source
+files are modified, no public declarations are added, removed,
+or renamed. The landing is a three-part build-surface refresh:
+
+* **D1 (toolchain decision).** `lean-toolchain` retains
+  `leanprover/lean4:v4.30.0-rc1` under **Scenario C** of the
+  audit plan (`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md`
+  § 7) — ship v1.0 off the release-candidate toolchain; defer
+  the stable-toolchain upgrade to v1.1. No Mathlib-stable
+  pairing is currently available against the project's
+  `fa6418a8` Mathlib pin without a coordinated `lake update` +
+  Phase-16 audit replay (which exceeds the Workstream-D scope
+  and is tracked as a v1.1 follow-up). The decision is recorded
+  in `docs/VERIFICATION_REPORT.md`'s new "Toolchain decision
+  (Workstream D)" subsection and in `CLAUDE.md`'s Workstream-D
+  snapshot.
+* **D2 (lakefile metadata refresh).** The stale
+  "Last verified: 2026-04-14" comment is updated to
+  "Last verified: 2026-04-24". A new "Toolchain posture"
+  paragraph is added after the "Compatible with
+  lean4:v4.30.0-rc1" line recording the Scenario-C decision
+  and cross-referencing the audit plan § 7 and the
+  VERIFICATION_REPORT subsection. Reading `lakefile.lean` is
+  now self-sufficient to understand the rc-toolchain choice
+  without leaving the build configuration.
+* **D3 (`leanOption` pins).** `lakefile.lean`'s `leanOptions`
+  array is extended from a single-entry `autoImplicit := false`
+  to a three-entry array also pinning
+  `linter.unusedVariables := true` and `linter.docPrime := true`.
+  The default posture differs by linter:
+  * `linter.unusedVariables` is a Lean core builtin
+    (`register_builtin_option … defValue := true`); the pin is
+    genuinely **defensive** — currently a no-op, locks the gate
+    against a future toolchain default-flip.
+  * `linter.docPrime` is a Mathlib linter
+    (`register_option … defValue := false`); Mathlib explicitly
+    excludes it from its standard linter set
+    (`Mathlib/Init.lean:110`, referencing
+    https://github.com/leanprover-community/mathlib4/issues/20560),
+    so the pin to `true` is a **meaningful enable** — turns on a
+    linter Mathlib leaves off. The Orbcrypt source tree currently
+    has zero declarations whose names end in `'` (verified by
+    `grep -rEn "(theorem|lemma|def|abbrev|structure|class|instance) \w+'" Orbcrypt/`),
+    so the linter fires on zero existing call sites; it acts as
+    a tripwire that prevents new primed identifiers from landing
+    without a docstring.
+
+  Caveat about `linter.docPrime`: because the option is
+  registered by Mathlib (not Lean core), files that elaborate
+  any docstring or non-import command before their first
+  Mathlib-aware `import` will fail at startup with
+  `invalid -D parameter, unknown configuration option
+  'linter.docPrime'`. Every `.lean` file under `Orbcrypt/`
+  currently starts with `import` as its first non-blank line, so
+  the constraint is satisfied; new modules must observe the same
+  convention.
+
+### Files touched
+
+* **`lakefile.lean`** — version `0.1.8 → 0.1.9`; comment metadata
+  refreshed (Last-verified date + Toolchain-posture paragraph);
+  `leanOptions` array extended with the two linter pins
+  (`linter.unusedVariables`, `linter.docPrime`).
+* **`CLAUDE.md`** — Workstream status tracker row for D checked
+  off; this Workstream-D snapshot appended after the
+  Workstream-C snapshot.
+* **`docs/VERIFICATION_REPORT.md`** — new "Toolchain decision
+  (Workstream D)" subsection inserted between "How to reproduce
+  the audit" and "Headline results table"; Document-history
+  entry dated 2026-04-24 records the Workstream-D landing.
+* **`Orbcrypt.lean`** — this snapshot section appended to the
+  axiom-transparency report footer. (No source-level
+  declarations are added or modified; the dependency graph,
+  the vacuity map, and the `#print axioms` cookbook are all
+  unchanged.)
+* **`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md`** —
+  V1-6 release-gate checkbox ticked (§ 20.1); Workstream-D
+  tracker updated with the landing date (§ 3 / Appendix B).
+
+### Verification
+
+* `lake build` succeeds for all 3,367 jobs with zero warnings /
+  zero errors on a forced rebuild (verified by touching
+  `Orbcrypt/GroupAction/Basic.lean` and rerunning `lake build`).
+* `scripts/audit_phase_16.lean` emits unchanged axiom output —
+  every `#print axioms` result is either "does not depend on
+  any axioms" or the standard-trio
+  `[propext, Classical.choice, Quot.sound]`; zero `sorryAx`;
+  zero non-standard axioms.
+* The 38-module total is unchanged; the 347 public-declaration
+  count is unchanged; the zero-sorry / zero-custom-axiom
+  posture is preserved; the module-dependency graph and the
+  Vacuity map (Workstream E) are unchanged.
+
+### Consumer impact
+
+Downstream consumers running `lake env …` against a cloned
+checkout of this landing will experience a different warning
+surface than pre-D: `linter.unusedVariables` and
+`linter.docPrime` are now pinned at the package level. In the
+current toolchain this is a no-op (both defaults are already
+`true`); the pin only becomes behaviourally visible if a future
+toolchain upgrade flips those defaults. No consumer action is
+required.
+
+### Patch version
+
+`lakefile.lean` bumped from `0.1.8` to `0.1.9` for Workstream D.
+Technically a build-configuration change does not require a
+patch bump by `CLAUDE.md`'s version-bump discipline (which is
+triggered by API-breaking changes or new public declarations);
+however, the linter-configuration pin is a consumer-visible
+build setting (see "Consumer impact" above), so the bump records
+the change in the version log. No Lean source files are
+modified; no new public declarations; the 38-module total, the
+347 public-declaration count, the zero-sorry / zero-custom-
+axiom posture, and the standard-trio-only axiom-dependency
+posture are all preserved.
 -/
