@@ -3221,7 +3221,17 @@ acceptance criteria.
       `invariantAttackAdversary_correct` removed.
 - [ ] **V1-5** (Workstream **A**): `SeedKey.compression`
       framing disclosed as bit-length strict inequality.
-- [ ] **V1-6** (Workstream **D**): toolchain decision recorded.
+- [x] **V1-6** (Workstream **D**): toolchain decision recorded.
+      **Closed by landing 2026-04-24.** `lean-toolchain` retains
+      `leanprover/lean4:v4.30.0-rc1` under Scenario C (rc by
+      design; stable-toolchain upgrade deferred to v1.1);
+      `lakefile.lean` comment metadata refreshed (Last-verified
+      date + Toolchain-posture paragraph); `leanOptions` extended
+      with defensive pins for `linter.unusedVariables` and
+      `linter.docPrime` (both pinned to `true`); full `lake build`
+      clean (3,367 jobs, zero warnings); Phase-16 audit script
+      clean (standard-trio-only, zero `sorryAx`). `lakefile.lean`
+      bumped from `0.1.8` to `0.1.9`.
 - [ ] **V1-7** (Workstream **A**): Carter–Wegman / HGOE
       compatibility messaging explicit.
 - [x] **V1-8** (Workstream **C**): `indQCPA_from_perStepBound`
@@ -3484,7 +3494,7 @@ merge).
 | **A** (release messaging) | pending | — | — |
 | **B** (INT_CTXT refactor) | pending | — | — |
 | **C** (indQCPA rename) | pending | — | — |
-| **D** (toolchain) | pending | — | — |
+| **D** (toolchain) | **closed** | branch `claude/review-workstream-plan-6xBp6` | 2026-04-24 |
 | **E** (formal vacuity) | pending | — | — |
 | **F** (`CanonicalForm.ofLexMin`) | pending | — | — |
 | **G** (λ-parameterised key expansion) | pending | — | — |
