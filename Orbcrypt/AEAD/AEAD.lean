@@ -22,10 +22,13 @@ the key.
 * `Orbcrypt.authEncaps` — Encrypt-then-MAC encapsulation
 * `Orbcrypt.authDecaps` — Verify-then-Decrypt decapsulation
 * `Orbcrypt.aead_correctness` — `authDecaps` recovers the key from honest pairs
-* `Orbcrypt.INT_CTXT` — ciphertext integrity: forgeries are always rejected
-* `Orbcrypt.authEncrypt_is_int_ctxt` — INT_CTXT holds for every honestly
-  composed `AuthOrbitKEM` with transitive ciphertext space (audit F-07,
-  Workstream C2)
+* `Orbcrypt.INT_CTXT` — ciphertext integrity: no adversary forges an
+  in-orbit `(c, t)` that decapsulates.  Out-of-orbit ciphertexts are
+  rejected by the game's well-formedness precondition `hOrbit`.
+* `Orbcrypt.authEncrypt_is_int_ctxt` — INT_CTXT holds unconditionally for
+  every honestly composed `AuthOrbitKEM` (audit F-07, Workstream C2 +
+  audit 2026-04-23 Workstream B refactor: the orbit-cover hypothesis
+  has been absorbed into the game's per-challenge precondition)
 
 ## Composition order
 
@@ -33,10 +36,35 @@ Encrypt-then-MAC (EtM) is the provably secure composition paradigm. The
 alternatives (MAC-then-Encrypt, Encrypt-and-MAC) have known vulnerabilities
 in certain settings.
 
+## INT_CTXT game-shape refinement (audit 2026-04-23 Workstream B)
+
+Pre-Workstream-B, `INT_CTXT` was an unconditional predicate that
+`authEncrypt_is_int_ctxt` discharged under the extra top-level hypothesis
+`hOrbitCover : ∀ c : X, c ∈ orbit G basePoint`.  That hypothesis is
+**false on production HGOE**: `|Bitstring n| = 2^n` strictly exceeds
+any orbit's cardinality by the orbit–stabiliser bound, so the pre-B
+theorem was vacuously applicable to the production construction.
+
+Workstream B absorbs the orbit condition into `INT_CTXT` itself as a
+per-challenge well-formedness precondition `hOrbit`.  Conceptually: the
+game **rejects** ciphertexts outside `orbit G basePoint` by convention
+— they are not "valid forgeries" in any realistic threat model, because
+they cannot arise from an honest sender and an honest KEM.  Consumers
+who need INT-CTXT-on-arbitrary-ciphertexts (a stronger real-world
+threat model where the KEM's decapsulation routine validates orbit
+membership before returning a key) pair this game with an explicit
+orbit-check at decapsulation time.
+
+Post-refactor, `authEncrypt_is_int_ctxt` discharges `INT_CTXT`
+*unconditionally* on every `AuthOrbitKEM` — no top-level orbit-cover
+hypothesis remains at the theorem level.
+
 ## References
 
 * docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work units 10.2–10.4
 * docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C (F-07)
+* docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 5 — Workstream B
+  (`INT_CTXT` orbit-cover refactor, V1-1 / I-03)
 * KEM/Syntax.lean, KEM/Encapsulate.lean — base KEM infrastructure
 -/
 
@@ -158,47 +186,75 @@ theorem aead_correctness (akem : AuthOrbitKEM G X K Tag) (g : G) :
 /--
 **Ciphertext Integrity (INT-CTXT).**
 
-No adversary can produce a valid (ciphertext, tag) pair that was not generated
-by an honest encapsulation. Formally: if `(c, t)` does not match any honest
-`authEncaps` output, then `authDecaps` rejects it (returns `none`).
+No adversary can produce a valid `(c, t)` forgery under the following
+game shape:
+
+1. The adversary presents a ciphertext `c : X` and a tag `t : Tag`.
+2. The game's **well-formedness precondition** `hOrbit` requires that
+   `c ∈ orbit G basePoint` — out-of-orbit ciphertexts are rejected by
+   the game and do not count as forgeries. This matches the intended
+   real-world KEM model where decapsulation only operates on
+   ciphertexts produced by a transitive action on `basePoint`.
+3. The **freshness condition** `hFresh` requires that no honest
+   encapsulation `authEncaps akem g` produces the same `(c, t)` pair
+   — i.e., the adversary forged without the challenger's cooperation.
+4. Under those preconditions, `authDecaps akem c t = none`: the
+   forgery is rejected, no key is released.
 
 **Design rationale:**
-- **Single-encapsulation setting.** The adversary must forge without having
-  seen any honest encapsulation that matches. This is existential unforgeability.
-- **Universal quantifier over `G`.** The condition `∀ g, c ≠ ... ∨ t ≠ ...`
-  says no group element produces a matching (ciphertext, tag) pair.
-- **`= none` conclusion.** The forgery is rejected — decapsulation refuses
-  to release a key for an unauthenticated ciphertext.
+- **Orbit precondition (`hOrbit`).** Audit 2026-04-23 Workstream B
+  moved this condition from a theorem-level `hOrbitCover` hypothesis
+  (false on production HGOE, where `|Bitstring n| = 2^n` exceeds any
+  orbit) to a per-challenge game-level well-formedness precondition.
+  The game is now inhabited unconditionally on every `AuthOrbitKEM`
+  (see `authEncrypt_is_int_ctxt`).
+- **Freshness condition (`hFresh`).** The disjunction
+  `c ≠ ... ∨ t ≠ ...` is Prod inequality expanded for convenient
+  destructuring: no group element `g` produces a matching
+  `(ciphertext, tag)` pair.
+- **`= none` conclusion.** The forgery is rejected — decapsulation
+  refuses to release a key for an unauthenticated ciphertext.
 
 **Scope:** This captures integrity in the no-query setting. Multi-query
 CCA extensions (with encapsulation/decapsulation oracles and query logs)
-are future work (Phase 12+).
+are future work (Phase 12+). Consumers wanting INT-CTXT-on-arbitrary-
+ciphertexts (stronger threat model) should pair this predicate with an
+explicit orbit-check before decapsulation; the decapsulation helper
+`decapsSafe` (planned in Workstream H of the 2026-04-23 plan) is the
+canonical shape.
 -/
 def INT_CTXT (akem : AuthOrbitKEM G X K Tag) : Prop :=
   ∀ (c : X) (t : Tag),
+    c ∈ MulAction.orbit G akem.kem.basePoint →
     (∀ g : G, c ≠ (authEncaps akem g).1 ∨
               t ≠ (authEncaps akem g).2.2) →
     authDecaps akem c t = none
 
 -- ============================================================================
--- Workstream C (audit F-07): INT_CTXT proof for honestly-composed AuthOrbitKEMs
+-- Workstream C (audit F-07) + Workstream B (audit 2026-04-23):
+-- INT_CTXT proof for honestly-composed AuthOrbitKEMs.
 -- ============================================================================
 --
--- The definition of `INT_CTXT` above is an unconditional Prop; without a
--- structural uniqueness property on the MAC it cannot be discharged.
+-- The `INT_CTXT` predicate carries two per-challenge hypotheses:
+-- `hOrbit` (the ciphertext lies in `orbit G basePoint`, game
+-- well-formedness precondition; see the `INT_CTXT` docstring) and
+-- `hFresh` (no honest encapsulation produces this `(c, t)` pair).
 -- Workstream C1 added `MAC.verify_inj` (tag uniqueness / SUF-CMA in the
--- information-theoretic sense). Workstream C2 now produces the first
--- concrete proof, decomposed as:
+-- information-theoretic sense). Workstream C2 produced the first
+-- concrete proof; Workstream B (audit 2026-04-23) refactored it so the
+-- orbit condition is a per-challenge precondition on the game rather
+-- than a theorem-level obligation on the scheme (making the theorem
+-- genuinely Standalone on every `AuthOrbitKEM`).
 --
 -- * C2a — `authDecaps_none_of_verify_false`: the easy `verify = false`
 --   branch (unfold + rfl).
 -- * C2b — `keyDerive_canon_eq_of_mem_orbit`: keys depend only on the
 --   orbit of the ciphertext (unconditional, discharged via
 --   `canon_eq_of_mem_orbit` / `canonical_isGInvariant`).
--- * C2c — `authEncrypt_is_int_ctxt`: stitches (a) and (b) together, using
---   the explicit hypothesis `hOrbitCover` that the ciphertext space equals
---   a single orbit of the base point (the intended model; see the risk
---   note in `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 6.C2c).
+-- * C2c — `authEncrypt_is_int_ctxt`: stitches (a) and (b) together,
+--   consuming the per-challenge `hOrbit` from the `INT_CTXT` binder.
+--   Post-Workstream-B, the theorem signature is `INT_CTXT akem` —
+--   no top-level orbit-cover hypothesis.
 
 section INT_CTXT_Proof
 
@@ -239,31 +295,35 @@ private theorem keyDerive_canon_eq_of_mem_orbit
 
 /-- **C2c — ciphertext integrity for honestly-composed AuthOrbitKEMs.**
 
-    Every `AuthOrbitKEM` whose ciphertext space is a single orbit of the
-    base point satisfies `INT_CTXT`. "Single orbit" is captured by the
-    explicit hypothesis
-    `hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G akem.kem.basePoint`;
-    this matches the intended security model (the ciphertext space equals
-    `orbit G basePoint`, DEVELOPMENT.md §7) and makes the proof unconditional
-    on any additional cryptographic assumption.
+    Every `AuthOrbitKEM` satisfies `INT_CTXT` unconditionally. The
+    orbit-cover assumption that the pre-Workstream-B formulation
+    carried as a theorem-level hypothesis
+    (`hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G akem.kem.basePoint`)
+    has been absorbed into the `INT_CTXT` game as a per-challenge
+    well-formedness precondition `hOrbit` (see the `INT_CTXT`
+    docstring above). Out-of-orbit ciphertexts are rejected by the
+    game; only in-orbit `(c, t)` pairs count as potential forgeries,
+    and for those the proof discharges the `authDecaps = none`
+    conclusion from `MAC.verify_inj` + orbit-restricted key
+    uniqueness.
 
-    **Proof sketch (audit F-07, Workstream C2c).**
-    Let `k := keyDerive (canon c)` be the decapsulation key. Case-split on
-    `akem.mac.verify k c t`:
+    **Proof sketch (audit F-07 Workstream C2c, refined by audit
+    2026-04-23 Workstream B).**
+    Let `k := keyDerive (canon c)` be the decapsulation key. Case-split
+    on `akem.mac.verify k c t`:
 
     * `false`: `authDecaps` returns `none` directly (C2a).
     * `true`: by `MAC.verify_inj` (Workstream C1), `t = tag k c`. By
-      `hOrbitCover`, some `g : G` witnesses `c = g • basePoint`. Then
-      `(authEncaps akem g).1 = c` and, via C2b,
-      `(authEncaps akem g).2.2 = tag k c = t` — a contradiction with
-      `hFresh g`.
+      the per-challenge `hOrbit`, some `g : G` witnesses
+      `c = g • basePoint`. Then `(authEncaps akem g).1 = c` and, via
+      C2b, `(authEncaps akem g).2.2 = tag k c = t` — a contradiction
+      with `hFresh g`.
 
     **Axioms.** Only standard Lean (`propext`, `Classical.choice`,
     `Quot.sound`). No custom axiom, no `sorry`. -/
-theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
-    (hOrbitCover : ∀ c : X, c ∈ MulAction.orbit G akem.kem.basePoint) :
+theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag) :
     INT_CTXT akem := by
-  intro c t hFresh
+  intro c t hOrbit hFresh
   -- Case-split on whether MAC verification accepts `(c, t)` under the
   -- decapsulation key `keyDerive (canon c)`.
   by_cases hVerify :
@@ -286,8 +346,9 @@ theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
               (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c :=
       akem.mac.verify_inj
         (akem.kem.keyDerive (akem.kem.canonForm.canon c)) c t hVerify
-    -- `hOrbitCover` witnesses a `g` with `g • basePoint = c`.
-    obtain ⟨g, hg⟩ := MulAction.mem_orbit_iff.mp (hOrbitCover c)
+    -- `hOrbit` (the per-challenge precondition) witnesses a `g` with
+    -- `g • basePoint = c`.
+    obtain ⟨g, hg⟩ := MulAction.mem_orbit_iff.mp hOrbit
     -- The honest-encapsulation equality `(c, t) = (authEncaps akem g).1, .2.2`
     -- will contradict `hFresh g`; flip the goal to `False` before proving either
     -- side of the honest-equality disjunction.
@@ -319,7 +380,7 @@ theorem authEncrypt_is_int_ctxt (akem : AuthOrbitKEM G X K Tag)
                 (akem.kem.canonForm.canon akem.kem.basePoint) :=
               keyDerive_canon_eq_of_mem_orbit akem hgc
           _ = akem.kem.keyDerive (akem.kem.canonForm.canon c) :=
-              (keyDerive_canon_eq_of_mem_orbit akem (hOrbitCover c)).symm
+              (keyDerive_canon_eq_of_mem_orbit akem hOrbit).symm
       -- Goal: t = mac.tag (keyDerive (canon (g • basePoint))) (g • basePoint)
       -- Rewriting with `hEqKey` and `hg` gives `t = mac.tag (keyDerive (canon c)) c`,
       -- which is exactly `htag`.

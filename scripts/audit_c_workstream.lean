@@ -10,14 +10,18 @@ Verifies the five invariants the audit plan asks for:
    `MAC` value must discharge it. We exercise this by destructuring a
    `MAC` and extracting the field.
 3. `authEncrypt_is_int_ctxt` is non-vacuously inhabited: we construct
-   a toy `AuthOrbitKEM` and discharge `INT_CTXT` on it. This shows
-   the `hOrbitCover` hypothesis is satisfiable.
+   a toy `AuthOrbitKEM` and discharge `INT_CTXT` on it. Post-audit
+   2026-04-23 Workstream B, the theorem is unconditional — the
+   orbit-cover obligation has been absorbed into the game's
+   per-challenge precondition on `INT_CTXT` itself.
 4. `deterministicTagMAC` is universe- and type-polymorphic: the key,
    message, and tag types are independent; instantiating them at
    distinct concrete types elaborates cleanly.
-5. `carterWegmanMAC_int_ctxt` is exercisable: we construct a KEM on a
-   singleton ciphertext space (`ZMod 1`), discharge the orbit-cover
-   hypothesis, and obtain `INT_CTXT` for the composed AEAD.
+5. `carterWegmanMAC_int_ctxt` is exercisable: we construct a KEM on
+   `ZMod 2` under the natural `Equiv.Perm (ZMod 2)` action and obtain
+   `INT_CTXT` for the composed AEAD. Post-Workstream-B this is a
+   direct application of `authEncrypt_is_int_ctxt` with no orbit-cover
+   argument.
 
 Run: `source ~/.elan/env && lake env lean scripts/audit_c_workstream.lean`
 
@@ -71,12 +75,15 @@ example (k : K) (m : Msg) (t : Tag)
 end C1FieldCheck
 
 -- ============================================================================
--- (3) `authEncrypt_is_int_ctxt` is non-vacuously inhabited (C2c).
+-- (3) `authEncrypt_is_int_ctxt` is non-vacuously inhabited (C2c,
+--     refined by Workstream B of the 2026-04-23 audit).
 -- ============================================================================
 --
--- Build a *toy* `AuthOrbitKEM` on the singleton ciphertext space `Unit`.
--- Every element of `Unit` lies in every orbit, so `hOrbitCover` is
--- trivially discharged — proving the theorem's hypothesis is satisfiable.
+-- Exhibit the per-challenge `hOrbit` discharge: every element of `Unit`
+-- lies in every orbit (subsingleton witness). Post-Workstream-B, this
+-- discharge happens *inside* the `INT_CTXT` game binder rather than on
+-- `authEncrypt_is_int_ctxt`'s theorem signature; `authEncrypt_is_int_ctxt`
+-- itself is unconditional.
 
 section C2cSatisfiability
 open MulAction
@@ -181,7 +188,10 @@ def toyKEMZMod2 :
   keyDerive := fun _ => ((0 : ZMod 2), (0 : ZMod 2))
 
 /-- Every `c : ZMod 2` lies in `orbit G toyKEMZMod2.basePoint`:
-    the `Equiv.swap 0 c` permutation maps `0` to `c`. -/
+    the `Equiv.swap 0 c` permutation maps `0` to `c`. Post-Workstream-B
+    of the 2026-04-23 audit, `carterWegmanMAC_int_ctxt` no longer
+    requires this lemma; we retain it for the transitive-action
+    witness it provides at the adversary-supplied challenge level. -/
 lemma toyKEMZMod2_orbit_cover (c : ZMod 2) :
     c ∈ MulAction.orbit (Equiv.Perm (ZMod 2)) toyKEMZMod2.basePoint :=
   ⟨Equiv.swap 0 c, Equiv.swap_apply_left 0 c⟩
@@ -190,10 +200,13 @@ lemma toyKEMZMod2_orbit_cover (c : ZMod 2) :
     `INT_CTXT`.  End-to-end receipt: `MAC.verify_inj` →
     `authEncrypt_is_int_ctxt` → concrete witness at the smallest prime.
     Post-audit (2026-04-22): moved from `p = 1` (no longer admissible
-    under `[Fact (Nat.Prime p)]`) to `p = 2`. -/
+    under `[Fact (Nat.Prime p)]`) to `p = 2`. Post-audit (2026-04-23
+    Workstream B): the `hOrbitCover` argument is removed — the orbit
+    condition now lives inside the `INT_CTXT` game as a per-challenge
+    precondition. -/
 theorem toyCarterWegmanMAC_is_int_ctxt :
     INT_CTXT (carterWegman_authKEM 2 toyKEMZMod2) :=
-  carterWegmanMAC_int_ctxt 2 toyKEMZMod2 toyKEMZMod2_orbit_cover
+  carterWegmanMAC_int_ctxt 2 toyKEMZMod2
 
 #print axioms toyCarterWegmanMAC_is_int_ctxt
 

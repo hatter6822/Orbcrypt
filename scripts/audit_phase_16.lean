@@ -629,12 +629,13 @@ example (g : Equiv.Perm (Fin 1)) :
     authDecaps trivialAuthKEM c t = some k :=
   aead_correctness trivialAuthKEM g
 
-/-- `INT_CTXT` for the trivial `AuthOrbitKEM` via `authEncrypt_is_int_ctxt`.
-    `hOrbitCover` is discharged because `Unit` is a subsingleton: every
-    `c : Unit` equals the base point `()`, hence is in the orbit. -/
+/-- `INT_CTXT` for the trivial `AuthOrbitKEM` via
+    `authEncrypt_is_int_ctxt`. Post-Workstream-B, the theorem
+    discharges `INT_CTXT` unconditionally — the per-challenge `hOrbit`
+    hypothesis is now a binder *inside* the `INT_CTXT` game, not a
+    top-level obligation on the theorem's caller. -/
 example : INT_CTXT trivialAuthKEM :=
   authEncrypt_is_int_ctxt trivialAuthKEM
-    (fun _ => ⟨1, Subsingleton.elim _ _⟩)
 
 /-- `ConcreteKEMOIA trivialKEM 1` is always true — satisfiability
     witness for the point-mass form. -/

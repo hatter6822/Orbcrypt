@@ -107,8 +107,8 @@ is honest about which assumption is doing the cryptographic work.
 | 9   | `seed_kem_correctness`                                        | `KeyMgmt/SeedKey.lean`                        | Unconditional (uses `kem_correctness`) |
 | 10  | `nonce_encaps_correctness`                                    | `KeyMgmt/Nonce.lean`                          | Unconditional |
 | 11  | `nonce_reuse_leaks_orbit`                                     | `KeyMgmt/Nonce.lean`                          | Unconditional warning theorem |
-| 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | **Conditional** (orbit-cover hypothesis, False on HGOE; see Known limitations item 10 / scheduled Workstream B) |
-| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | **Conditional** (requires `X = ZMod p × ZMod p`; incompatible with HGOE's `Bitstring n` — research R-13; see Known limitations item 12) |
+| 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | **Standalone** (post-2026-04-23 Workstream B refactor: orbit condition absorbed into `INT_CTXT` game as a per-challenge well-formedness precondition; theorem discharges unconditionally on every `AuthOrbitKEM`) |
+| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | **Conditional** (requires `X = ZMod p × ZMod p`; incompatible with HGOE's `Bitstring n` — research R-13; see Known limitations item 12. Post-Workstream-B the orbit content is unconditional; only the HGOE compatibility caveat remains) |
 | 13a | `carterWegmanHash_isUniversal`                                | `AEAD/CarterWegmanMAC.lean`                   | **Carter–Wegman 1977 `(1/p)`-universality** (post-audit 2026-04-22) |
 | 13b | `IsEpsilonUniversal`                                          | `Probability/UniversalHash.lean`              | ε-universal hash Prop (post-audit 2026-04-22) |
 | 14  | `hardness_chain_implies_security`                             | `Hardness/Reductions.lean`                    | Conditional on `HardnessChain` |
@@ -194,10 +194,12 @@ freshness condition.
   `kem_correctness` and `DEM.correct`.
 * `INT_CTXT` — a `Prop`-valued *definition*, not a theorem, capturing
   the integrity-of-ciphertexts property.
-* `authEncrypt_is_int_ctxt` — depends on `propext, Quot.sound`; carries
-  the orbit-cover hypothesis (`∀ c, c ∈ orbit G basePoint`) as an
-  explicit argument. *No custom axiom* — `verify_inj` is a `MAC` field,
-  *not* an axiom.
+* `authEncrypt_is_int_ctxt` — depends on `propext, Quot.sound`. Post-
+  2026-04-23 Workstream B, the orbit-cover condition is a per-challenge
+  well-formedness precondition on the `INT_CTXT` game itself (not a
+  theorem-level argument); the theorem's signature is simply
+  `(akem : AuthOrbitKEM G X K Tag) → INT_CTXT akem`. *No custom axiom*
+  — `verify_inj` is a `MAC` field, *not* an axiom.
 * `carterWegmanMAC_int_ctxt` — concrete witness: instantiates the above
   on a deterministic Carter-Wegman universal-hash MAC over `ZMod p`,
   showing `INT_CTXT` is non-vacuously inhabitable.
@@ -329,8 +331,9 @@ across 36 .lean files.
 
 The single literal "sorry" string anywhere in the source tree appears
 in the docstring of `authEncrypt_is_int_ctxt`
-(`Orbcrypt/AEAD/AEAD.lean:262`), in the prose `"No custom axiom, no
-\`sorry\`."`. The CI strip filter correctly ignores it.
+(`Orbcrypt/AEAD/AEAD.lean:323` post-Workstream-B refactor), in the
+prose `"No custom axiom, no \`sorry\`."`. The CI strip filter
+correctly ignores it.
 
 **Classification of historical `sorry` placeholders (planning-doc
 references).** Phase 8's planning doc allowed up to three
@@ -620,24 +623,24 @@ limitations, each documented in source and tracked as future work:
    above and tracked in the audit plan § 15.1 alongside the encoder
    follow-ups.
 
-10. **`authEncrypt_is_int_ctxt` orbit-cover hypothesis is False on
-    production HGOE.** The theorem carries `hOrbitCover : ∀ c : X, c
-    ∈ orbit G akem.kem.basePoint` as an explicit parameter. On the
-    concrete HGOE construction the ciphertext type is `Bitstring n
-    = Fin n → Bool` with `|Bitstring n| = 2^n`; by the orbit-
-    stabiliser identity every orbit under `G ≤ S_n` has cardinality
-    at most `|G| / |Stab|`, which is strictly less than `2^n` for
-    any realistic `(n, G)`. The hypothesis is therefore False on
-    production HGOE, and `authEncrypt_is_int_ctxt` is vacuously
-    applicable there. The 2026-04-23 pre-release audit's
-    Workstream **B** refactors `INT_CTXT` so the orbit-cover
-    predicate is the game's well-formedness precondition (per-
-    challenge), not a theorem-level obligation; once that lands, the
-    theorem discharges unconditionally on every `AuthOrbitKEM` and
-    `CLAUDE.md`'s row #19 upgrades from **Conditional** to
-    **Standalone** (audit 2026-04-23 finding V1-1 / I-03 / I-04 /
-    D1 / D12). See `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md`
-    § 5.
+10. **`authEncrypt_is_int_ctxt` orbit-cover — ~~vacuous on
+    production HGOE~~ CLOSED.** Pre-2026-04-23 the theorem carried
+    `hOrbitCover : ∀ c : X, c ∈ orbit G akem.kem.basePoint` as an
+    explicit parameter, which is False on production HGOE where
+    `|Bitstring n| = 2^n` strictly exceeds any orbit's cardinality
+    by the orbit-stabiliser bound. **Workstream B of the 2026-04-23
+    audit plan (landed 2026-04-24)** refactored `INT_CTXT` so the
+    orbit condition is a *per-challenge well-formedness precondition*
+    (a new `hOrbit` binder on the `INT_CTXT` game itself), not a
+    theorem-level obligation. `authEncrypt_is_int_ctxt` now
+    discharges `INT_CTXT` **unconditionally** on every
+    `AuthOrbitKEM`; `CLAUDE.md`'s row #19 upgrades from
+    **Conditional** to **Standalone**. Consumers wanting the
+    stronger "INT-CTXT rejects out-of-orbit ciphertexts at
+    decapsulation time" model should pair `INT_CTXT` with an
+    explicit orbit-check — the canonical shape is Workstream **H**'s
+    planned `decapsSafe` helper (audit plan § 9). Closed finding:
+    V1-1 / I-03 / I-04 / D1 / D12.
 
 11. **`TwoPhaseDecomposition` is empirically False on the default
     GAP fallback group.** `two_phase_correct` and
@@ -823,6 +826,18 @@ The formalization's public release posture (detailed):
      proof by `rfl`).
    * `aead_correctness` — authenticated KEM correctness
      (`AEAD/AEAD.lean`).
+   * `authEncrypt_is_int_ctxt` — INT-CTXT for every `AuthOrbitKEM`
+     (`AEAD/AEAD.lean`). Post-2026-04-23 Workstream B, this
+     discharges `INT_CTXT` unconditionally: the orbit condition is
+     now a per-challenge well-formedness precondition on the game
+     itself, not a theorem-level obligation. Safe to cite as
+     "Orbcrypt AEAD has machine-checked ciphertext integrity: no
+     adversary can forge an in-orbit `(c, t)` pair that both lies
+     in `orbit G basePoint` and decapsulates with a fresh tag not
+     produced by the challenger". Consumers wanting the stronger
+     "out-of-orbit ciphertexts are actively rejected at
+     decapsulation" model should pair this with Workstream **H**'s
+     planned `decapsSafe` helper.
    * `hybrid_correctness` — KEM+DEM hybrid encryption correctness
      (`AEAD/Modes.lean`).
    * `seed_kem_correctness` — seed-based KEM correctness
@@ -898,18 +913,9 @@ The formalization's public release posture (detailed):
    made explicit).** These theorems are genuine machine-checked
    results but their usefulness on production instances depends on
    discharging a non-trivial hypothesis.
-   * `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`) — INT-CTXT for
-     an `AuthOrbitKEM` **under the `hOrbitCover : ∀ c : X, c ∈
-     orbit G basePoint` hypothesis**. This hypothesis is False on
-     production HGOE (orbit size is strictly smaller than
-     `|Bitstring n| = 2^n` by orbit-stabiliser). Cite only together
-     with the hypothesis disclosure. The **Workstream B** refactor
-     scheduled in the 2026-04-23 plan absorbs orbit-cover into the
-     game's well-formedness precondition, at which point this
-     theorem becomes **Standalone**; until Workstream B lands,
-     citations must carry the disclosure. The in-proof sibling
-     `keyDerive_canon_eq_of_mem_orbit` is the orbit-restricted
-     key-uniqueness lemma and is unconditionally true.
+   * ~~`authEncrypt_is_int_ctxt` (class (c) Conditional)~~ **Moved
+     to class (a) Standalone by Workstream B of the 2026-04-23 audit
+     plan, landed 2026-04-24.** See the (a) entry below.
    * `carterWegmanMAC_int_ctxt` (`AEAD/CarterWegmanMAC.lean`) —
      **requires `X = ZMod p × ZMod p` ciphertext space** and is
      **incompatible with HGOE's `Bitstring n`** without an
@@ -978,14 +984,16 @@ The formalization's public release posture (detailed):
      without disclosing that the ε = 1 witness is trivial and
      ε < 1 requires research-scope witnesses is a policy violation.
    * Any class (c) **Conditional** theorem cited **without the
-     hypothesis disclosure**. E.g., citing `authEncrypt_is_int_ctxt`
-     as "Orbcrypt AEAD has machine-checked ciphertext integrity" —
-     without disclosing `hOrbitCover`'s falsity on production HGOE
-     — is a policy violation. Pre-Workstream-B, the correct framing
-     is "Orbcrypt AEAD has machine-checked ciphertext integrity
-     **conditional on a non-trivial orbit-cover hypothesis**";
-     post-Workstream-B the disclosure can be dropped because the
-     theorem signature absorbs the precondition.
+     hypothesis disclosure**. Post-Workstream-B (2026-04-24),
+     `authEncrypt_is_int_ctxt` has moved from class (c) to class (a)
+     — the orbit condition is now a per-challenge well-formedness
+     precondition on the `INT_CTXT` game itself, so citations can
+     drop the disclosure. The remaining class (c) theorems
+     (`carterWegmanMAC_int_ctxt` HGOE incompatibility;
+     `two_phase_correct` / `two_phase_kem_correctness`
+     `TwoPhaseDecomposition`; `oblivious_sample_in_orbit` closure
+     hypothesis; `indQCPA_bound_via_hybrid` `h_step` hypothesis)
+     still require the hypothesis disclosure when cited.
    * `ConcreteHardnessChain scheme F (punitSurrogate F) 1` /
      `ConcreteKEMHardnessChain scheme F (punitSurrogate F) m₀
      keyDerive 1` — non-vacuity witnesses, not quantitative security
@@ -1459,3 +1467,79 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   The zero-sorry / zero-custom-axiom posture, the 347 public-
   declaration count, and the module-dependency graph are all
   preserved. Patch version: `lakefile.lean` retains `0.1.6`.
+
+* **2026-04-24 (Workstream B of the 2026-04-23 pre-release
+  audit)** — `INT_CTXT` orbit-cover refactor (audit findings
+  V1-1 / I-03 / I-04 / D1 / D12, HIGH). Source-level refactor of
+  the `INT_CTXT` predicate and the `authEncrypt_is_int_ctxt` /
+  `carterWegmanMAC_int_ctxt` theorems; documentation propagation to
+  three surfaces; no new Lean modules.
+
+  * **Source refactor (`Orbcrypt/AEAD/AEAD.lean`).** `INT_CTXT`
+    acquires a per-challenge `hOrbit : c ∈ MulAction.orbit G
+    akem.kem.basePoint` binder as the game's well-formedness
+    precondition; out-of-orbit ciphertexts are rejected by the
+    game itself rather than by a scheme-level orbit-cover
+    assumption. `authEncrypt_is_int_ctxt` refactored to consume
+    `hOrbit` from the `INT_CTXT` binder — no top-level
+    `hOrbitCover` parameter remains. Private helpers
+    `authDecaps_none_of_verify_false` (C2a) and
+    `keyDerive_canon_eq_of_mem_orbit` (C2b) are **unchanged**.
+    The module docstring gains an "INT_CTXT game-shape refinement"
+    subsection.
+
+  * **Source refactor (`Orbcrypt/AEAD/CarterWegmanMAC.lean`).**
+    `carterWegmanMAC_int_ctxt` loses its `hOrbitCover` argument;
+    the proof body becomes a direct application of
+    `authEncrypt_is_int_ctxt (carterWegman_authKEM p kem)` with
+    no threading.
+
+  * **Audit-script updates (`scripts/audit_phase_16.lean`,
+    `scripts/audit_c_workstream.lean`).** The trivial
+    `AuthOrbitKEM` non-vacuity witness in `audit_phase_16.lean`
+    now invokes `authEncrypt_is_int_ctxt trivialAuthKEM` with no
+    arguments; `toyCarterWegmanMAC_is_int_ctxt` in
+    `audit_c_workstream.lean` invokes `carterWegmanMAC_int_ctxt 2
+    toyKEMZMod2` with no orbit-cover argument.
+    `toyKEMZMod2_orbit_cover` is retained as a transitive-action
+    witness but is no longer consumed by the post-B proof.
+
+  * **Documentation surfaces.** This report: (a) headline table
+    row #12 (`authEncrypt_is_int_ctxt`) upgraded from
+    **Conditional** to **Standalone**; row #13
+    (`carterWegmanMAC_int_ctxt`) refreshed (remains
+    **Conditional** for the orthogonal HGOE compatibility caveat);
+    (b) "Known limitations" item 10 rewritten as CLOSED — the
+    orbit-cover falsity is no longer a limitation because the
+    theorem no longer carries the falsifiable hypothesis; (c)
+    "Release readiness" class (a) Standalone list gains an
+    explicit `authEncrypt_is_int_ctxt` bullet; the class (c)
+    Conditional bullet for `authEncrypt_is_int_ctxt` is removed
+    (redirected to class (a)). `CLAUDE.md`: row #19 Status
+    upgraded to **Standalone**; row #20 retains
+    **Conditional**. `Orbcrypt.lean`: axiom-transparency report
+    updated; Vacuity map row for `authEncrypt_is_int_ctxt`
+    rewritten as CLOSED.
+
+  **Traceability.** Audit findings V1-1, I-03, I-04, D1, D12
+  resolved. See
+  `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 5 for the
+  workstream specification and § 5.6 for the exit criteria.
+
+  **Verification.** `lake build` succeeds for all 38 modules post-
+  refactor; `scripts/audit_phase_16.lean` emits only standard-trio
+  axioms for every Workstream-B-touched declaration; the
+  `toyCarterWegmanMAC_is_int_ctxt` end-to-end witness at `p = 2`
+  over `ZMod 2` continues to elaborate, confirming the refactor
+  preserves non-vacuous inhabitability. Public declaration count
+  unchanged (no new or removed declarations; only the signatures of
+  `INT_CTXT`, `authEncrypt_is_int_ctxt`, and
+  `carterWegmanMAC_int_ctxt` change).
+
+  **Patch version.** `lakefile.lean` bumped from `0.1.6` to
+  `0.1.7` for Workstream B. The signature changes are API-breaking
+  for downstream consumers — any user of `INT_CTXT` who previously
+  introduced `intro c t hFresh` must now introduce
+  `intro c t hOrbit hFresh` (one extra binder), and any caller of
+  `authEncrypt_is_int_ctxt` / `carterWegmanMAC_int_ctxt` must drop
+  their `hOrbitCover` argument.
