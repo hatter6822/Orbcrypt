@@ -278,6 +278,26 @@ following must hold for every pair m₀ ≠ m₁ ∈ M:
 
 In other words: **no efficiently computable invariant separates message orbits.**
 
+**Lean-formalised content (audit 2026-04-23 finding V1-4 / D13 /
+Workstream A).** The Lean theorem `Orbcrypt.invariant_attack` in
+`Theorems/InvariantAttack.lean` delivers the **existential** conclusion
+`∃ A : Adversary X M, hasAdvantage scheme A` — i.e., **the existence of
+at least one distinguishing `(g₀, g₁)` pair** under a separating
+G-invariant. The paper-style "Adv = 1/2" claim above is accurate in
+the **centered** convention (`Adv := |Pr[correct] − 1/2|`, so a
+perfect distinguisher has Adv = 1/2), and equivalently "Adv = 1" in
+the two-distribution convention (`|Pr[D=1|d₀] − Pr[D=1|d₁]|`); the
+Lean theorem's formal conclusion is one level weaker than both —
+it witnesses one `(g₀, g₁)` pair on which the adversary's two guesses
+disagree, not a probabilistic distribution-level advantage bound. A
+quantitative probabilistic lower bound on the cross-orbit advantage
+under a separating G-invariant (which would fully bridge to the
+`|Pr[correct] − 1/2|` = 1/2 statement) is tracked as research-scope
+R-01 in `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 18. See
+the `invariant_attack` docstring in `Orbcrypt/Theorems/InvariantAttack.lean`
+for the three-convention catalogue and `CLAUDE.md`'s "Three core
+theorems" table row #2 for the release-messaging framing.
+
 ---
 
 ## 5. The Orbit Indistinguishability Assumption (OIA)

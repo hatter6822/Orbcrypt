@@ -61,7 +61,7 @@ Orbcrypt/
     Advantage.lean                    Distinguishing advantage, triangle inequality, hybrid argument
   Theorems/
     Correctness.lean                  Dec(Enc(m)) = m
-    InvariantAttack.lean              Separating invariant implies Adv = 1/2 (complete break)
+    InvariantAttack.lean              Separating invariant implies ∃ A, hasAdvantage (existence of one distinguishing (g₀, g₁) pair; informal shorthand: "complete break" — see headline row #2 for the full three-convention advantage catalogue)
     OIAImpliesCPA.lean                OIA implies IND-1-CPA security
   KEM/
     Syntax.lean                       OrbitKEM structure, OrbitEncScheme.toKEM bridge
@@ -715,7 +715,7 @@ Phase 3 (Cryptographic Definitions) has been completed:
 
 Phase 4 (Core Theorems) has been completed:
 - `Theorems/Correctness.lean` — `encrypt_mem_orbit` (ciphertext in orbit), `canon_encrypt` (canonical form preserved), `decrypt_unique` (message recovery uniqueness), `correctness` (decrypt inverts encrypt). Axioms: `propext`, `Classical.choice`, `Quot.sound` (standard Lean only)
-- `Theorems/InvariantAttack.lean` — `invariantAttackAdversary` construction, `invariant_on_encrypt` helper, `invariantAttackAdversary_correct` (case split proof), `invariant_attack` (separating invariant implies complete break). Axioms: `propext` only
+- `Theorems/InvariantAttack.lean` — `invariantAttackAdversary` construction, `invariant_on_encrypt` helper, `invariantAttackAdversary_correct` (case split proof), `invariant_attack` (separating invariant implies existence of a distinguishing adversary `∃ A, hasAdvantage`; informal shorthand "complete break" — see headline row #2 for the full three-convention advantage catalogue). Axioms: `propext` only
 - `Theorems/OIAImpliesCPA.lean` — `oia_specialized` (OIA instantiation), `hasAdvantage_iff` (clean unfolding), `no_advantage_from_oia` (advantage elimination), `oia_implies_1cpa` (OIA implies IND-1-CPA security). Axioms: zero (OIA is a hypothesis, not an axiom)
 - Track D (contrapositive): `adversary_yields_distinguisher`, `insecure_implies_separating`
 - All 16 work units (4.1–4.16) implemented with zero `sorry`, zero warnings, zero custom axioms
@@ -2347,27 +2347,46 @@ been completed:
   / D4 / D1 / audit findings I-03 / I-08).
 
 Traceability: audit findings V1-1 (interim — upgraded to Standalone
-once Workstream B lands), V1-2, V1-3, V1-4, V1-5 (bit-length
-strict-inequality framing already in `SeedKey.compression`
-docstring post Workstream L1; no further DEVELOPMENT.md rewrite
-required because §6.2.1 does not claim a numerical compression
-ratio), V1-7, V1-9 are resolved by this workstream. Audit findings
-V1-6 (toolchain), V1-8 (multi-query rename) remain open pending
-Workstreams D and C respectively.
+once Workstream B lands), V1-2, V1-3, V1-4, V1-5 (the bit-length
+strict-inequality framing was already machine-checkable via the
+`SeedKey.compression` field landed by Workstream L1, but the
+pre-Workstream-A `SeedKey.lean` module docstring still carried
+"scale-invariant compression claim / ratio-style compression
+statement" prose plus a "Full SGS ~1.8 MB / Seed key 256 bits"
+comparison table that *read as* if the Lean field certified a
+~60,000× quantitative compression ratio when it only certifies a
+≥ 1-bit strict inequality; the post-audit remediation adds an
+explicit "Scope of the Lean-verified compression claim" disclosure
+block clarifying that the numerical compression ratio is a
+**deployment parameter choice** witnessed by a `decide`-able
+`Fintype.card` bound at instantiation time, not a Lean-field
+certification. DEVELOPMENT.md §6.2.1 requires no rewrite because
+it does not mention seed-key compression — the 2026-04-23 audit's
+§6.2.1 pointer in V1-5's location field was a misattribution;
+the overclaim prose lives in `Orbcrypt/KeyMgmt/SeedKey.lean`'s
+module docstring), V1-7, V1-9 are resolved by this workstream.
+Audit findings V1-6 (toolchain), V1-8 (multi-query rename) remain
+open pending Workstreams D and C respectively.
 
-Verification: Workstream A is **documentation-only**; no Lean
-source files are modified. `lake build` is a no-op for comment
-changes (all 38 modules continue to build clean with zero errors /
-warnings); `scripts/audit_phase_16.lean` emits unchanged axiom
-output (no new Lean declarations); the 347 public-declaration
-count, the zero `sorry` / zero custom-axiom posture, and the
-standard-trio-only axiom-dependency posture are all preserved.
+Verification: Workstream A is **documentation-only** in the sense
+that no Lean *declaration* is added, removed, or modified —
+only module docstrings and Markdown prose change. The touched
+Lean files (`Orbcrypt.lean`, `Orbcrypt/KeyMgmt/SeedKey.lean`) are
+modified only inside their `/-! … -/` module docstring blocks,
+which contribute zero build jobs and zero `#print axioms`
+changes. `lake build` continues to succeed for all 38 modules
+with zero errors / zero warnings; `scripts/audit_phase_16.lean`
+emits unchanged axiom output (no new declarations); the 347
+public-declaration count, the zero `sorry` / zero custom-axiom
+posture, and the standard-trio-only axiom-dependency posture are
+all preserved.
 
 Patch version: `lakefile.lean` retains `0.1.6`; Workstream A adds
 no Lean source, structure, or build-graph content — only Markdown
-prose + the `Orbcrypt.lean` module-docstring Vacuity-map row
-updates (the Lean file itself is touched only in its `/-! … -/`
-module docstring block, which contributes to zero build jobs).
+prose + the `Orbcrypt.lean` and `Orbcrypt/KeyMgmt/SeedKey.lean`
+module-docstring clarifications (both Lean files are touched
+only in their `/-! … -/` module docstring blocks, which
+contribute to zero build jobs).
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`

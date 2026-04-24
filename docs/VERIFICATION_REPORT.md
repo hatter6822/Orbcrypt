@@ -107,8 +107,8 @@ is honest about which assumption is doing the cryptographic work.
 | 9   | `seed_kem_correctness`                                        | `KeyMgmt/SeedKey.lean`                        | Unconditional (uses `kem_correctness`) |
 | 10  | `nonce_encaps_correctness`                                    | `KeyMgmt/Nonce.lean`                          | Unconditional |
 | 11  | `nonce_reuse_leaks_orbit`                                     | `KeyMgmt/Nonce.lean`                          | Unconditional warning theorem |
-| 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | Conditional on orbit-cover hypothesis |
-| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | Concrete witness for #12 (now `[Fact (Nat.Prime p)]`) |
+| 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | **Conditional** (orbit-cover hypothesis, False on HGOE; see Known limitations item 10 / scheduled Workstream B) |
+| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | **Conditional** (requires `X = ZMod p × ZMod p`; incompatible with HGOE's `Bitstring n` — research R-13; see Known limitations item 12) |
 | 13a | `carterWegmanHash_isUniversal`                                | `AEAD/CarterWegmanMAC.lean`                   | **Carter–Wegman 1977 `(1/p)`-universality** (post-audit 2026-04-22) |
 | 13b | `IsEpsilonUniversal`                                          | `Probability/UniversalHash.lean`              | ε-universal hash Prop (post-audit 2026-04-22) |
 | 14  | `hardness_chain_implies_security`                             | `Hardness/Reductions.lean`                    | Conditional on `HardnessChain` |
@@ -119,8 +119,8 @@ is honest about which assumption is doing the cryptographic work.
 | 19  | `comp_oia_implies_1cpa`                                       | `Crypto/CompSecurity.lean`                    | Conditional on `CompOIA` (asymptotic) |
 | 20  | `det_oia_implies_concrete_zero`                               | `Crypto/CompOIA.lean`                         | Bridge: `OIA → ConcreteOIA 0` |
 | 21  | `concrete_kemoia_uniform_implies_secure`                      | `KEM/CompSecurity.lean`                       | Genuinely ε-smooth KEM bound (Workstream E1d) |
-| 22  | `concrete_hardness_chain_implies_1cpa_advantage_bound`        | `Hardness/Reductions.lean`                    | Probabilistic hardness chain (Workstream E5) |
-| 23  | `indQCPA_bound_via_hybrid`                                    | `Crypto/CompSecurity.lean`                    | Multi-query bound (Workstream E8c) |
+| 22  | `concrete_hardness_chain_implies_1cpa_advantage_bound`        | `Hardness/Reductions.lean`                    | **Quantitative** — probabilistic hardness chain (Workstream E5); inhabited only at ε = 1 via `tight_one_exists` in the current formalisation; ε < 1 requires caller-supplied surrogate + encoder witnesses (research-scope R-02 / R-03 / R-04) |
+| 23  | `indQCPA_bound_via_hybrid`                                    | `Crypto/CompSecurity.lean`                    | **Quantitative** — multi-query bound (Workstream E8c) **under user-supplied `h_step` per-step bound**; discharge from `ConcreteOIA` alone is research-scope R-09 (Workstream C of 2026-04-23 plan renames to `indQCPA_from_perStepBound`) |
 | 24  | `arePermEquivalent_setoid`                                    | `Hardness/CodeEquivalence.lean`               | Mathlib `Setoid` instance (Workstream D4) |
 | 25  | `paut_equivalence_set_eq_coset`                               | `Hardness/CodeEquivalence.lean`               | Full coset set identity (Workstream D3) |
 | 26  | `PAutSubgroup`                                                | `Hardness/CodeEquivalence.lean`               | `PAut` as Mathlib `Subgroup` (Workstream D2) |
@@ -129,7 +129,7 @@ is honest about which assumption is doing the cryptographic work.
 | 29  | `oia_implies_1cpa_distinct`                                   | `Theorems/OIAImpliesCPA.lean`                 | Classical IND-1-CPA corollary, conditional on `OIA` (Workstream K1) |
 | 30  | `hardness_chain_implies_security_distinct`                    | `Hardness/Reductions.lean`                    | Classical IND-1-CPA corollary, conditional on `HardnessChain` (Workstream K3) |
 | 31  | `indCPAAdvantage_collision_zero`                              | `Crypto/CompSecurity.lean`                    | Unconditional: probabilistic IND-1-CPA advantage vanishes on collision-choice adversaries (Workstream K4) |
-| 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | Probabilistic chain bound restated in classical-game form, conditional on `ConcreteHardnessChain` (Workstream K4 companion) |
+| 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | **Quantitative** — classical IND-1-CPA form of the probabilistic chain bound (Workstream K4 companion), conditional on `ConcreteHardnessChain`; same ε = 1 inhabitation posture as row #22 |
 
 Every one of #1–#32 was confirmed to depend only on standard Lean axioms by
 running `scripts/audit_phase_16.lean` — all declarations exercised

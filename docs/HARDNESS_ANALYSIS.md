@@ -130,6 +130,28 @@ Equivalence (MCE) or equivalently the Alternating Trilinear Form Equivalence
 
 ## 3. Reduction Chain
 
+**Scaffolding-vs-quantitative disclosure (audit 2026-04-23 / Workstream A).**
+This section describes the **deterministic** reduction chain —
+`TensorOIA → CEOIA → GIOIA → OIA → IND-1-CPA`. Per `CLAUDE.md`'s
+"Release messaging policy", the deterministic chain is **Scaffolding**:
+each OIA-variant predicate is `False` on every non-trivial scheme
+(the orbit-membership oracle `decide (x = reps m₀)` refutes it), so
+the chain's headline theorems (`oia_implies_1cpa`,
+`hardness_chain_implies_security`) are **vacuously true** on
+production instances. They encode the *shape* of an OIA-style
+reduction argument but are not standalone security claims. The
+**quantitative** counterpart is the probabilistic chain
+(`concrete_oia_implies_1cpa`,
+`concrete_hardness_chain_implies_1cpa_advantage_bound`, and their
+KEM-layer parallels) — satisfiable at `ε ∈ (0, 1]` and the
+substantive security content. In the current formalisation the
+chain is inhabited only at ε = 1 via `tight_one_exists`;
+concrete ε < 1 discharges via the Cai–Fürer–Immerman graph gadget
+(R-03) and the Grochow–Qiao structure-tensor encoding (R-02) are
+research-scope follow-ups. See
+`docs/VERIFICATION_REPORT.md` § "Release readiness" for the full
+citation discipline.
+
 ### 3.1 Formal Chain
 
 The hardness reduction chain, formalized in `Orbcrypt/Hardness/Reductions.lean`:

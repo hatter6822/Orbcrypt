@@ -42,24 +42,50 @@ Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)
 ```
 
 Read: "the number of bits required to encode a seed is strictly less
-than the number of bits required to encode a group element." This is
-the scale-invariant compression claim — doubling both `|Seed|` and
-`|G|` by a common factor preserves the inequality — which is the
-correct semantics for a *ratio*-style compression statement.
+than the number of bits required to encode a group element."
 
-### Key size comparison (with `compression` certifying the inequality)
+**Scope of the Lean-verified compression claim (audit 2026-04-23
+finding V1-5 / D5 / H-01).** The `compression` field only certifies a
+**minimum of one bit of compression** (strict inequality ≥ 1 bit).
+It is **not** a Lean-verified statement about any specific
+quantitative compression ratio (e.g., "256-bit seed compresses a
+~1.8 MB group"). Concretely:
+* `Nat.log 2 1 = 0`, `Nat.log 2 2 = 1`, so a `SeedKey` with
+  `|Seed| = 1` and `|G| = 2` satisfies `compression` trivially.
+* The numerical compression ratio achieved at a given deployment
+  (e.g., the λ = 128 table below) is a **parameter choice** of the
+  PRF and group construction, discharged by the concrete
+  `Fintype.card` values supplied at instantiation time. It is **not**
+  asserted by the `compression` field.
+* External release claims about Orbcrypt's key-size story should
+  frame `compression` as "the Lean formalisation proves at least 1
+  bit of compression per instance, ruling out the sloppy case
+  `|Seed| ≥ |G|`; the 256-bit / 1.8 MB quantitative ratio is a
+  deployment parameter, verified by the `decide`-able
+  `Fintype.card`-bound discharge at instantiation time."
+
+The strict inequality is also scale-invariant — doubling both
+`|Seed|` and `|G|` by a common factor preserves the inequality —
+which is the correct semantics for a *per-bit* compression claim,
+though not for a *ratio* claim.
+
+### Key size comparison (deployment parameters; not certified by `compression`)
 
 | Representation | Size (λ = 128) | Bit-length source |
 |----------------|----------------|-------------------|
 | Full SGS       | ~1.8 MB (~15 M bits) | `Nat.log 2 \|G\|`    |
 | Seed key       | 256 bits            | `Nat.log 2 \|Seed\|` |
-| Compression    | field-certified     | `compression` field |
+| Compression    | ≥ 1 bit (Lean-field); deployment ratio is a parameter choice | `compression` field (≥ 1-bit certification only) |
 
 At λ = 128 the GAP HGOE implementation uses `Seed = Fin 256 → Bool`
 (a 256-bit seed) and `|G|` a subgroup of `S_n` whose order satisfies
 `Nat.log 2 |G| ≥ 128`. The bit-length witness `Nat.log 2 (2^256) <
 Nat.log 2 |G|` is discharged by the concrete group-order bound
-supplied at instantiation time.
+supplied at instantiation time. **The Lean formalisation does not
+assert that this instantiation achieves any particular compression
+ratio; it asserts only that the bit-length inequality holds, and
+the deployment-specific numerical ratio is witnessed by the
+`decide`-able `Fintype.card` comparison at that instantiation.**
 
 ### Why a witness, not just prose
 

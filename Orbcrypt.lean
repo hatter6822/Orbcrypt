@@ -434,7 +434,9 @@ These theorems depend only on Lean's standard axioms (`propext`,
 
 - `correctness` (`Theorems/Correctness.lean`) — decrypt inverts encrypt
 - `invariant_attack` (`Theorems/InvariantAttack.lean`) — separating invariant
-  implies complete break
+  implies `∃ A, hasAdvantage` (existence of one distinguishing adversary;
+  informal shorthand "complete break" — see the `invariant_attack` docstring
+  for the three-convention advantage catalogue)
 - `kem_correctness` (`KEM/Correctness.lean`) — decaps recovers encapsulated key
 - `kem_key_constant_direct` (`KEM/Security.lean`) — key constancy from
   canonical form G-invariance (no KEMOIA needed)
