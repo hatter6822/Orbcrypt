@@ -38,6 +38,17 @@ meaningful probabilistic result.
   multi-query adversary (Workstream B3, prereq for E8)
 * `Orbcrypt.perQueryAdvantage_bound_of_concreteOIA` — per-query
   ConcreteOIA bound: each query's advantage is at most `ε`
+* `Orbcrypt.indQCPA_from_perStepBound` — multi-query IND-Q-CPA
+  advantage bound `≤ Q · ε` delivered from a **caller-supplied**
+  per-step hybrid bound `h_step`. Renamed from the pre-Workstream-C
+  `indQCPA_bound_via_hybrid` to surface the user-hypothesis
+  obligation in the identifier itself (Workstream C of 2026-04-23
+  audit plan, finding V1-8 / C-13 / D10). Discharging `h_step` from
+  `ConcreteOIA scheme ε` alone requires a per-coordinate
+  marginal-independence proof over `uniformPMFTuple`; that is
+  research-scope R-09 and remains future work.
+* `Orbcrypt.indQCPA_from_perStepBound_recovers_single_query` — Q = 1
+  regression sentinel companion to `indQCPA_from_perStepBound`.
 
 ## Design
 
@@ -423,27 +434,38 @@ theorem indQCPAAdvantage_le_one {Q : ℕ}
     indQCPAAdvantage scheme A ≤ 1 :=
   advantage_le_one _ _ _
 
-/-- **Workstream E8c.** Multi-query IND-Q-CPA advantage bound via the
-    hybrid argument.
+/-- **Workstream E8c.** Multi-query IND-Q-CPA advantage bound from a
+    user-supplied per-step hybrid bound.
 
-    Given a per-step bound `h_step` (adjacent hybrids have advantage
-    ≤ ε), the end-to-end IND-Q-CPA advantage is bounded by `Q · ε`. This
-    is the telescoping step of the hybrid proof; it delegates the
-    quantitative work to `hybrid_argument_uniform` from
+    **Game shape.** This theorem delivers a `Q · ε` bound on the
+    multi-query IND-Q-CPA advantage **given** a per-query bound
+    `h_step` that the caller must discharge. The caller is responsible
+    for supplying `h_step`; the theorem then performs the hybrid
+    telescoping via `hybrid_argument_uniform` from
     `Probability/Advantage.lean`.
 
-    **Per-step hypothesis.** `h_step i hi` is the single-query bound for
-    the adjacent hybrid pair `(i, i+1)`. The cryptographic content is
-    that when only coordinate `i` differs between the two distributions,
-    marginalising over the other coordinates yields a single-query
-    distinguisher on X, whose advantage is bounded by `ConcreteOIA scheme
-    ε` applied to the i-th challenge pair. Discharging `h_step` from
-    `ConcreteOIA` alone requires a marginal-independence argument over
-    `uniformPMFTuple`; see the audit plan § E8b for the full proof
-    obligation. The statement here is deliberately agnostic so that any
-    concrete marginal argument (e.g. via a per-coordinate-bind
-    reformulation of `hybridDist`) can be plugged in. -/
-theorem indQCPA_bound_via_hybrid {Q : ℕ}
+    **User-supplied hypothesis obligation.** `h_step i hi` is the
+    single-query bound for the adjacent hybrid pair `(i, i+1)`. The
+    cryptographic content is that when only coordinate `i` differs
+    between the two distributions, marginalising over the other
+    coordinates yields a single-query distinguisher on `X`, whose
+    advantage is bounded by `ConcreteOIA scheme ε` applied to the
+    `i`-th challenge pair. Discharging `h_step` from `ConcreteOIA
+    scheme ε` alone requires a per-coordinate marginal-independence
+    proof over `uniformPMFTuple`; this is **research-scope** work —
+    see `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 18 /
+    research milestone R-09. Until R-09 lands, consumers supply
+    `h_step` from custom analysis or from a stronger assumption
+    (e.g., a query-adaptive variant of `ConcreteOIA`).
+
+    **Naming discipline (Workstream C of 2026-04-23 audit plan,
+    finding V1-8 / C-13).** The `from_perStepBound` suffix surfaces
+    the user-supplied obligation in the identifier itself, per
+    `CLAUDE.md`'s naming rule that identifiers must describe what
+    the code *proves*, not what it *aspires to*. External
+    release-facing prose that summarises this theorem must carry
+    the `h_step` disclosure. -/
+theorem indQCPA_from_perStepBound {Q : ℕ}
     (scheme : OrbitEncScheme G X M) (ε : ℝ)
     (A : MultiQueryAdversary X M Q)
     (h_step : ∀ i, i < Q →
@@ -462,8 +484,14 @@ theorem indQCPA_bound_via_hybrid {Q : ℕ}
 /-- **Workstream E8d.** Regression check: at `Q = 1`, the multi-query
     bound `Q · ε = ε` recovers the single-query advantage bound —
     provided the single per-step hybrid bound matches
-    `concrete_oia_implies_1cpa`. Sanity sentinel. -/
-theorem indQCPA_bound_recovers_single_query
+    `concrete_oia_implies_1cpa`. Sanity sentinel.
+
+    Renamed from `indQCPA_bound_recovers_single_query` in Workstream C
+    (2026-04-23 audit plan, finding V1-8 / C-13) to keep the
+    `from_perStepBound` terminology consistent with the main theorem;
+    the shared prefix makes the companion's dependency on a caller-
+    supplied per-step bound explicit in the identifier itself. -/
+theorem indQCPA_from_perStepBound_recovers_single_query
     (scheme : OrbitEncScheme G X M) (ε : ℝ)
     (A : MultiQueryAdversary X M 1)
     (h_step : advantage (A.guess scheme.reps)
@@ -471,7 +499,7 @@ theorem indQCPA_bound_recovers_single_query
         (hybridDist scheme (A.choose scheme.reps) 1) ≤ ε) :
     indQCPAAdvantage scheme A ≤ ε := by
   have h1 :=
-    indQCPA_bound_via_hybrid (Q := 1) scheme ε A
+    indQCPA_from_perStepBound (Q := 1) scheme ε A
       (fun i hi => by
         interval_cases i
         exact h_step)

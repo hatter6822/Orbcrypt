@@ -256,8 +256,12 @@ open Orbcrypt
 #print axioms indQCPAAdvantage
 #print axioms indQCPAAdvantage_nonneg
 #print axioms indQCPAAdvantage_le_one
-#print axioms indQCPA_bound_via_hybrid
-#print axioms indQCPA_bound_recovers_single_query
+-- Workstream C (audit 2026-04-23, V1-8 / C-13): multi-query IND-Q-CPA
+-- theorem renamed from `indQCPA_bound_via_hybrid` to
+-- `indQCPA_from_perStepBound` (and companion likewise) to surface the
+-- `h_step` user-supplied hypothesis in the identifier.
+#print axioms indQCPA_from_perStepBound
+#print axioms indQCPA_from_perStepBound_recovers_single_query
 
 -- KEM.CompSecurity (Workstream E1)
 #print axioms kemEncapsDist
@@ -823,6 +827,56 @@ example {G : Type} {X : Type} {M : Type}
   let ⟨hc⟩ := ConcreteHardnessChain.tight_one_exists scheme Bool
   concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
     scheme 1 hc A hDistinct
+
+-- ============================================================================
+-- Workstream C non-vacuity witnesses (audit 2026-04-23, V1-8 / C-13 /
+-- D10): renamed multi-query IND-Q-CPA theorem accepts a user-supplied
+-- per-step bound and produces a Q · ε telescoping bound. The rename
+-- surfaces the user-hypothesis obligation in the identifier itself;
+-- these witnesses confirm the renamed theorem remains well-typed and
+-- ε-smooth on at least one concrete instance.
+-- ============================================================================
+
+/-- Workstream C non-vacuity: `indQCPA_from_perStepBound` applies to an
+    arbitrary multi-query adversary as long as the caller supplies the
+    per-step bound. Exercises the renamed theorem's signature. -/
+example {G : Type} {X : Type} {M : Type} {Q : ℕ}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M Q)
+    (h_step : ∀ i, i < Q →
+      advantage (A.guess scheme.reps)
+        (hybridDist scheme (A.choose scheme.reps) i)
+        (hybridDist scheme (A.choose scheme.reps) (i + 1)) ≤ ε) :
+    indQCPAAdvantage scheme A ≤ (Q : ℝ) * ε :=
+  indQCPA_from_perStepBound scheme ε A h_step
+
+/-- Workstream C non-vacuity: `indQCPA_from_perStepBound` at `ε = 1`
+    delivers the trivial `Q · 1` bound for any adversary satisfying
+    the trivially-discharged per-step bound. This is the C.2 template
+    in `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` instantiated
+    to `Q = 2`. The per-step bound is `advantage_le_one` at every
+    hybrid pair, so the caller discharges it by a one-liner. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (A : MultiQueryAdversary X M 2) :
+    indQCPAAdvantage scheme A ≤ (2 : ℝ) * 1 :=
+  indQCPA_from_perStepBound (Q := 2) scheme 1 A
+    (fun _ _ => advantage_le_one _ _ _)
+
+/-- Workstream C non-vacuity: the Q = 1 sanity sentinel
+    `indQCPA_from_perStepBound_recovers_single_query` recovers the
+    single-query ε bound from a single per-step hybrid bound. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M 1)
+    (h_step : advantage (A.guess scheme.reps)
+        (hybridDist scheme (A.choose scheme.reps) 0)
+        (hybridDist scheme (A.choose scheme.reps) 1) ≤ ε) :
+    indQCPAAdvantage scheme A ≤ ε :=
+  indQCPA_from_perStepBound_recovers_single_query scheme ε A h_step
 
 -- ============================================================================
 -- Workstream L1 (audit F-AUDIT-2026-04-21-M2): `SeedKey` witnessed
