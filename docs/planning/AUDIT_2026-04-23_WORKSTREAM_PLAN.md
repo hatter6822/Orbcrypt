@@ -3207,9 +3207,10 @@ acceptance criteria.
 
 ### 20.1 Audit-derived release-gate items
 
-- [ ] **V1-1** (Workstream **B**): `INT_CTXT` refactored; orbit-
+- [x] **V1-1** (Workstream **B**): `INT_CTXT` refactored; orbit-
       cover is per-challenge, not theorem-level. Row #19 Status
-      in `CLAUDE.md` reads **Standalone** post-B.
+      in `CLAUDE.md` reads **Standalone** post-B. **Closed by
+      landing 2026-04-24.**
 - [ ] **V1-2** (Workstream **A**): `CLAUDE.md` rows #24 #25
       reclassified to **Conditional**.
 - [ ] **V1-3** (Workstream **A**): `docs/VERIFICATION_REPORT.md`

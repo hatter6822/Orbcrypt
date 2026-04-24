@@ -80,7 +80,7 @@ that certify correctness or hiding for each.
 | Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 (`seed_kem_correctness`) |
 | Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 + nonce caveat below |
 | Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 (`aead_correctness`) |
-| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — proved for honest compositions with `MAC.verify_inj` and `hOrbitCover` (latter is False on production HGOE; Workstream B of the 2026-04-23 plan will absorb orbit-cover into the game's well-formedness precondition) | Theorem 19 (`authEncrypt_is_int_ctxt`, status **Conditional**) + Theorem 20 (`carterWegmanMAC_int_ctxt` witness, status **Conditional** — requires `X = ZMod p × ZMod p`, incompatible with HGOE's `Bitstring n`, research R-13); Workstream C (audit F-07) |
+| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — proved for honest compositions with `MAC.verify_inj`. Post-2026-04-23 Workstream B (landed 2026-04-24), the orbit-cover condition lives on the `INT_CTXT` game as a per-challenge well-formedness precondition, not as a theorem-level hypothesis; `authEncrypt_is_int_ctxt` now discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | Theorem 19 (`authEncrypt_is_int_ctxt`, status **Standalone**) + Theorem 20 (`carterWegmanMAC_int_ctxt` witness, status **Conditional** — requires `X = ZMod p × ZMod p`, incompatible with HGOE's `Bitstring n`, research R-13); Workstream C (audit F-07), Workstream B (audit 2026-04-23) |
 
 Two caveats recur and must be stated once:
 
@@ -256,19 +256,24 @@ substitutes a binary without access to `G_P` cannot forge a
 canonicalization match, and a substitution that breaks the AEAD
 tag is rejected by `authDecaps` — and this rejection is now a
 *theorem*, `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`, Theorem 19;
-status **Conditional** per `CLAUDE.md`'s release-messaging policy),
-which discharges the `INT_CTXT` predicate for every honest
-composition whose ciphertext space covers a single orbit of the base
-point. **This `hOrbitCover` hypothesis is False on production HGOE**
-(where `|Bitstring n| = 2^n` exceeds the base-point orbit by the
-orbit-stabiliser bound), so the theorem as stated is vacuously
-applicable there; the 2026-04-23 pre-release audit's Workstream
-**B** refactors `INT_CTXT` to absorb orbit-cover as the game's
-per-challenge well-formedness precondition, upgrading the theorem
-to Standalone post-**B**. The in-proof sibling
+status **Standalone** post-Workstream-B per `CLAUDE.md`'s
+release-messaging policy), which discharges the `INT_CTXT`
+predicate for every `AuthOrbitKEM`. Pre-2026-04-23 the theorem
+carried an `hOrbitCover` hypothesis asserting the ciphertext space
+covers a single orbit of the base point — **false on production
+HGOE** (where `|Bitstring n| = 2^n` exceeds the base-point orbit by
+the orbit-stabiliser bound) — so the theorem was vacuously
+applicable there. The 2026-04-23 pre-release audit's Workstream
+**B** (landed 2026-04-24) refactored `INT_CTXT` to carry the
+orbit-cover condition as the game's per-challenge well-formedness
+precondition `hOrbit`, not as a theorem-level assumption. Out-of-
+orbit ciphertexts are rejected by the `INT_CTXT` game itself;
+`authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on
+every `AuthOrbitKEM`. The in-proof sibling
 `keyDerive_canon_eq_of_mem_orbit` is the orbit-restricted
 key-uniqueness lemma at the heart of the argument and is
-unconditionally true (audit F-07, Workstream C2).
+unconditionally true (audit F-07, Workstream C2; refined by
+Workstream B of audit 2026-04-23).
 `carterWegmanMAC_int_ctxt` (Theorem 20; status **Conditional**) is the
 concrete Carter–Wegman witness demonstrating the composition is
 inhabitable — but it is typed over `X = ZMod p × ZMod p` and is
@@ -842,6 +847,16 @@ claims were weakened and why.
   was rewritten to cite these theorems; this entry remains for
   historical traceability of the earlier "definition, not theorem"
   correction.
+  *Update (2026-04-24, Workstream B, audit 2026-04-23 / V1-1):* the
+  "single-orbit" framing of the 2026-04-19 entry above is superseded.
+  Workstream B refactored `INT_CTXT` so the orbit condition is a
+  per-challenge well-formedness precondition `hOrbit` on the game
+  itself rather than a theorem-level `hOrbitCover` hypothesis, and
+  `authEncrypt_is_int_ctxt` (Theorem 19) now discharges `INT_CTXT`
+  **unconditionally** on every `AuthOrbitKEM`. Out-of-orbit
+  ciphertexts are rejected by the game's well-formedness
+  precondition, not by a scheme-level coverage assumption. Row #19
+  status in `CLAUDE.md` upgrades from Conditional to Standalone.
 * **§4.1 (sealed bug bounty).** Clarified that the message space
   `M_T` is finite (Orbcrypt's `reps` is a map from a finite `M`);
   the PoC content is a separate hybrid-encrypted blob referenced

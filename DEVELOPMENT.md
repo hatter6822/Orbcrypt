@@ -1186,6 +1186,7 @@ computed tag verifies. Without it, the abstract `INT_CTXT` predicate
 ```lean
 def INT_CTXT (akem : AuthOrbitKEM G X K Tag) : Prop :=
   ∀ (c : X) (t : Tag),
+    c ∈ MulAction.orbit G akem.kem.basePoint →                       -- hOrbit (post-B)
     (∀ g : G, c ≠ (authEncaps akem g).1 ∨ t ≠ (authEncaps akem g).2.2) →
     authDecaps akem c t = none
 ```
@@ -1193,7 +1194,8 @@ def INT_CTXT (akem : AuthOrbitKEM G X K Tag) : Prop :=
 cannot be discharged — an adversary could simply produce a distinct tag
 that still verifies.
 
-The Workstream C proof pipeline is:
+The Workstream C proof pipeline is (with the Workstream B game-shape
+refinement of 2026-04-24 in `INT_CTXT`'s signature):
 
 1. **C2a (easy branch).** `authDecaps_none_of_verify_false`: if `verify`
    fails, `authDecaps` returns `none` by unfolding.
@@ -1202,34 +1204,41 @@ The Workstream C proof pipeline is:
    (unconditional — consequence of `canon_eq_of_mem_orbit`).
 3. **C2c (main theorem).** `authEncrypt_is_int_ctxt`: a case split on
    `verify k c t`. The `false` branch uses C2a; the `true` branch uses
-   `verify_inj` plus a hypothesis
-   `hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` to derive a contradiction
-   with `hFresh`.
+   `verify_inj` plus the per-challenge `hOrbit` binder from the
+   `INT_CTXT` game to derive a contradiction with `hFresh`.
 
-The orbit-cover hypothesis `hOrbitCover` encodes the semantic requirement
+The orbit-cover hypothesis `hOrbit` encodes the semantic requirement
 that **the ciphertext space equals a single orbit** — the intended model
-throughout this document. It is carried as an explicit hypothesis rather
-than a structural field on `AuthOrbitKEM` so that the KEM structure
-remains maximally general; concrete instances (e.g. the Carter–Wegman
-witness in `Orbcrypt/AEAD/CarterWegmanMAC.lean`) discharge it when their
-ciphertext space is naturally transitive.
+throughout this document. After Workstream B of the 2026-04-23 audit
+(landed 2026-04-24) it lives on the `INT_CTXT` game itself as a
+per-challenge well-formedness precondition, not as a theorem-level
+obligation on `authEncrypt_is_int_ctxt`. This refactor is the canonical
+real-world KEM threat model: out-of-orbit ciphertexts are "not
+well-formed" (they cannot arise from an honest sender running an
+orbit-action KEM) and therefore do not count as forgeries.
 
-**Orbit-cover falsity on production HGOE (audit 2026-04-23 finding V1-1 /
-I-03 / D1; scheduled Workstream B).** On the concrete HGOE construction
-the ciphertext type is `Bitstring n = Fin n → Bool` with `|Bitstring n|
-= 2^n`. By the orbit–stabiliser identity every orbit under `G ≤ S_n` has
-cardinality at most `|G| / |Stab|`, which is strictly less than `2^n`
-for any realistic choice of `(n, G)`. Hence `hOrbitCover` is **False on
-production HGOE**, and `authEncrypt_is_int_ctxt` is vacuously applicable
-there. The 2026-04-23 pre-release audit plan
-(`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 5) identifies
-Workstream **B** as the remediation: refactor `INT_CTXT` so orbit-cover
-is the game's well-formedness precondition (per-challenge) rather than
-a theorem-level obligation. Post-**B** the theorem discharges
-unconditionally on every `AuthOrbitKEM`. Release-facing prose should
-not summarise `authEncrypt_is_int_ctxt` as "HGOE has machine-checked
-INT-CTXT" without disclosing the orbit-cover caveat until Workstream
-**B** lands.
+**Orbit-cover resolution (audit 2026-04-23 finding V1-1 / I-03 / D1
+CLOSED by Workstream B, 2026-04-24).** Pre-Workstream-B the theorem
+carried an explicit `hOrbitCover : ∀ c : X, c ∈ orbit G basePoint`
+hypothesis. On the concrete HGOE construction the ciphertext type is
+`Bitstring n = Fin n → Bool` with `|Bitstring n| = 2^n`; by the
+orbit–stabiliser identity every orbit under `G ≤ S_n` has cardinality
+at most `|G| / |Stab|`, strictly less than `2^n` for any realistic
+`(n, G)`. So `hOrbitCover` was False on production HGOE, and
+`authEncrypt_is_int_ctxt` was vacuously applicable there.
+**Workstream B refactored `INT_CTXT` so the orbit condition is a
+per-challenge well-formedness precondition on the game itself, not a
+theorem-level obligation.** Post-B, `authEncrypt_is_int_ctxt` discharges
+`INT_CTXT` unconditionally on every `AuthOrbitKEM`; the `CLAUDE.md`
+row #19 Status column reads **Standalone**. Consumers wanting the
+stronger "INT-CTXT rejects out-of-orbit ciphertexts at decapsulation
+time" model should pair `INT_CTXT` with an explicit orbit-check — the
+canonical shape is Workstream **H**'s planned `decapsSafe` helper in
+the 2026-04-23 audit plan § 9. Release-facing prose can now summarise
+the theorem as "Orbcrypt AEAD has machine-checked ciphertext integrity:
+no adversary can forge an in-orbit `(c, t)` pair that both lies in
+`orbit G basePoint` and decapsulates with a fresh tag not produced by
+the challenger".
 
 **Carter–Wegman / HGOE compatibility (audit 2026-04-23 finding V1-7 /
 D4 / I-08 / I-10).** The Carter–Wegman concrete MAC witness is typed
@@ -1247,9 +1256,9 @@ in the 2026-04-23 plan § 18. For standalone universal-hash claims,
 cite `carterWegmanHash_isUniversal` (the `(1/p)`-universal property
 over `ZMod p`, proved at `[Fact (Nat.Prime p)]` post the 2026-04-22
 L-workstream upgrade); for HGOE-specific AEAD citations, use the
-Workstream-**B**-refactored `authEncrypt_is_int_ctxt` once it lands,
-and couple it with HMAC or Poly1305 via the real-world-MAC
-refinement mentioned below.
+post-Workstream-B `authEncrypt_is_int_ctxt` (landed 2026-04-24,
+unconditional on every `AuthOrbitKEM`) and couple it with HMAC or
+Poly1305 via the real-world-MAC refinement mentioned below.
 
 The concrete `MAC` witness (Workstream C4, strengthened by the
 L-workstream post-audit pass on 2026-04-22) is the Carter–Wegman

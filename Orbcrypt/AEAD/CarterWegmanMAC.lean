@@ -323,14 +323,18 @@ def carterWegman_authKEM {G : Type*} [Group G] (p : ℕ) [Fact (Nat.Prime p)]
 /--
 **INT-CTXT for the Carter–Wegman composition.**
 
-Direct application of `authEncrypt_is_int_ctxt` (Workstream C2) to the
-AEAD composed from any `OrbitKEM` on ciphertext space `ZMod p` and the
-Carter–Wegman MAC. The only remaining hypothesis is the orbit-cover
-assumption `hOrbitCover` on the underlying KEM — i.e., that every
-`c : ZMod p` lies in `orbit G kem.basePoint`.
+Direct application of `authEncrypt_is_int_ctxt` (Workstream C2) to
+the AEAD composed from any `OrbitKEM` on ciphertext space `ZMod p`
+and the Carter–Wegman MAC. Post-audit 2026-04-23 Workstream B, this
+is an unconditional specialisation — the orbit-cover hypothesis that
+the pre-B formulation carried has been absorbed into the game's
+per-challenge well-formedness precondition on `INT_CTXT` itself (see
+`Orbcrypt/AEAD/AEAD.lean` for the refactor).
 
 This is the concrete witness completing Workstream C4: `INT_CTXT` is
-non-vacuously inhabited for the intended model.
+non-vacuously inhabited for the intended model, with the orbit
+condition now living on each `INT_CTXT` challenge rather than as a
+theorem-level assumption.
 
 **HGOE compatibility (audit 2026-04-23 finding V1-7 / D4 / I-08 /
 Workstream A).** This theorem's ciphertext type is `ZMod p` — it is
@@ -350,11 +354,11 @@ citations, use `carterWegmanHash_isUniversal` (the Carter–Wegman
 -/
 theorem carterWegmanMAC_int_ctxt {G : Type*} [Group G]
     (p : ℕ) [Fact (Nat.Prime p)] [MulAction G (ZMod p)]
-    (kem : OrbitKEM G (ZMod p) (ZMod p × ZMod p))
-    (hOrbitCover : ∀ c : ZMod p, c ∈ MulAction.orbit G kem.basePoint) :
+    (kem : OrbitKEM G (ZMod p) (ZMod p × ZMod p)) :
     INT_CTXT (carterWegman_authKEM p kem) :=
-  -- The base-point of the composed AuthOrbitKEM is the base-point of `kem`;
-  -- pass `hOrbitCover` through unchanged.
-  authEncrypt_is_int_ctxt (carterWegman_authKEM p kem) hOrbitCover
+  -- Post-Workstream-B, `authEncrypt_is_int_ctxt` is unconditional;
+  -- the orbit-cover obligation has been absorbed into the game's
+  -- per-challenge precondition on `INT_CTXT` itself.
+  authEncrypt_is_int_ctxt (carterWegman_authKEM p kem)
 
 end Orbcrypt
