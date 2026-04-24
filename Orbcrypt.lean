@@ -434,7 +434,9 @@ These theorems depend only on Lean's standard axioms (`propext`,
 
 - `correctness` (`Theorems/Correctness.lean`) — decrypt inverts encrypt
 - `invariant_attack` (`Theorems/InvariantAttack.lean`) — separating invariant
-  implies complete break
+  implies `∃ A, hasAdvantage` (existence of one distinguishing adversary;
+  informal shorthand "complete break" — see the `invariant_attack` docstring
+  for the three-convention advantage catalogue)
 - `kem_correctness` (`KEM/Correctness.lean`) — decaps recovers encapsulated key
 - `kem_key_constant_direct` (`KEM/Security.lean`) — key constancy from
   canonical form G-invariance (no KEMOIA needed)
@@ -1067,15 +1069,30 @@ predecessor. The pairing:
 |---|---|
 | `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) |
 | `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) |
-| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) |
+| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) — **ε = 1 inhabited only via `ConcreteHardnessChain.tight_one_exists` (`punitSurrogate F` + dimension-0 trivial encoders); ε < 1 requires a caller-supplied `SurrogateTensor F` + encoder pair with genuine cryptographic hardness (research-scope — see § O of the 2026-04-23 plan: R-02 / R-03 / R-04)** |
 | `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
-| *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) |
-| *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop |
-| *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound` |
+| *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) — **carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 (see § O of the 2026-04-23 plan). Workstream C of that plan renames the theorem to `indQCPA_from_perStepBound` to surface the obligation in the identifier** |
+| *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop. **ε = 1 inhabited only via `ConcreteKEMHardnessChain.tight_one_exists`; ε < 1 requires caller-supplied scheme-to-KEM reduction witness at `(m₀, keyDerive)` — research-scope R-05** |
+| *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound`. **Same ε = 1 disclosure as the scheme-level parallel; ε < 1 requires the composition of R-02/R-03/R-04 (scheme-level chain) and R-05 (scheme-to-KEM reduction)** |
 | `oia_implies_1cpa` (uniform game) | `oia_implies_1cpa_distinct` (K1) — same scaffolding status, classical-IND-1-CPA signature matching the literature |
 | `hardness_chain_implies_security` (uniform game) | `hardness_chain_implies_security_distinct` (K3) — same scaffolding status, classical-IND-1-CPA signature |
 | `concrete_oia_implies_1cpa` (unconditional over `Adversary`) | `indCPAAdvantage_collision_zero` + `concrete_oia_implies_1cpa` docstring (K4) — the collision case yields advantage 0, so the existing probabilistic `≤ ε` bound transfers to the classical distinct-challenge game for free |
-| `concrete_hardness_chain_implies_1cpa_advantage_bound` (unconditional over `Adversary`) | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4 companion) — classical-IND-1-CPA restatement retaining the ε-smooth quantitative content |
+| `concrete_hardness_chain_implies_1cpa_advantage_bound` (unconditional over `Adversary`) | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4 companion) — classical-IND-1-CPA restatement retaining the ε-smooth quantitative content. **Same ε = 1 disclosure as the non-distinct form** |
+
+### Vacuity map (2026-04-23 Workstream A additions — Conditional-status rows)
+
+These rows record the 2026-04-23 audit's documentation-vs-code
+reconciliation: each of the four `CLAUDE.md` rows reclassified from
+**Standalone** to **Conditional** has an explicitly disclosed
+hypothesis, which fails on production instances. Where a genuinely
+standalone sibling theorem exists, it is named.
+
+| Conditional theorem (Lean content) | Failing hypothesis | Standalone sibling (cite instead) |
+|---|---|---|
+| `authEncrypt_is_int_ctxt` (row #19) | `hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` — False on production HGOE (orbit size < `2^n = |Bitstring n|`) | `keyDerive_canon_eq_of_mem_orbit` (orbit-restricted key uniqueness; unconditional). Scheduled Workstream B of 2026-04-23 plan absorbs orbit-cover into the game precondition; post-B the row #19 Status upgrades to **Standalone** |
+| `carterWegmanMAC_int_ctxt` (row #20) | Implicit type constraint `X = ZMod p × ZMod p`; **incompatible with HGOE's `Bitstring n` ciphertext space** without a `Bitstring n → ZMod p` adapter | `carterWegmanHash_isUniversal` — the standalone `(1/p)`-universal hash theorem. The adapter is research-scope R-13 |
+| `two_phase_correct` (row #24) | `TwoPhaseDecomposition` — empirically False on the default GAP fallback group (lex-min and the residual transversal action don't commute) | `fast_kem_round_trip` (row #26) — orbit-constancy of the fast canonical form; IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G |
+| `two_phase_kem_correctness` (row #25) | Same `TwoPhaseDecomposition` as row #24 | Same `fast_kem_round_trip` (row #26) |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`

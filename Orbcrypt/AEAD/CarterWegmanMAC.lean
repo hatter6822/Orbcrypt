@@ -331,6 +331,22 @@ assumption `hOrbitCover` on the underlying KEM — i.e., that every
 
 This is the concrete witness completing Workstream C4: `INT_CTXT` is
 non-vacuously inhabited for the intended model.
+
+**HGOE compatibility (audit 2026-04-23 finding V1-7 / D4 / I-08 /
+Workstream A).** This theorem's ciphertext type is `ZMod p` — it is
+**not** directly compatible with HGOE's `Bitstring n = Fin n → Bool`
+ciphertext space. Composing Carter–Wegman with an HGOE `OrbitKEM G
+(Bitstring n) K` requires an auxiliary `Bitstring n → ZMod p` adapter
+that preserves the orbit structure `authEncrypt_is_int_ctxt` relies
+on; no such adapter is formalised in the current release, and
+building one is research-scope R-13 in
+`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 18.
+Release-facing citations should frame this theorem as "the
+satisfiability witness for `MAC.verify_inj` and the `INT_CTXT`
+pipeline on a `ZMod p`-typed composition; it does not compose with
+concrete HGOE without R-13." For standalone universal-hash
+citations, use `carterWegmanHash_isUniversal` (the Carter–Wegman
+1977 `(1/p)`-universal property proved at `[Fact (Nat.Prime p)]`).
 -/
 theorem carterWegmanMAC_int_ctxt {G : Type*} [Group G]
     (p : ℕ) [Fact (Nat.Prime p)] [MulAction G (ZMod p)]

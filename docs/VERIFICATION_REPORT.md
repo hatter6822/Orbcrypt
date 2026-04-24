@@ -107,8 +107,8 @@ is honest about which assumption is doing the cryptographic work.
 | 9   | `seed_kem_correctness`                                        | `KeyMgmt/SeedKey.lean`                        | Unconditional (uses `kem_correctness`) |
 | 10  | `nonce_encaps_correctness`                                    | `KeyMgmt/Nonce.lean`                          | Unconditional |
 | 11  | `nonce_reuse_leaks_orbit`                                     | `KeyMgmt/Nonce.lean`                          | Unconditional warning theorem |
-| 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | Conditional on orbit-cover hypothesis |
-| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | Concrete witness for #12 (now `[Fact (Nat.Prime p)]`) |
+| 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | **Conditional** (orbit-cover hypothesis, False on HGOE; see Known limitations item 10 / scheduled Workstream B) |
+| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | **Conditional** (requires `X = ZMod p × ZMod p`; incompatible with HGOE's `Bitstring n` — research R-13; see Known limitations item 12) |
 | 13a | `carterWegmanHash_isUniversal`                                | `AEAD/CarterWegmanMAC.lean`                   | **Carter–Wegman 1977 `(1/p)`-universality** (post-audit 2026-04-22) |
 | 13b | `IsEpsilonUniversal`                                          | `Probability/UniversalHash.lean`              | ε-universal hash Prop (post-audit 2026-04-22) |
 | 14  | `hardness_chain_implies_security`                             | `Hardness/Reductions.lean`                    | Conditional on `HardnessChain` |
@@ -119,8 +119,8 @@ is honest about which assumption is doing the cryptographic work.
 | 19  | `comp_oia_implies_1cpa`                                       | `Crypto/CompSecurity.lean`                    | Conditional on `CompOIA` (asymptotic) |
 | 20  | `det_oia_implies_concrete_zero`                               | `Crypto/CompOIA.lean`                         | Bridge: `OIA → ConcreteOIA 0` |
 | 21  | `concrete_kemoia_uniform_implies_secure`                      | `KEM/CompSecurity.lean`                       | Genuinely ε-smooth KEM bound (Workstream E1d) |
-| 22  | `concrete_hardness_chain_implies_1cpa_advantage_bound`        | `Hardness/Reductions.lean`                    | Probabilistic hardness chain (Workstream E5) |
-| 23  | `indQCPA_bound_via_hybrid`                                    | `Crypto/CompSecurity.lean`                    | Multi-query bound (Workstream E8c) |
+| 22  | `concrete_hardness_chain_implies_1cpa_advantage_bound`        | `Hardness/Reductions.lean`                    | **Quantitative** — probabilistic hardness chain (Workstream E5); inhabited only at ε = 1 via `tight_one_exists` in the current formalisation; ε < 1 requires caller-supplied surrogate + encoder witnesses (research-scope R-02 / R-03 / R-04) |
+| 23  | `indQCPA_bound_via_hybrid`                                    | `Crypto/CompSecurity.lean`                    | **Quantitative** — multi-query bound (Workstream E8c) **under user-supplied `h_step` per-step bound**; discharge from `ConcreteOIA` alone is research-scope R-09 (Workstream C of 2026-04-23 plan renames to `indQCPA_from_perStepBound`) |
 | 24  | `arePermEquivalent_setoid`                                    | `Hardness/CodeEquivalence.lean`               | Mathlib `Setoid` instance (Workstream D4) |
 | 25  | `paut_equivalence_set_eq_coset`                               | `Hardness/CodeEquivalence.lean`               | Full coset set identity (Workstream D3) |
 | 26  | `PAutSubgroup`                                                | `Hardness/CodeEquivalence.lean`               | `PAut` as Mathlib `Subgroup` (Workstream D2) |
@@ -129,7 +129,7 @@ is honest about which assumption is doing the cryptographic work.
 | 29  | `oia_implies_1cpa_distinct`                                   | `Theorems/OIAImpliesCPA.lean`                 | Classical IND-1-CPA corollary, conditional on `OIA` (Workstream K1) |
 | 30  | `hardness_chain_implies_security_distinct`                    | `Hardness/Reductions.lean`                    | Classical IND-1-CPA corollary, conditional on `HardnessChain` (Workstream K3) |
 | 31  | `indCPAAdvantage_collision_zero`                              | `Crypto/CompSecurity.lean`                    | Unconditional: probabilistic IND-1-CPA advantage vanishes on collision-choice adversaries (Workstream K4) |
-| 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | Probabilistic chain bound restated in classical-game form, conditional on `ConcreteHardnessChain` (Workstream K4 companion) |
+| 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | **Quantitative** — classical IND-1-CPA form of the probabilistic chain bound (Workstream K4 companion), conditional on `ConcreteHardnessChain`; same ε = 1 inhabitation posture as row #22 |
 
 Every one of #1–#32 was confirmed to depend only on standard Lean axioms by
 running `scripts/audit_phase_16.lean` — all declarations exercised
@@ -620,6 +620,62 @@ limitations, each documented in source and tracked as future work:
    above and tracked in the audit plan § 15.1 alongside the encoder
    follow-ups.
 
+10. **`authEncrypt_is_int_ctxt` orbit-cover hypothesis is False on
+    production HGOE.** The theorem carries `hOrbitCover : ∀ c : X, c
+    ∈ orbit G akem.kem.basePoint` as an explicit parameter. On the
+    concrete HGOE construction the ciphertext type is `Bitstring n
+    = Fin n → Bool` with `|Bitstring n| = 2^n`; by the orbit-
+    stabiliser identity every orbit under `G ≤ S_n` has cardinality
+    at most `|G| / |Stab|`, which is strictly less than `2^n` for
+    any realistic `(n, G)`. The hypothesis is therefore False on
+    production HGOE, and `authEncrypt_is_int_ctxt` is vacuously
+    applicable there. The 2026-04-23 pre-release audit's
+    Workstream **B** refactors `INT_CTXT` so the orbit-cover
+    predicate is the game's well-formedness precondition (per-
+    challenge), not a theorem-level obligation; once that lands, the
+    theorem discharges unconditionally on every `AuthOrbitKEM` and
+    `CLAUDE.md`'s row #19 upgrades from **Conditional** to
+    **Standalone** (audit 2026-04-23 finding V1-1 / I-03 / I-04 /
+    D1 / D12). See `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md`
+    § 5.
+
+11. **`TwoPhaseDecomposition` is empirically False on the default
+    GAP fallback group.** `two_phase_correct` and
+    `two_phase_kem_correctness` in
+    `Optimization/TwoPhaseDecrypt.lean` carry
+    `TwoPhaseDecomposition` as an explicit hypothesis; the module
+    docstring self-discloses that on the default GAP fallback group
+    (a wreath product of a QC-cyclic subgroup with a residual
+    transversal) the hypothesis **does not hold** because lex-min
+    and the residual transversal action don't commute. The actual
+    GAP correctness story runs through `fast_kem_round_trip`
+    (Theorem #26 in `CLAUDE.md`), which uses orbit-constancy of the
+    fast canonical form instead of the strong "fast = slow"
+    decomposition — orbit-constancy *is* satisfied by
+    `FastCanonicalImage` whenever the cyclic subgroup is normal in
+    G. Release-facing citations of production fast-decryption
+    correctness should use `fast_kem_round_trip`, not
+    `two_phase_kem_correctness` (audit 2026-04-23 finding V1-2 /
+    L-03 / D2).
+
+12. **`carterWegmanMAC_int_ctxt` is incompatible with HGOE's
+    `Bitstring n` ciphertext space.** The Carter–Wegman MAC in
+    `AEAD/CarterWegmanMAC.lean` is typed over `K = ZMod p × ZMod p`,
+    `Msg = ZMod p`, `Tag = ZMod p`. Composing it with an HGOE
+    `OrbitKEM G (Bitstring n) K` requires an `Bitstring n → ZMod p`
+    adapter that maps a HGOE ciphertext into a MAC message while
+    preserving the orbit structure that the composition theorem
+    relies on. No such adapter is formalised in the current
+    release. Consequently `carterWegmanMAC_int_ctxt` serves as a
+    **satisfiability witness for `MAC.verify_inj` and for
+    `INT_CTXT` non-vacuity** on the `ZMod p × ZMod p` toy
+    composition; it is **not** a production AEAD construction for
+    HGOE. Citations should use `carterWegmanHash_isUniversal` for
+    standalone universal-hash claims. The `Bitstring n → ZMod p`
+    adapter formalisation is tracked as research-scope R-13 in the
+    2026-04-23 plan § 18 (audit 2026-04-23 finding V1-7 / D4 /
+    I-08 / I-10).
+
 These items are *known and documented*, not silent gaps. The
 formalization is internally consistent: every conditional theorem
 states its assumptions, every probabilistic predicate is satisfiable
@@ -627,7 +683,7 @@ at `ε = 1`, and no custom axiom or `sorry` short-circuits any proof.
 
 ---
 
-## Release readiness (post-Workstream-G, Workstream H, Workstream J, and Workstream K)
+## Release readiness (post-Workstream-G, H, J, K, and 2026-04-23 audit)
 
 The 2026-04-21 audit's HIGH-severity finding (H1) is **closed** by
 Workstream G; finding H2 (MEDIUM) is **closed** by Workstream H;
@@ -645,6 +701,42 @@ chain — documented in-line on `oia_implies_1cpa_distinct` (K1),
 `indCPAAdvantage_collision_zero` (K4), and
 `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4
 companion).
+
+The **2026-04-23 pre-release audit** surfaced eight
+documentation-vs-code divergences at the Status-column level, all
+remediated by Workstream **A** of that plan (release-messaging
+reconciliation — this section is the Workstream-A deliverable for
+V1-3 / V1-9 / audit finding X-01). Workstream **A** is
+documentation-only and does not change any Lean content: it
+reclassifies `CLAUDE.md` rows #19, #20, #24, #25 from **Standalone**
+to **Conditional** with explicit hypothesis disclosures, adds a
+**Release messaging policy** to `CLAUDE.md`'s Key Conventions
+codifying the citation discipline, tightens the invariant-attack
+narrative (row #2) to match the theorem's actual `∃ A :
+Adversary X M, hasAdvantage scheme A` conclusion, and rewrites this
+very "Release readiness" section with the per-citation class
+discipline below. See
+`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 4 for the
+full Workstream-A specification.
+
+**ε = 1 posture disclosure.** In the current formalisation the
+probabilistic-chain theorems —
+`concrete_hardness_chain_implies_1cpa_advantage_bound` at the
+scheme level and
+`concrete_kem_hardness_chain_implies_kem_advantage_bound` at the
+KEM level — are inhabited **only at ε = 1**, via the trivial
+`ConcreteHardnessChain.tight_one_exists` /
+`ConcreteKEMHardnessChain.tight_one_exists` witnesses (`punitSurrogate
+F` + dimension-0 trivial encoders). **ε < 1 requires caller-supplied
+surrogate + encoder witnesses with genuine cryptographic hardness**;
+concrete formalisations of these witnesses are research-scope
+follow-ups (R-02 / R-03 / R-04 for the scheme-level chain; R-05 for
+the KEM-layer chain — see the 2026-04-23 plan § 18 / Workstream O).
+Release-facing citations that invoke these theorems **must** include
+the phrase "inhabited only at ε = 1 via the trivial `tight_one_exists`
+witness in the current formalisation" whenever a non-trivial
+ε-bound is not accompanied by a concrete hardness witness. This
+discipline is codified in `CLAUDE.md`'s Release messaging policy.
 
 **Summary for external consumers.** Orbcrypt's formalization carries
 two parallel chains. The *deterministic* chain's headline theorems
@@ -718,58 +810,195 @@ The formalization's public release posture (detailed):
    the chain is inhabited at ε = 1 via
    `ConcreteKEMHardnessChain.tight_one_exists`.
 
-4. **What to cite externally:**
-   * `concrete_hardness_chain_implies_1cpa_advantage_bound` — the
-     scheme-level quantitative bound under caller-supplied hardness.
-   * `concreteKEMHardnessChain_implies_kemUniform` (post-Workstream-H) —
-     the KEM-layer probabilistic KEM-OIA bound matching the same
-     hardness profile.
-   * `concrete_kem_hardness_chain_implies_kem_advantage_bound`
-     (post-Workstream-H) — the KEM-layer end-to-end adversary bound
-     composing the KEM chain with
-     `concrete_kemoia_uniform_implies_secure`; this is the strongest
-     public-facing KEM security statement.
-   * `oia_implies_1cpa_distinct` (Workstream K1) — the classical
-     distinct-challenge IND-1-CPA form matching the literature;
-     deterministic-chain scaffolding (inherits OIA's vacuity on
-     non-trivial schemes).
-   * `hardness_chain_implies_security_distinct` (Workstream K3) —
-     chain-level parallel: `HardnessChain → IsSecureDistinct`;
-     deterministic-chain scaffolding.
-   * `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
-     (Workstream K4) — **primary public-release citation** for the
-     classical distinct-challenge IND-1-CPA ε-bound. Retains the
-     full Workstream-G quantitative content; the distinctness
-     hypothesis is present for release-messaging signature parity
-     with the literature, but unused in the proof because
-     `indCPAAdvantage_collision_zero` shows the collision branch
-     yields advantage 0 anyway.
-   * `indCPAAdvantage_collision_zero` (Workstream K4) —
-     unconditional structural lemma: probabilistic IND-1-CPA
-     advantage vanishes on collision-choice adversaries.
-     Documents why the `concrete_oia_implies_1cpa` bound transfers
-     from the uniform game to the classical distinct-challenge game
-     for free.
-   * `correctness`, `kem_correctness`, `aead_correctness`,
-     `hybrid_correctness` — unconditional.
-   * `invariant_attack` — vulnerability analysis (complete break
-     under separating invariant).
+4. **What to cite externally.** The release-messaging policy in
+   `CLAUDE.md` groups permitted citations into four Status classes;
+   this list maps each class onto concrete theorem citations from
+   the extended headline table above.
 
-5. **What NOT to cite without qualification:**
-   * `oia_implies_1cpa`, `kemoia_implies_secure`,
-     `hardness_chain_implies_security` — scaffolding only,
-     vacuously true on production schemes. The Workstream-K
-     `_distinct` corollaries (`oia_implies_1cpa_distinct`,
-     `hardness_chain_implies_security_distinct`) inherit the
-     same scaffolding status; cite them to highlight classical-
-     game-shape alignment, *not* as standalone security claims.
+   **(a) Unconditional / Standalone.** Safe to cite directly;
+   carries no hypothesis beyond the obviously-true structural data
+   of the scheme / KEM / AEAD / MAC.
+   * `correctness` — scheme correctness (`Theorems/Correctness.lean`).
+   * `kem_correctness` — KEM correctness (`KEM/Correctness.lean`,
+     proof by `rfl`).
+   * `aead_correctness` — authenticated KEM correctness
+     (`AEAD/AEAD.lean`).
+   * `hybrid_correctness` — KEM+DEM hybrid encryption correctness
+     (`AEAD/Modes.lean`).
+   * `seed_kem_correctness` — seed-based KEM correctness
+     (`KeyMgmt/SeedKey.lean`).
+   * `nonce_encaps_correctness` / `nonce_reuse_leaks_orbit` — nonce-
+     based encryption correctness plus the formal warning theorem
+     (`KeyMgmt/Nonce.lean`).
+   * `kem_agreement_correctness` / `csidh_correctness` /
+     `comm_pke_correctness` — public-key extension results
+     (`PublicKey/*.lean`).
+   * `invariant_attack` — vulnerability analysis. The theorem's
+     formal conclusion is `∃ A : Adversary X M, hasAdvantage scheme
+     A` (existence of **one** distinguishing adversary on a specific
+     `(g₀, g₁)` pair); the informal "complete break under a
+     separating G-invariant" shorthand is allowed but must be
+     accompanied by the formal conclusion when the citation is
+     release-facing. Quantitative probabilistic lower bounds on the
+     cross-orbit advantage are research-scope R-01.
+   * `carterWegmanHash_isUniversal` — the standalone `(1/p)`-universal
+     hash theorem over `ZMod p` with `[Fact (Nat.Prime p)]` (post
+     Workstream L2 upgrade). This is the Carter–Wegman 1977 property
+     and is the correct citation for "universal-hash" claims; do
+     **not** cite `carterWegmanMAC_int_ctxt` when the intent is a
+     standalone universal-hash claim (that row is Conditional — see
+     class (c) below).
+
+   **(b) Quantitative (probabilistic chain).** Cite only with an
+   explicit ε bound and the surrogate / encoder / keyDerive
+   profile the caller is using. In the current formalisation
+   these are inhabited **only at ε = 1** via trivial
+   `tight_one_exists` witnesses; concrete ε < 1 discharges are
+   research-scope R-02 / R-03 / R-04 / R-05.
+   * `concrete_oia_implies_1cpa` (`Crypto/CompSecurity.lean`) —
+     `ConcreteOIA(ε) → IND-1-CPA advantage ≤ ε`. Satisfiable at
+     ε ∈ [0, 1]; the `ε = 0` form follows from deterministic OIA via
+     `det_oia_implies_concrete_zero` but that bridge is itself
+     Scaffolding because deterministic OIA is False.
+   * `comp_oia_implies_1cpa` — asymptotic variant with negligible
+     advantage, conditional on `CompOIA`.
+   * `concrete_kemoia_uniform_implies_secure` — KEM-layer ε-smooth
+     probabilistic bound (`KEM/CompSecurity.lean`).
+   * `concrete_hardness_chain_implies_1cpa_advantage_bound` — the
+     **primary scheme-level release citation**. Composes the
+     Workstream-G chain with `concrete_oia_implies_1cpa` to deliver
+     `IND-1-CPA advantage ≤ ε` under TI-hardness of a caller-supplied
+     `SurrogateTensor F` and caller-supplied encoders `encTC, encCG`.
+     **ε = 1 disclosure required** (see § "ε = 1 posture
+     disclosure" at the top of this section).
+   * `concreteKEMHardnessChain_implies_kemUniform` and
+     `concrete_kem_hardness_chain_implies_kem_advantage_bound`
+     (Workstream H) — **primary KEM-layer release citations**.
+     The second composes the chain with
+     `concrete_kemoia_uniform_implies_secure` to deliver
+     `kemAdvantage_uniform ≤ ε` for every KEM adversary and every
+     reference encapsulation. **ε = 1 disclosure required.**
+   * `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+     (Workstream K4 companion) — classical IND-1-CPA distinct-
+     challenge form of the probabilistic chain bound. Retains the
+     full Workstream-G / Workstream-A quantitative content; the
+     distinctness hypothesis is carried for literature-signature
+     parity but unused in the proof (`indCPAAdvantage_collision_zero`
+     shows collision branches yield advantage 0). **ε = 1 disclosure
+     required.**
+   * `indCPAAdvantage_collision_zero` (Workstream K4) — unconditional
+     structural lemma: the probabilistic IND-1-CPA advantage
+     vanishes on collision-choice adversaries. Cite this to
+     justify why the uniform-game bound transfers to the classical
+     distinct-challenge game for free. This one is **Standalone**
+     in classification; listed here because it composes with the
+     Quantitative bounds.
+
+   **(c) Conditional (hypothesis-carrying; cite with the condition
+   made explicit).** These theorems are genuine machine-checked
+   results but their usefulness on production instances depends on
+   discharging a non-trivial hypothesis.
+   * `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`) — INT-CTXT for
+     an `AuthOrbitKEM` **under the `hOrbitCover : ∀ c : X, c ∈
+     orbit G basePoint` hypothesis**. This hypothesis is False on
+     production HGOE (orbit size is strictly smaller than
+     `|Bitstring n| = 2^n` by orbit-stabiliser). Cite only together
+     with the hypothesis disclosure. The **Workstream B** refactor
+     scheduled in the 2026-04-23 plan absorbs orbit-cover into the
+     game's well-formedness precondition, at which point this
+     theorem becomes **Standalone**; until Workstream B lands,
+     citations must carry the disclosure. The in-proof sibling
+     `keyDerive_canon_eq_of_mem_orbit` is the orbit-restricted
+     key-uniqueness lemma and is unconditionally true.
+   * `carterWegmanMAC_int_ctxt` (`AEAD/CarterWegmanMAC.lean`) —
+     **requires `X = ZMod p × ZMod p` ciphertext space** and is
+     **incompatible with HGOE's `Bitstring n`** without an
+     `Bitstring n → ZMod p` adapter (research-scope R-13). This
+     theorem is a **satisfiability witness for `MAC.verify_inj`
+     and for `INT_CTXT` non-vacuity**; it does not compose directly
+     with the concrete HGOE construction. Cite
+     `carterWegmanHash_isUniversal` instead for standalone
+     universal-hash claims (class (a) above).
+   * `two_phase_correct` / `two_phase_kem_correctness`
+     (`Optimization/TwoPhaseDecrypt.lean`) — fast-decryption
+     conditionals **under `TwoPhaseDecomposition`**, which is
+     **empirically false on the default GAP fallback group** (lex-
+     min and the residual transversal action don't commute; self-
+     disclosed in the module docstring). Cite only for the strong-
+     agreement property they document; for production-correctness
+     citations use `fast_kem_round_trip` (Theorem #26 in `CLAUDE.md`,
+     the orbit-constancy route that IS the actual GAP correctness
+     argument).
+   * `oblivious_sample_in_orbit` (`PublicKey/ObliviousSampling.lean`)
+     — carries a combine-closure hypothesis.
+   * `indQCPA_bound_via_hybrid` (`Crypto/CompSecurity.lean`) —
+     carries the per-step bound `h_step` as a **user-supplied
+     hypothesis**; discharge from `ConcreteOIA` alone is research-
+     scope R-09. The 2026-04-23 plan's Workstream **C** renames this
+     to `indQCPA_from_perStepBound` to surface the obligation in the
+     identifier; citations pre- and post-rename must carry the
+     `h_step` disclosure.
+
+   **(d) Scaffolding (deterministic chain; cite only for
+   type-theoretic structure, never as security claims).** These
+   theorems carry OIA-variant hypotheses that are **False on every
+   non-trivial scheme**, so the conclusion is vacuously true on
+   production instances.
+   * `oia_implies_1cpa` — deterministic scheme-level scaffolding.
+   * `kemoia_implies_secure` — deterministic KEM-level scaffolding.
+   * `hardness_chain_implies_security` — deterministic chain-level
+     scaffolding.
+   * `det_oia_implies_concrete_zero` — bridge lemma showing
+     deterministic OIA would imply `ConcreteOIA 0`; vacuous in
+     practice because the antecedent is False.
+   * `oia_implies_1cpa_distinct` (Workstream K1) — classical
+     IND-1-CPA signature for `oia_implies_1cpa`; inherits the same
+     scaffolding status.
+   * `hardness_chain_implies_security_distinct` (Workstream K3) —
+     classical IND-1-CPA signature for
+     `hardness_chain_implies_security`; inherits scaffolding status.
+   Cite any of these to explain that "the scheme's type-theoretic
+   structure admits an OIA-style reduction argument", **not** as
+   standalone security claims. The Quantitative counterparts in
+   class (b) carry the substantive security content.
+
+5. **What NOT to cite externally.** The following citations, even
+   when technically well-typed, **misrepresent the Lean content** if
+   used as security claims.
+   * Any class (d) **Scaffolding** theorem framed as a standalone
+     security claim. `oia_implies_1cpa` and its siblings are
+     vacuously true on every non-trivial scheme; framing them as
+     "Orbcrypt is IND-1-CPA secure under the OIA" overstates the
+     Lean content. Use the Quantitative class (b) counterparts
+     instead.
+   * Any class (b) **Quantitative-at-ε = 1** theorem cited **without
+     the ε = 1 disclosure**. E.g., citing
+     `concrete_hardness_chain_implies_1cpa_advantage_bound` as
+     "Orbcrypt achieves ε-bounded IND-1-CPA under TI-hardness"
+     without disclosing that the ε = 1 witness is trivial and
+     ε < 1 requires research-scope witnesses is a policy violation.
+   * Any class (c) **Conditional** theorem cited **without the
+     hypothesis disclosure**. E.g., citing `authEncrypt_is_int_ctxt`
+     as "Orbcrypt AEAD has machine-checked ciphertext integrity" —
+     without disclosing `hOrbitCover`'s falsity on production HGOE
+     — is a policy violation. Pre-Workstream-B, the correct framing
+     is "Orbcrypt AEAD has machine-checked ciphertext integrity
+     **conditional on a non-trivial orbit-cover hypothesis**";
+     post-Workstream-B the disclosure can be dropped because the
+     theorem signature absorbs the precondition.
    * `ConcreteHardnessChain scheme F (punitSurrogate F) 1` /
      `ConcreteKEMHardnessChain scheme F (punitSurrogate F) m₀
      keyDerive 1` — non-vacuity witnesses, not quantitative security
-     claims.
-   * `ObliviousSamplingHiding`, `ConcreteKEMOIA` (point-mass form) —
-     self-disclosed as pathological-strength or collapsed on
-     [0, 1).
+     claims. Citing the `tight_one_exists` inhabitant as evidence
+     of "machine-checked TI-hardness" is a policy violation.
+   * `ObliviousSamplingHiding` — self-disclosed as pathological-
+     strength deterministic predicate (the `Prop`-level form is not
+     expected to hold for non-trivial bundles without a
+     probabilistic refinement, R-12).
+   * `ConcreteKEMOIA` (point-mass form) — collapses on `[0, 1)`
+     (advantage is 0 or 1 per pair); use the uniform-form
+     `ConcreteKEMOIA_uniform` or
+     `concrete_kemoia_uniform_implies_secure` instead.
 
 ---
 
@@ -1138,3 +1367,95 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   edits to `.github/workflows/lean4-build.yml`. Public
   declaration count remains 347 (per Workstream K); no new
   `.lean` files.
+
+* **2026-04-23 (Workstream A of the 2026-04-23 pre-release
+  audit)** — Release-messaging reconciliation (audit findings
+  V1-1 / V1-2 / V1-3 / V1-4 / V1-5 / V1-7 / V1-9, CRITICAL /
+  HIGH via X-01; HIGH via I-03, L-03, E-10, J-12, D13, H-01,
+  I-08). Documentation-only, no Lean source changes. Three
+  surfaces are aligned with the Lean content:
+  * **This report.** "Release readiness" section retitled to
+    "Release readiness (post-Workstream-G, H, J, K, and
+    2026-04-23 audit)" and extended with (a) a new "ε = 1
+    posture disclosure" paragraph making the current-formalisation
+    ε = 1 inhabitation posture explicit at the top of the
+    section; (b) a rewritten "What to cite externally" subsection
+    partitioned into four Status classes (Unconditional,
+    Quantitative, Conditional, Scaffolding) with per-class
+    citation discipline — the Quantitative class lists the
+    `concrete_hardness_chain_implies_*` citations with the
+    ε = 1 disclosure, the Conditional class explicitly catalogues
+    `authEncrypt_is_int_ctxt`, `carterWegmanMAC_int_ctxt`,
+    `two_phase_correct`, `two_phase_kem_correctness`,
+    `oblivious_sample_in_orbit`, and `indQCPA_bound_via_hybrid`
+    with their hypothesis disclosures; (c) a rewritten "What NOT
+    to cite externally" subsection enumerating the specific
+    misrepresentation patterns forbidden by the policy (Scaffolding-
+    as-security, Quantitative-without-ε-disclosure, Conditional-
+    without-hypothesis-disclosure, and `tight_one_exists` witnesses
+    as security claims). "Known limitations" section gained
+    three new items (10, 11, 12) documenting the
+    `authEncrypt_is_int_ctxt` orbit-cover falsity on HGOE, the
+    `TwoPhaseDecomposition` empirical failure on the default GAP
+    fallback group, and the Carter–Wegman / HGOE incompatibility
+    (respectively).
+  * **`CLAUDE.md`.** New **"Release messaging policy
+    (ABSOLUTE)"** entry in the Key Conventions section immediately
+    after "Security-by-docstring prohibition". The policy codifies
+    the four citation classes (Allowed Standalone / Allowed
+    Quantitative / Conditional-with-disclosure / Scaffolding-for-
+    structure-only), mandates the ε = 1 disclosure discipline for
+    probabilistic-chain theorems, names the Status column as the
+    canonical source of truth, and forbids prose that overclaims
+    beyond the Lean content. "Three core theorems" table: rows
+    #19 (`authEncrypt_is_int_ctxt`), #20 (`carterWegmanMAC_int_ctxt`),
+    #24 (`two_phase_correct`), #25 (`two_phase_kem_correctness`)
+    reclassified from **Standalone** to **Conditional** with
+    explicit hypothesis / compatibility disclosures in the
+    Significance column; row #2 (`invariant_attack`) restated so
+    the Statement column matches the theorem's
+    `∃ A, hasAdvantage scheme A` existential rather than the
+    quantitative "advantage 1/2 / complete break" shorthand (the
+    three-convention pointer to `Probability/Advantage.lean` is
+    preserved). A new "2026-04-23 Pre-Release Audit" entry in
+    Active development status documents the plan's fifteen
+    workstreams and the status-tracker checkbox for **A** /
+    **B** / ... / **N** / **O**.
+  * **`Orbcrypt.lean`.** The "Vacuity map (Workstream E)" table's
+    two primary-release-citation rows (for the scheme-level and
+    KEM-level chain-implies-advantage-bound theorems) annotated
+    with the ε = 1 / research-scope disclosure; four new rows
+    added pairing the four reclassified `CLAUDE.md` Conditional
+    rows with their hypotheses and their standalone siblings
+    (V1-3 / audit finding M-04).
+  * **`DEVELOPMENT.md`.** §7.1 (Hamming weight attack) gains an
+    explicit necessary-but-not-sufficient statement (audit
+    finding F-05); §8.2 (multi-query) gains a "Scope of the Lean
+    bound" paragraph on the `h_step` user-hypothesis obligation
+    (V1-8 / D10 / audit finding C-13; Workstream **C** of the
+    2026-04-23 plan either discharges or renames); §8.5 (INT-CTXT)
+    cross-links the planned Workstream **B** orbit-cover refactor
+    and discloses the Carter–Wegman `X = ZMod p` / HGOE
+    `Bitstring n` incompatibility as R-13 research (V1-7 / D4 /
+    D1 / audit findings I-03 / I-08).
+
+  **Traceability.** Pre-release findings V1-2, V1-3, V1-4, V1-5
+  (already covered by Workstream L1's
+  `SeedKey.compression` field), V1-7, V1-9 are resolved by
+  Workstream A; V1-1 enters its interim "Conditional" posture
+  pending Workstream B (which will upgrade row #19 to
+  **Standalone** at merge). V1-6 (toolchain) and V1-8 (multi-query
+  rename) remain open pending Workstreams D and C respectively.
+  See `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 4
+  for the workstream specification, § 20 for the release-
+  readiness checklist, and § 21 for the validation log (zero
+  erroneous findings).
+
+  **Verification.** Workstream A is documentation-only. All 38
+  modules continue to build clean; `#print axioms` output is
+  unchanged; `scripts/audit_phase_16.lean` emits unchanged
+  output (342 `#print axioms` checks + non-vacuity witnesses,
+  all standard-trio-only — no new Lean declarations added).
+  The zero-sorry / zero-custom-axiom posture, the 347 public-
+  declaration count, and the module-dependency graph are all
+  preserved. Patch version: `lakefile.lean` retains `0.1.6`.

@@ -80,7 +80,7 @@ that certify correctness or hiding for each.
 | Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 (`seed_kem_correctness`) |
 | Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 + nonce caveat below |
 | Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 (`aead_correctness`) |
-| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` (proved for honest compositions with `MAC.verify_inj` and `hOrbitCover`) | Theorem 19 (`authEncrypt_is_int_ctxt`) + Theorem 20 (`carterWegmanMAC_int_ctxt` witness); Workstream C (audit F-07) |
+| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — proved for honest compositions with `MAC.verify_inj` and `hOrbitCover` (latter is False on production HGOE; Workstream B of the 2026-04-23 plan will absorb orbit-cover into the game's well-formedness precondition) | Theorem 19 (`authEncrypt_is_int_ctxt`, status **Conditional**) + Theorem 20 (`carterWegmanMAC_int_ctxt` witness, status **Conditional** — requires `X = ZMod p × ZMod p`, incompatible with HGOE's `Bitstring n`, research R-13); Workstream C (audit F-07) |
 
 Two caveats recur and must be stated once:
 
@@ -255,13 +255,29 @@ canonical forms of the commits and cross-check. An attacker who
 substitutes a binary without access to `G_P` cannot forge a
 canonicalization match, and a substitution that breaks the AEAD
 tag is rejected by `authDecaps` — and this rejection is now a
-*theorem*, `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`, Theorem 19),
+*theorem*, `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`, Theorem 19;
+status **Conditional** per `CLAUDE.md`'s release-messaging policy),
 which discharges the `INT_CTXT` predicate for every honest
 composition whose ciphertext space covers a single orbit of the base
-point (audit F-07, Workstream C2). `carterWegmanMAC_int_ctxt`
-(Theorem 20) is the concrete Carter–Wegman witness demonstrating the
-composition is inhabitable. `aead_correctness` (Theorem 12) is the
-round-trip correctness complement.
+point. **This `hOrbitCover` hypothesis is False on production HGOE**
+(where `|Bitstring n| = 2^n` exceeds the base-point orbit by the
+orbit-stabiliser bound), so the theorem as stated is vacuously
+applicable there; the 2026-04-23 pre-release audit's Workstream
+**B** refactors `INT_CTXT` to absorb orbit-cover as the game's
+per-challenge well-formedness precondition, upgrading the theorem
+to Standalone post-**B**. The in-proof sibling
+`keyDerive_canon_eq_of_mem_orbit` is the orbit-restricted
+key-uniqueness lemma at the heart of the argument and is
+unconditionally true (audit F-07, Workstream C2).
+`carterWegmanMAC_int_ctxt` (Theorem 20; status **Conditional**) is the
+concrete Carter–Wegman witness demonstrating the composition is
+inhabitable — but it is typed over `X = ZMod p × ZMod p` and is
+**not** directly compatible with HGOE's `Bitstring n` ciphertext
+space without a `Bitstring n → ZMod p` adapter (research R-13).
+Cite `carterWegmanHash_isUniversal` (`AEAD/CarterWegmanMAC.lean`)
+when a standalone universal-hash statement is wanted.
+`aead_correctness` (Theorem 12; **Standalone**) is the
+round-trip correctness complement and is unconditional.
 
 ### 3.5 Dependency-graph privacy
 

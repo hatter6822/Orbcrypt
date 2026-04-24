@@ -27,7 +27,7 @@ foundation:
 | # | Result | Statement | Significance |
 |---|--------|-----------|--------------|
 | 1 | **Correctness** | Dec(Enc(m)) = m for all messages m and all group elements g used in encryption | The scheme faithfully recovers encrypted messages |
-| 2 | **Invariant Attack Theorem** | If a G-invariant function separates two message orbits, an adversary achieves maximum advantage (complete break) | Machine-checked proof of the critical vulnerability from COUNTEREXAMPLE.md |
+| 2 | **Invariant Attack Theorem** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (existence of one distinguishing `(g₀, g₁)` pair; informal shorthand "complete break" — see `CLAUDE.md` row #2 for the three-convention advantage catalogue) | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md |
 | 3 | **Conditional Security Reduction** | OIA ⟹ IND-1-CPA | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks |
 
 These three results together establish: the scheme is correct, its failure mode
@@ -57,7 +57,7 @@ is hard" in RSA. We state it as an axiom and prove that security follows from it
 | IND-CPA security game | Adversary structure, advantage definition | `Crypto/Security.lean` |
 | OIA assumption | Formal statement as `Prop` definition | `Crypto/OIA.lean` |
 | Correctness theorem | `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` |
-| Invariant attack theorem | Separating invariant implies complete break | `Theorems/InvariantAttack.lean` |
+| Invariant attack theorem | Separating invariant implies `∃ A, hasAdvantage` (one distinguishing pair; informal shorthand "complete break") | `Theorems/InvariantAttack.lean` |
 | OIA implies IND-1-CPA | Conditional security reduction | `Theorems/OIAImpliesCPA.lean` |
 | S\_n action on bitstrings | `MulAction (Equiv.Perm (Fin n)) (Fin n → Bool)` | `Construction/Permutation.lean` |
 | HGOE instance | Concrete scheme instantiation with correctness | `Construction/HGOE.lean` |

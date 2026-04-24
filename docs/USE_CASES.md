@@ -508,8 +508,12 @@ information.
 
 **Caveat.** The service must *not* compute any separating invariant of
 `G`. If the service can run `hammingWeight` (or any other separating
-function), `invariant_attack` (Theorem 2) gives advantage 1/2 and the
-privacy collapses. This constrains the kinds of recommendation logic
+function), `invariant_attack` (Theorem 2) witnesses an adversary with
+`hasAdvantage` — a specific `(g₀, g₁)` pair on which the adversary
+distinguishes perfectly (informal shorthand: "advantage 1/2 / complete
+break"; see `CLAUDE.md` row #2 for the full three-convention advantage
+catalogue). The privacy
+collapses. This constrains the kinds of recommendation logic
 permissible: clustering on `canon` is safe; clustering on any
 non-invariant feature destroys the guarantee. Designers must state
 explicitly which invariants the service may compute.

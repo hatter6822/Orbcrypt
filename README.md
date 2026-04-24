@@ -59,7 +59,7 @@ All headline results are machine-checked with zero `sorry`, zero warnings, zero 
 | # | Theorem | File | Axiom Dependencies |
 |---|---------|------|--------------------|
 | 1 | `correctness` — `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` | Standard Lean only |
-| 2 | `invariant_attack` — separating invariant implies complete break | `Theorems/InvariantAttack.lean` | Standard Lean only |
+| 2 | `invariant_attack` — separating invariant implies `∃ A, hasAdvantage` (existence of one distinguishing adversary; informal shorthand: "complete break" — see row #2 of `CLAUDE.md`'s "Three core theorems" for the three-convention advantage catalogue) | `Theorems/InvariantAttack.lean` | Standard Lean only |
 | 3 | `oia_implies_1cpa` — OIA implies IND-1-CPA security | `Theorems/OIAImpliesCPA.lean` | Zero custom axioms (OIA is a hypothesis) |
 | 4 | `kem_correctness` — KEM decaps recovers encapsulated key | `KEM/Correctness.lean` | Standard Lean only (rfl) |
 | 5 | `kemoia_implies_secure` — KEMOIA implies KEM security | `KEM/Security.lean` | Zero custom axioms (KEMOIA is a hypothesis) |
@@ -74,7 +74,7 @@ All headline results are machine-checked with zero `sorry`, zero warnings, zero 
 | 14 | `csidh_correctness` — `a • b • x = b • a • x` under `CommGroupAction` | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` (typeclass axiom) |
 | 15 | `comm_pke_correctness` — CSIDH-style public-key encryption correctness | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` + `pk_valid` |
 | 16 | `two_phase_correct` — fast (cyclic ∘ residual) canonical form agrees with full IF the strong `TwoPhaseDecomposition` predicate holds | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` carried as a hypothesis; not satisfied by the default fallback group) |
-| 17 | `two_phase_kem_correctness` — two-phase KEM decapsulation recovers the encapsulated key (conditional on `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` is a hypothesis) |
+| 17 | `two_phase_kem_correctness` — two-phase KEM decapsulation recovers the encapsulated key (conditional on `TwoPhaseDecomposition`; **not satisfied by the default GAP fallback group** — production GAP correctness runs through row #18 `fast_kem_round_trip` via orbit-constancy) | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` is a hypothesis) |
 | 18 | `fast_kem_round_trip` — actual KEM correctness for `(FastEncaps, FastDecaps)`: orbit-constancy of `fastCanon` suffices | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`IsOrbitConstant` is a hypothesis; satisfied by the GAP `FastCanonicalImage` whenever the cyclic subgroup is normal in G) |
 | 19 | `oia_implies_1cpa_distinct` — classical distinct-challenge IND-1-CPA from OIA (Workstream K1) | `Theorems/OIAImpliesCPA.lean` | Zero custom axioms (OIA is a hypothesis; composes `oia_implies_1cpa` with `isSecure_implies_isSecureDistinct`) |
 | 20 | `hardness_chain_implies_security_distinct` — classical distinct-challenge form of the TI-hardness chain (Workstream K3) | `Hardness/Reductions.lean` | Zero custom axioms (HardnessChain is a hypothesis) |

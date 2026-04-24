@@ -5,8 +5,14 @@ import Orbcrypt.GroupAction.Invariant
 # Orbcrypt.Theorems.InvariantAttack
 
 Invariant attack theorem: if a G-invariant function separates two message
-orbits, an adversary achieves a complete break. Machine-checked proof of the
-critical vulnerability from COUNTEREXAMPLE.md. Formalizes DEVELOPMENT.md §4.4.
+orbits, there **exists** an adversary with `hasAdvantage` — i.e., a specific
+`(g₀, g₁)` pair on which the adversary's two guesses disagree. Informal
+shorthand: "complete break". Machine-checked proof of the critical
+vulnerability from COUNTEREXAMPLE.md. Formalizes DEVELOPMENT.md §4.4
+(**existential** form — the Lean content is one level weaker than the
+paper-style "Adv = 1/2" claim; see the `invariant_attack` docstring
+below for the three-convention catalogue and `DEVELOPMENT.md` §4.4's
+"Lean-formalised content" note; audit 2026-04-23 / V1-4 / D13).
 
 ## Overview
 

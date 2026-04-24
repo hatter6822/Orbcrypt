@@ -278,6 +278,26 @@ following must hold for every pair m₀ ≠ m₁ ∈ M:
 
 In other words: **no efficiently computable invariant separates message orbits.**
 
+**Lean-formalised content (audit 2026-04-23 finding V1-4 / D13 /
+Workstream A).** The Lean theorem `Orbcrypt.invariant_attack` in
+`Theorems/InvariantAttack.lean` delivers the **existential** conclusion
+`∃ A : Adversary X M, hasAdvantage scheme A` — i.e., **the existence of
+at least one distinguishing `(g₀, g₁)` pair** under a separating
+G-invariant. The paper-style "Adv = 1/2" claim above is accurate in
+the **centered** convention (`Adv := |Pr[correct] − 1/2|`, so a
+perfect distinguisher has Adv = 1/2), and equivalently "Adv = 1" in
+the two-distribution convention (`|Pr[D=1|d₀] − Pr[D=1|d₁]|`); the
+Lean theorem's formal conclusion is one level weaker than both —
+it witnesses one `(g₀, g₁)` pair on which the adversary's two guesses
+disagree, not a probabilistic distribution-level advantage bound. A
+quantitative probabilistic lower bound on the cross-orbit advantage
+under a separating G-invariant (which would fully bridge to the
+`|Pr[correct] − 1/2|` = 1/2 statement) is tracked as research-scope
+R-01 in `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 18. See
+the `invariant_attack` docstring in `Orbcrypt/Theorems/InvariantAttack.lean`
+for the three-convention catalogue and `CLAUDE.md`'s "Three core
+theorems" table row #2 for the release-messaging framing.
+
 ---
 
 ## 5. The Orbit Indistinguishability Assumption (OIA)
@@ -771,6 +791,36 @@ G ≤ S\_n. If wt(x\_{m₀}) ≠ wt(x\_{m₁}), the scheme breaks.
 weight** w = ⌊n/2⌋ (§6.2.1, Stage 1 and Stage 4). Therefore wt(x\_{m₀}) = wt(x\_{m₁})
 for all m₀, m₁, and the Hamming weight function is non-separating.
 
+**Scope of the Hamming-weight defense (audit 2026-04-23 finding F-05).**
+Equalising the Hamming weight of every orbit representative defeats the
+**specific** `wt`-invariant attack of §1–4 and its immediate variants
+(multiset-of-k-substring-weights on same-weight strings under full S\_n
+action, etc. — see §7.2 for the CFI-based analysis of graph
+invariants). It does **not** automatically defeat every G-invariant.
+Concretely, a G ≤ S\_n may admit additional invariants arising from
+its **structural constraints** — for example, block sums over the ℓ
+quasi-cyclic blocks (coarser than the full weight but preserved by the
+block-cyclic subgroup), parity of weight over QC substructures,
+coordinate-subset indicator sums, or higher-order combinatorial
+invariants derived from the group's orbit structure on coordinate
+tuples. The Orbcrypt security argument is that no such invariant
+separates the message orbits **under the hidden-group assumption**:
+the adversary would need to *discover* a separating G-invariant
+without knowing G, which reduces to Permutation Code Equivalence /
+the Hidden Subgroup Problem on S\_n (§5.4, §8.2). Equivalently,
+Hamming-weight defense is a **necessary** first line of defense (it
+rules out the trivial attack), not a **sufficient** one on its own —
+the full defense is the composite of (i) same-weight representatives,
+(ii) hidden G (so the adversary cannot enumerate G-invariants), and
+(iii) OIA / CE / GI hardness (so candidate invariants are infeasible
+to find). The Lean formalisation proves the invariant-attack theorem
+(`Theorems/InvariantAttack.lean`) at full generality — *any*
+G-invariant that separates orbits yields an adversary — then proves
+`hgoe_weight_attack` for the specific Hamming-weight case and
+`same_weight_not_separating` as the converse safety lemma for that
+specific invariant; full quantitative coverage of other G-invariants
+is research-scope R-16 in the 2026-04-23 plan's catalogue.
+
 ### 7.2 Graph Statistic Attacks (Counterexample §6)
 
 **Attack:** When X consists of graph adjacency matrices, functions like
@@ -996,6 +1046,25 @@ audit plan `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b
 tracks that as follow-up work, and callers can supply the per-step
 bound from custom analysis in the interim.
 
+**Scope of the Lean bound (audit 2026-04-23 finding V1-8 / C-13 / D10).**
+Release-facing prose should **not** summarise
+`indQCPA_bound_via_hybrid` as "Orbcrypt is multi-query IND-Q-CPA under
+`ConcreteOIA`". The Lean theorem signature carries `h_step` as a
+**user-supplied hypothesis**; discharging `h_step` from `ConcreteOIA
+scheme ε` alone requires the per-coordinate marginal-independence
+argument over `uniformPMFTuple` discussed above, and that argument
+is genuine research-scope work (tracked as R-09 in the 2026-04-23
+plan's § 18 catalogue). Until R-09 lands, accurate prose is: "the
+Lean formalisation provides a hybrid-telescoping meta-theorem that
+turns **any** per-query bound `h_step ≤ ε` into a `Q·ε` multi-query
+bound; the user is responsible for supplying `h_step` from a
+stronger assumption or from custom analysis". The 2026-04-23 plan's
+Workstream **C** renames the theorem to `indQCPA_from_perStepBound`
+to surface this obligation in the identifier itself (per
+`CLAUDE.md`'s naming convention that identifier names must describe
+what the code *proves*, not what it *aspires to*). Citations
+pre- and post-rename must carry the `h_step` disclosure.
+
 ### 8.3 Strengthening: Noisy Variant
 
 For defense-in-depth against multi-query attacks (in case HSP turns out easier
@@ -1144,6 +1213,43 @@ than a structural field on `AuthOrbitKEM` so that the KEM structure
 remains maximally general; concrete instances (e.g. the Carter–Wegman
 witness in `Orbcrypt/AEAD/CarterWegmanMAC.lean`) discharge it when their
 ciphertext space is naturally transitive.
+
+**Orbit-cover falsity on production HGOE (audit 2026-04-23 finding V1-1 /
+I-03 / D1; scheduled Workstream B).** On the concrete HGOE construction
+the ciphertext type is `Bitstring n = Fin n → Bool` with `|Bitstring n|
+= 2^n`. By the orbit–stabiliser identity every orbit under `G ≤ S_n` has
+cardinality at most `|G| / |Stab|`, which is strictly less than `2^n`
+for any realistic choice of `(n, G)`. Hence `hOrbitCover` is **False on
+production HGOE**, and `authEncrypt_is_int_ctxt` is vacuously applicable
+there. The 2026-04-23 pre-release audit plan
+(`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 5) identifies
+Workstream **B** as the remediation: refactor `INT_CTXT` so orbit-cover
+is the game's well-formedness precondition (per-challenge) rather than
+a theorem-level obligation. Post-**B** the theorem discharges
+unconditionally on every `AuthOrbitKEM`. Release-facing prose should
+not summarise `authEncrypt_is_int_ctxt` as "HGOE has machine-checked
+INT-CTXT" without disclosing the orbit-cover caveat until Workstream
+**B** lands.
+
+**Carter–Wegman / HGOE compatibility (audit 2026-04-23 finding V1-7 /
+D4 / I-08 / I-10).** The Carter–Wegman concrete MAC witness is typed
+over `K = ZMod p × ZMod p`, `Msg = ZMod p`, `Tag = ZMod p`. Composing
+it directly with an HGOE `OrbitKEM G (Bitstring n) K` via
+`carterWegman_authKEM` is **not** supported by the current
+formalisation: the composition theorem `carterWegmanMAC_int_ctxt`
+inherits the `X = ZMod p × ZMod p` ciphertext-space constraint, which
+is incompatible with `Bitstring n`. Building a production HGOE AEAD
+from the Carter–Wegman satisfiability witness requires an auxiliary
+`Bitstring n → ZMod p` adapter that preserves the orbit structure the
+composition theorem relies on. No such adapter is formalised in the
+current release; its formalisation is tracked as research-scope R-13
+in the 2026-04-23 plan § 18. For standalone universal-hash claims,
+cite `carterWegmanHash_isUniversal` (the `(1/p)`-universal property
+over `ZMod p`, proved at `[Fact (Nat.Prime p)]` post the 2026-04-22
+L-workstream upgrade); for HGOE-specific AEAD citations, use the
+Workstream-**B**-refactored `authEncrypt_is_int_ctxt` once it lands,
+and couple it with HMAC or Poly1305 via the real-world-MAC
+refinement mentioned below.
 
 The concrete `MAC` witness (Workstream C4, strengthened by the
 L-workstream post-audit pass on 2026-04-22) is the Carter–Wegman

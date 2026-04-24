@@ -106,7 +106,13 @@ A function `f` separates two points `x₀` and `x₁` under a group action if:
 2. `f(x₀) ≠ f(x₁)`.
 
 The invariant attack theorem (Phase 4) shows that any separating function
-yields a complete break of the encryption scheme (adversary advantage = 1/2).
+yields `∃ A : Adversary X M, hasAdvantage scheme A` — existence of a
+distinguishing `(g₀, g₁)` pair. Informal shorthand: "complete break";
+see the `invariant_attack` docstring in
+`Orbcrypt/Theorems/InvariantAttack.lean` for the three-convention
+advantage catalogue (deterministic = 1, two-distribution = 1,
+centered = 1/2) — all three agree on "complete break", but they
+differ on intermediate advantages by a factor of 2.
 -/
 def IsSeparating (f : X → Y) (x₀ x₁ : X) : Prop :=
   IsGInvariant (G := G) f ∧ f x₀ ≠ f x₁
