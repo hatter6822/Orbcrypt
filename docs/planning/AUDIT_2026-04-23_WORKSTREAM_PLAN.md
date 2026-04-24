@@ -1741,6 +1741,79 @@ partial `CanonicalForm.ofLexMin`.
    deliberately left as `sorry`.
 6. The risk register in § 9.5 has no open items.
 
+### 9.7 Closure status (2026-04-24)
+
+**Workstream F is closed.**
+
+All six § 9.6 exit criteria met:
+
+1. ✅ `CanonicalForm.ofLexMin` lands as a computable `def` in
+   `Orbcrypt/GroupAction/CanonicalLexMin.lean`. `#print axioms
+   Orbcrypt.CanonicalForm.ofLexMin` reports `[propext,
+   Classical.choice, Quot.sound]` — standard Lean trio only.
+2. ✅ Non-vacuity witness (F3d) exhibits
+   `CanonicalForm.ofLexMin.canon ![true, false, true] =
+   ![false, true, true]` under `Equiv.Perm (Fin 3)` on
+   `Bitstring 3` via `decide`; a second `decide`-backed
+   example confirms the singleton-orbit case
+   `canon ![false, false, false] = ![false, false, false]`.
+3. ✅ `hgoeScheme.ofLexMin` (in
+   `Orbcrypt/Construction/HGOE.lean`) eliminates the `can`
+   parameter; a type-elaboration witness at `G := ⊤ ≤ S_3` with
+   `M := Unit` confirms the convenience constructor fires at a
+   concrete finite subgroup of `Equiv.Perm (Fin 3)`.
+4. ✅ `CLAUDE.md` gains a Workstream-F snapshot; the
+   Workstream status tracker row for F is marked closed;
+   source-layout tree gains the `CanonicalLexMin.lean` entry;
+   module-dependency graph extended with the Workstream-F
+   node.
+5. ✅ No `sorry` in the tree. The CI's "Verify no sorry" step
+   (comment-aware Perl strip) passes locally; WUs F3a + F3b +
+   F3c together discharge the `orbit_iff` obligation without
+   any `sorry` anywhere in the landed source.
+6. ✅ Risk register § 9.5 items F-R1 through F-R4: none
+   encountered during landing.
+   * **F-R1** (orbit `Fintype` typeclass search): Mathlib's
+     `Set.fintypeRange` instance fires automatically under
+     `[Fintype G] [DecidableEq X]` because `MulAction.orbit`
+     is definitionally `Set.range`; no explicit instance
+     block needed.
+   * **F-R2** (`simp only [h_orbit_eq]` closure): the landed
+     proof uses `congr 1 ; exact Set.toFinset_congr h_orbit_eq`
+     rather than `simp only`; this alternative from § 9.4
+     F3c's "alternative shorter body" path compiles cleanly.
+   * **F-R3** (`decide` timing): the non-vacuity witness at
+     n = 3 + full `Equiv.Perm (Fin 3)` evaluates in well
+     under the 60-second default; no `native_decide` fallback
+     required.
+   * **F-R4** (`LinearOrder (Bitstring n)` instance): handled
+     by defining `bitstringLinearOrder` as a `@[reducible]
+     def` rather than a global instance to avoid the diamond
+     with Mathlib's pointwise `Pi.partialOrder`. Callers bind
+     it locally via `letI`. This is a genuine design decision
+     that surfaced during landing; the § 9.5 "Rollback"
+     column suggested switching to `Finset.min` +
+     `Option`-valued canonical form, which the `def`-scoped
+     approach side-steps entirely.
+
+**Landing artefacts:**
+- Lean: 9 new public declarations (6 in
+  `Orbcrypt/GroupAction/CanonicalLexMin.lean`, 1 in
+  `Orbcrypt/Construction/Permutation.lean`, 2 in
+  `Orbcrypt/Construction/HGOE.lean`); module count 39 → 40;
+  public declaration count 349 → 358.
+- Audit script: 6 new `#print axioms` calls, 4 new
+  non-vacuity `example` bindings; audit total 373 → 382.
+- Version: `lakefile.lean` `0.1.10 → 0.1.11`.
+- Docs: `CLAUDE.md`, `Orbcrypt.lean` axiom-transparency
+  report, `docs/VERIFICATION_REPORT.md` Document history —
+  all extended with Workstream-F sections.
+- CI: "Verify no sorry", "Verify no unexpected axioms", and
+  Phase-16 audit-script steps all pass locally with the
+  de-wrap parser seeing only standard-trio axioms.
+
+No open follow-ups; the workstream is fully self-contained.
+
 ## 10. Workstream G — λ-parameterised `HGOEKeyExpansion`
 
 **Severity.** MEDIUM (V1-13 / H-03 / Z-06 / D16). **Effort.** ≈ 3 h.
@@ -3272,6 +3345,40 @@ acceptance criteria.
       obligation and the R-09 research pointer).
 - [ ] **V1-9** (Workstream **A**): "Release messaging policy"
       section present in `CLAUDE.md`.
+- [x] **V1-10** (Workstream **F**): `CanonicalForm.ofLexMin`
+      lands as a computable Lean-side witness for the
+      previously-abstract `CanonicalForm` parameter on
+      `hgoeScheme`. **Closed by landing 2026-04-24.**
+      `Orbcrypt/GroupAction/CanonicalLexMin.lean` (new module,
+      the 40th `.lean` file) lands the constructor taking
+      `[Group G] [MulAction G X] [Fintype G] [DecidableEq X]
+      [LinearOrder X]` and producing a `CanonicalForm G X`
+      via `Finset.min'` on the orbit's `.toFinset`. Supporting
+      `orbitFintype` / `mem_orbit_toFinset_iff` /
+      `orbit_toFinset_nonempty` helpers plus two `@[simp]`
+      / companion lemmas (`ofLexMin_canon`,
+      `ofLexMin_canon_mem_orbit`) discharge every
+      `CanonicalForm` field without `sorry`.
+      `Orbcrypt/Construction/Permutation.lean` gains the
+      `bitstringLinearOrder` (`@[reducible] def`, not a global
+      instance) via `LinearOrder.lift' List.ofFn
+      List.ofFn_injective`; callers bind it locally via
+      `letI` to avoid the diamond with Mathlib's pointwise
+      `Pi.partialOrder`. `Orbcrypt/Construction/HGOE.lean`
+      gains `hgoeScheme.ofLexMin` (the F4 convenience
+      constructor) + `hgoeScheme.ofLexMin_reps` companion
+      lemma. `scripts/audit_phase_16.lean` gains six new
+      `#print axioms` entries (three helpers + three lex-min
+      declarations) plus four new non-vacuity `example`
+      bindings under a new `## Workstream F non-vacuity
+      witnesses` section. `CLAUDE.md`,
+      `docs/VERIFICATION_REPORT.md`, and `Orbcrypt.lean` all
+      gain Workstream-F snapshots. `lakefile.lean` bumped
+      from `0.1.10` to `0.1.11`. Module count 39 → 40;
+      public-declaration count 349 → 358; Phase-16 audit
+      `#print axioms` total 373 → 382; the zero-sorry /
+      zero-custom-axiom / standard-trio-only posture is
+      preserved.
 - [x] **V1-11** (Workstream **E**): `det_oia_false_of_distinct_reps`
       and `det_kemoia_false_of_nontrivial_orbit` landed. **Closed by
       landing 2026-04-24.** `Orbcrypt/Crypto/OIA.lean` gains E1 at
@@ -3537,7 +3644,7 @@ merge).
 | **C** (indQCPA rename) | pending | — | — |
 | **D** (toolchain) | **closed** | branch `claude/review-workstream-plan-6xBp6` | 2026-04-24 |
 | **E** (formal vacuity) | **closed** | branch `claude/complete-workstream-e-bKTP9` | 2026-04-24 |
-| **F** (`CanonicalForm.ofLexMin`) | pending | — | — |
+| **F** (`CanonicalForm.ofLexMin`) | **closed** | branch `claude/audit-workstream-f-ObCfg` | 2026-04-24 |
 | **G** (λ-parameterised key expansion) | pending | — | — |
 | **H** (decapsSafe + decryptCompute) | pending | — | — |
 | **I** (naming hygiene) | pending | — | — |

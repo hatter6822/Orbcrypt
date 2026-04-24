@@ -1,5 +1,6 @@
 import Orbcrypt.GroupAction.Basic
 import Orbcrypt.GroupAction.Canonical
+import Orbcrypt.GroupAction.CanonicalLexMin
 import Orbcrypt.GroupAction.Invariant
 
 import Orbcrypt.Crypto.Scheme
@@ -2192,4 +2193,146 @@ E-R4) surfaced during the landing:
   witness is reused directly; no new typeclass plumbing needed.
 * E-R4 (future `KEMOIA` refactor) — E2 is written against the
   post-L5 single-conjunct form; no destructuring is required.
+
+## Workstream F Snapshot (audit 2026-04-23, finding V1-10 / F-04)
+
+### Problem
+
+`hgoeScheme` (Phase 5) takes `can : CanonicalForm (↥G)
+(Bitstring n)` as a **parameter** without providing a concrete
+instance. Every downstream theorem that types `{can :
+CanonicalForm (↥G) …}` is therefore parameterised by a
+structure with no constructed inhabitant in-tree. The GAP
+reference implementation uses lex-min orbit element, but
+pre-Workstream-F this was a prose-level convention rather than
+a Lean-side witness.
+
+### Fix
+
+New module `Orbcrypt/GroupAction/CanonicalLexMin.lean` (the
+40th `.lean` file) landing:
+
+* `CanonicalForm.ofLexMin (G : Type*) (X : Type*) [Group G]
+  [MulAction G X] [Fintype G] [DecidableEq X] [LinearOrder X]
+  : CanonicalForm G X` — the computable constructor. All three
+  structure fields (`canon`, `mem_orbit`, `orbit_iff`) are
+  discharged inline:
+  * `canon x := (MulAction.orbit G x).toFinset.min'
+    (orbit_toFinset_nonempty x)` (F2);
+  * `mem_orbit` via `Finset.min'_mem` +
+    `mem_orbit_toFinset_iff` (F2);
+  * `orbit_iff` forward via shared-min'-element extraction +
+    `MulAction.orbit_eq_iff` (F3b);
+  * `orbit_iff` reverse via `Set.toFinset_congr` + `congr 1`
+    (F3c).
+* `orbitFintype`, `mem_orbit_toFinset_iff`,
+  `orbit_toFinset_nonempty` (F3a) — the orbit-Fintype
+  instance and toFinset-membership helpers.
+* `CanonicalForm.ofLexMin_canon` (`@[simp]`),
+  `CanonicalForm.ofLexMin_canon_mem_orbit` — companion
+  lemmas.
+
+`Orbcrypt/Construction/Permutation.lean` gains the
+`bitstringLinearOrder` (`@[reducible] def`, not a global
+instance) via `LinearOrder.lift' List.ofFn List.ofFn_injective`
+over `List.Lex`. Exposed as a `def` to avoid the diamond with
+Mathlib's pointwise `Pi.partialOrder`; callers bind it locally
+via `letI`.
+
+`Orbcrypt/Construction/HGOE.lean` gains `hgoeScheme.ofLexMin`
+(F4) — the convenience constructor that auto-fills the
+`CanonicalForm` parameter for any finite subgroup of
+`Equiv.Perm (Fin n)` via `CanonicalForm.ofLexMin` under
+`bitstringLinearOrder`. Threads `letI` internally; callers
+needn't bring the `LinearOrder`. Companion `@[simp]` lemma
+`hgoeScheme.ofLexMin_reps` witnesses preservation of the
+`reps` field.
+
+### Files touched
+
+* `Orbcrypt/GroupAction/CanonicalLexMin.lean` — new module,
+  ~110 lines; six new public declarations.
+* `Orbcrypt/Construction/Permutation.lean` — adds
+  `bitstringLinearOrder` + three new Mathlib imports
+  (`Mathlib.Data.List.OfFn`, `Mathlib.Data.List.Lex`,
+  `Mathlib.Data.Bool.Basic`).
+* `Orbcrypt/Construction/HGOE.lean` — adds
+  `hgoeScheme.ofLexMin` + `hgoeScheme.ofLexMin_reps` + one
+  new module import (`Orbcrypt.GroupAction.CanonicalLexMin`).
+* `Orbcrypt.lean` — adds `import
+  Orbcrypt.GroupAction.CanonicalLexMin` between
+  `Canonical` and `Invariant`, matching the module-dependency
+  graph order.
+* `scripts/audit_phase_16.lean` — adds six new `#print axioms`
+  entries (including three helpers) in §1, three in §4, plus
+  four new non-vacuity `example` bindings under a new
+  `## Workstream F non-vacuity witnesses` section. Two new
+  imports (`Mathlib.Data.Fintype.Perm`,
+  `Mathlib.Data.Fin.VecNotation`) supply
+  `Fintype (Equiv.Perm (Fin 3))` and the `![...]` syntax at
+  the witness sites.
+* `lakefile.lean` — `version` bumped `0.1.10 → 0.1.11`.
+
+### Axiom transparency
+
+Every new declaration depends only on the standard Lean trio
+(`propext`, `Classical.choice`, `Quot.sound`):
+
+```
+#print axioms Orbcrypt.orbitFintype
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.mem_orbit_toFinset_iff
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.orbit_toFinset_nonempty
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.CanonicalForm.ofLexMin
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.CanonicalForm.ofLexMin_canon
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.CanonicalForm.ofLexMin_canon_mem_orbit
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.bitstringLinearOrder
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.hgoeScheme.ofLexMin
+  -- [propext, Classical.choice, Quot.sound]
+#print axioms Orbcrypt.hgoeScheme.ofLexMin_reps
+  -- [propext, Classical.choice, Quot.sound]
+```
+
+Zero `sorryAx`; zero custom axioms.
+
+### Consumer impact
+
+Every downstream theorem that types
+`{can : CanonicalForm (↥G) (Bitstring n)}` can now discharge
+the parameter via `CanonicalForm.ofLexMin` at any finite
+subgroup, provided the caller also binds a `LinearOrder
+(Bitstring n)` (typically via `letI :=
+bitstringLinearOrder`). The existing `hgoeScheme` signature is
+unchanged — `hgoeScheme.ofLexMin` is additive ergonomic
+sugar. No existing code needs migration.
+
+External release claims about HGOE's canonical form — e.g.,
+"the scheme uses the lex-minimum orbit element as its canonical
+form" — now track a machine-checked constructor rather than
+untracked prose. The `DEVELOPMENT.md §3.2` convention matches
+the `bitstringLinearOrder` + `ofLexMin` pairing exactly.
+
+### Research-scope follow-ups
+
+None. The Workstream-F landing is self-contained. The
+`Pi.partialOrder` diamond issue is resolved at the `def` level
+(no global instance registered); future workstreams that want
+a different `LinearOrder (Bitstring n)` can supply their own
+`letI` binding without touching `bitstringLinearOrder`.
+
+### Patch version
+
+`lakefile.lean` bumped from `0.1.10` to `0.1.11` for Workstream
+F. Nine new public declarations land (one new module + two
+new helpers in existing modules). Module count rises from 38
+to 39; public declaration count rises from 349 to 358. The
+zero-sorry / zero-custom-axiom posture and the standard-trio-
+only axiom-dependency posture are preserved. The Phase-16
+audit script's `#print axioms` total rises from 373 to 382.
 -/

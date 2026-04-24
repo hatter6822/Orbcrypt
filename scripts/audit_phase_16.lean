@@ -34,6 +34,13 @@ this script.
 -/
 
 import Orbcrypt
+-- Workstream F (audit 2026-04-23, finding V1-10 / F-04): the non-vacuity
+-- witnesses for `CanonicalForm.ofLexMin` at the end of this file use
+-- `Equiv.Perm (Fin 3)` as the concrete finite group and `![...]`
+-- notation for concrete `Bitstring 3` inputs; neither is transitively
+-- available through `Orbcrypt`.
+import Mathlib.Data.Fintype.Perm
+import Mathlib.Data.Fin.VecNotation
 
 open Orbcrypt
 
@@ -55,6 +62,16 @@ open Orbcrypt
 #print axioms orbit_eq_implies_canon_eq
 #print axioms canon_eq_of_mem_orbit
 #print axioms canon_idem
+
+-- CanonicalLexMin (Workstream F of the 2026-04-23 audit, finding V1-10 /
+-- F-04): concrete `CanonicalForm.ofLexMin` constructor closes the
+-- previously-abstract canonical-form parameter on `hgoeScheme`.
+#print axioms orbitFintype
+#print axioms mem_orbit_toFinset_iff
+#print axioms orbit_toFinset_nonempty
+#print axioms CanonicalForm.ofLexMin
+#print axioms CanonicalForm.ofLexMin_canon
+#print axioms CanonicalForm.ofLexMin_canon_mem_orbit
 
 -- Invariant
 #print axioms IsGInvariant
@@ -131,11 +148,21 @@ open Orbcrypt
 #print axioms perm_action_faithful
 #print axioms hammingWeight
 #print axioms hammingWeight_invariant
+-- Workstream F (audit 2026-04-23, finding V1-10 / F-04): the computable
+-- lex linear order on `Bitstring n` used by `CanonicalForm.ofLexMin` at
+-- the concrete HGOE instantiation (exposed as a `def`, not a global
+-- instance, to avoid a diamond with Mathlib's `Pi.partialOrder`).
+#print axioms bitstringLinearOrder
 
 -- Construction.HGOE
 #print axioms subgroupBitstringAction
 #print axioms subgroup_smul_eq
 #print axioms hgoeScheme
+-- Workstream F (audit 2026-04-23, finding V1-10 / F-04): convenience
+-- constructor that auto-fills the `CanonicalForm` parameter with the
+-- lex-min canonical form (`CanonicalForm.ofLexMin`).
+#print axioms hgoeScheme.ofLexMin
+#print axioms hgoeScheme.ofLexMin_reps
 #print axioms hgoe_correctness
 #print axioms hammingWeight_invariant_subgroup
 #print axioms hgoe_weight_attack
@@ -1282,5 +1309,93 @@ example : ¬ KEMOIA trivialKEM_PermZMod2 :=
       rw [Equiv.swap_apply_left] at h'
       -- `h' : (1 : ZMod 2) = 0`, which is false.
       exact absurd h' (by decide))
+
+/-! ## Workstream F non-vacuity witnesses
+
+Concrete machine-checked evaluations of `CanonicalForm.ofLexMin` on a
+small permutation group. The witnesses confirm the Workstream-F
+constructor (audit 2026-04-23, finding V1-10 / F-04) produces a
+computable canonical form — not merely a type-checking skeleton — by
+reducing `canon x` to the expected lex-min orbit element via `decide`.
+
+The lex order used here is `bitstringLinearOrder` from
+`Orbcrypt/Construction/Permutation.lean`: earliest-index-first with
+`false < true`. Bound locally via `letI` (not as a global instance)
+to avoid a diamond with Mathlib's pointwise `Pi.partialOrder`. -/
+
+/-- The lex order agrees with the big-endian binary encoding on a pair
+    of weight-2 bitstrings: `![false, true, true]` encodes to 3, while
+    `![true, false, true]` encodes to 5, so the former is strictly
+    less in the lex order. This is the order-direction sanity check
+    that guarantees `canon` of the orbit below picks
+    `![false, true, true]` — the weight-2 bitstring whose leading
+    `false` places it strictly below every weight-2 bitstring with a
+    leading `true`.
+
+    Uses `@LT.lt` with the explicit `bitstringLinearOrder.toLT`
+    instead of the unqualified `<` so that Lean's typeclass search
+    does *not* pick up the pointwise `Pi.preorder.toLT` — a diamond
+    would otherwise render `DecidableLT` unsynthesisable at this
+    call site. (The constructor `CanonicalForm.ofLexMin` below is
+    unaffected by the diamond because `Finset.min'` takes its
+    `LinearOrder` argument as a bound variable rather than a free
+    typeclass.) -/
+example :
+    @LT.lt (Bitstring 3) bitstringLinearOrder.toLT
+      (![false, true, true] : Bitstring 3)
+      (![true, false, true] : Bitstring 3) := by
+  decide
+
+/-- `CanonicalForm.ofLexMin` computes the lex-min orbit element on a
+    small concrete instance. Under the full symmetric group
+    `Equiv.Perm (Fin 3)` (all 6 coordinate permutations), the orbit
+    of any weight-2 bitstring is exactly the set of all weight-2
+    bitstrings:
+        `{![true, true, false], ![true, false, true], ![false, true, true]}`.
+    In the `bitstringLinearOrder` lex order, the minimum is
+    `![false, true, true]` (the unique weight-2 bitstring whose
+    leading bit is `false`). `decide` reduces the whole chain
+    — orbit enumeration, `.toFinset` conversion, `Finset.min'`
+    search — to the expected answer at compile time. -/
+example :
+    letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
+    let can := CanonicalForm.ofLexMin
+      (G := Equiv.Perm (Fin 3)) (X := Bitstring 3)
+    can.canon (![true, false, true] : Bitstring 3) =
+      (![false, true, true] : Bitstring 3) := by
+  decide
+
+/-- The weight-2 orbit representative under `Equiv.Perm (Fin 3)` is the
+    all-false `![false, false, false]` for a weight-0 input — the only
+    weight-0 bitstring of length 3 is itself, so the orbit is a
+    singleton and its min is the element itself. Verifies the
+    `ofLexMin` reduction stays correct on a singleton orbit. -/
+example :
+    letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
+    let can := CanonicalForm.ofLexMin
+      (G := Equiv.Perm (Fin 3)) (X := Bitstring 3)
+    can.canon (![false, false, false] : Bitstring 3) =
+      (![false, false, false] : Bitstring 3) := by
+  decide
+
+/-- `hgoeScheme.ofLexMin` type-checks on the top subgroup `⊤ ≤ S_3`
+    once we supply a computable `DecidablePred (· ∈ ⊤)` (all
+    elements are in `⊤`, discharged by `isTrue trivial`). This
+    binds the `Fintype ↥⊤` instance the Workstream-F4 convenience
+    constructor requires, showing it elaborates at a concrete finite
+    subgroup of `Equiv.Perm (Fin 3)`. Uses the singleton message
+    space `Unit` so distinctness is vacuous (the universal
+    quantifier over `m₁ ≠ m₂` has no inhabitants). A richer witness
+    exercising correctness through a non-trivial message space
+    would thread `hammingWeight`-based distinctness — out of scope
+    for a type-elaboration check. -/
+example : True := by
+  let G : Subgroup (Equiv.Perm (Fin 3)) := ⊤
+  letI : DecidablePred (· ∈ G) := fun _ => isTrue trivial
+  let _ : OrbitEncScheme ↥G (Bitstring 3) Unit :=
+    hgoeScheme.ofLexMin G
+      (fun _ : Unit => ![false, false, false])
+      (fun m₁ m₂ hne => absurd (Subsingleton.elim m₁ m₂) hne)
+  trivial
 
 end NonVacuityWitnesses

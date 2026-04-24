@@ -1,11 +1,18 @@
 import Mathlib.GroupTheory.Perm.Basic
+import Mathlib.Data.List.OfFn
+import Mathlib.Data.List.Lex
+import Mathlib.Data.Bool.Basic
 import Orbcrypt.GroupAction.Invariant
 
 /-!
 # Orbcrypt.Construction.Permutation
 
 S_n action on bitstrings {0,1}^n: `Bitstring` type alias, `MulAction` instance
-for `Equiv.Perm (Fin n)`, Hamming weight definition, and weight-invariance proof.
+for `Equiv.Perm (Fin n)`, Hamming weight definition, and weight-invariance
+proof. Also exposes a computable lex-order `LinearOrder` on `Bitstring n`
+(earliest-index-first), the natural choice for the concrete
+`CanonicalForm.ofLexMin` instantiation on HGOE (Workstream F of the
+2026-04-23 audit).
 
 ## Main definitions and results
 
@@ -15,6 +22,17 @@ for `Equiv.Perm (Fin n)`, Hamming weight definition, and weight-invariance proof
 * `Orbcrypt.perm_action_faithful` — different permutations act differently
 * `Orbcrypt.hammingWeight` — number of 1-bits in a bitstring
 * `Orbcrypt.hammingWeight_invariant` — Hamming weight is S_n-invariant
+* `Orbcrypt.bitstringLinearOrder` — computable lex `LinearOrder (Bitstring n)`
+  transported from `List Bool`'s lex order via `List.ofFn`. With `false < true`
+  (Mathlib's `Bool.linearOrder`) this is the standard earliest-index-first
+  lex convention: `false ↦ 0`, `true ↦ 1`, and the order agrees with the
+  big-endian binary encoding of the bitstring. Concretely, on
+  `Bitstring 3`:
+    ![false, false, false] < ![false, false, true] < ![false, true, false]
+    < ![false, true, true] < ![true, false, false] < ![true, false, true]
+    < ![true, true, false] < ![true, true, true].
+  `decide` reduces `Finset.min'` of a small concrete orbit by walking this
+  order.
 
 ## References
 
@@ -22,6 +40,11 @@ for `Equiv.Perm (Fin n)`, Hamming weight definition, and weight-invariance proof
 * DEVELOPMENT.md §7.1 — Hamming weight defense
 * COUNTEREXAMPLE.md — Hamming weight attack
 * formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md — work units 5.1–5.6
+* docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 9 — Workstream F
+  (V1-10 / F-04): the `bitstringLinearOrder` instance below is the
+  computable-`LinearOrder` side of the `CanonicalForm.ofLexMin` landing;
+  without it, `CanonicalForm.ofLexMin G` on `Bitstring n` would require
+  a caller-supplied `LinearOrder (Bitstring n)` at every use site.
 -/
 
 namespace Orbcrypt
@@ -137,5 +160,65 @@ theorem hammingWeight_invariant :
     · rintro ⟨j, hj, rfl⟩
       simpa using hj
   rw [h, Finset.card_map]
+
+-- ============================================================================
+-- Workstream F (2026-04-23 audit, V1-10 / F-04):
+-- computable LinearOrder on Bitstring n via List.ofFn + List.Lex.
+-- ============================================================================
+
+/-- Computable lex `LinearOrder` on `Bitstring n` — the natural
+    earliest-index-first ordering under `false < true`. Transports
+    Mathlib's computable `LinearOrder (List Bool)` (via `List.Lex`)
+    through the `List.ofFn` injection, which is injective for fixed
+    `n`.
+
+    **Exposed as `def`, not `instance`, to avoid the diamond with
+    Mathlib's pointwise `Pi.partialOrder`** (which gives a *different*
+    `LT`/`LE` — the pointwise one — and is already registered as a
+    global instance for every `Fin n → Bool`). Registering a global
+    `LinearOrder (Bitstring n)` would leave Lean with two
+    definitionally-distinct `LT (Bitstring n)` instances in scope
+    (`Pi.preorder.toLT` vs the lex one), which breaks `decide` on any
+    comparison that tries to find `DecidableLT` through the wrong
+    path. Callers who want the lex order for `CanonicalForm.ofLexMin`
+    bind it locally:
+
+    ```
+    letI : LinearOrder (Bitstring n) := bitstringLinearOrder
+    let can := CanonicalForm.ofLexMin (G := ↥G) (X := Bitstring n)
+    ```
+
+    This keeps `CanonicalForm.ofLexMin` parametric over
+    `[LinearOrder X]`; consumers who want a different order (e.g.
+    `Lex.linearOrder`, dictionary-style) supply their own `letI` in
+    place of this one. The scope-locality matches how Mathlib ships
+    `Lex` as a type synonym rather than a global `Pi` linear order.
+
+    Concretely this gives `false ↦ 0`, `true ↦ 1`, and the usual
+    earliest-index-first tiebreak: on `Bitstring 3`,
+
+        ![false, false, false] < ![false, false, true] <
+        ![false, true, false] < ![false, true, true] <
+        ![true, false, false] < ![true, false, true] <
+        ![true, true, false] < ![true, true, true].
+
+    `decide` reduces `Finset.min'` under this order on small inputs
+    because the underlying `List.Lex`, `List.ofFn`, and
+    `Bool.linearOrder` are all fully computable. This is the order
+    the Workstream-F non-vacuity witness in
+    `scripts/audit_phase_16.lean` binds via `letI` to machine-check
+    that `ofLexMin.canon ![true, false, true] = ![false, true, true]`
+    on a concrete subgroup of `Equiv.Perm (Fin 3)`.
+
+    Marked `@[reducible]` so that `letI` binders at consumer sites
+    preserve definitional transparency when chasing `DecidableLT` /
+    `DecidableLE` through `LinearOrder.toDecidableLT` /
+    `toDecidableLE`; without the reducibility annotation, Lean's
+    instance-search attribute `instance 900` on
+    `LinearOrder.toDecidable*` cannot peer through the opaque
+    constant. -/
+@[reducible]
+def bitstringLinearOrder : LinearOrder (Bitstring n) :=
+  LinearOrder.lift' (fun x : Bitstring n => List.ofFn x) List.ofFn_injective
 
 end Orbcrypt
