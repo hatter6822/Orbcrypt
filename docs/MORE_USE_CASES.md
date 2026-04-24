@@ -847,6 +847,16 @@ claims were weakened and why.
   was rewritten to cite these theorems; this entry remains for
   historical traceability of the earlier "definition, not theorem"
   correction.
+  *Update (2026-04-24, Workstream B, audit 2026-04-23 / V1-1):* the
+  "single-orbit" framing of the 2026-04-19 entry above is superseded.
+  Workstream B refactored `INT_CTXT` so the orbit condition is a
+  per-challenge well-formedness precondition `hOrbit` on the game
+  itself rather than a theorem-level `hOrbitCover` hypothesis, and
+  `authEncrypt_is_int_ctxt` (Theorem 19) now discharges `INT_CTXT`
+  **unconditionally** on every `AuthOrbitKEM`. Out-of-orbit
+  ciphertexts are rejected by the game's well-formedness
+  precondition, not by a scheme-level coverage assumption. Row #19
+  status in `CLAUDE.md` upgrades from Conditional to Standalone.
 * **§4.1 (sealed bug bounty).** Clarified that the message space
   `M_T` is finite (Orbcrypt's `reps` is a map from a finite `M`);
   the PoC content is a separate hybrid-encrypted blob referenced

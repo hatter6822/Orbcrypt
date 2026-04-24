@@ -210,4 +210,20 @@ theorem toyCarterWegmanMAC_is_int_ctxt :
 
 #print axioms toyCarterWegmanMAC_is_int_ctxt
 
+/-- **Game-shape smoke test (Workstream B).** Exercises the post-B
+    `INT_CTXT` binder pattern by explicitly applying the predicate
+    to a challenge `(c, t, hOrbit, hFresh)` quadruple. This
+    demonstrates that the per-challenge `hOrbit` binder can be
+    supplied using `toyKEMZMod2_orbit_cover`, and that the resulting
+    obligation type-checks against the `authDecaps = none`
+    conclusion. If the pre-B signature crept back into the predicate
+    (e.g. via a missing `hOrbit` binder or a theorem-level
+    `hOrbitCover` parameter), this example would fail to elaborate. -/
+example (c : ZMod 2) (t : ZMod 2)
+    (hFresh : ∀ g : Equiv.Perm (ZMod 2),
+      c ≠ (authEncaps (carterWegman_authKEM 2 toyKEMZMod2) g).1 ∨
+      t ≠ (authEncaps (carterWegman_authKEM 2 toyKEMZMod2) g).2.2) :
+    authDecaps (carterWegman_authKEM 2 toyKEMZMod2) c t = none :=
+  toyCarterWegmanMAC_is_int_ctxt c t (toyKEMZMod2_orbit_cover c) hFresh
+
 end C4ExerciseINT_CTXT_Prime

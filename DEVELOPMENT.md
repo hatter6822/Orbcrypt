@@ -1256,10 +1256,9 @@ in the 2026-04-23 plan § 18. For standalone universal-hash claims,
 cite `carterWegmanHash_isUniversal` (the `(1/p)`-universal property
 over `ZMod p`, proved at `[Fact (Nat.Prime p)]` post the 2026-04-22
 L-workstream upgrade); for HGOE-specific AEAD citations, use the
-Workstream-**B**-refactored `authEncrypt_is_int_ctxt` once it lands,
-(now an unconditional theorem post-Workstream-B, 2026-04-24) and
-couple it with HMAC or Poly1305 via the real-world-MAC refinement
-mentioned below.
+post-Workstream-B `authEncrypt_is_int_ctxt` (landed 2026-04-24,
+unconditional on every `AuthOrbitKEM`) and couple it with HMAC or
+Poly1305 via the real-world-MAC refinement mentioned below.
 
 The concrete `MAC` witness (Workstream C4, strengthened by the
 L-workstream post-audit pass on 2026-04-22) is the Carter–Wegman
