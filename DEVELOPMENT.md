@@ -948,6 +948,18 @@ genuinely ε-smooth content of `concrete_hardness_chain_implies_1cpa_
 advantage_bound` (Workstream G) — distinctness is attached as a
 release-facing signature marker only.
 
+The vacuity of the `OIA` / `KEMOIA` hypotheses themselves is now
+machine-checked: `det_oia_false_of_distinct_reps`
+(`Crypto/OIA.lean`, Workstream E of the 2026-04-23 audit, finding
+C-07) proves `¬ OIA scheme` whenever
+`scheme.reps m₀ ≠ scheme.reps m₁`; `det_kemoia_false_of_nontrivial_
+orbit` (`KEM/Security.lean`, finding E-06) proves `¬ KEMOIA kem`
+whenever the base-point orbit has cardinality ≥ 2. Both theorems
+carry only standard-trio axiom dependencies and are classified
+**Standalone** for release-messaging purposes — consumers can
+cite them as formal evidence that the deterministic chain is
+scaffolding, not substantive security content.
+
 **K2 design note — no KEM `_distinct` corollary.** The KEM-layer
 security game (`kemHasAdvantage` in `KEM/Security.lean`) parameterises
 adversaries by *group elements* rather than messages; every

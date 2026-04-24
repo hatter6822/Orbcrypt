@@ -897,6 +897,25 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.concreteGIOIAImpliesConcreteOIA_one_one
 -- (standard Lean only — vacuously-true reduction witness, Workstream E3c)
 
+-- Workstream E (audit 2026-04-23, findings C-07 + E-06):
+-- machine-checked vacuity witnesses for the deterministic OIA and
+-- KEMOIA predicates.
+
+#print axioms Orbcrypt.det_oia_false_of_distinct_reps
+-- (standard Lean only — formal discharge of the scheme-level
+--  vacuity claim that the module docstring of `Crypto/OIA.lean`
+--  previously asserted only in prose. Any scheme with two
+--  distinct representatives (`reps m₀ ≠ reps m₁`) falsifies
+--  `OIA scheme` via the membership-at-`reps m₀` Boolean
+--  distinguisher. Standalone; safe to cite directly.)
+
+#print axioms Orbcrypt.det_kemoia_false_of_nontrivial_orbit
+-- (standard Lean only — KEM-layer parallel of the scheme-level
+--  witness above. Any KEM whose base-point orbit contains two
+--  distinct ciphertexts (`g₀ • basePoint ≠ g₁ • basePoint`)
+--  falsifies `KEMOIA kem` via the membership-at-`g₀ • basePoint`
+--  Boolean distinguisher. Standalone.)
+
 #print axioms Orbcrypt.concrete_chain_zero_compose
 -- (standard Lean only — algebraic composition, Workstream E3d)
 
@@ -1090,21 +1109,26 @@ Users can verify axiom dependencies by running in a Lean file:
 Each Workstream-E theorem carries an ε-parameterised probabilistic
 hypothesis (`ConcreteOIA`, `ConcreteKEMOIA`, `ConcreteTensorOIA`, etc.) in
 place of the deterministic (vacuous) OIA hypothesis of its Phase-4/7/12
-predecessor. The pairing:
+predecessor. The final column names the **machine-checked vacuity
+witness** theorem (where applicable) — a formal `¬ (OIA-variant)`
+discharge under a mild distinctness hypothesis that every non-trivial
+scheme satisfies. These witnesses close the audit 2026-04-23 findings
+C-07 and E-06 by replacing prose-level vacuity disclosures with Lean
+proofs. The pairing:
 
-| Pre-Workstream-E (vacuous today) | Workstream-E/G/H counterpart (non-vacuous) |
-|---|---|
-| `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) |
-| `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) |
-| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) — **ε = 1 inhabited only via `ConcreteHardnessChain.tight_one_exists` (`punitSurrogate F` + dimension-0 trivial encoders); ε < 1 requires a caller-supplied `SurrogateTensor F` + encoder pair with genuine cryptographic hardness (research-scope — see § O of the 2026-04-23 plan: R-02 / R-03 / R-04)** |
-| `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
-| *multi-query extension (implicit)* | `indQCPA_from_perStepBound` (E8c, renamed by Workstream C of 2026-04-23 audit from `indQCPA_bound_via_hybrid` — finding V1-8 / C-13) — **carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 (see § O of the 2026-04-23 plan). The `from_perStepBound` suffix surfaces the obligation in the identifier itself per `CLAUDE.md`'s naming rule that identifiers describe what the code *proves*, not what it *aspires to*.** |
-| *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop. **ε = 1 inhabited only via `ConcreteKEMHardnessChain.tight_one_exists`; ε < 1 requires caller-supplied scheme-to-KEM reduction witness at `(m₀, keyDerive)` — research-scope R-05** |
-| *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound`. **Same ε = 1 disclosure as the scheme-level parallel; ε < 1 requires the composition of R-02/R-03/R-04 (scheme-level chain) and R-05 (scheme-to-KEM reduction)** |
-| `oia_implies_1cpa` (uniform game) | `oia_implies_1cpa_distinct` (K1) — same scaffolding status, classical-IND-1-CPA signature matching the literature |
-| `hardness_chain_implies_security` (uniform game) | `hardness_chain_implies_security_distinct` (K3) — same scaffolding status, classical-IND-1-CPA signature |
-| `concrete_oia_implies_1cpa` (unconditional over `Adversary`) | `indCPAAdvantage_collision_zero` + `concrete_oia_implies_1cpa` docstring (K4) — the collision case yields advantage 0, so the existing probabilistic `≤ ε` bound transfers to the classical distinct-challenge game for free |
-| `concrete_hardness_chain_implies_1cpa_advantage_bound` (unconditional over `Adversary`) | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4 companion) — classical-IND-1-CPA restatement retaining the ε-smooth quantitative content. **Same ε = 1 disclosure as the non-distinct form** |
+| Pre-Workstream-E (vacuous today) | Workstream-E/G/H counterpart (non-vacuous) | Machine-checked vacuity witness |
+|---|---|---|
+| `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) | `det_oia_false_of_distinct_reps` (Workstream E of audit 2026-04-23, C-07) — `OIA scheme` is `False` when `scheme.reps m₀ ≠ scheme.reps m₁` |
+| `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) | `det_kemoia_false_of_nontrivial_orbit` (Workstream E of audit 2026-04-23, E-06) — `KEMOIA kem` is `False` when `g₀ • basePoint ≠ g₁ • basePoint` |
+| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) — **ε = 1 inhabited only via `ConcreteHardnessChain.tight_one_exists` (`punitSurrogate F` + dimension-0 trivial encoders); ε < 1 requires a caller-supplied `SurrogateTensor F` + encoder pair with genuine cryptographic hardness (research-scope — see § O of the 2026-04-23 plan: R-02 / R-03 / R-04)** | Composed from `OIA` via the deterministic chain; the terminal vacuity is witnessed by `det_oia_false_of_distinct_reps` (the chain's conclusion `IsSecure scheme` is the OIA→CPA reduction target, which collapses once its OIA hypothesis is refuted) |
+| `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) | — (the deterministic antecedent carries `OIA scheme` as a hypothesis; `det_oia_false_of_distinct_reps` refutes that hypothesis on every non-trivial scheme) |
+| *multi-query extension (implicit)* | `indQCPA_from_perStepBound` (E8c, renamed by Workstream C of 2026-04-23 audit from `indQCPA_bound_via_hybrid` — finding V1-8 / C-13) — **carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 (see § O of the 2026-04-23 plan). The `from_perStepBound` suffix surfaces the obligation in the identifier itself per `CLAUDE.md`'s naming rule that identifiers describe what the code *proves*, not what it *aspires to*.** | — (no deterministic pre-E antecedent; the multi-query statement lives only in the probabilistic chain) |
+| *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop. **ε = 1 inhabited only via `ConcreteKEMHardnessChain.tight_one_exists`; ε < 1 requires caller-supplied scheme-to-KEM reduction witness at `(m₀, keyDerive)` — research-scope R-05** | `det_kemoia_false_of_nontrivial_orbit` applies to the KEM-layer terminal hypothesis (`KEMOIA`), though the scheme-to-KEM bridge at ε < 1 is itself a research-scope obligation |
+| *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound`. **Same ε = 1 disclosure as the scheme-level parallel; ε < 1 requires the composition of R-02/R-03/R-04 (scheme-level chain) and R-05 (scheme-to-KEM reduction)** | Same as the row above (terminal hypothesis is `KEMOIA`, refuted by `det_kemoia_false_of_nontrivial_orbit`) |
+| `oia_implies_1cpa` (uniform game) | `oia_implies_1cpa_distinct` (K1) — same scaffolding status, classical-IND-1-CPA signature matching the literature | Inherits `det_oia_false_of_distinct_reps` (antecedent is `OIA scheme`) |
+| `hardness_chain_implies_security` (uniform game) | `hardness_chain_implies_security_distinct` (K3) — same scaffolding status, classical-IND-1-CPA signature | Inherits `det_oia_false_of_distinct_reps` via `oia_from_hardness_chain` |
+| `concrete_oia_implies_1cpa` (unconditional over `Adversary`) | `indCPAAdvantage_collision_zero` + `concrete_oia_implies_1cpa` docstring (K4) — the collision case yields advantage 0, so the existing probabilistic `≤ ε` bound transfers to the classical distinct-challenge game for free | — (probabilistic counterpart is genuinely ε-smooth; no vacuity to discharge) |
+| `concrete_hardness_chain_implies_1cpa_advantage_bound` (unconditional over `Adversary`) | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4 companion) — classical-IND-1-CPA restatement retaining the ε-smooth quantitative content. **Same ε = 1 disclosure as the non-distinct form** | — (probabilistic; no vacuity) |
 
 ### Vacuity map (2026-04-23 Workstream A additions — Conditional-status rows)
 
@@ -2017,4 +2041,155 @@ modified; no new public declarations; the 38-module total, the
 347 public-declaration count, the zero-sorry / zero-custom-
 axiom posture, and the standard-trio-only axiom-dependency
 posture are all preserved.
+
+## Workstream E Snapshot (audit 2026-04-23, findings C-07 / E-06)
+
+**Closed by landing 2026-04-24.** Audit findings C-07 (HIGH,
+deterministic `OIA` module docstring asserts vacuity in prose
+only) and E-06 (HIGH, `KEMOIA` docstring makes the parallel
+unbacked claim) are resolved by two small, axiom-free theorems
+that discharge the vacuity claim on every non-trivial scheme /
+KEM under a mild distinctness hypothesis.
+
+### Problem summary (pre-E)
+
+`Orbcrypt/Crypto/OIA.lean`'s module docstring (lines 45–67
+pre-E) and the `OIA` definition's own docstring both assert in
+prose that the deterministic OIA is `False` on every scheme
+with two distinct representatives ("because
+`f := fun x => decide (x = reps m₀)` is a distinguisher"). The
+same pattern appears in `Orbcrypt/KEM/Security.lean`'s `KEMOIA`
+docstring, now scoped to the KEM-layer game. Neither claim was
+**machine-checked** prior to this workstream; consumers
+validating the scaffolding disclosure had to take the prose on
+trust. This weakened the `Orbcrypt.lean` axiom-transparency
+story: every other vacuity claim in the codebase either has a
+non-vacuous probabilistic counterpart in the vacuity map (E4 /
+E6 / G / H) or is itself proved as an equality / refutation
+theorem. The two missing witnesses closed the last prose-only
+gap.
+
+### Fix (two small theorems)
+
+**E1 — `det_oia_false_of_distinct_reps`** (`Orbcrypt/Crypto/OIA.lean`).
+Refutes `OIA scheme` under the hypothesis
+`scheme.reps m₀ ≠ scheme.reps m₁`. The distinguisher is the
+Boolean membership test
+`fun x => decide (x = scheme.reps m₀)`, instantiated at
+identity group elements `g₀ = g₁ = 1`. After
+`simp only [one_smul]`, the LHS `decide` evaluates to `true`
+(reflexivity) and the RHS `decide` to `false` (via the
+distinctness hypothesis). Rewriting the RHS `decide` equalities
+produces `true = false`, discharged via
+`Bool.true_eq_false_iff`.
+
+**E2 — `det_kemoia_false_of_nontrivial_orbit`** (`Orbcrypt/KEM/Security.lean`).
+Refutes `KEMOIA kem` under the hypothesis
+`g₀ • kem.basePoint ≠ g₁ • kem.basePoint`. Parallel structure
+to E1: the distinguisher is
+`fun c => decide (c = g₀ • kem.basePoint)`, and the proof body
+uses the same `decide_eq_true` / `decide_eq_false` idiom
+combined with `Bool.true_eq_false_iff`. Works against the
+post-L5 single-conjunct `KEMOIA` — no `.1` / `.2`
+destructuring.
+
+### Changes
+
+* `Orbcrypt/Crypto/OIA.lean` — added E1 at the bottom of the
+  module. Typeclass context identical to `OIA` (`[Group G]`,
+  `[MulAction G X]`, `[DecidableEq X]`); no new imports.
+* `Orbcrypt/KEM/Security.lean` — added E2 at the bottom of the
+  module. Typeclass context identical to `KEMOIA`; no new
+  imports.
+* `Orbcrypt.lean` — (E3) vacuity-map table gained a third
+  "Machine-checked vacuity witness" column pointing the two
+  rows at `OIA` / `KEMOIA` (rows #1–#2) to E1 and E2
+  respectively. The remaining rows either inherit the upstream
+  witness (e.g. hardness-chain rows depend on `OIA`, so they
+  inherit E1 via `oia_from_hardness_chain`) or have no
+  deterministic antecedent at all (multi-query row, probabilistic
+  rows — these carry probabilistic `Concrete*` hypotheses which
+  are genuinely ε-smooth and don't require a vacuity refutation).
+  Axiom-transparency cookbook block gained two new
+  `#print axioms` entries under the 2026-04-23 E subsection.
+  This Workstream-E snapshot section was appended at the end
+  of the transparency report.
+* `scripts/audit_phase_16.lean` — added E1 and E2 to the
+  per-declaration `#print axioms` list; added two concrete
+  non-vacuity `example` bindings under `NonVacuityWitnesses`:
+  (i) E1 fires on a two-message scheme over `ZMod 2 × ZMod 2`
+  with reps `(0, 1)` and `(1, 0)` (distinct by construction),
+  and (ii) E2 fires on a KEM over `Equiv.Perm (ZMod 2)` with
+  the `Equiv.swap 0 1`-based action on `ZMod 2` (where
+  `swap 0 1 • 0 = 1 ≠ 0 = 1 • 0`, so the orbit is non-trivial).
+
+### Verification
+
+* `lake build Orbcrypt.Crypto.OIA` — succeeds, zero warnings.
+* `lake build Orbcrypt.KEM.Security` — succeeds, zero warnings.
+* `lake build Orbcrypt` (whole project) — succeeds; 38 modules
+  / 3,369 jobs (two new theorems add two build nodes); zero
+  errors / zero warnings.
+* `#print axioms Orbcrypt.det_oia_false_of_distinct_reps` —
+  standard trio `[propext, Classical.choice, Quot.sound]`.
+  Never `sorryAx`, never a custom axiom.
+* `#print axioms Orbcrypt.det_kemoia_false_of_nontrivial_orbit` —
+  standard trio.
+* `scripts/audit_phase_16.lean` — runs clean; every
+  declaration's axiom dependencies are either empty or a subset
+  of the standard trio; the two new non-vacuity `example`
+  bindings elaborate and close their `¬ OIA scheme` / `¬ KEMOIA kem`
+  goals by direct term construction.
+
+### Consumer impact
+
+Release-facing prose that previously said "OIA is vacuously
+true on every non-trivial scheme" can now cite the formal
+theorem `det_oia_false_of_distinct_reps` (under the
+`reps_distinct` obligation every scheme already carries —
+concretely, the distinct-representatives hypothesis is a
+strengthening of `reps_distinct` to pointwise distinctness).
+The KEM-layer analogue `det_kemoia_false_of_nontrivial_orbit`
+applies whenever the base point's orbit has cardinality ≥ 2,
+which is every realistic KEM.
+
+`CLAUDE.md`'s release-messaging policy permits both theorems
+as **Standalone** citations because each conclusion is
+unconditional on the distinctness / non-trivial-orbit
+hypothesis. Neither theorem supersedes the
+`concrete_*_implies_*` probabilistic reductions; both are
+companion lemmas that formalise the *reason* the deterministic
+chain is scaffolding, not substantive security content.
+
+### Patch version
+
+`lakefile.lean` bumped from `0.1.9` to `0.1.10` for Workstream
+E. Two new public declarations land (`det_oia_false_of_distinct_reps`,
+`det_kemoia_false_of_nontrivial_orbit`) inside existing
+modules; no new `.lean` files; the 38-module total is
+unchanged. Public declaration count rises from 347 to 349.
+The zero-sorry / zero-custom-axiom posture and the standard-
+trio-only axiom-dependency posture are preserved. The
+Phase-16 audit script's `#print axioms` total rises from 342
+to 344; the non-vacuity witness block gains two new `example`
+bindings.
+
+### Research-scope follow-ups
+
+None. The vacuity witnesses are complete at the level of the
+deterministic chain; the *probabilistic* chain's ε < 1
+non-vacuity is tracked separately (Workstream G / H + research
+milestones R-02–R-05 / R-09 / R-13; see
+`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § O). No
+open items from the Workstream-E risk register (E-R1 through
+E-R4) surfaced during the landing:
+* E-R1 (decide elaboration) — only standard-trio axioms
+  observed; rollback not required.
+* E-R2 (`simp only [one_smul]`) — fires as expected on both
+  theorems; rollback not required.
+* E-R3 (KEM non-vacuity witness) — the `Equiv.swap 0 1`-based
+  toy action on `ZMod 2` used in the Workstream-C post-L2
+  witness is reused directly; no new typeclass plumbing needed.
+* E-R4 (future `KEMOIA` refactor) — E2 is written against the
+  post-L5 single-conjunct form; no destructuring is required.
 -/

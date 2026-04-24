@@ -176,7 +176,7 @@ These modules define the abstract encryption scheme and security notions.
 |--------|----------------|---------|
 | `Scheme.lean` | `OrbitEncScheme`, `encrypt`, `decrypt` | Formalizes AOE syntax from DEVELOPMENT.md §4.1 |
 | `Security.lean` | `Adversary`, `hasAdvantage`, `IsSecure`, `hasAdvantageDistinct`, `IsSecureDistinct`, `isSecure_implies_isSecureDistinct` (B1) | Deterministic abstraction of IND-CPA from §4.3; distinct-challenge variant formalises the classical game (audit F-02) |
-| `OIA.lean` | `OIA` (`Prop` definition) | Formalizes §5.2 as a `Prop`-valued definition (not `axiom`) |
+| `OIA.lean` | `OIA` (`Prop` definition); `det_oia_false_of_distinct_reps` machine-checked vacuity witness (Workstream E of 2026-04-23 audit, finding C-07) | Formalizes §5.2 as a `Prop`-valued definition (not `axiom`); the vacuity witness refutes `OIA scheme` whenever `scheme.reps m₀ ≠ scheme.reps m₁`, replacing the prose-only disclosure in the module docstring |
 
 ### Layer 3: Theorems (`Theorems/`)
 
@@ -205,7 +205,7 @@ Instantiation with S\_n acting on bitstrings.
 | `Syntax.lean` | `OrbitKEM` structure, `OrbitEncScheme.toKEM` bridge |
 | `Encapsulate.lean` | `encaps`, `decaps`, simp lemmas |
 | `Correctness.lean` | `kem_correctness` — decaps recovers encapsulated key (rfl) |
-| `Security.lean` | `KEMAdversary`, `KEMOIA`, `kemoia_implies_secure` |
+| `Security.lean` | `KEMAdversary`, `KEMOIA`, `kemoia_implies_secure`; `det_kemoia_false_of_nontrivial_orbit` machine-checked vacuity witness (Workstream E of 2026-04-23 audit, finding E-06) — refutes `KEMOIA kem` under the non-trivial base-point-orbit hypothesis, KEM-layer parallel of `det_oia_false_of_distinct_reps` |
 
 ### Layer 6: Probabilistic Foundations (`Probability/`, `Crypto/Comp*`)
 

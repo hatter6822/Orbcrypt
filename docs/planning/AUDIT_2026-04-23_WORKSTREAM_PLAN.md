@@ -1367,6 +1367,33 @@ remains authoritative for external citations.
    "zero-custom-axiom" exit-criteria list.
 5. The risk register in § 8.4 has no open items.
 
+**Closure status (2026-04-24).** All five exit criteria verified.
+`det_oia_false_of_distinct_reps` lands in `Orbcrypt/Crypto/OIA.lean`
+and `det_kemoia_false_of_nontrivial_orbit` in
+`Orbcrypt/KEM/Security.lean`, each depending only on the standard
+Lean trio (`propext`, `Classical.choice`, `Quot.sound`) — never on
+`sorryAx` or a custom axiom. `Orbcrypt.lean`'s Vacuity map is
+upgraded to a three-column table with a "Machine-checked vacuity
+witness" column pointing rows #1–#2 (plus the inheriting
+hardness-chain / K-distinct rows) at E1 / E2; two new `#print
+axioms` cookbook entries land under a "Workstream E (audit
+2026-04-23, findings C-07 + E-06)" subsection; a new "Workstream E
+Snapshot" section is appended at the end of the transparency
+report. `scripts/audit_phase_16.lean` gains two new `#print axioms`
+entries (adjacent to `#print axioms OIA` and `#print axioms
+KEMOIA`) and two concrete non-vacuity `example` bindings in the
+`NonVacuityWitnesses` namespace: a two-message `trivialSchemeBool`
+under the trivial action of `Equiv.Perm (Fin 1)` on `Bool`, and a
+`trivialKEM_PermZMod2` under the natural `Equiv.Perm (ZMod 2)`
+action on `ZMod 2`. `CLAUDE.md` gains the required Workstream-E
+snapshot (immediately after the Workstream-D snapshot), two new
+entries in the `#print axioms` exit-criteria list, headline-theorem
+rows #31–#32 (both **Standalone**), and the Workstream-E tracker
+row's checkbox is ticked. `docs/VERIFICATION_REPORT.md`'s headline
+table and document history are likewise extended. `lakefile.lean`
+bumped from `0.1.9` to `0.1.10`. All four risk-register items
+(E-R1 through E-R4) closed clean — no fallback tactic required.
+
 ## 9. Workstream F — Concrete `CanonicalForm` from lex-min
 
 **Severity.** MEDIUM (V1-10 / F-04). **Effort.** ≈ 4 h.
@@ -3245,6 +3272,20 @@ acceptance criteria.
       obligation and the R-09 research pointer).
 - [ ] **V1-9** (Workstream **A**): "Release messaging policy"
       section present in `CLAUDE.md`.
+- [x] **V1-11** (Workstream **E**): `det_oia_false_of_distinct_reps`
+      and `det_kemoia_false_of_nontrivial_orbit` landed. **Closed by
+      landing 2026-04-24.** `Orbcrypt/Crypto/OIA.lean` gains E1 at
+      the bottom of the module; `Orbcrypt/KEM/Security.lean` gains
+      E2 at the bottom of the module. Both depend only on the
+      standard Lean trio. `Orbcrypt.lean`'s Vacuity map upgraded to
+      a three-column table pointing the `OIA` / `KEMOIA` rows at
+      E1 / E2; two new `#print axioms` cookbook entries; a new
+      "Workstream E Snapshot" section appended. `scripts/audit_phase_16.lean`
+      gains two new `#print axioms` entries and two concrete
+      non-vacuity `example` bindings over `trivialSchemeBool` and
+      `trivialKEM_PermZMod2`. `CLAUDE.md`, `docs/VERIFICATION_REPORT.md`,
+      `formalization/FORMALIZATION_PLAN.md`, and `DEVELOPMENT.md §8.1`
+      all updated. `lakefile.lean` bumped from `0.1.9` to `0.1.10`.
 
 ### 20.2 Technical posture gates
 
@@ -3495,7 +3536,7 @@ merge).
 | **B** (INT_CTXT refactor) | pending | — | — |
 | **C** (indQCPA rename) | pending | — | — |
 | **D** (toolchain) | **closed** | branch `claude/review-workstream-plan-6xBp6` | 2026-04-24 |
-| **E** (formal vacuity) | pending | — | — |
+| **E** (formal vacuity) | **closed** | branch `claude/complete-workstream-e-bKTP9` | 2026-04-24 |
 | **F** (`CanonicalForm.ofLexMin`) | pending | — | — |
 | **G** (λ-parameterised key expansion) | pending | — | — |
 | **H** (decapsSafe + decryptCompute) | pending | — | — |
