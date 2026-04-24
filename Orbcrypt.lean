@@ -1924,17 +1924,37 @@ or renamed. The landing is a three-part build-surface refresh:
   VERIFICATION_REPORT subsection. Reading `lakefile.lean` is
   now self-sufficient to understand the rc-toolchain choice
   without leaving the build configuration.
-* **D3 (defensive `leanOption` pins).** `lakefile.lean`'s
-  `leanOptions` array is extended from a single-entry
-  `autoImplicit := false` to a three-entry array also pinning
+* **D3 (`leanOption` pins).** `lakefile.lean`'s `leanOptions`
+  array is extended from a single-entry `autoImplicit := false`
+  to a three-entry array also pinning
   `linter.unusedVariables := true` and `linter.docPrime := true`.
-  Both linters are on by default in the project's current
-  toolchain, so the explicit pin is defensive — it ensures the
-  zero-warning gate is enforced by the build configuration
-  itself, not only by the CI's warning-as-error treatment in
-  `.github/workflows/lean4-build.yml`. If a future toolchain
-  upgrade (v1.1+) flips the defaults, the project continues to
-  enforce them without further lakefile edits.
+  The default posture differs by linter:
+  * `linter.unusedVariables` is a Lean core builtin
+    (`register_builtin_option … defValue := true`); the pin is
+    genuinely **defensive** — currently a no-op, locks the gate
+    against a future toolchain default-flip.
+  * `linter.docPrime` is a Mathlib linter
+    (`register_option … defValue := false`); Mathlib explicitly
+    excludes it from its standard linter set
+    (`Mathlib/Init.lean:110`, referencing
+    https://github.com/leanprover-community/mathlib4/issues/20560),
+    so the pin to `true` is a **meaningful enable** — turns on a
+    linter Mathlib leaves off. The Orbcrypt source tree currently
+    has zero declarations whose names end in `'` (verified by
+    `grep -rEn "(theorem|lemma|def|abbrev|structure|class|instance) \w+'" Orbcrypt/`),
+    so the linter fires on zero existing call sites; it acts as
+    a tripwire that prevents new primed identifiers from landing
+    without a docstring.
+
+  Caveat about `linter.docPrime`: because the option is
+  registered by Mathlib (not Lean core), files that elaborate
+  any docstring or non-import command before their first
+  Mathlib-aware `import` will fail at startup with
+  `invalid -D parameter, unknown configuration option
+  'linter.docPrime'`. Every `.lean` file under `Orbcrypt/`
+  currently starts with `import` as its first non-blank line, so
+  the constraint is satisfied; new modules must observe the same
+  convention.
 
 ### Files touched
 

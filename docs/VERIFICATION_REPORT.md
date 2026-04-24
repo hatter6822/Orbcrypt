@@ -109,17 +109,42 @@ small API additions), but CI-visible behaviour may drift when the
 toolchain is upgraded. Consumers requiring a stable-only toolchain
 chain should track the v1.1 release milestone.
 
-**Build-configuration defensive pins.** Alongside the toolchain
+**Build-configuration linter pins.** Alongside the toolchain
 decision, `lakefile.lean`'s `leanOptions` array now pins
 `linter.unusedVariables := true` and `linter.docPrime := true`
 alongside the pre-existing `autoImplicit := false` (Workstream-D
-work unit D3, audit finding A-01). Both linters are enabled by
-default in the project's current toolchain, so the explicit pin is
-defensive — it ensures the zero-warning gate is enforced by the
-build configuration itself, not only by the CI's
-warning-as-error treatment. If a future toolchain upgrade (v1.1+)
-flips the defaults, the project continues to enforce them without
-further lakefile edits.
+work unit D3, audit finding A-01). The default posture differs
+between the two linters:
+
+* **`linter.unusedVariables`** is a Lean core builtin
+  (`register_builtin_option … defValue := true` in
+  `<toolchain>/src/lean/Lean/Linter/UnusedVariables.lean`) — the
+  pin to `true` is genuinely **defensive** (a no-op in the current
+  toolchain, but locks the gate against a future
+  `defValue := false` flip).
+* **`linter.docPrime`** is a Mathlib linter
+  (`register_option linter.docPrime … defValue := false` in
+  `Mathlib/Tactic/Linter/DocPrime.lean`) — Mathlib explicitly
+  excludes it from its standard linter set
+  (`Mathlib/Init.lean:110`, referencing
+  https://github.com/leanprover-community/mathlib4/issues/20560),
+  so the pin to `true` is a **meaningful enable** that turns ON a
+  linter Mathlib leaves OFF. The Orbcrypt source tree currently
+  has zero primed declarations, so the linter fires on zero
+  existing call sites; it acts as a tripwire that prevents new
+  primed identifiers from landing without a docstring.
+
+In both cases the explicit pin keeps the zero-warning gate
+enforced by the build configuration itself, not only by the CI's
+warning-as-error treatment. **Caveat about `linter.docPrime`**:
+because the option is registered by Mathlib (not Lean core), files
+that introduce any docstring or non-import command before their
+first Mathlib-aware `import` will fail at startup with
+`invalid -D parameter, unknown configuration option
+'linter.docPrime'`. Every `.lean` file under `Orbcrypt/`
+currently starts with `import` as its first non-blank line, so the
+constraint is satisfied; new modules must observe the same
+convention.
 
 **Verification.** The landing is build-configuration-only (no
 Lean source files modified). Full `lake build` succeeds for all
@@ -1732,16 +1757,22 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     D)" subsection. Reading `lakefile.lean` is now
     self-sufficient to understand the rc-toolchain choice
     without leaving the build configuration.
-  * **Defensive `leanOption` entries (D3).** `lakefile.lean`'s
+  * **`leanOption` pins (D3).** `lakefile.lean`'s
     `leanOptions` array extended from a single-entry
     `autoImplicit := false` to a three-entry array also pinning
-    `linter.unusedVariables := true` and `linter.docPrime := true`.
-    Both linters are on by default in the toolchain the project
-    tracks; the explicit pin ensures the zero-warning gate is
-    enforced by the build configuration itself, not only by the
-    CI warning-as-error setting. If a future toolchain upgrade
-    flips the defaults, the project continues to enforce them
-    without further lakefile edits.
+    `linter.unusedVariables := true` (Lean core builtin with
+    `defValue := true` — pinned defensively against a future
+    toolchain default-flip) and `linter.docPrime := true` (Mathlib
+    linter with `defValue := false`, explicitly excluded from
+    Mathlib's standard linter set per
+    `Mathlib/Init.lean:110` → issue #20560 — pinning to `true`
+    enables a linter Mathlib leaves off, acting as a tripwire
+    that prevents new primed identifiers without docstrings; the
+    Orbcrypt source tree currently has zero primed declarations).
+    See the "Toolchain decision (Workstream D)" subsection above
+    for the per-linter default posture and the "docs/VERIFICATION_
+    REPORT.md caveat" about `linter.docPrime` startup
+    registration.
 
   **Documentation surfaces.** This report gains a new "Toolchain
   decision (Workstream D)" subsection (between "How to reproduce

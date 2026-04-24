@@ -2315,8 +2315,15 @@ of the audit plan):**
       gains: (D2) comment metadata refresh — "Last verified:
       2026-04-24", an explicit "Toolchain posture" paragraph
       cross-referencing this audit plan and `docs/VERIFICATION_REPORT.md`;
-      (D3) defensive `leanOptions` pinning
-      `linter.unusedVariables := true` and `linter.docPrime := true`
+      (D3) `leanOptions` pinning
+      `linter.unusedVariables := true` (Lean core builtin, default
+      `true` — pinned defensively against a future toolchain
+      default-flip) and `linter.docPrime := true` (Mathlib-defined
+      linter, default `false` — pinning to `true` is a meaningful
+      enable that locks in Mathlib's "primed identifiers must carry
+      a docstring" discipline; the Orbcrypt source tree currently
+      has zero primed declarations, so the linter fires on zero
+      existing call sites and acts as a tripwire for new code)
       alongside the pre-existing `autoImplicit := false`, so the
       zero-warning gate is enforced by the package configuration and
       not only by the CI warning-as-error setting. `lakefile.lean`
@@ -2686,18 +2693,38 @@ hygiene, V1-6 / A-01 / A-02 / A-03, MEDIUM) has been completed:
   ```lean
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
-    ⟨`linter.unusedVariables, true⟩,  -- Flag unused binders (Workstream D / audit 2026-04-23, A-01)
-    ⟨`linter.docPrime, true⟩          -- Flag docstrings mentioning primed identifiers (Workstream D / A-01)
+    ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
+    ⟨`linter.docPrime, true⟩          -- Mathlib linter (default-false): warn on declarations whose name ends in ' but lack a docstring (Workstream D / A-01)
   ]
   ```
   This pins the linter settings at the package level (single source
   of truth), so the zero-warning gate is enforced by the build
   configuration itself and not only by the CI's warning-as-error
-  treatment in `.github/workflows/lean4-build.yml`. Both linters
-  are enabled by default in the Lean 4 core / Mathlib toolchain the
-  project already tracks; the explicit pin is defensive — it ensures
-  that if a future toolchain upgrade (v1.1+) flips the defaults, the
-  project continues to enforce them without further lakefile edits.
+  treatment in `.github/workflows/lean4-build.yml`. **Default
+  posture differs by linter**: `linter.unusedVariables` is a Lean
+  core builtin with `defValue := true` (so the pin is genuinely
+  defensive — currently a no-op, but locks the gate against a
+  future toolchain default-flip); `linter.docPrime` is a Mathlib
+  linter registered with `defValue := false` (Mathlib explicitly
+  excludes it from its standard linter set; see
+  `Mathlib/Init.lean:110` referencing
+  https://github.com/leanprover-community/mathlib4/issues/20560),
+  so the pin to `true` is a meaningful enable that turns ON a
+  linter Mathlib leaves OFF. The Orbcrypt source tree currently has
+  zero declarations whose names end in `'`, so the linter fires on
+  zero existing call sites; it acts as a tripwire that prevents new
+  primed identifiers from landing without a docstring (the
+  Mathlib-style discipline the issue tracker is converging
+  toward). **Caveat**: because `linter.docPrime` is registered by
+  Mathlib (not Lean core), files that elaborate any
+  declaration / docstring before their first `import` of a
+  Mathlib-aware module will fail at startup with
+  `invalid -D parameter, unknown configuration option
+  'linter.docPrime'`. Every `.lean` file under `Orbcrypt/` already
+  starts with `import` as its first non-blank line (verified by
+  `for f in Orbcrypt/**/*.lean; do head -1 $f | grep -v '^import' &&
+  echo $f; done`), so the constraint is satisfied today; new
+  modules must observe the same convention.
 - **Patch version bump (D).** `lakefile.lean` bumped from `0.1.8`
   to `0.1.9` for Workstream D. Technically D is a build-configuration
   change that does not alter any Lean source file, so a patch bump

@@ -5,8 +5,8 @@ package "orbcrypt" where
   version := v!"0.1.9"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
-    ⟨`linter.unusedVariables, true⟩,  -- Flag unused binders (Workstream D / audit 2026-04-23, A-01)
-    ⟨`linter.docPrime, true⟩          -- Flag docstrings mentioning primed identifiers (Workstream D / A-01)
+    ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
+    ⟨`linter.docPrime, true⟩          -- Mathlib linter (default-false): warn on declarations whose name ends in ' but lack a docstring (Workstream D / A-01)
   ]
 
 -- Pinned to Mathlib4 commit fa6418a8 (matches lake-manifest.json)
