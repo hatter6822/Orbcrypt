@@ -86,8 +86,10 @@ section WorkstreamE_AxiomChecks
 #print axioms Orbcrypt.hybrid_argument_uniform
 #print axioms Orbcrypt.indQCPAAdvantage_nonneg
 #print axioms Orbcrypt.indQCPAAdvantage_le_one
-#print axioms Orbcrypt.indQCPA_bound_via_hybrid
-#print axioms Orbcrypt.indQCPA_bound_recovers_single_query
+-- Renamed by Workstream C (audit 2026-04-23, V1-8 / C-13) to surface
+-- the `h_step` user-supplied hypothesis in the identifier.
+#print axioms Orbcrypt.indQCPA_from_perStepBound
+#print axioms Orbcrypt.indQCPA_from_perStepBound_recovers_single_query
 
 -- E3-prep
 #print axioms Orbcrypt.identityEncoding

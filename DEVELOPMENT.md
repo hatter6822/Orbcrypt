@@ -1034,36 +1034,42 @@ is bounded by:
 where Adv^{HSP}\_{A'} is the advantage of the best HSP solver derived from A.
 Since Q is polynomial and negl(λ) is negligible, the sum is negligible. ∎
 
-**Machine-checked hybrid layer (Workstream E8, audit F-11).** The
-Lean formalisation provides the uniform telescoping step via
+**Machine-checked hybrid layer (Workstream E8, audit F-11; renamed by
+Workstream C of the 2026-04-23 audit, findings V1-8 / C-13 / D10).**
+The Lean formalisation provides the uniform telescoping step via
 `Orbcrypt.hybrid_argument_uniform` and the multi-query scheme-level
-theorem `indQCPA_bound_via_hybrid` in `Crypto/CompSecurity.lean`. These
-reduce the `Q * ε` IND-Q-CPA bound to a single per-step hypothesis
+theorem `indQCPA_from_perStepBound` in `Crypto/CompSecurity.lean`
+(renamed from the pre-Workstream-C `indQCPA_bound_via_hybrid` to
+surface the `h_step` caller-obligation in the identifier itself).
+These reduce the `Q * ε` IND-Q-CPA bound to a single per-step
+hypothesis
 `h_step : ∀ i < Q, advantage _ (hybridDist … i) (hybridDist … (i+1)) ≤ ε`.
 Discharging `h_step` from `ConcreteOIA scheme ε` alone requires a
 per-coordinate marginal-independence proof over `uniformPMFTuple`; the
 audit plan `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b
-tracks that as follow-up work, and callers can supply the per-step
+tracks that as follow-up work (catalogued as research milestone R-09 in
+the 2026-04-23 plan's § 18), and callers can supply the per-step
 bound from custom analysis in the interim.
 
 **Scope of the Lean bound (audit 2026-04-23 finding V1-8 / C-13 / D10).**
 Release-facing prose should **not** summarise
-`indQCPA_bound_via_hybrid` as "Orbcrypt is multi-query IND-Q-CPA under
-`ConcreteOIA`". The Lean theorem signature carries `h_step` as a
-**user-supplied hypothesis**; discharging `h_step` from `ConcreteOIA
-scheme ε` alone requires the per-coordinate marginal-independence
-argument over `uniformPMFTuple` discussed above, and that argument
-is genuine research-scope work (tracked as R-09 in the 2026-04-23
-plan's § 18 catalogue). Until R-09 lands, accurate prose is: "the
-Lean formalisation provides a hybrid-telescoping meta-theorem that
-turns **any** per-query bound `h_step ≤ ε` into a `Q·ε` multi-query
-bound; the user is responsible for supplying `h_step` from a
-stronger assumption or from custom analysis". The 2026-04-23 plan's
-Workstream **C** renames the theorem to `indQCPA_from_perStepBound`
-to surface this obligation in the identifier itself (per
-`CLAUDE.md`'s naming convention that identifier names must describe
-what the code *proves*, not what it *aspires to*). Citations
-pre- and post-rename must carry the `h_step` disclosure.
+`indQCPA_from_perStepBound` as "Orbcrypt is multi-query IND-Q-CPA
+under `ConcreteOIA`". The Lean theorem signature carries `h_step` as
+a **user-supplied hypothesis**; discharging `h_step` from
+`ConcreteOIA scheme ε` alone requires the per-coordinate
+marginal-independence argument over `uniformPMFTuple` discussed
+above, and that argument is genuine research-scope work (tracked as
+R-09 in the 2026-04-23 plan's § 18 catalogue). Until R-09 lands,
+accurate prose is: "the Lean formalisation provides a hybrid-
+telescoping meta-theorem that turns **any** per-query bound
+`h_step ≤ ε` into a `Q·ε` multi-query bound; the user is responsible
+for supplying `h_step` from a stronger assumption or from custom
+analysis". Workstream **C** of the 2026-04-23 plan has landed the
+rename `indQCPA_bound_via_hybrid → indQCPA_from_perStepBound` to
+surface this obligation in the identifier itself (per `CLAUDE.md`'s
+naming convention that identifier names must describe what the code
+*proves*, not what it *aspires to*). Citations using either the
+pre- or post-rename name must carry the `h_step` disclosure.
 
 ### 8.3 Strengthening: Noisy Variant
 

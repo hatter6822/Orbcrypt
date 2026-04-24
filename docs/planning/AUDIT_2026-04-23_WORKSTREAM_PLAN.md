@@ -3224,8 +3224,15 @@ acceptance criteria.
 - [ ] **V1-6** (Workstream **D**): toolchain decision recorded.
 - [ ] **V1-7** (Workstream **A**): Carter–Wegman / HGOE
       compatibility messaging explicit.
-- [ ] **V1-8** (Workstream **C**): `indQCPA_from_perStepBound`
-      landed (rename track); R-09 catalogued.
+- [x] **V1-8** (Workstream **C**): `indQCPA_from_perStepBound`
+      landed (rename track); R-09 catalogued. **Closed by landing
+      2026-04-24** (`indQCPA_bound_via_hybrid` →
+      `indQCPA_from_perStepBound`; companion renamed likewise;
+      CompSecurity.lean docstrings extended with Game-shape +
+      User-supplied-hypothesis-obligation blocks; three non-vacuity
+      witnesses added to `scripts/audit_phase_16.lean`;
+      `DEVELOPMENT.md §8.2` prose updated to expose the `h_step`
+      obligation and the R-09 research pointer).
 - [ ] **V1-9** (Workstream **A**): "Release messaging policy"
       section present in `CLAUDE.md`.
 

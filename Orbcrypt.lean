@@ -604,11 +604,17 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
   basepoint orbit under non-degeneracy (E6b). *This is a one-orbit
   witness, not a cross-orbit advantage bound* — see the lemma's
   docstring for the distinction.
-- `indQCPA_bound_via_hybrid` (`Crypto/CompSecurity.lean`) — Q-query
+- `indQCPA_from_perStepBound` (`Crypto/CompSecurity.lean`) — Q-query
   IND-Q-CPA advantage ≤ Q · ε via the hybrid argument, given a per-step
-  bound as hypothesis (E8c).
-- `indQCPA_bound_recovers_single_query` (`Crypto/CompSecurity.lean`) —
-  Q = 1 regression sentinel (E8d).
+  bound `h_step` as a **caller-supplied hypothesis** (E8c). Renamed
+  from `indQCPA_bound_via_hybrid` in Workstream C (audit 2026-04-23,
+  V1-8 / C-13) to surface the user-hypothesis obligation in the
+  identifier itself; discharging `h_step` from `ConcreteOIA` alone is
+  research-scope R-09.
+- `indQCPA_from_perStepBound_recovers_single_query`
+  (`Crypto/CompSecurity.lean`) — Q = 1 regression sentinel (E8d);
+  companion renamed with the same `from_perStepBound` prefix for
+  naming consistency.
 
 **Phase 15 (Decryption Optimisation):**
 
@@ -915,12 +921,17 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.uniformPMFTuple_apply
 -- (standard Lean only — Fintype.card_pi + uniformPMF_apply, Workstream E7a)
 
-#print axioms Orbcrypt.indQCPA_bound_via_hybrid
--- (standard Lean only — per-step bound h_step carried as hypothesis;
---  telescopes via hybrid_argument_uniform, Workstream E8c)
+#print axioms Orbcrypt.indQCPA_from_perStepBound
+-- (standard Lean only — per-step bound h_step carried as user-supplied
+--  hypothesis; telescopes via hybrid_argument_uniform, Workstream E8c;
+--  renamed from `indQCPA_bound_via_hybrid` by Workstream C of audit
+--  2026-04-23 (V1-8 / C-13) to surface the h_step obligation in the
+--  identifier itself)
 
-#print axioms Orbcrypt.indQCPA_bound_recovers_single_query
--- (standard Lean only — Q = 1 regression, Workstream E8d)
+#print axioms Orbcrypt.indQCPA_from_perStepBound_recovers_single_query
+-- (standard Lean only — Q = 1 regression, Workstream E8d; renamed from
+--  `indQCPA_bound_recovers_single_query` by Workstream C of audit
+--  2026-04-23 for naming consistency)
 
 -- Workstream G (audit 2026-04-21, F-AUDIT-2026-04-21-H1): Fix B + Fix C
 --
@@ -1087,7 +1098,7 @@ predecessor. The pairing:
 | `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) |
 | `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) — **ε = 1 inhabited only via `ConcreteHardnessChain.tight_one_exists` (`punitSurrogate F` + dimension-0 trivial encoders); ε < 1 requires a caller-supplied `SurrogateTensor F` + encoder pair with genuine cryptographic hardness (research-scope — see § O of the 2026-04-23 plan: R-02 / R-03 / R-04)** |
 | `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) |
-| *multi-query extension (implicit)* | `indQCPA_bound_via_hybrid` (E8c) — **carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 (see § O of the 2026-04-23 plan). Workstream C of that plan renames the theorem to `indQCPA_from_perStepBound` to surface the obligation in the identifier** |
+| *multi-query extension (implicit)* | `indQCPA_from_perStepBound` (E8c, renamed by Workstream C of 2026-04-23 audit from `indQCPA_bound_via_hybrid` — finding V1-8 / C-13) — **carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 (see § O of the 2026-04-23 plan). The `from_perStepBound` suffix surfaces the obligation in the identifier itself per `CLAUDE.md`'s naming rule that identifiers describe what the code *proves*, not what it *aspires to*.** |
 | *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop. **ε = 1 inhabited only via `ConcreteKEMHardnessChain.tight_one_exists`; ε < 1 requires caller-supplied scheme-to-KEM reduction witness at `(m₀, keyDerive)` — research-scope R-05** |
 | *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound`. **Same ε = 1 disclosure as the scheme-level parallel; ε < 1 requires the composition of R-02/R-03/R-04 (scheme-level chain) and R-05 (scheme-to-KEM reduction)** |
 | `oia_implies_1cpa` (uniform game) | `oia_implies_1cpa_distinct` (K1) — same scaffolding status, classical-IND-1-CPA signature matching the literature |
@@ -1743,4 +1754,133 @@ argument); the `authEncrypt_is_int_ctxt` and
 38-module total is unchanged; the 347-public-declaration count
 is unchanged; the zero-sorry / zero-custom-axiom posture is
 preserved.
+
+## Workstream C Snapshot (audit 2026-04-23, finding V1-8 / C-13 / D10)
+
+Workstream C of the 2026-04-23 pre-release audit plan closes the
+HIGH-severity V1-8 / C-13 / D10 finding cluster that flagged a
+documentation-vs-code mismatch: pre-C external prose summarised
+`indQCPA_bound_via_hybrid` as "Orbcrypt is multi-query IND-Q-CPA
+under `ConcreteOIA`", but the Lean theorem signature carries
+`h_step` as a **user-supplied hypothesis** whose discharge from
+`ConcreteOIA scheme ε` alone is genuine research-scope work
+(tracked as research milestone R-09: a per-coordinate
+marginal-independence proof over `uniformPMFTuple`).
+
+### Remediation
+
+Track 1 of the Workstream-C plan (§ 6.2 of the audit plan) is a
+**rename** — the theorem's content is unchanged, but the
+identifier is restructured to surface the `h_step` obligation
+per `CLAUDE.md`'s naming rule ("identifier names describe what
+the code *proves*, not what the code *aspires to*"):
+
+* `indQCPA_bound_via_hybrid` → `indQCPA_from_perStepBound`
+* `indQCPA_bound_recovers_single_query`
+  → `indQCPA_from_perStepBound_recovers_single_query`
+
+The old names are **not** retained as deprecated aliases
+(`CLAUDE.md`'s no-backwards-compat rule). Every in-tree
+reference — the theorem body, docstrings, the
+module-docstring "Main results" list, `Orbcrypt.lean`'s
+axiom-transparency report, `scripts/audit_phase_16.lean`,
+`scripts/audit_e_workstream.lean`, `CLAUDE.md`,
+`DEVELOPMENT.md §8.2`, `docs/VERIFICATION_REPORT.md` — is
+updated in this landing.
+
+### Files touched
+
+* **`Orbcrypt/Crypto/CompSecurity.lean`** — two theorem
+  renames; module-docstring "Main results" list extended with
+  explicit release-messaging disclosures of the `h_step`
+  obligation and the R-09 research pointer.
+* **`scripts/audit_phase_16.lean`** — `#print axioms` entries
+  renamed; five new non-vacuity examples under the
+  `NonVacuityWitnesses` namespace exercise the renamed theorem:
+  (a) parameterised general-signature witness over any scheme /
+  adversary, (b) parameterised C.2 audit-plan template at
+  Q = 2 / ε = 1 with the per-step bound discharged by
+  `advantage_le_one`, (c) parameterised Q = 1 regression
+  sentinel, (d) concrete Q = 2 / ε = 1 witness on
+  `trivialScheme` (`Equiv.Perm (Fin 1)` acting on `Unit`) with
+  a concrete `MultiQueryAdversary Unit Unit 2`, exercising the
+  full typeclass-instance elaboration pipeline, and (e) concrete
+  Q = 1 companion witness on the same concrete scheme firing
+  `indQCPA_from_perStepBound_recovers_single_query`. The
+  parameterised witnesses (a–c) prove signature-universality
+  over every valid typeclass bundle; the concrete witnesses
+  (d–e) prove Lean can actually synthesise the typeclass
+  instances on a known-good input.
+* **`scripts/audit_e_workstream.lean`** — legacy per-workstream
+  script's `#print axioms` lines renamed.
+* **`Orbcrypt.lean`** — dependency listing + axiom-transparency
+  `#print axioms` block + Vacuity map table updated; this
+  Workstream-C snapshot section added.
+* **`CLAUDE.md`** — "Main results" and release-facing references
+  renamed; Workstream-C snapshot added to the change log; the
+  pre-C N3 (audit 2026-04-21) open-item callout now points at
+  the Workstream-C landing that closes it.
+* **`docs/VERIFICATION_REPORT.md`** — headline-results table
+  rows #23 renamed; "Release readiness" section's "What NOT to
+  cite" list renamed; "Known limitations" bullet renamed.
+* **`DEVELOPMENT.md`** — §8.2 (multi-query IND-Q-CPA
+  discussion) renamed; the renaming cross-reference in the
+  release-messaging policy paragraph is preserved.
+
+### Verification
+
+* `lake build Orbcrypt.Crypto.CompSecurity` succeeds
+  (post-rename).
+* `grep -rn "indQCPA_bound_via_hybrid\|indQCPA_bound_recovers_single_query"`
+  across every `.lean` source file returns empty. Markdown
+  documents retain the old names **only** inside historical
+  changelog entries and Workstream-C landing snapshots that
+  explicitly describe the rename.
+* `#print axioms Orbcrypt.indQCPA_from_perStepBound` emits only
+  the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`) — unchanged from pre-C (the rename is
+  content-neutral).
+* `#print axioms
+  Orbcrypt.indQCPA_from_perStepBound_recovers_single_query`
+  emits only the standard trio — unchanged from pre-C.
+* `scripts/audit_phase_16.lean` passes with five new non-vacuity
+  witnesses (§ 12.C): three parameterised + two concrete.
+
+### Consumer migration
+
+Downstream users invoking the pre-C signatures must update:
+
+* `indQCPA_bound_via_hybrid scheme ε A h_step`
+  → `indQCPA_from_perStepBound scheme ε A h_step`
+  (argument list and content unchanged).
+* `indQCPA_bound_recovers_single_query scheme ε A h_step`
+  → `indQCPA_from_perStepBound_recovers_single_query scheme ε A h_step`
+  (argument list and content unchanged).
+
+No call-site semantic change is required — the rename is purely
+nominal. LSP rebuilds on `lake build`; cached references update
+on the next elaboration pass.
+
+### Research follow-up
+
+The R-09 research milestone (`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md`
+§ 18) tracks the marginal-independence discharge of `h_step`
+from `ConcreteOIA` alone. When R-09 lands it will sit **next
+to** `indQCPA_from_perStepBound` as a discharge theorem that
+consumes it; the rename is therefore future-proof — the new
+name correctly describes the telescoping step regardless of
+whether R-09 is solved. If R-09 ever produces a direct
+`ConcreteOIA → IND-Q-CPA` corollary, that corollary will carry
+its own explicit name (e.g., `concrete_oia_implies_QCPA`) and
+leave `indQCPA_from_perStepBound` untouched.
+
+### Patch version
+
+`lakefile.lean` bumped from `0.1.7` to `0.1.8` for Workstream C.
+The rename is an API break (downstream consumers must update
+the identifier at every call site), hence the patch-version
+bump per `CLAUDE.md`'s version-bump discipline. No new public
+declarations are added; no existing declaration's content
+changes; the 38-module total is unchanged; the zero-sorry /
+zero-custom-axiom posture is preserved.
 -/
