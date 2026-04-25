@@ -87,8 +87,17 @@ instance orbitFintype (x : X) : Fintype (MulAction.orbit G x) :=
 /-- Membership in the `.toFinset` of an orbit coincides with orbit
     membership. Thin wrapper around `Set.mem_toFinset` exposing the
     Orbcrypt-side name so downstream proofs can reference it without
-    unfolding the abbreviation. -/
-@[simp]
+    unfolding the abbreviation.
+
+    *Not* tagged `@[simp]`: Mathlib's `Set.mem_toFinset` is already
+    `@[simp]`, so `simp` rewrites `y ∈ (orbit G x).toFinset` to
+    `y ∈ orbit G x` regardless of which lemma is invoked. Tagging this
+    wrapper `@[simp]` would register two simp rules with identical
+    LHS/RHS, slowing `simp` calls without adding rewrite power. The
+    wrapper is kept as a *named alias* for explicit term-mode proofs
+    (e.g. inside `CanonicalForm.ofLexMin`'s `mem_orbit` discharge),
+    where the orbit-specific name reads more clearly than the generic
+    `Set.mem_toFinset`. -/
 theorem mem_orbit_toFinset_iff (x y : X) :
     y ∈ (MulAction.orbit G x).toFinset ↔ y ∈ MulAction.orbit G x :=
   Set.mem_toFinset

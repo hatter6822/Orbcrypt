@@ -1378,24 +1378,85 @@ example :
       (![false, false, false] : Bitstring 3) := by
   decide
 
-/-- `hgoeScheme.ofLexMin` type-checks on the top subgroup `⊤ ≤ S_3`
-    once we supply a computable `DecidablePred (· ∈ ⊤)` (all
-    elements are in `⊤`, discharged by `isTrue trivial`). This
-    binds the `Fintype ↥⊤` instance the Workstream-F4 convenience
-    constructor requires, showing it elaborates at a concrete finite
-    subgroup of `Equiv.Perm (Fin 3)`. Uses the singleton message
-    space `Unit` so distinctness is vacuous (the universal
-    quantifier over `m₁ ≠ m₂` has no inhabitants). A richer witness
-    exercising correctness through a non-trivial message space
-    would thread `hammingWeight`-based distinctness — out of scope
-    for a type-elaboration check. -/
-example : True := by
+/-- Cross-orbit-element agreement: every weight-2 input bitstring under
+    `Equiv.Perm (Fin 3)` reduces to the same lex-min canonical form.
+    Confirms the `orbit_iff` field of `CanonicalForm.ofLexMin`
+    discharges in the orbit-collapsing direction at a non-trivial
+    instance. -/
+example :
+    letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
+    let can := CanonicalForm.ofLexMin
+      (G := Equiv.Perm (Fin 3)) (X := Bitstring 3)
+    can.canon (![true, true, false] : Bitstring 3) =
+      can.canon (![true, false, true] : Bitstring 3) := by
+  decide
+
+/-- `canon_idem` applied to `ofLexMin`: the abstract idempotence
+    theorem (`Orbcrypt.canon_idem`, headline row from `Canonical.lean`)
+    fires on the concrete `CanonicalForm.ofLexMin` instance, exhibiting
+    that the abstract theorems compose cleanly with the new
+    constructor. The discharge is by `canon_idem _ _` after `intro`
+    binds the `let` shadows; no `decide` is needed. -/
+example :
+    letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
+    let can := CanonicalForm.ofLexMin
+      (G := Equiv.Perm (Fin 3)) (X := Bitstring 3)
+    can.canon (can.canon (![true, false, true] : Bitstring 3)) =
+      can.canon (![true, false, true] : Bitstring 3) := by
+  intro
+  exact canon_idem _ _
+
+/-- `CanonicalForm.ofLexMin_canon_mem_orbit` direct witness: the
+    canonical form of any input lies in that input's orbit. The
+    `[LinearOrder (Bitstring 3)]` instance is brought into scope via
+    `letI` *inside* the tactic block (where it's then visible to the
+    `exact` term elaboration), confirming the theorem is callable in
+    term mode under the typeclass binding the F-workstream `def`
+    convention requires. -/
+example :
+    True := by
+  letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
+  let _ : (CanonicalForm.ofLexMin
+              (G := Equiv.Perm (Fin 3)) (X := Bitstring 3)).canon
+            (![true, false, true] : Bitstring 3) ∈
+          MulAction.orbit (Equiv.Perm (Fin 3))
+            (![true, false, true] : Bitstring 3) :=
+    CanonicalForm.ofLexMin_canon_mem_orbit _
+  trivial
+
+/-- `hgoeScheme.ofLexMin` correctness witness on the top subgroup
+    `⊤ ≤ S_3`. Goes beyond a type-elaboration check: builds the
+    scheme via the Workstream-F4 convenience constructor and then
+    fires `correctness` on the result, confirming the abstract
+    correctness theorem composes cleanly with `ofLexMin`'s
+    auto-filled `CanonicalForm`. Uses the singleton message space
+    `Unit` so the distinctness obligation is vacuous (no two
+    distinct messages exist). The `decrypt (encrypt scheme g ()) =
+    some ()` round-trip is discharged by direct application of
+    `correctness scheme () g`; the `Fintype ↥⊤` instance fires via
+    the explicit `DecidablePred (· ∈ ⊤)` binding. -/
+example (g : (⊤ : Subgroup (Equiv.Perm (Fin 3)))) : True := by
   let G : Subgroup (Equiv.Perm (Fin 3)) := ⊤
   letI : DecidablePred (· ∈ G) := fun _ => isTrue trivial
-  let _ : OrbitEncScheme ↥G (Bitstring 3) Unit :=
+  let scheme : OrbitEncScheme ↥G (Bitstring 3) Unit :=
     hgoeScheme.ofLexMin G
       (fun _ : Unit => ![false, false, false])
       (fun m₁ m₂ hne => absurd (Subsingleton.elim m₁ m₂) hne)
+  have : decrypt scheme (encrypt scheme g ()) = some () :=
+    correctness scheme () g
   trivial
+
+/-- `hgoeScheme.ofLexMin_reps` simp lemma fires on a concrete
+    instantiation. Confirms the field-preservation claim is
+    machine-checked, not merely typed: the `reps` field of the
+    auto-filled scheme is `definitionally` the input `reps`
+    function (closed by `rfl`). -/
+example
+    (G : Subgroup (Equiv.Perm (Fin 3))) [Fintype ↥G]
+    (reps : Bool → Bitstring 3)
+    (hDistinct : ∀ m₁ m₂ : Bool, m₁ ≠ m₂ →
+      MulAction.orbit (↥G) (reps m₁) ≠ MulAction.orbit (↥G) (reps m₂)) :
+    (hgoeScheme.ofLexMin G reps hDistinct).reps = reps :=
+  hgoeScheme.ofLexMin_reps G reps hDistinct
 
 end NonVacuityWitnesses

@@ -1943,8 +1943,10 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   * `orbitFintype` (F3a) — the `Fintype (MulAction.orbit G x)`
     instance inherited from `Set.fintypeRange`, since `orbit`
     is definitionally `Set.range`;
-  * `mem_orbit_toFinset_iff` (`@[simp]`, F3a) — bridge between
-    `Set.mem_toFinset` and the Orbcrypt naming convention;
+  * `mem_orbit_toFinset_iff` (F3a) — named alias for
+    `Set.mem_toFinset` (which is already `@[simp]` in Mathlib, so no
+    further `@[simp]` annotation is needed; the Orbcrypt-side name
+    keeps explicit term-mode references readable);
   * `orbit_toFinset_nonempty` (F3a) — base-point-witness lemma
     for `Finset.min'`'s non-emptiness obligation;
   * `CanonicalForm.ofLexMin_canon` (`@[simp]`, F2) — unfolding

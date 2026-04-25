@@ -86,6 +86,11 @@ Mathlib.GroupTheory.GroupAction.{Defs, Quotient}
 GroupAction.Canonical   (provides orbit API)
           │               │
           ▼               ▼
+GroupAction.CanonicalLexMin (Workstream F: ofLexMin constructor on
+                             [Group G] [MulAction G X] [Fintype G]
+                             [DecidableEq X] [LinearOrder X])
+          │
+          ▼
 GroupAction.Invariant ◄── GroupAction.{Basic, Canonical}
           │
           ▼
@@ -110,12 +115,17 @@ Mathlib.GroupTheory.Perm.Basic
           │
           ▼
 Construction.Permutation ◄── GroupAction.Invariant
+   (also provides `bitstringLinearOrder`,
+    a computable lex `LinearOrder (Bitstring n)`
+    via `LinearOrder.lift' List.ofFn`; Workstream F)
           │
           ▼
 Construction.HGOE              Construction.HGOEKEM
 ◄── Crypto.Security            ◄── Construction.HGOE
 ◄── Theorems.Correctness       ◄── KEM.Correctness
 ◄── Theorems.InvariantAttack   ◄── KEM.Security
+◄── GroupAction.CanonicalLexMin
+    (for `hgoeScheme.ofLexMin`, Workstream F)
 
 Mathlib.Probability.ProbabilityMassFunction.*
 Mathlib.Probability.Distributions.Uniform
