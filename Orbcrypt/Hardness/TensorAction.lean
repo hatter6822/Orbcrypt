@@ -21,7 +21,19 @@ the strongest in the Orbcrypt reduction chain.
 * `Orbcrypt.tensorContract` — trilinear contraction by three matrices
 * `Orbcrypt.tensorAction` — MulAction instance for GL(n,F)³ on Tensor3
 * `Orbcrypt.AreTensorIsomorphic` — tensor isomorphism relation
-* `Orbcrypt.GIReducesToTI` — GI ≤ TI (Prop definition)
+* `Orbcrypt.GIReducesToTI` — GI ≤ TI (Prop definition).
+  **Workstream I5-strengthened (audit 2026-04-23, finding J-08):**
+  the existential carries an `encode_nonzero_of_pos_dim` field
+  requiring the encoder to produce non-zero tensors for every
+  non-empty graph (`m ≥ 1`); rules out the audit-flagged
+  `encode _ _ := fun _ _ _ => 0` degenerate witness at the type
+  level.
+* `Orbcrypt.GIReducesToTI_nondegeneracy_witness` — type-level
+  satisfiability witness confirming the strengthened
+  non-degeneracy field is independently inhabitable. A *full*
+  inhabitant of `GIReducesToTI` (discharging the iff) requires the
+  Grochow–Qiao 2021 structure-tensor encoding; research-scope
+  (audit plan § 15.1 / R-15). Workstream I5 (audit J-08).
 
 ## Main results
 
@@ -288,50 +300,104 @@ theorem areTensorIsomorphic_symm {T₁ T₂ : Tensor3 n F}
   subst hg
   simp [smul_smul]
 
-/-- GI reduces to TI: graphs can be encoded as 3-tensors such that
-    graph isomorphism corresponds to tensor isomorphism.
+/-- **GI reduces to TI (post-Workstream-I strengthened form).**
 
-    A many-one (Karp) reduction: there exists a uniform encoding function
-    mapping graphs to 3-tensors such that graph isomorphism holds if and only
-    if the encoded tensors are GL³-isomorphic. The encoding uses the structure
-    tensor of a graph's adjacency algebra (Grochow & Qiao, 2021).
+    A many-one (Karp) reduction: there exist a dimension function and
+    an encoder such that:
 
-    **Key distinction:** While GI admits Babai's quasi-polynomial algorithm,
-    no such algorithm is known for TI, making TI-based assumptions strictly
-    stronger than GI-based ones.
+    1. The encoder produces *non-zero* tensors for every non-empty
+       graph (`m ≥ 1`) — the `encode_nonzero_of_pos_dim` non-
+       degeneracy field below. Rules out the degenerate
+       `encode _ _ := fun _ _ _ => 0` witness flagged by audit J-08.
+    2. Two graphs are isomorphic iff their encoded tensors are
+       GL³-isomorphic (the standard Karp-reduction iff).
 
-    Stated as a `Prop`-valued definition following the OIA pattern.
-    The encoding construction is beyond this formalization's scope.
+    **Workstream I5 strengthening (audit 2026-04-23, finding J-08).**
+    Pre-Workstream-I, this Prop carried only the iff and admitted the
+    constant-zero encoder `fun _ _ _ => 0`. The strengthened body
+    adds an `encode m adj ≠ (fun _ _ _ => 0)` field guarded on
+    `1 ≤ m`, ruling out the degenerate witness at compile time. The
+    `1 ≤ m` guard is necessary because the 0-vertex case has only
+    one possible "graph" (the empty one) and forcing a non-zero
+    tensor for the no-graph case has no cryptographic meaning.
 
-    **Audit note (F-12 / 2026-04-21 H1 follow-up).** This definition is
-    the deterministic Karp-claim Prop paired with the probabilistic
-    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` (Workstream G /
-    Fix C) in `Hardness/Reductions.lean`. A concrete witness via the
-    Grochow–Qiao structure-tensor encoding (2021) would discharge both
-    the deterministic claim and the per-encoding Prop simultaneously;
-    it is a research-scope follow-up
-    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
-    in the root-file "Hardness parameter Props" section for transparency.
+    **Why "non-zero tensor" rather than a stronger constraint.** The
+    `Tensor3` type is `Fin n → Fin n → Fin n → F`, and equality with
+    the zero function is decidable (for `[DecidableEq F]`), so
+    `encode m adj ≠ (fun _ _ _ => 0)` is a Prop-typed obligation the
+    implementer can discharge with a one-line `decide` or a structural
+    argument. A stronger "linearly independent tensor decomposition"
+    form would be more faithful to the Grochow–Qiao reduction, but
+    introduces new linear-algebra obligations (rank, tensor
+    decomposition) that are research-scope; the non-zero form is the
+    minimum viable strengthening that closes the J-08 footgun.
 
-    **Degenerate-encoder disclosure (audit 2026-04-21 finding L4 /
-    Workstream M).** Like `GIReducesToCE`, this Prop states the
-    reduction at the *orbit-equivalence level* rather than the
-    advantage level, and therefore admits degenerate encoders (e.g. a
-    constant map `encode _ _ := fun _ _ _ => 0` into a 0-dimensional
-    tensor space). This is by design: `GIReducesToTI` is an
-    *algebraic-scaffolding* Prop expressing the *existence* of a Karp
-    reduction, not a bound-preserving advantage transfer. Quantitative
-    hardness transfer lives in the probabilistic counterpart
-    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` (which names an
-    explicit encoder and a per-layer ε), *not* in this Prop. Cite the
-    probabilistic per-encoding Prop for release-facing security
-    claims. -/
-def GIReducesToTI : Prop :=
+    **Composition with the probabilistic chain.** Paired with
+    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` (Workstream
+    G / Fix C) in `Hardness/Reductions.lean`. A concrete witness via
+    the Grochow–Qiao 2021 structure-tensor encoding would discharge
+    both Props simultaneously; that witness remains research-scope
+    (audit plan § 15.1 / R-15).
+
+    **Non-vacuity.** See `GIReducesToTI_nondegeneracy_witness` below
+    for the structural witness confirming the strengthened
+    non-degeneracy field is independently inhabitable. -/
+def GIReducesToTI [Field F] : Prop :=
   ∃ (dim : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) F),
-    ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
+    -- Non-degeneracy: for non-empty graphs (m ≥ 1), the encoder
+    -- must not produce the zero tensor. Rules out
+    -- `encode _ _ := fun _ _ _ => 0`.
+    (∀ m, 1 ≤ m → ∀ adj, encode m adj ≠ (fun _ _ _ => 0)) ∧
+    -- The Karp reduction itself.
+    (∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
       (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ↔
-      @AreTensorIsomorphic (dim m) F _ (encode m adj₁) (encode m adj₂)
+      @AreTensorIsomorphic (dim m) F _
+        (encode m adj₁) (encode m adj₂))
+
+/-- **Type-level non-vacuity witness for the strengthened `GIReducesToTI`
+    non-degeneracy field** (Workstream I5, audit 2026-04-23 finding
+    J-08, specialised to `F = ZMod 2` for decidability).
+
+    Confirms the non-degeneracy obligation
+    `(∀ m, 1 ≤ m → ∀ adj, encode m adj ≠ (fun _ _ _ => 0))` is
+    independently inhabitable: `dim m := 1` and the constant-`true`
+    tensor (over `ZMod 2`, where `true` is `1 ≠ 0`) discharges the
+    field at every `m ≥ 1` via `congrFun`-extraction at index
+    `(0, 0, 0)`.
+
+    **Disclaimer.** Like `GIReducesToCE_card_nondegeneracy_witness`
+    in `CodeEquivalence.lean`, this is a *type-level* witness — it
+    establishes the non-degeneracy field is satisfiable in
+    isolation, not that the full Prop (with the iff) is inhabitable.
+    The audit-plan template's "constant-1 witness" approach
+    (`encode _ _ := fun _ _ _ => 1`) does not actually witness the
+    iff for general `m` because RHS (`AreTensorIsomorphic` of two
+    constant-1 tensors) is always `True` via the identity GL³
+    triple, while LHS (the GI predicate) fails for non-isomorphic
+    graphs at `m ≥ 2`.
+
+    A *cryptographic-content* non-vacuity witness for the
+    strengthened iff requires the Grochow–Qiao 2021 structure-tensor
+    encoding; research-scope (audit plan § 15.1 / R-15). The
+    Workstream-I5 strengthening is therefore a **type-level posture
+    upgrade**: pre-I admitted the constant-zero degenerate encoder;
+    post-I rules it out at compile time. -/
+theorem GIReducesToTI_nondegeneracy_witness :
+    ∃ (dim : ℕ → ℕ)
+      (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Tensor3 (dim m) (ZMod 2)),
+      ∀ m, 1 ≤ m → ∀ adj, encode m adj ≠ (fun _ _ _ => 0) := by
+  -- Witness: `dim m := 1`, `encode m adj := fun _ _ _ => 1` (the
+  -- constant-1 tensor, of type `Tensor3 1 (ZMod 2)`).
+  refine ⟨fun _ => 1,
+          fun _ _ => (fun (_ _ _ : Fin 1) => (1 : ZMod 2)),
+          fun m _ adj h_eq => ?_⟩
+  -- `h_eq : (fun _ _ _ => 1) = (fun _ _ _ => 0)` as functions
+  -- `Fin 1 → Fin 1 → Fin 1 → ZMod 2`. Extract equality at `(0, 0, 0)`
+  -- to get `(1 : ZMod 2) = 0`, decidably false.
+  have h : (1 : ZMod 2) = (0 : ZMod 2) :=
+    congrFun (congrFun (congrFun h_eq 0) 0) 0
+  exact absurd h (by decide)
 
 end TensorIsomorphism
 

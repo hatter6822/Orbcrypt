@@ -42,6 +42,7 @@ import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
 import Orbcrypt.Hardness.Reductions
+import Orbcrypt.Hardness.PetrankRoth.BitLayout
 
 import Orbcrypt.PublicKey.ObliviousSampling
 import Orbcrypt.PublicKey.KEMAgreement
@@ -208,10 +209,20 @@ AEAD.MAC ◄── Mathlib.Tactic
   KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
           │
           ▼
-  PublicKey.ObliviousSampling ◄── GroupAction.Basic
+  PublicKey.ObliviousSampling ◄── GroupAction.Basic,
+                                   Probability.{Monad, Advantage},
+                                   Crypto.CompOIA
   ◄── OrbitalRandomizers, obliviousSample
   ◄── oblivious_sample_in_orbit
-  ◄── ObliviousSamplingHiding, oblivious_sampling_view_constant
+  ◄── ObliviousSamplingPerfectHiding (renamed from
+        `ObliviousSamplingHiding` in Workstream I6 of the 2026-04-23
+        audit, finding K-02),
+        oblivious_sampling_view_constant_under_perfect_hiding
+  ◄── ObliviousSamplingConcreteHiding,
+        oblivious_sampling_view_advantage_bound,
+        ObliviousSamplingConcreteHiding_zero_witness
+        (probabilistic ε-smooth replacement and non-vacuity witness;
+         Workstream I6, audit K-02)
   ◄── refreshRandomizers, refreshRandomizers_in_orbit
   ◄── RefreshDependsOnlyOnEpochRange, refresh_depends_only_on_epoch_range
 
@@ -702,11 +713,17 @@ typeclass axiom rather than a Lean `axiom`:
 - `oblivious_sample_in_orbit` (`PublicKey/ObliviousSampling.lean`) —
   oblivious sampling preserves orbit membership, given the client-supplied
   closure hypothesis `hClosed`.
-- `oblivious_sampling_view_constant` (`PublicKey/ObliviousSampling.lean`)
-  — carries `ObliviousSamplingHiding` as a hypothesis (a strong
-  deterministic hiding requirement; documented as pathological-strength
-  and not expected to hold for non-trivial bundles without a
-  probabilistic refinement).
+- `oblivious_sampling_view_constant_under_perfect_hiding`
+  (`PublicKey/ObliviousSampling.lean`) — carries
+  `ObliviousSamplingPerfectHiding` as a hypothesis (a strong
+  deterministic hiding requirement that is `False` on every non-
+  trivial bundle, hence vacuous on production HGOE). Renamed in
+  Workstream I6 of the 2026-04-23 audit (finding K-02) to accurately
+  convey its perfect-extremum strength. The genuinely ε-smooth
+  probabilistic analogue `ObliviousSamplingConcreteHiding` is added
+  alongside in the same workstream, with a perfect-security non-
+  vacuity witness `ObliviousSamplingConcreteHiding_zero_witness`
+  at ε = 0 on singleton-orbit bundles.
 - `refresh_depends_only_on_epoch_range`
   (`PublicKey/ObliviousSampling.lean`) — structural
   determinism of epoch-refreshed randomizer bundles (unconditional; PRF
@@ -1166,6 +1183,48 @@ security. The point-mass `ConcreteKEMOIA` collapses on `ε ∈ [0, 1)`
 (advantage is 0 or 1 per pair); see its docstring for the disclosure
 and the uniform form for the ε-smooth alternative.
 
+### Vacuity map (2026-04-23 Workstream I additions — strengthening, not rebadging)
+
+Workstream I (audit 2026-04-23, findings C-15 / D-07 / E-11 / J-03 /
+J-08 / K-02) replaces six pre-I weak identifiers with strengthened
+substantive content. The pairing — pre-I weak-content identifier ↔
+post-I substantive sibling:
+
+| Pre-I weak identifier | Workstream-I substantive sibling | Strengthening summary |
+|---|---|---|
+| `concreteOIA_one_meaningful` (renamed `indCPAAdvantage_le_one`; trivial `≤ 1` bound, content unchanged) | `concreteOIA_zero_of_subsingleton_message` (I1) — perfect concrete-security at ε = 0 on every subsingleton-message scheme | Pre-I name overstated content (the bound is a triangle-inequality artefact of `advantage`, not a non-vacuity claim about `ConcreteOIA`); post-I delivers genuine perfect-security extremum |
+| `concreteKEMOIA_one_meaningful` (deleted as redundant duplicate of `kemAdvantage_le_one`) | `concreteKEMOIA_uniform_zero_of_singleton_orbit` (I2) — perfect uniform-form KEM security at ε = 0 on every singleton-orbit KEM | Pre-I lemma was bit-identical to `kemAdvantage_le_one`; post-I delivers KEM-layer parallel of I1's perfect-security extremum |
+| `insecure_implies_separating` (renamed `insecure_implies_orbit_distinguisher`; orbit distinguisher, not G-invariant separator) | `distinct_messages_have_invariant_separator` (I3) — G-invariant Boolean separator from `reps_distinct`, unconditional on adversary | Pre-I name suggested G-invariance + separation; body delivered only the second conjunct (a non-G-invariant distinguisher). Post-I delivers genuine G-invariance via `canon_indicator_isGInvariant` (the canonical-form discriminator), unconditionally on `m₀ ≠ m₁` (no adversary needed) |
+| `GIReducesToCE` (admitted `encode _ _ := ∅` degenerate witness) | `GIReducesToCE` (strengthened in-place with `codeSize_pos` + `encode_card_eq` non-degeneracy fields, I4) + `GIReducesToCE_card_nondegeneracy_witness` | Audit J-03 footgun closed at the type level; the empty-Finset encoder fails `0 < codeSize m`. Full `Nonempty GIReducesToCE` (discharging the iff) requires CFI 1992 / Petrank–Roth 1997 (research-scope R-15) |
+| `GIReducesToTI` (admitted `encode _ _ := fun _ _ _ => 0` degenerate witness) | `GIReducesToTI` (strengthened in-place with `encode_nonzero_of_pos_dim` non-degeneracy field, I5) + `GIReducesToTI_nondegeneracy_witness` | Audit J-08 footgun closed at the type level; the constant-zero encoder fails `encode m adj ≠ (fun _ _ _ => 0)`. Full `Nonempty GIReducesToTI` requires Grochow–Qiao 2021 (research-scope R-15) |
+| `ObliviousSamplingHiding` (deterministic perfect-extremum; `False` on every non-trivial bundle) | `ObliviousSamplingPerfectHiding` (I6, renamed; same content, post-I name accurately conveys the perfect-extremum strength) **plus** `ObliviousSamplingConcreteHiding` (I6, NEW probabilistic ε-smooth analogue) + extraction lemma + non-vacuity witness at ε = 0 on singleton-orbit bundles | Pre-I docstring self-disclosed the predicate is `False` on every non-trivial bundle; post-I keeps the deterministic form (renamed honestly) and adds the genuinely ε-smooth predicate suitable for release-facing security claims |
+
+**Three perfect-security non-vacuity witnesses** at ε = 0 across the
+post-Workstream-I probabilistic chain:
+* `concreteOIA_zero_of_subsingleton_message` (scheme layer, I1).
+* `concreteKEMOIA_uniform_zero_of_singleton_orbit` (KEM layer, I2).
+* `ObliviousSamplingConcreteHiding_zero_witness` (oblivious-sampling
+  layer, I6).
+
+Together these inhabit the meaningful (perfect-security) extremum of
+the `[0, 1]` ε-spectrum on every probabilistic predicate post-
+Workstream-I, complementing the trivial-bound `concreteOIA_one`,
+`concreteKEMOIA_uniform_one`, and `concreteKEMOIA_one` witnesses that
+inhabit the ε = 1 extremum.
+
+**Strengthening, not rebadging.** Per `CLAUDE.md`'s
+Security-by-docstring prohibition, when an identifier names a
+cryptographic primitive the code must *prove* the advertised property
+or *rename* the identifier to describe what it does prove. Workstream
+I applies the strengthening direction wherever feasible (I1, I2, I3
+land NEW substantive theorems), and the renaming direction only
+when the property is genuinely out of reach (the pre-I weak forms
+that get the rename are kept *alongside* the new substantive content,
+not in its place). I4/I5/I6 close audit-flagged degenerate-witness
+footguns at the type level (the strengthened Props' non-degeneracy
+fields rule out the audit-cited degenerate encoders at compile time);
+non-trivial inhabitants of the iff remain research-scope (R-15).
+
 No `sorryAx` should appear in any output. If it does, there is a hidden
 `sorry` in the dependency chain.
 
@@ -1185,7 +1244,8 @@ The Phase 16 snapshot at the time of landing:
 * **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every
   `Prop`-valued security assumption (OIA, KEMOIA, ConcreteOIA, ConcreteKEMOIA,
   ConcreteTensorOIA, ConcreteCEOIA, ConcreteGIOIA, CompOIA,
-  ObliviousSamplingHiding, ConcreteHardnessChain, …) is a `Prop`-valued
+  ObliviousSamplingPerfectHiding, ObliviousSamplingConcreteHiding,
+  ConcreteHardnessChain, …) is a `Prop`-valued
   *definition* carried as an explicit hypothesis on the theorems that
   use it.
 * **342** declarations exercised by `scripts/audit_phase_16.lean` via
@@ -2515,4 +2575,298 @@ entry being a defensive `#print axioms
 hammingWeight_zero_bitstring` line that surfaces any future
 helper regression in the CI parser even though the witness
 `example`s themselves are anonymous.
+
+## Workstream I Snapshot (audit 2026-04-23, findings C-15 / D-07 / E-11 / J-03 / J-08 / K-02)
+
+### Problem
+
+Six pre-Workstream-I identifiers across `Crypto/CompSecurity.lean`,
+`KEM/CompSecurity.lean`, `Theorems/OIAImpliesCPA.lean`,
+`Hardness/CodeEquivalence.lean`, `Hardness/TensorAction.lean`, and
+`PublicKey/ObliviousSampling.lean` carried names that overstated
+their cryptographic content. A naive remediation would be to
+rebadge them — but that satisfies only the literal text of
+`CLAUDE.md`'s Naming-content rule while violating the spirit of the
+sibling Security-by-docstring prohibition. Workstream I applies the
+strengthening direction wherever feasible and the renaming
+direction only when the property is genuinely out of reach.
+
+### Fix (six work units I1–I6 plus audit-script + transparency
+sweep I7)
+
+* **I1 — `Crypto/CompSecurity.lean`.** Renamed
+  `concreteOIA_one_meaningful` → `indCPAAdvantage_le_one`
+  (Mathlib-style `_le_one` simp lemma; content unchanged but name
+  now accurately conveys the trivial `≤ 1` triangle-inequality
+  bound). Added new theorem
+  `concreteOIA_zero_of_subsingleton_message`: substantive non-
+  vacuity witness for `ConcreteOIA` at the meaningful (perfect-
+  security) extremum — every scheme on a subsingleton message space
+  satisfies `ConcreteOIA scheme 0` via `advantage_self`.
+* **I2 — `KEM/CompSecurity.lean`.** Deleted
+  `concreteKEMOIA_one_meaningful` (a redundant duplicate of the
+  pre-existing `kemAdvantage_le_one` at line 347 of the same file
+  — both proved bit-identical statements with bit-identical
+  proofs). Added new theorem
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit`: KEM-layer
+  parallel of I1's perfect-security extremum — every KEM whose
+  group action fixes the basepoint satisfies
+  `ConcreteKEMOIA_uniform kem 0` via `PMF.map_const` reduction of
+  `kemEncapsDist` to a point mass + `advantage_self`.
+* **I3 — `Theorems/OIAImpliesCPA.lean` + `GroupAction/Invariant.lean`
+  (helper).** Added helper `canon_indicator_isGInvariant` to
+  `GroupAction/Invariant.lean`: the Boolean indicator
+  `fun x => decide (can.canon x = c)` is G-invariant via
+  `canonical_isGInvariant`. Renamed
+  `insecure_implies_separating` →
+  `insecure_implies_orbit_distinguisher` (the body delivers an
+  orbit distinguisher, not a G-invariant separating function;
+  rename restores accuracy). Added new theorem
+  `distinct_messages_have_invariant_separator`: the G-invariant
+  separator the pre-I name advertised but did not deliver —
+  unconditional on `reps_distinct`, no adversary required.
+* **I4 — `Hardness/CodeEquivalence.lean`.** Strengthened
+  `GIReducesToCE` in-place with `codeSize_pos` (`∀ m, 0 < codeSize
+  m`) and `encode_card_eq` (`∀ m adj, (encode m adj).card =
+  codeSize m`) non-degeneracy fields. Closes audit J-03 footgun:
+  the `encode _ _ := ∅` degenerate witness fails `0 < codeSize m`
+  at compile time. Added type-level satisfiability witness
+  `GIReducesToCE_card_nondegeneracy_witness` confirming the
+  non-degeneracy fields are independently inhabitable. A *full*
+  `Nonempty GIReducesToCE` (discharging the iff) requires a tight
+  Karp reduction (CFI 1992 / Petrank–Roth 1997); research-scope
+  R-15.
+* **I5 — `Hardness/TensorAction.lean`.** Strengthened
+  `GIReducesToTI` in-place with `encode_nonzero_of_pos_dim`
+  (`∀ m, 1 ≤ m → ∀ adj, encode m adj ≠ (fun _ _ _ => 0)`)
+  non-degeneracy field. Closes audit J-08 footgun symmetrically
+  to I4. Added type-level satisfiability witness
+  `GIReducesToTI_nondegeneracy_witness` (specialised to
+  `F = ZMod 2` for decidability). Full inhabitant of the iff is
+  research-scope (Grochow–Qiao 2021 structure-tensor encoding,
+  R-15).
+* **I6 — `PublicKey/ObliviousSampling.lean`.** Renamed
+  `ObliviousSamplingHiding` → `ObliviousSamplingPerfectHiding`
+  (the predicate is `False` on every non-trivial bundle, so the
+  post-I name accurately conveys the perfect-extremum strength)
+  and the companion theorem
+  `oblivious_sampling_view_constant` →
+  `oblivious_sampling_view_constant_under_perfect_hiding`. Added
+  new probabilistic ε-smooth predicate
+  `ObliviousSamplingConcreteHiding`: the sender's obliviously-
+  sampled output is at advantage ≤ ε from a fresh uniform orbit
+  sample (`orbitDist`). Added structural extraction lemma
+  `oblivious_sampling_view_advantage_bound` (mirrors
+  `concrete_oia_implies_1cpa` extraction shape). Added non-
+  vacuity witness `ObliviousSamplingConcreteHiding_zero_witness`
+  at ε = 0 on singleton-orbit bundles (uses `PMF.map_const` twice
+  to reduce both PMFs to point masses, then `advantage_self`).
+
+### Verification
+
+`lake build` succeeds for all 39 modules with zero warnings / zero
+errors. `scripts/audit_phase_16.lean` exercises every Workstream-I
+declaration via `#print axioms` (every entry returns either "does
+not depend on any axioms" or `[propext, Classical.choice,
+Quot.sound]`; never `sorryAx` or a custom axiom) and 13 non-vacuity
+`example` blocks (one per substantive Workstream-I deliverable
+plus negative-pressure regressions for I4 / I5 confirming the
+strengthened Props correctly *reject* the audit-flagged degenerate
+encoders at compile time).
+
+### Counts
+
+* **9 new public declarations** (4 strong-content + 2 helpers + 3
+  named witnesses):
+  `concreteOIA_zero_of_subsingleton_message` (I1),
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit` (I2),
+  `canon_indicator_isGInvariant` (I3 helper),
+  `distinct_messages_have_invariant_separator` (I3),
+  `GIReducesToCE_card_nondegeneracy_witness` (I4 structural
+  witness),
+  `GIReducesToTI_nondegeneracy_witness` (I5 structural witness),
+  `ObliviousSamplingConcreteHiding` (I6),
+  `oblivious_sampling_view_advantage_bound` (I6),
+  `ObliviousSamplingConcreteHiding_zero_witness` (I6).
+* **4 renamed declarations** (content-neutral):
+  `indCPAAdvantage_le_one` (was `concreteOIA_one_meaningful`),
+  `insecure_implies_orbit_distinguisher` (was
+  `insecure_implies_separating`),
+  `ObliviousSamplingPerfectHiding` (was
+  `ObliviousSamplingHiding`),
+  `oblivious_sampling_view_constant_under_perfect_hiding` (was
+  `oblivious_sampling_view_constant`).
+* **2 strengthened in-place** (signature-level non-degeneracy
+  fields added; same identifier carries the stronger Prop):
+  `GIReducesToCE` (gains `codeSize`, `codeSize_pos`,
+  `encode_card_eq` fields), `GIReducesToTI` (gains
+  `encode_nonzero_of_pos_dim` field).
+* **1 deletion** (no replacement; consumers migrate to the
+  pre-existing `kemAdvantage_le_one`):
+  `concreteKEMOIA_one_meaningful` (redundant duplicate;
+  Workstream I2).
+
+### Deviations from the audit plan
+
+The audit plan section 12.4 specified
+`GIReducesToCE_singleton_witness` and
+`GIReducesToTI_constant_one_witness` as full inhabitants of the
+strengthened Props (with the iff discharged at trivial 1-vertex /
+constant-1-tensor encoders). After implementation, **the
+singleton/constant encoders are mathematically not valid witnesses
+for the strengthened iff**: with a constant encoder, RHS
+(`ArePermEquivalent` / `AreTensorIsomorphic`) is always True via
+the identity, which forces LHS (the GI predicate) to be always
+True — but the GI predicate fails for non-isomorphic graphs at
+`m ≥ 2`. The plan's claimed witnesses thus fail to elaborate. The
+Workstream-I landing replaces them with type-level *non-degeneracy
+structural witnesses*
+(`GIReducesToCE_card_nondegeneracy_witness` and
+`GIReducesToTI_nondegeneracy_witness`) that confirm the
+strengthened non-degeneracy fields are independently inhabitable
+without claiming a full Prop inhabitant. The substantive content
+(closing the J-03 / J-08 footguns *at the type level* — the
+audit-flagged degenerate encoders fail to elaborate) is preserved;
+a full inhabitant of `GIReducesToCE` / `GIReducesToTI` (discharging
+the iff) requires a tight Karp reduction (CFI 1992 / Petrank–Roth
+1997 / Grochow–Qiao 2021) and remains research-scope (audit plan
+§ 15.1 / R-15). This deviation is recorded honestly here and in
+the relevant theorem docstrings.
+
+### Patch version
+
+`lakefile.lean` bumped from `0.1.12` to `0.1.13` for Workstream I
+— the structural changes (signature-level field additions on
+`GIReducesToCE` and `GIReducesToTI`, deletion of
+`concreteKEMOIA_one_meaningful`, four content-neutral renames,
+nine new public declarations) constitute an API break warranting a
+patch bump per `CLAUDE.md`'s version-bump discipline. Module count
+remains 39; public declaration count rises from 358 to **366**
+(9 new − 1 deleted + 0 net rename change = +8). Zero-sorry /
+zero-custom-axiom posture preserved; standard-trio-only axiom-
+dependency posture preserved. The Phase-16 audit script gains 13
+new non-vacuity `example` blocks plus 9 new `#print axioms`
+entries (4 renamed entries replace pre-I names; 1 entry deleted).
+
+## Workstream I Post-Audit Snapshot (2026-04-25)
+
+A post-audit critical evaluation of the initial Workstream-I
+landing concluded that 4 of the 9 "new" theorems were
+**theatrical**: they technically inhabited their predicates but
+required hypotheses that collapse the security space to a single
+element (subsingleton message space, singleton-orbit KEM,
+singleton-orbit oblivious-sampling bundle), giving advantage 0
+on instances where there is no security game to play. These
+four theorems satisfied a literal exit-criterion checkbox in
+the audit plan but contributed no cryptographic content.
+
+### Removed (theatrical)
+
+* `concreteOIA_zero_of_subsingleton_message`
+  (`Crypto/CompSecurity.lean`, I1) — required `[Subsingleton M]`.
+* `concreteKEMOIA_uniform_zero_of_singleton_orbit`
+  (`KEM/CompSecurity.lean`, I2) — required
+  `∀ g, g • basePoint = basePoint`.
+* `ObliviousSamplingConcreteHiding_zero_witness`
+  (`PublicKey/ObliviousSampling.lean`, I6) — required
+  singleton-orbit bundle + constant `combine`.
+* `oblivious_sampling_view_advantage_bound`
+  (`PublicKey/ObliviousSampling.lean`, I6) — one-line wrapper
+  `hHide D` of the predicate's universal quantifier.
+
+### Added (substantive replacement)
+
+* **Non-degenerate concrete fixture** in
+  `PublicKey/ObliviousSampling.lean`:
+  `concreteHidingBundle : OrbitalRandomizers (Equiv.Perm Bool)
+  Bool 2` (basePoint `false`, randomizers `![false, true]`,
+  orbit cardinality 2 — the maximum on Bool) and
+  `concreteHidingCombine : Bool → Bool → Bool := fun a b => a
+  && b` (Boolean AND, biased push-forward). On paper, the
+  worst-case adversary advantage on this fixture is exactly
+  `1/4` — a tight ε ∈ (0, 1) bound. The Lean proof of the
+  precise `1/4` bound requires PMF point-mass arithmetic over
+  `Equiv.Perm Bool` and `Fin 2 × Fin 2` plus a TV-distance
+  bound for Bool PMFs (~150 lines of low-level
+  ENNReal/Real conversions in the pinned Mathlib commit).
+  Tracked as **research-scope R-12** (audit plan § O); the
+  in-tree contribution is the non-degenerate fixture itself,
+  documented with the on-paper analysis.
+* **Mathlib-style helpers** in `Probability/Monad.lean`:
+  `probTrue_map` (push-forward through `PMF.map`) and
+  `probTrue_uniformPMF_card` (uniform-PMF outer measure as a
+  filter-cardinality ratio). These are general-purpose tools
+  that downstream R-12 work will use.
+
+### Type-level posture upgrade witnesses retained
+
+`GIReducesToCE_card_nondegeneracy_witness` and
+`GIReducesToTI_nondegeneracy_witness` were honest from the
+initial landing — they witness the *strengthened non-degeneracy
+fields* of `GIReducesToCE` and `GIReducesToTI` (a *sub-
+predicate* of the full Prop, omitting the iff). They do **not**
+witness the full strengthened Props; that requires a tight
+Karp reduction (CFI 1992 / Petrank–Roth 1997 / Grochow–Qiao
+2021), which remains research-scope **R-15**. The
+docstrings in those theorems disclose this honestly.
+
+### Counts (post-audit)
+
+* **6 new public declarations**:
+  `canon_indicator_isGInvariant` (I3 helper),
+  `distinct_messages_have_invariant_separator` (I3 substantive),
+  `GIReducesToCE_card_nondegeneracy_witness` (I4 type-level),
+  `GIReducesToTI_nondegeneracy_witness` (I5 type-level),
+  `ObliviousSamplingConcreteHiding` (I6 vocabulary),
+  `concreteHidingBundle` (post-audit fixture),
+  `concreteHidingCombine` (post-audit fixture),
+  `probTrue_map` (post-audit helper),
+  `probTrue_uniformPMF_card` (post-audit helper).
+* **4 renamed declarations** (content-neutral, unchanged):
+  `indCPAAdvantage_le_one`,
+  `insecure_implies_orbit_distinguisher`,
+  `ObliviousSamplingPerfectHiding`,
+  `oblivious_sampling_view_constant_under_perfect_hiding`.
+* **2 strengthened in-place** (Prop signatures): `GIReducesToCE`,
+  `GIReducesToTI`.
+* **1 deletion of redundant duplicate** (unchanged):
+  `concreteKEMOIA_one_meaningful`.
+* **4 deletions of theatrical content** (post-audit):
+  `concreteOIA_zero_of_subsingleton_message`,
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit`,
+  `ObliviousSamplingConcreteHiding_zero_witness`,
+  `oblivious_sampling_view_advantage_bound`.
+
+Module count: **39** (unchanged). The Phase-16 audit script's
+`#print axioms` total stabilises at **389** (down from the
+post-initial-landing 391 — the 4 theatrical entries deleted +
+2 fixture-related entries added). All remaining `#print axioms`
+outputs are standard-trio (`propext`, `Classical.choice`,
+`Quot.sound`) or axiom-free.
+
+### Honest scoreboard
+
+The Workstream-I post-audit refactor demonstrates the
+**Security-by-docstring prohibition** in action at the
+project-internal level: rather than ship 9 "new theorems" with
+4 of them theatrically vacuous, the post-audit pass keeps only
+content that genuinely advances the project. The honest
+delivery is:
+
+1. The *substantive* `distinct_messages_have_invariant_separator`
+   theorem (closes a 2-year-old audit gap, F-06 / D-07).
+2. The *type-level* posture upgrades (Prop signatures
+   strengthened to ban audit-flagged degenerate encoders at
+   compile time).
+3. The *non-degenerate* fixture (`concreteHidingBundle` +
+   `concreteHidingCombine`) — concrete cryptographic content
+   that downstream research can target with a tight ε bound.
+4. The *renames* (Security-by-docstring hygiene for four
+   misnamed identifiers).
+5. *Honest research-scope disclosures* of R-12 (precise ε = 1/4
+   ObliviousSamplingConcreteHiding bound) and R-15 (full Karp
+   reduction inhabitants for `GIReducesToCE` / `GIReducesToTI`).
+
+`lakefile.lean` bumped from `0.1.13` to `0.1.14` for the
+post-audit refactor.
 -/

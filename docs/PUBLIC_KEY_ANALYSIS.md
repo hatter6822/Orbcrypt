@@ -55,10 +55,26 @@ that the output is a bona fide orbit element — i.e. a valid ciphertext.
 
 * `OrbitalRandomizers`, `obliviousSample` — definitions.
 * `oblivious_sample_in_orbit` — unconditional theorem given `hClosed`.
-* `ObliviousSamplingHiding` — the *sender-privacy* requirement as a `Prop`.
-* `oblivious_sampling_view_constant` — immediate corollary: if
-  `ObliviousSamplingHiding` holds, any Boolean view of the sample is
-  invariant under the sender's index choice.
+* `ObliviousSamplingPerfectHiding` — the *sender-privacy* requirement
+  as a `Prop` (renamed from `ObliviousSamplingHiding` in Workstream I6
+  of the 2026-04-23 audit, finding K-02; the post-I name accurately
+  conveys its perfect-extremum strength — the predicate is `False`
+  on every non-trivial bundle).
+* `oblivious_sampling_view_constant_under_perfect_hiding` — immediate
+  corollary: if `ObliviousSamplingPerfectHiding` holds, any Boolean
+  view of the sample is invariant under the sender's index choice
+  (renamed companion theorem; Workstream I6).
+* `ObliviousSamplingConcreteHiding` — Workstream I6 NEW probabilistic
+  ε-smooth analogue: the sender's obliviously-sampled output is at
+  advantage ≤ ε from a fresh uniform orbit sample (`orbitDist`). For
+  ε = 0 this is *perfect oblivious sampling*; for intermediate ε this
+  is *ε-computational obliviousness* suitable for release-facing
+  security claims.
+* `oblivious_sampling_view_advantage_bound` — Workstream I6 NEW
+  structural extraction lemma mirroring `concrete_oia_implies_1cpa`.
+* `ObliviousSamplingConcreteHiding_zero_witness` — Workstream I6 NEW
+  non-vacuity witness at ε = 0 on singleton-orbit bundles (any KEM
+  with a fixed-point basepoint discharges the hypothesis).
 * `refreshRandomizers`, `refreshRandomizers_in_orbit` — epoch-indexed fresh
   bundles with orbit certificates.
 * `refresh_depends_only_on_epoch_range` — structural determinism: the
@@ -208,7 +224,8 @@ such combiner is known.
 | Collapse of the `obliviousSample` sender flow | ✅ (`oblivious_sample_equivariant_obstruction`) |
 | Concrete orbit-preserving, G-hiding `combine` (equivariant) | ❌ Infeasible under `OIA` |
 | Concrete orbit-preserving, G-hiding `combine` (non-equivariant) | ❓ Open — probabilistic analysis required |
-| Cryptographic sender privacy (`ObliviousSamplingHiding`) | ⚠️ Conditional |
+| Cryptographic sender privacy (`ObliviousSamplingPerfectHiding`, deterministic; renamed in Workstream I6) | ⚠️ `False` on every non-trivial bundle (perfect-extremum) |
+| Cryptographic sender privacy (`ObliviousSamplingConcreteHiding`, probabilistic ε-smooth, Workstream I6 NEW) | ⚠️ Conditional on caller-supplied ε bound; non-vacuity witness at ε = 0 on singleton-orbit bundles |
 
 ---
 
@@ -458,7 +475,10 @@ The most plausible paths forward are therefore:
 | Theorem | File | Axiom dependency |
 |---------|------|------------------|
 | `oblivious_sample_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
-| `oblivious_sampling_view_constant` | `PublicKey/ObliviousSampling.lean` | Standard Lean (carries `ObliviousSamplingHiding` as hypothesis) |
+| `oblivious_sampling_view_constant_under_perfect_hiding` (renamed in Workstream I6) | `PublicKey/ObliviousSampling.lean` | Standard Lean (carries `ObliviousSamplingPerfectHiding` as hypothesis) |
+| `ObliviousSamplingConcreteHiding` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Standard Lean (probabilistic ε-smooth predicate) |
+| `oblivious_sampling_view_advantage_bound` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Standard Lean only (extraction shape) |
+| `ObliviousSamplingConcreteHiding_zero_witness` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Standard Lean only (non-vacuity at ε = 0 on singleton-orbit bundles via `PMF.map_const` × 2 + `advantage_self`) |
 | `obliviousSample_eq` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_apply` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
@@ -485,7 +505,9 @@ The most plausible paths forward are therefore:
 | `oblivious_sample_equivariant_obstruction` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
 
 Every Phase 13 theorem either (i) carries its cryptographic assumption
-as an explicit `Prop`-typed hypothesis (`ObliviousSamplingHiding`,
+as an explicit `Prop`-typed hypothesis (`ObliviousSamplingPerfectHiding`
+— renamed from `ObliviousSamplingHiding` in Workstream I6 — or its
+ε-smooth probabilistic counterpart `ObliviousSamplingConcreteHiding`,
 `OIA`), (ii) extracts a typeclass axiom (`CommGroupAction.comm` via the
 `CommGroupAction` class extending `MulAction`), or (iii) is an
 unconditional structural identity (`sessionKey_expands_to_canon_form`

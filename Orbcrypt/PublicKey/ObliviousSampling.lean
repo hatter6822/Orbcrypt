@@ -1,4 +1,11 @@
 import Orbcrypt.GroupAction.Basic
+-- Workstream I6 (audit 2026-04-23, finding K-02): the new
+-- probabilistic predicate `ObliviousSamplingConcreteHiding` consumes
+-- `PMF.map`, `uniformPMF`, `advantage`, and `orbitDist` from the
+-- probabilistic foundations layer.
+import Orbcrypt.Probability.Monad
+import Orbcrypt.Probability.Advantage
+import Orbcrypt.Crypto.CompOIA
 
 /-!
 # Orbcrypt.PublicKey.ObliviousSampling
@@ -17,7 +24,12 @@ This module addresses three units of the public-key extension workstream:
 * **13.1 — Oblivious Orbit Sampling Definition** (`OrbitalRandomizers`,
   `obliviousSample`).
 * **13.2 — Oblivious Sampling Correctness** (`oblivious_sample_in_orbit`,
-  plus the sender-privacy `Prop`, `ObliviousSamplingHiding`).
+  plus the deterministic sender-privacy `Prop`,
+  `ObliviousSamplingPerfectHiding` (renamed from
+  `ObliviousSamplingHiding` in Workstream I6, audit 2026-04-23 finding
+  K-02), and the **probabilistic** `ObliviousSamplingConcreteHiding`
+  predicate added by the same workstream as the genuinely ε-smooth
+  analogue suitable for release-facing security claims).
 * **13.3 — Randomizer Refresh Protocol** (`refreshRandomizers`, together with
   `refreshRandomizers_in_orbit` and the structural
   **epoch-range-determinism** predicate `RefreshDependsOnlyOnEpochRange`).
@@ -26,6 +38,35 @@ This module addresses three units of the public-key extension workstream:
   index range, *not* on any cryptographic independence notion (see
   the naming-corrective audit note in the docstring for
   `RefreshDependsOnlyOnEpochRange`).
+
+## Workstream I6 additions (audit 2026-04-23, finding K-02)
+
+* `Orbcrypt.ObliviousSamplingPerfectHiding` — renamed from
+  `ObliviousSamplingHiding`. The pre-I name overstated its
+  cryptographic relevance: the predicate is `False` on every non-
+  trivial bundle (`t ≥ 2` with distinct randomizers refute it via
+  the index-recovery view). The post-I name accurately conveys its
+  strength as the *deterministic perfect-extremum*; the genuinely
+  ε-smooth probabilistic analogue is `ObliviousSamplingConcrete-
+  Hiding` below.
+* `Orbcrypt.oblivious_sampling_view_constant_under_perfect_hiding` —
+  renamed companion theorem for `ObliviousSamplingPerfectHiding`.
+* `Orbcrypt.ObliviousSamplingConcreteHiding` — probabilistic ε-bounded
+  hiding predicate. Asserts that the sender's obliviously-sampled
+  output is at advantage ≤ ε from a fresh uniform orbit sample
+  (`orbitDist`). For ε = 0 this is "perfect oblivious sampling"; for
+  ε > 0 this is ε-computational obliviousness.
+* `Orbcrypt.concreteHidingBundle`, `Orbcrypt.concreteHidingCombine`
+  — Workstream I post-audit (2026-04-25) **non-degenerate concrete
+  fixture** for `ObliviousSamplingConcreteHiding`: a two-randomizer
+  bundle on `Bool` under `Equiv.Perm Bool` plus the Boolean-AND
+  combine. The orbit has cardinality 2 (maximum on Bool) and the
+  combine push-forward is biased, giving a tight on-paper
+  worst-case advantage of `1/4`. Replaces the post-Workstream-I
+  `_zero_witness` (which was theatrical: required a degenerate
+  singleton-orbit bundle that collapses the security game). The
+  precise Lean proof of the `1/4` bound is research-scope (R-12);
+  see the in-module research-scope note for the on-paper argument.
 
 ## Open problem
 
@@ -147,31 +188,42 @@ theorem oblivious_sample_in_orbit [Group G] [MulAction G X] {t : ℕ}
   hClosed _ _ (ors.in_orbit i) (ors.in_orbit j)
 
 /--
-**Sender-privacy requirement (as a Prop).**
+**Sender-privacy requirement, deterministic perfect-extremum form**
+(renamed from `ObliviousSamplingHiding` in Workstream I6, audit
+2026-04-23 finding K-02).
 
-The whole point of oblivious sampling is that the sender — who sees only the
-published randomizers `(ors.randomizers i)` and the public `combine` operation
-— learns *nothing* about the secret group `G`.
+The whole point of oblivious sampling is that the sender — who sees
+only the published randomizers `(ors.randomizers i)` and the public
+`combine` operation — learns *nothing* about the secret group `G`.
 
-We formalise this via index-indistinguishability of the sender's view: for
-any Boolean observation on `(r_i, r_j, combine r_i r_j)` and `(r_k, r_l,
-combine r_k r_l)`, the observations coincide. Equivalently, the sender's
-distribution over `(input_1, input_2, output)` is invariant under the choice
-of index pair.
+This Prop formalises hiding via *index-indistinguishability* of the
+sender's view: for any Boolean observation on `(r_i, r_j, combine
+r_i r_j)` and `(r_k, r_l, combine r_k r_l)`, the observations
+coincide. Equivalently, the sender's distribution over
+`(input_1, input_2, output)` is invariant under the choice of index
+pair.
 
-**This is a strong deterministic hiding property and is *not* expected to
-hold unconditionally for concrete bundles.** It is the same kind of
-pathological-strength definition as the deterministic `OIA` in
-`Orbcrypt.Crypto.OIA` — for `t ≥ 2` with randomizers that are distinct
-orbit elements, a view that literally returns `decide (r = ors.randomizers 0)`
-witnesses that `ObliviousSamplingHiding` does not hold. Phase 8's
-probabilistic framework (`Crypto.CompOIA`) can be extended to give a
-satisfiable probabilistic analogue; we defer that to future work.
+**Naming corrective (Workstream I6, audit K-02).** The pre-I name
+`ObliviousSamplingHiding` suggested cryptographic relevance, but the
+predicate is **`False` on every non-trivial bundle** (`t ≥ 2` with
+distinct randomizers): the view `view r₀ r₁ x := decide (r₀ =
+ors.randomizers 0)` is `true` at `(0, j)` and `false` at `(1, j)`
+whenever `randomizers 0 ≠ randomizers 1`. The post-I name
+`ObliviousSamplingPerfectHiding` accurately conveys its strength as
+the *deterministic perfect-extremum* — it asserts that *all* views
+agree on *all* index pairs, which is "perfect" in the strict
+deterministic sense (no ε slack).
 
-Theorems in this module carry `ObliviousSamplingHiding` as a hypothesis
-rather than an axiom so no vacuous security claim is implied.
+**For genuinely ε-smooth oblivious-sampling hiding**, see
+`ObliviousSamplingConcreteHiding` below: the probabilistic analogue
+that admits intermediate ε ∈ (0, 1] expressing real cryptographic
+hiding under a stronger pseudo-randomness assumption on `combine`.
+
+Theorems in this module carry `ObliviousSamplingPerfectHiding` as
+a hypothesis rather than an axiom so no vacuous security claim is
+implied.
 -/
-def ObliviousSamplingHiding [Group G] [MulAction G X] {t : ℕ}
+def ObliviousSamplingPerfectHiding [Group G] [MulAction G X] {t : ℕ}
     (ors : OrbitalRandomizers G X t) (combine : X → X → X) : Prop :=
   ∀ (view : X → X → X → Bool) (i j k l : Fin t),
     view (ors.randomizers i) (ors.randomizers j)
@@ -180,20 +232,29 @@ def ObliviousSamplingHiding [Group G] [MulAction G X] {t : ℕ}
         (combine (ors.randomizers k) (ors.randomizers l))
 
 /--
-**Hiding corollary.** If `ObliviousSamplingHiding` holds, any Boolean view
-of `obliviousSample` is independent of the chosen index pair.
+**Hiding corollary** (renamed from `oblivious_sampling_view_constant`
+in Workstream I6, audit 2026-04-23 finding K-02). If
+`ObliviousSamplingPerfectHiding` holds, any Boolean view of
+`obliviousSample` is independent of the chosen index pair.
 
-This is an immediate extraction: `ObliviousSamplingHiding` is precisely the
-statement that such views coincide. It is stated separately so callers can
-use `oblivious_sampling_view_constant hHide ...` without unfolding the
-definition.
+This is an immediate extraction: `ObliviousSamplingPerfectHiding` is
+precisely the statement that such views coincide. It is stated
+separately so callers can use
+`oblivious_sampling_view_constant_under_perfect_hiding hHide ...`
+without unfolding the definition.
+
+**Naming corrective (Workstream I6).** The rename mirrors the
+predicate's rename to `ObliviousSamplingPerfectHiding` — the
+companion theorem makes the dependency on the perfect-extremum
+hypothesis explicit in the identifier itself.
 -/
-theorem oblivious_sampling_view_constant [Group G] [MulAction G X] {t : ℕ}
+theorem oblivious_sampling_view_constant_under_perfect_hiding
+    [Group G] [MulAction G X] {t : ℕ}
     (ors : OrbitalRandomizers G X t) (combine : X → X → X)
     (hClosed : ∀ (x y : X), x ∈ MulAction.orbit G ors.basePoint →
       y ∈ MulAction.orbit G ors.basePoint →
       combine x y ∈ MulAction.orbit G ors.basePoint)
-    (hHide : ObliviousSamplingHiding ors combine)
+    (hHide : ObliviousSamplingPerfectHiding ors combine)
     (view : X → X → X → Bool) (i j k l : Fin t) :
     view (ors.randomizers i) (ors.randomizers j)
         (obliviousSample ors combine hClosed i j) =
@@ -201,6 +262,172 @@ theorem oblivious_sampling_view_constant [Group G] [MulAction G X] {t : ℕ}
         (obliviousSample ors combine hClosed k l) := by
   simp only [obliviousSample_eq]
   exact hHide view i j k l
+
+-- ============================================================================
+-- Workstream I6 (audit 2026-04-23, finding K-02): probabilistic
+-- ε-smooth oblivious-sampling hiding predicate + non-vacuity witness.
+-- ============================================================================
+
+/--
+**Probabilistic oblivious-sampling hiding** (Workstream I6, audit
+2026-04-23 finding K-02).
+
+The sender's view of an obliviously-sampled output is ε-close to a
+fresh uniform sample of the orbit. Concretely: sample a uniform
+index pair `(i, j) : Fin t × Fin t` and apply `combine` to the
+corresponding randomizers; the resulting distribution is at
+advantage ≤ ε from `orbitDist (G := G) ors.basePoint`.
+
+For ε = 0 this is *perfect oblivious sampling*; for intermediate
+ε this is *ε-computational obliviousness* that can be discharged
+from a stronger pseudo-randomness assumption on `combine`.
+
+**Replaces the deterministic `ObliviousSamplingPerfectHiding`** —
+which is `False` on every non-trivial bundle — with the genuinely
+ε-smooth analogue suitable for release-facing security claims.
+
+**Type-class context.** `[Fintype G]` and `[Nonempty G]` are needed
+to define `orbitDist`; `[NeZero t]` (i.e. `t ≥ 1`) gives `Nonempty
+(Fin t × Fin t)`, which `uniformPMF (Fin t × Fin t)` requires.
+
+**Non-vacuity.** A non-degenerate concrete fixture
+`concreteHidingBundle` + `concreteHidingCombine` (post-audit,
+2026-04-25) lives below; on paper the worst-case advantage on
+that fixture is `1/4` (a tight ε ∈ (0, 1) bound). The Lean proof
+of the precise `1/4` bound is research-scope R-12; consumers
+needing a non-vacuity claim at the trivial bound `ε = 1` can
+discharge `ObliviousSamplingConcreteHiding _ _ 1` directly via
+`advantage_le_one`.
+-/
+def ObliviousSamplingConcreteHiding [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] {t : ℕ} [NeZero t]
+    (ors : OrbitalRandomizers G X t)
+    (combine : X → X → X) (ε : ℝ) : Prop :=
+  ∀ (D : X → Bool),
+    advantage D
+      (PMF.map (fun (p : Fin t × Fin t) =>
+        combine (ors.randomizers p.1) (ors.randomizers p.2))
+        (uniformPMF (Fin t × Fin t)))
+      (orbitDist (G := G) ors.basePoint) ≤ ε
+
+-- ============================================================================
+-- Workstream I post-audit (2026-04-25): non-degenerate concrete
+-- fixture for `ObliviousSamplingConcreteHiding` + research-scope
+-- disclosure.
+--
+-- The original Workstream-I `_zero_witness` proved the predicate at
+-- ε = 0 on a singleton-orbit (degenerate) bundle — vacuous in the
+-- cryptographic sense (no security game to play). The trivial
+-- `oblivious_sampling_view_advantage_bound` extraction wrapper was
+-- a one-line projection of the predicate's universal quantifier
+-- (`hHide D`). Both were removed by the post-audit pass as
+-- contributing no cryptographic content.
+--
+-- Replaced here with a non-degenerate fixture (`concreteHidingBundle`
+-- + `concreteHidingCombine`) plus an honest research-scope note
+-- documenting the on-paper bound and the reason it is not
+-- formalised in-tree.
+-- ============================================================================
+
+/-- **Concrete two-randomizer hiding bundle on `Bool`.**
+
+    A small, *non-trivial* `OrbitalRandomizers` bundle used as the
+    fixture for the cryptographic-content ε ∈ (0, 1) story below
+    (see the research-scope note for the precise on-paper bound).
+
+    * Group: `Equiv.Perm Bool` — the symmetric group on Bool, order 2.
+    * Carrier: `Bool` itself, with the standard self-action.
+    * Base point: `false`.
+    * Two randomizers: `![false, true]`. Both lie in the orbit of
+      `false` because the action is transitive (the swap permutation
+      maps `false` to `true`).
+
+    The bundle is non-trivial in the cryptographically meaningful
+    sense: the orbit of `false` has cardinality 2 (the maximum on
+    Bool), so an adversary can in principle distinguish ciphertexts.
+    The hiding property is *not* vacuous on this bundle. -/
+def concreteHidingBundle : OrbitalRandomizers (Equiv.Perm Bool) Bool 2 where
+  basePoint := false
+  randomizers := ![false, true]
+  in_orbit := fun i => by
+    fin_cases i
+    · exact ⟨1, rfl⟩
+    · refine ⟨Equiv.swap false true, ?_⟩
+      show (Equiv.swap false true) false = (![false, true] : Fin 2 → Bool) 1
+      rw [Equiv.swap_apply_left]
+      rfl
+
+/-- **Combine function: Boolean AND.**
+
+    The `combine` function paired with `concreteHidingBundle`. AND
+    is a deliberately *non-uniformising* operation: applied to a
+    uniform pair `(i, j) ∈ Fin 2 × Fin 2`, the output `randomizers
+    i AND randomizers j` puts mass `1/4` on `true` (only the pair
+    `(1, 1)`) and mass `3/4` on `false`. This biased output
+    distribution gives a non-zero adversary advantage against the
+    uniform orbit distribution; the tight on-paper bound is
+    `1/4`. -/
+def concreteHidingCombine : Bool → Bool → Bool := fun a b => a && b
+
+/-!
+### Research-scope note: precise ε = 1/4 bound for `concreteHidingBundle`
+
+The bundle `concreteHidingBundle` and combine `concreteHidingCombine`
+above form a **non-degenerate** fixture for
+`ObliviousSamplingConcreteHiding`. The precise ε bound — the
+worst-case adversary advantage — is `1/4`:
+
+* `LHS PMF` (output of `concreteHidingCombine` on uniform-pair
+  randomizers): mass `1/4` on `true`, mass `3/4` on `false`.
+* `RHS PMF` (`orbitDist false` under `Equiv.Perm Bool`): mass
+  `1/2` on each (transitive action with trivial stabilizer ⇒
+  uniform on the orbit).
+* Total-variation distance: `|1/4 - 1/2| = 1/4`.
+* Standard advantage ≤ TV bound on Bool PMFs: every distinguisher
+  achieves at most `1/4` advantage; the distinguisher `D = id`
+  achieves exactly `1/4`, so the bound is **tight**.
+
+**Why this is not formalised in Lean.** A clean Lean proof of
+`ObliviousSamplingConcreteHiding concreteHidingBundle
+concreteHidingCombine (1/4)` requires three pieces of PMF
+arithmetic in the pinned Mathlib commit:
+
+1. The pointwise computation `(orbitDist false) true = 1/2`,
+   enumerating the two permutations in `Equiv.Perm Bool` (`1` and
+   `Equiv.swap false true`).
+2. The pointwise computation of the LHS PMF at `true` and `false`,
+   enumerating the four pairs in `Fin 2 × Fin 2`.
+3. A general TV-distance bound for Bool PMFs:
+   `advantage D μ ν ≤ |μ true - ν true|.toReal`,
+   factored through `Fintype.sum_bool` and the PMF sum-to-1
+   identity.
+
+Each step is doable but the chain involves delicate ENNReal/Real
+conversions (≈150 lines of low-level proof) in the pinned Mathlib.
+The precise ε = 1/4 witness is therefore tracked as **research-
+scope follow-up R-12** (audit plan § O), pending cleaner Mathlib
+infrastructure (e.g. a `PMF.bernoulli`-vocabulary TV bound).
+
+**What this module *does* deliver (Workstream I post-audit).** The
+`concreteHidingBundle` + `concreteHidingCombine` definitions above
+are themselves substantive content: they provide a concrete,
+non-degenerate fixture that downstream research can target with a
+tight ε bound. They are distinguished from the removed
+`_zero_witness` (which required the security space to collapse to
+a single element — vacuous in the cryptographic sense). Consumers
+needing a non-vacuity claim at the trivial `ε = 1` bound can
+discharge it directly via `advantage_le_one`; the predicate's
+universal `∀ D, advantage ≤ ε` form makes
+`ObliviousSamplingConcreteHiding _ _ 1` immediate.
+
+**Honest scoreboard.** Workstream I post-audit replaces the pre-
+audit theatrical `_zero_witness` (vacuous on degenerate bundles)
+with an honest non-degenerate fixture plus a research-scope
+disclosure of the precise bound. The honest delivery is the
+fixture + disclosure, not a Lean proof of a tight ε bound.
+-/
+section ConcreteHidingBundleResearchScopeNote
+end ConcreteHidingBundleResearchScopeNote
 
 -- ============================================================================
 -- Work Unit 13.3: Randomizer Refresh Protocol

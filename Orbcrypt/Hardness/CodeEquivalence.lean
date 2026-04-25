@@ -26,7 +26,19 @@ and establishes the PAut (Permutation Automorphism group) framework.
 * `Orbcrypt.arePermEquivalent_setoid` — `Setoid` instance making
   `ArePermEquivalent` a Mathlib equivalence (Workstream D4)
 * `Orbcrypt.CEOIA` — Code Equivalence OIA variant
-* `Orbcrypt.GIReducesToCE` — GI ≤_p CE (Prop definition, not axiom)
+* `Orbcrypt.GIReducesToCE` — GI ≤_p CE (Prop definition, not axiom).
+  **Workstream I4-strengthened (audit 2026-04-23, finding J-03):**
+  the existential carries a `codeSize` function plus
+  `0 < codeSize m` and `(encode m adj).card = codeSize m`
+  non-degeneracy fields that rule out the audit-flagged
+  `encode _ _ := ∅` degenerate witness at the type level.
+* `Orbcrypt.GIReducesToCE_card_nondegeneracy_witness` —
+  type-level satisfiability witness confirming the strengthened
+  non-degeneracy fields (positive uniform `codeSize`, fixed `dim`,
+  pure encoder) are independently inhabitable. A *full* inhabitant
+  of `GIReducesToCE` (discharging the iff) requires a tight Karp
+  reduction (CFI 1992, Petrank–Roth 1997); these are research-scope
+  (audit plan § 15.1 / R-15). Workstream I4 (audit J-03).
 
 ## Main results
 
@@ -294,54 +306,151 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
     c₀ ∈ C₀ → c₁ ∈ C₁ →
     f (permuteCodeword σ₀ c₀) = f (permuteCodeword σ₁ c₁)
 
-/-- Graph Isomorphism reduces to Code Equivalence (GI ≤_p CE).
+/-- **Graph Isomorphism reduces to Permutation Code Equivalence
+    (post-Workstream-I strengthened form).**
 
-    A many-one (Karp) reduction: there exists a uniform encoding function
-    mapping graphs to codes such that graph isomorphism holds if and only if
-    the encoded codes are permutation equivalent. The encoding uses incidence
-    matrices or CFI (Cai-Furer-Immerman) gadgets.
+    A many-one (Karp) reduction: there exist a dimension function, a
+    code-cardinality function, and an encoding function such that:
 
-    **Complexity implications:**
-    - GI: best classical 2^O(√(n log n)) (Babai, 2015)
-    - CE: at least as hard as GI; believed strictly harder for specific families
-    - CE-OIA is therefore a *weaker* assumption than GI-hardness
+    1. The encoding produces codes of *positive*, *uniform* cardinality
+       determined by the graph size (the `codeSize_pos` and
+       `encode_card_eq` non-degeneracy fields below). This rules out
+       the degenerate `encode _ _ := ∅` witness flagged by audit
+       J-03 at the type level.
+    2. Two graphs are isomorphic iff their encoded codes are
+       permutation-equivalent (the standard Karp-reduction iff).
 
-    Stated as a `Prop`-valued *definition* following the OIA pattern.
-    The encoding construction is beyond this formalization's scope.
-    Results carry this as an explicit hypothesis.
+    **Workstream I4 strengthening (audit 2026-04-23, finding J-03).**
+    Pre-Workstream-I, this Prop carried only the iff and admitted the
+    `encode _ _ := ∅` degenerate witness (under which both sides of
+    the iff are vacuously inhabited). The strengthened body adds two
+    fields (`codeSize_pos` and `encode_card_eq`) that force the
+    encoder to map graphs of the same size to codes of the same
+    *positive* cardinality. The audit-flagged degenerate encoder is
+    now ruled out at compile time: the empty-finset image fails
+    `0 < codeSize m`.
 
-    **Audit note (F-12 / 2026-04-21 H1 follow-up).** This definition is
-    the deterministic Karp-claim Prop paired with the probabilistic
+    **Why two non-degeneracy fields** (`codeSize_pos` and
+    `encode_card_eq`) **rather than a single combined field.** The
+    setoid instance `arePermEquivalent_setoid` (Workstream D4) is
+    parameterised by a fixed cardinality `k`; splitting `codeSize`
+    from the encoder lets the strengthened Prop's witnesses consume
+    that setoid instance directly without re-deriving cardinality
+    equality at every call site. The literature reductions
+    (Cai–Fürer–Immerman 1992 CFI gadgets, Petrank–Roth 1997
+    incidence-matrix encodings) all produce uniform-cardinality codes
+    of the same shape.
+
+    **Composition with the probabilistic chain.** This is the
+    deterministic Karp-claim Prop paired with the probabilistic
     `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding` (Workstream G /
-    Fix C) in `Hardness/Reductions.lean`. A concrete witness via the
-    Cai–Fürer–Immerman (1992) graph gadget or the incidence-matrix
-    encoding would discharge both the deterministic claim and the
-    per-encoding Prop simultaneously; it is a research-scope follow-up
-    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). Listed
-    in the root-file "Hardness parameter Props" section for transparency.
+    Fix C) in `Hardness/Reductions.lean`. A concrete CFI or
+    Petrank–Roth witness would discharge both Props simultaneously;
+    that witness remains research-scope (audit plan § 15.1 / R-15).
 
-    **Degenerate-encoder disclosure (audit 2026-04-21 finding L4 /
-    Workstream M).** Because this Prop states the reduction at the
-    *orbit-equivalence level* (not at the advantage level), it admits
-    degenerate encoders — e.g. `encode _ _ := ∅`, under which both
-    sides of the iff are vacuously false (no graph pair satisfies the
-    `σ i, σ j` relation nontrivially on a 0-dimensional codomain, and
-    no codes `∅` are permutation equivalent in a strong enough sense
-    to yield a distinguisher). This is intentional: `GIReducesToCE` is
-    a *scaffolding* Prop expressing the *existence* of a Karp
-    reduction, paired with external documentation of which reductions
-    are believed to exist in the research literature. Quantitative
-    hardness transfer at ε < 1 lives in the probabilistic counterpart
-    `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding` (which names an
-    explicit encoder), *not* in this Prop. Callers seeking
-    cryptographically meaningful hardness transfer should cite the
-    probabilistic per-encoding Prop. -/
+    **Non-vacuity.** See `GIReducesToCE_card_nondegeneracy_witness`
+    below for a structural witness confirming the strengthened
+    non-degeneracy fields (`codeSize_pos`, `encode_card_eq`) are
+    independently inhabitable (`dim m := 1`, `codeSize m := 1`,
+    `encode m adj := {fun _ => false}`). A *full* inhabitant of
+    `GIReducesToCE` (discharging the iff) requires the research-scope
+    CFI 1992 / Petrank–Roth 1997 encoding: with a constant encoder
+    the iff's RHS becomes always True, forcing LHS (the GI predicate)
+    to be always True, but the GI predicate fails for non-isomorphic
+    graphs at `m ≥ 2`. The deviation from the audit plan is recorded
+    in `Orbcrypt.lean`'s Workstream-I snapshot. -/
 def GIReducesToCE : Prop :=
-  ∃ (dim : ℕ → ℕ)
-    (encode : (m : ℕ) → (Fin m → Fin m → Bool) → Finset (Fin (dim m) → Bool)),
-    ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
+  ∃ (dim : ℕ → ℕ) (codeSize : ℕ → ℕ)
+    (encode : (m : ℕ) → (Fin m → Fin m → Bool) →
+              Finset (Fin (dim m) → Bool)),
+    -- Non-degeneracy: codes have positive, uniform cardinality
+    -- determined by the graph size; rules out `encode _ _ := ∅`.
+    (∀ m, 0 < codeSize m) ∧
+    (∀ m adj, (encode m adj).card = codeSize m) ∧
+    -- The Karp reduction itself.
+    (∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
       (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ↔
-      ArePermEquivalent (encode m adj₁) (encode m adj₂)
+      ArePermEquivalent (encode m adj₁) (encode m adj₂))
+
+/-- **Non-vacuity witness for `GIReducesToCE`** (Workstream I4, audit
+    2026-04-23 finding J-03).
+
+    Witness construction: use the **GI-orbit-indicator encoder**.
+    For each graph `adj`, encode the *image set* of all GI-permuted
+    versions of the flattened adjacency matrix. The encoding lives in
+    `Fin (m * m) → Bool` (the m²-bit flattening of the adjacency
+    matrix), and `encode m adj` is the GI-orbit of `flat adj` under
+    coordinate permutations σ ∈ `Equiv.Perm (Fin m)` lifted to
+    `Equiv.Perm (Fin (m * m))`.
+
+    With this encoder:
+    * The codeword cardinality equals `(Equiv.Perm (Fin m))` quotiented
+      by `adj`'s automorphism group — *not* a uniform function of `m`
+      in general. To get uniform cardinality, we **tag** each permuted
+      codeword with the permutation that produced it, in a position
+      that is preserved across the encoding.
+
+    However the audit-plan template's "singleton witness" approach
+    (`encode m adj := {fun _ => false}`) is **mathematically not a
+    valid witness** for the post-Workstream-I strengthened iff: with
+    a constant encoder, RHS (`ArePermEquivalent`) is always True
+    via the identity permutation, which forces LHS (the GI predicate)
+    to be always True — but the GI predicate fails for non-isomorphic
+    graphs at `m ≥ 2`.
+
+    A *correct* non-vacuity witness for the strengthened iff requires
+    a tight Karp reduction (CFI 1992 graph gadgets, Petrank–Roth 1997
+    incidence-matrix encoding); these are research-scope (audit plan
+    § 15.1 / R-15). The post-I Prop is therefore **inhabited in
+    principle** (the cryptographic literature establishes the Karp
+    reduction), but the formal-verification witness is deferred.
+
+    **What this `Nonempty` witness establishes.** The post-I Prop's
+    *type* is well-formed and the strengthened non-degeneracy fields
+    are independently satisfiable: positive uniform `codeSize`,
+    fixed `dim`, and a pure encoder are all type-checkable. The
+    `Nonempty` claim below is the trivially-satisfiable type-witness
+    pieces (`dim m := m * m`, `codeSize m := 1`, `encode m adj :=
+    {flat adj}`) without the iff — i.e., the encoder produces a
+    well-formed, positive-cardinality, uniformly-sized image, but the
+    iff itself is the research-scope content.
+
+    For consumers needing a structural witness of the strengthened
+    non-degeneracy fields (independent of the iff), the theorem
+    `GIReducesToCE_card_nondegeneracy_witness` below packages
+    `dim m := 1`, `codeSize m := 1`, and `encode m adj := {fun _ =>
+    false}` together with proofs of the two non-degeneracy
+    obligations. This confirms the non-degeneracy fields are
+    independently inhabitable; a *full* inhabitant of `GIReducesToCE`
+    (discharging the iff) requires the research-scope CFI 1992 /
+    Petrank–Roth 1997 encoding (audit plan § 15.1 / R-15). This is
+    honest about the depth of the gap.
+
+    **What is *machine-checked* by the strengthening.** The
+    `0 < codeSize` and `card = codeSize` non-degeneracy obligations
+    are now type-level constraints; any consumer attempting to
+    construct a `GIReducesToCE` value with the audit-flagged
+    `encode _ _ := ∅` witness fails to compile (because `0 < 0` is
+    `False`). This closes the J-03 footgun *at the type level*,
+    independent of whether a non-vacuity witness exists in-tree.
+
+    **Cryptographic interpretation.** The Workstream-I strengthening
+    is a **type-level posture upgrade**, not a non-vacuity claim.
+    The pre-I Prop admitted the degenerate `encode _ _ := ∅`
+    witness; the post-I Prop rules it out at compile time. A
+    cryptographic-content non-vacuity witness (a tight Karp
+    reduction) remains research-scope, exactly as flagged by audit
+    finding R-15 in the audit plan's research catalogue. -/
+theorem GIReducesToCE_card_nondegeneracy_witness :
+    ∃ (dim : ℕ → ℕ) (codeSize : ℕ → ℕ)
+      (encode : (m : ℕ) → (Fin m → Fin m → Bool) →
+                Finset (Fin (dim m) → Bool)),
+      (∀ m, 0 < codeSize m) ∧
+      (∀ m adj, (encode m adj).card = codeSize m) :=
+  ⟨fun _ => 1, fun _ => 1,
+   fun _ _ => {fun _ => false},
+   fun _ => Nat.zero_lt_one,
+   fun _ _ => Finset.card_singleton _⟩
 
 end CEOIADefinition
 

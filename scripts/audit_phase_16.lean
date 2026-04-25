@@ -81,6 +81,10 @@ open Orbcrypt
 #print axioms IsSeparating
 #print axioms separating_implies_distinct_orbits
 #print axioms canonical_isGInvariant
+-- Workstream I3 (audit 2026-04-23, finding D-07): canonical-form
+-- indicator helper consumed by `distinct_messages_have_invariant_separator`
+-- in `Theorems/OIAImpliesCPA.lean`.
+#print axioms canon_indicator_isGInvariant
 
 -- ============================================================================
 -- §2  Cryptographic definitions (Phase 3)
@@ -134,7 +138,16 @@ open Orbcrypt
 #print axioms oia_implies_1cpa_distinct
 -- Track D (contrapositive)
 #print axioms adversary_yields_distinguisher
-#print axioms insecure_implies_separating
+-- Workstream I3 (audit 2026-04-23, finding D-07): pre-I
+-- `insecure_implies_separating` renamed to
+-- `insecure_implies_orbit_distinguisher` because the body delivers an
+-- orbit-distinguisher (not a G-invariant separating function as the
+-- pre-I name suggested). The cryptographic content the pre-I name
+-- advertised is delivered separately by
+-- `distinct_messages_have_invariant_separator` (a strictly stronger
+-- statement: G-invariance + separation, unconditional on `reps_distinct`).
+#print axioms insecure_implies_orbit_distinguisher
+#print axioms distinct_messages_have_invariant_separator
 
 -- ============================================================================
 -- §4  Concrete construction (Phase 5): S_n action on bitstrings
@@ -273,7 +286,15 @@ open Orbcrypt
 -- Workstream K4 (F-AUDIT-2026-04-21-M1): collision-case advantage
 #print axioms indCPAAdvantage_collision_zero
 #print axioms concrete_oia_implies_1cpa
-#print axioms concreteOIA_one_meaningful
+-- Workstream I1 (audit 2026-04-23, finding C-15): pre-I
+-- `concreteOIA_one_meaningful` renamed to `indCPAAdvantage_le_one`
+-- (Mathlib-style `_le_one` simp lemma — content unchanged, name now
+-- accurately describes the trivial `≤ 1` bound). The post-Workstream-I
+-- audit (2026-04-25) removed the `concreteOIA_zero_of_subsingleton_
+-- message` companion as theatrical: it required `[Subsingleton M]`,
+-- a hypothesis under which there is only one message and therefore
+-- no security game to play.
+#print axioms indCPAAdvantage_le_one
 #print axioms CompIsSecure
 #print axioms comp_oia_implies_1cpa
 #print axioms MultiQueryAdversary
@@ -311,7 +332,17 @@ open Orbcrypt
 #print axioms kemAdvantage_nonneg
 #print axioms kemAdvantage_le_one
 #print axioms concrete_kemoia_implies_secure
-#print axioms concreteKEMOIA_one_meaningful
+-- Workstream I2 (audit 2026-04-23, finding E-11): pre-I
+-- `concreteKEMOIA_one_meaningful` was a redundant duplicate of
+-- `kemAdvantage_le_one` (line 347 of `KEM/CompSecurity.lean`); deleted
+-- in Workstream I2. Consumers cite `kemAdvantage_le_one` for the
+-- trivial `≤ 1` bound. The post-Workstream-I audit (2026-04-25)
+-- removed `concreteKEMOIA_uniform_zero_of_singleton_orbit` as
+-- theatrical: it required `∀ g, g • basePoint = basePoint`, a
+-- hypothesis under which the KEM has only one ciphertext and
+-- therefore no security game to play. The cryptographically
+-- meaningful KEM-layer non-vacuity story remains
+-- `concreteKEMOIA_uniform_one` (the universal-bound anchor).
 #print axioms kemAdvantage_uniform
 #print axioms kemAdvantage_uniform_nonneg
 #print axioms kemAdvantage_uniform_le_one
@@ -430,7 +461,17 @@ open Orbcrypt
 #print axioms mem_PAutSubgroup
 #print axioms PAut_eq_PAutSubgroup_carrier
 #print axioms CEOIA
+-- Workstream I4 (audit 2026-04-23, finding J-03): the strengthened
+-- `GIReducesToCE` Prop carries non-degeneracy fields (`codeSize_pos`,
+-- `encode_card_eq`) that rule out the audit-flagged
+-- `encode _ _ := ∅` degenerate witness at the type level. The
+-- `GIReducesToCE_card_nondegeneracy_witness` confirms the
+-- non-degeneracy fields are independently inhabitable; a *full*
+-- inhabitant of `GIReducesToCE` (discharging the iff) requires a
+-- tight Karp reduction (CFI 1992 / Petrank–Roth 1997) and remains
+-- research-scope (audit plan § 15.1 / R-15).
 #print axioms GIReducesToCE
+#print axioms GIReducesToCE_card_nondegeneracy_witness
 -- Workstream E2a
 #print axioms codeOrbitDist
 #print axioms ConcreteCEOIA
@@ -456,7 +497,16 @@ open Orbcrypt
 #print axioms AreTensorIsomorphic
 #print axioms areTensorIsomorphic_refl
 #print axioms areTensorIsomorphic_symm
+-- Workstream I5 (audit 2026-04-23, finding J-08): the strengthened
+-- `GIReducesToTI` Prop carries an `encode_nonzero_of_pos_dim`
+-- non-degeneracy field that rules out the audit-flagged constant-zero
+-- encoder at the type level. `GIReducesToTI_nondegeneracy_witness`
+-- confirms the non-degeneracy field is independently inhabitable; a
+-- *full* inhabitant of `GIReducesToTI` (discharging the iff) requires
+-- the Grochow–Qiao 2021 structure-tensor encoding and remains
+-- research-scope (audit plan § 15.1 / R-15).
 #print axioms GIReducesToTI
+#print axioms GIReducesToTI_nondegeneracy_witness
 -- Workstream E2b
 #print axioms tensorOrbitDist
 #print axioms ConcreteTensorOIA
@@ -528,8 +578,37 @@ open Orbcrypt
 #print axioms obliviousSample
 #print axioms obliviousSample_eq
 #print axioms oblivious_sample_in_orbit
-#print axioms ObliviousSamplingHiding
-#print axioms oblivious_sampling_view_constant
+-- Workstream I6 (audit 2026-04-23, finding K-02): pre-I
+-- `ObliviousSamplingHiding` was the deterministic perfect-extremum
+-- form (`False` on every non-trivial bundle); renamed to
+-- `ObliviousSamplingPerfectHiding` and the companion theorem
+-- renamed to `oblivious_sampling_view_constant_under_perfect_hiding`
+-- to accurately convey the predicate's perfect-extremum strength.
+-- The probabilistic ε-smooth analogue
+-- `ObliviousSamplingConcreteHiding` is added alongside, with a
+-- structural extraction lemma `oblivious_sampling_view_advantage_bound`
+-- and a perfect-security non-vacuity witness
+-- `ObliviousSamplingConcreteHiding_zero_witness` at ε = 0 on
+-- singleton-orbit bundles.
+#print axioms ObliviousSamplingPerfectHiding
+#print axioms oblivious_sampling_view_constant_under_perfect_hiding
+#print axioms ObliviousSamplingConcreteHiding
+-- Workstream I post-audit (2026-04-25): removed
+-- `oblivious_sampling_view_advantage_bound` (one-line wrapper —
+-- callers can apply the predicate directly) and
+-- `ObliviousSamplingConcreteHiding_zero_witness` (theatrical
+-- ε = 0 witness on degenerate singleton-orbit bundles). Replaced
+-- with a non-degenerate concrete fixture:
+-- `concreteHidingBundle` + `concreteHidingCombine`. The bundle's
+-- orbit has cardinality 2 (max on Bool); the combine push-forward
+-- is biased (1/4 mass on `true`). The on-paper worst-case
+-- adversary advantage is `1/4`, but the precise Lean proof is
+-- research-scope R-12 (see the in-module docstring). The audit
+-- script exercises the non-degenerate fixture's well-typedness
+-- via the example below; the substantive cryptographic content
+-- is the *fixture's non-degeneracy*, not a tight ε bound.
+#print axioms concreteHidingBundle
+#print axioms concreteHidingCombine
 #print axioms refreshRandomizers
 #print axioms refreshRandomizers_apply
 #print axioms refreshRandomizers_in_orbit
@@ -1624,4 +1703,267 @@ example (lam n : ℕ) (M : Type) (exp : HGOEKeyExpansion lam n M) :
     obligations, not one obligation with a sloppy bound. -/
 example : ¬ ((80 : ℕ) ≥ 192) := by decide
 
+-- ============================================================================
+-- Workstream I non-vacuity witnesses (audit 2026-04-23, findings
+-- C-15, D-07, E-11, J-03, J-08, K-02): each `example` instantiates a
+-- new Workstream-I declaration on a concrete fixture and confirms the
+-- declaration is non-vacuously inhabited at known-good inputs.
+-- ============================================================================
+
+/-! ## Workstream I1 non-vacuity (audit C-15) -/
+
+/-- `indCPAAdvantage_le_one` (renamed from `concreteOIA_one_meaningful`)
+    fires on any scheme/adversary pair, delivering the trivial `≤ 1`
+    bound directly as a Mathlib-style simp lemma.
+
+    **Post-audit (2026-04-25):** the originally-paired
+    `concreteOIA_zero_of_subsingleton_message` "perfect-security
+    extremum" witness was removed as theatrical: it required
+    `[Subsingleton M]`, a hypothesis under which there is only one
+    message and therefore no security game to play. The honest I1
+    deliverable is the rename + the matching audit-script entry
+    here. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
+    indCPAAdvantage scheme A ≤ 1 :=
+  indCPAAdvantage_le_one scheme A
+
+/-! ## Workstream I2 non-vacuity (audit E-11) -/
+
+/-- `kemAdvantage_le_one` (the existing sanity bound that
+    Workstream I2 redirected consumers to after deleting the
+    redundant pre-I `concreteKEMOIA_one_meaningful`) fires on every
+    KEM/adversary triple.
+
+    **Post-audit (2026-04-25):** the originally-paired
+    `concreteKEMOIA_uniform_zero_of_singleton_orbit` "perfect-security
+    extremum" witness was removed as theatrical: it required
+    `∀ g, g • basePoint = basePoint`, a hypothesis under which the KEM
+    has only one possible ciphertext and therefore no security game
+    to play. The honest I2 deliverable is the deletion +
+    redirection-to-`kemAdvantage_le_one`, exercised here. -/
+example {G : Type} {X : Type} {K : Type}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (kem : OrbitKEM G X K) (A : KEMAdversary X K) (g₀ g₁ : G) :
+    kemAdvantage kem A g₀ g₁ ≤ 1 :=
+  kemAdvantage_le_one kem A g₀ g₁
+
+/-! ## Workstream I3 non-vacuity (audit D-07) -/
+
+/-- `canon_indicator_isGInvariant` fires on any canonical form: the
+    Boolean indicator `fun x => decide (can.canon x = c)` is
+    G-invariant (composition of `decide (· = c)` with the G-invariant
+    `can.canon`). -/
+example {G : Type} {X : Type}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (can : CanonicalForm G X) (c : X) :
+    IsGInvariant (G := G) (fun x => decide (can.canon x = c)) :=
+  canon_indicator_isGInvariant can c
+
+/-- `distinct_messages_have_invariant_separator` exhibits a G-invariant
+    Boolean function that takes different values on the
+    representatives of two distinct messages — the cryptographic
+    content the pre-I `insecure_implies_separating` name advertised
+    but did not deliver. Exercised on the same `trivialSchemeBool`
+    fixture used by the Workstream-E vacuity witness, where the two
+    messages `true` and `false` are distinct. -/
+example :
+    ∃ f : Bool → Bool,
+      IsGInvariant (G := Equiv.Perm (Fin 1)) f ∧
+      f (trivialSchemeBool.reps true) ≠
+      f (trivialSchemeBool.reps false) :=
+  distinct_messages_have_invariant_separator
+    (G := Equiv.Perm (Fin 1)) (X := Bool) (M := Bool)
+    trivialSchemeBool (m₀ := true) (m₁ := false) (by decide)
+
+/-- `insecure_implies_orbit_distinguisher` (renamed from
+    `insecure_implies_separating`) fires on any adversary with
+    advantage and delivers an orbit-distinguisher. Pairs with
+    `distinct_messages_have_invariant_separator` above to exercise
+    both Workstream-I3 deliverables. -/
+example {G : Type} {X : Type} {M : Type}
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (A : Adversary X M) (hAdv : hasAdvantage scheme A) :
+    ∃ (f : X → Bool) (m₀ m₁ : M),
+      ∃ g₀ g₁ : G, f (g₀ • scheme.reps m₀) ≠ f (g₁ • scheme.reps m₁) :=
+  insecure_implies_orbit_distinguisher scheme A hAdv
+
+/-! ## Workstream I4 non-vacuity (audit J-03) -/
+
+/-- `GIReducesToCE_card_nondegeneracy_witness` confirms the strengthened
+    non-degeneracy fields (positive uniform `codeSize`, fixed `dim`,
+    pure encoder) are independently inhabitable by the trivial
+    singleton-encoder. A *full* inhabitant of `GIReducesToCE` requires
+    the iff discharge from a tight Karp reduction (CFI 1992 /
+    Petrank–Roth 1997); research-scope (audit plan § 15.1 / R-15). -/
+example :
+    ∃ (dim : ℕ → ℕ) (codeSize : ℕ → ℕ)
+      (encode : (m : ℕ) → (Fin m → Fin m → Bool) →
+                Finset (Fin (dim m) → Bool)),
+      (∀ m, 0 < codeSize m) ∧
+      (∀ m adj, (encode m adj).card = codeSize m) :=
+  GIReducesToCE_card_nondegeneracy_witness
+
+/-- **Negative-pressure regression for I4.** Pre-Workstream-I, the
+    `GIReducesToCE` Prop admitted the degenerate `encode _ _ := ∅`
+    witness (under which `(encode m adj).card = 0`). The post-I
+    strengthening makes the audit-flagged degenerate encoder fail
+    the `0 < codeSize m` obligation at compile time — an empty
+    Finset has card 0, and `0 < 0` is decidably false. -/
+example : ¬ (0 < (∅ : Finset (Fin 1 → Bool)).card) := by simp
+
+/-! ## Workstream I5 non-vacuity (audit J-08) -/
+
+/-- `GIReducesToTI_nondegeneracy_witness` confirms the strengthened
+    non-degeneracy field is independently inhabitable by the trivial
+    constant-1 encoder over `ZMod 2`. Same caveat as I4: a *full*
+    inhabitant of `GIReducesToTI` requires the iff discharge from
+    the Grochow–Qiao 2021 structure-tensor encoding; research-scope
+    (audit plan § 15.1 / R-15). -/
+example :
+    ∃ (dim : ℕ → ℕ)
+      (encode : (m : ℕ) → (Fin m → Fin m → Bool) →
+                Tensor3 (dim m) (ZMod 2)),
+      ∀ m, 1 ≤ m → ∀ adj, encode m adj ≠ (fun _ _ _ => 0) :=
+  GIReducesToTI_nondegeneracy_witness
+
+/-- **Negative-pressure regression for I5.** Pre-Workstream-I, the
+    `GIReducesToTI` Prop admitted the degenerate constant-zero
+    encoder (`encode _ _ := fun _ _ _ => 0`). The post-I strengthening
+    makes the audit-flagged degenerate encoder fail the
+    `encode m adj ≠ (fun _ _ _ => 0)` obligation — the constant-zero
+    tensor is *equal* (not unequal) to the constant-zero tensor. -/
+example : (fun (_ _ _ : Fin 1) => (0 : ZMod 2)) =
+          (fun (_ _ _ : Fin 1) => (0 : ZMod 2)) := rfl
+
+/-! ## Workstream I6 non-vacuity (audit K-02) -/
+
+/-- A trivial `OrbitalRandomizers (Equiv.Perm (Fin 1)) Unit 1` bundle
+    on the singleton space `Unit`. Used as the concrete fixture for
+    the `ObliviousSamplingPerfectHiding` rename-regression check
+    below. The non-degenerate `Equiv.Perm Bool` fixture
+    (`concreteHidingBundle` + `concreteHidingCombine`) lives in
+    `Orbcrypt/PublicKey/ObliviousSampling.lean` and is exercised by
+    its own `#print axioms` lines earlier in this script (post-
+    audit 2026-04-25); the precise ε = 1/4 bound on that fixture
+    is research-scope R-12. -/
+def trivialOrs_I6 : OrbitalRandomizers (Equiv.Perm (Fin 1)) Unit 1 where
+  basePoint := ()
+  randomizers := fun _ => ()
+  in_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
+
+/-- `ObliviousSamplingPerfectHiding` (renamed from
+    `ObliviousSamplingHiding`) and its companion theorem
+    `oblivious_sampling_view_constant_under_perfect_hiding` are
+    well-typed on the trivial bundle. The deterministic predicate is
+    `True` here because the bundle has only one `(i, j)` pair (i.e.
+    `Fin 1 × Fin 1`), so both sides of the equality coincide
+    trivially. This is a *rename-regression check*, not a
+    cryptographic-content claim. -/
+example : ObliviousSamplingPerfectHiding trivialOrs_I6
+    (fun _ _ => trivialOrs_I6.basePoint) := by
+  intro _ _ _ _ _
+  rfl
+
+/-- **Workstream I post-audit (2026-04-25): non-degenerate fixture
+    structural exercise.** Confirms `concreteHidingBundle` and
+    `concreteHidingCombine` are well-typed inhabitants of
+    `OrbitalRandomizers (Equiv.Perm Bool) Bool 2` and `Bool → Bool →
+    Bool` respectively, and that `ObliviousSamplingConcreteHiding`
+    accepts them as arguments. This exercises the *fixture* — the
+    substantive Workstream-I post-audit content — without claiming
+    the precise ε = 1/4 bound (research-scope R-12).
+
+    For the trivial bound `ε = 1`, `advantage_le_one` discharges
+    `ObliviousSamplingConcreteHiding _ _ 1` immediately by the
+    predicate's universal `∀ D, advantage ≤ ε` form. -/
+example : ObliviousSamplingConcreteHiding concreteHidingBundle
+    concreteHidingCombine 1 := by
+  intro D
+  exact advantage_le_one _ _ _
+
+/-- **Workstream I post-audit fixture sanity check.** The bundle's
+    base point lies in its own orbit (trivially via the identity
+    permutation), and the second randomizer (`true`) lies in the
+    orbit via `Equiv.swap false true`. Exercises the bundle's
+    `in_orbit` field on a concrete index. -/
+example :
+    concreteHidingBundle.randomizers 1 ∈
+      MulAction.orbit (Equiv.Perm Bool) concreteHidingBundle.basePoint :=
+  concreteHidingBundle.in_orbit 1
+
 end NonVacuityWitnesses
+
+-- ============================================================================
+-- R-CE Layer 0 — Petrank–Roth bit-layout primitives
+-- (`Orbcrypt/Hardness/PetrankRoth/BitLayout.lean`)
+-- ============================================================================
+
+#print axioms Orbcrypt.PetrankRoth.numEdges
+#print axioms Orbcrypt.PetrankRoth.dimPR
+#print axioms Orbcrypt.PetrankRoth.codeSizePR
+#print axioms Orbcrypt.PetrankRoth.numEdges_le
+#print axioms Orbcrypt.PetrankRoth.dimPR_pos
+#print axioms Orbcrypt.PetrankRoth.codeSizePR_pos
+#print axioms Orbcrypt.PetrankRoth.dimPR_eq_codeSizePR
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.equivSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.instFintype
+#print axioms Orbcrypt.PetrankRoth.EdgeSlot.toPair
+#print axioms Orbcrypt.PetrankRoth.sum_fin_val_eq_numEdges
+#print axioms Orbcrypt.PetrankRoth.edgeSlot_card
+#print axioms Orbcrypt.PetrankRoth.edgeSlotEquiv
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints
+#print axioms Orbcrypt.PetrankRoth.edgeIndex
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_lt
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_edgeIndex
+#print axioms Orbcrypt.PetrankRoth.edgeIndex_edgeEndpoints
+#print axioms Orbcrypt.PetrankRoth.prCoord
+#print axioms Orbcrypt.PetrankRoth.prCoordKind
+#print axioms Orbcrypt.PetrankRoth.prCoord_prCoordKind
+#print axioms Orbcrypt.PetrankRoth.prCoordKind_prCoord
+#print axioms Orbcrypt.PetrankRoth.prCoordEquiv
+
+namespace PetrankRothLayer0NonVacuity
+open Orbcrypt.PetrankRoth
+
+/-- **R-CE Layer 0 non-vacuity witness.** `numEdges`, `dimPR`,
+    `codeSizePR` evaluate to the expected closed-form values at small
+    `m`, and `codeSizePR_pos` discharges the strengthened
+    `GIReducesToCE` Prop's `codeSize_pos` field at `m = 0`. -/
+example : numEdges 4 = 6 ∧ dimPR 3 = 16 ∧ codeSizePR 3 = 16 ∧
+          (0 < codeSizePR 0) :=
+  ⟨rfl, rfl, rfl, codeSizePR_pos 0⟩
+
+/-- **R-CE Layer 0 non-vacuity witness.** `prCoord` evaluates to
+    distinct columns for distinct constructor families, exhibiting
+    the four-family partition structure that downstream layers
+    consume. -/
+example :
+    (prCoord 3 (.vertex ⟨0, by decide⟩)).val = 0 ∧
+    (prCoord 3 (.incid ⟨0, by decide⟩)).val = 3 ∧
+    (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 6 ∧
+    (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 15 :=
+  ⟨rfl, rfl, rfl, rfl⟩
+
+/-- **R-CE Layer 0 non-vacuity witness.** `prCoordEquiv` round-trips
+    on the sentinel — the round-trip is the lemma the encoder
+    construction (Layer 1) consumes when interpreting the encoded
+    block. -/
+example : prCoordKind 3 (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)) =
+          PRCoordKind.sentinel :=
+  prCoordKind_prCoord 3 _
+
+/-- **R-CE Layer 0 non-vacuity witness.** `edgeEndpoints` /
+    `edgeIndex` round-trip on a concrete edge `(0, 1)` in
+    `Fin 3`.  This is the bijection the marker-forcing reverse
+    direction (Layer 4) extracts the edge permutation through. -/
+example :
+    edgeEndpoints 3 (edgeIndex 3 ⟨0, by decide⟩ ⟨1, by decide⟩
+      (by decide)) =
+    (⟨0, by decide⟩, ⟨1, by decide⟩) :=
+  edgeEndpoints_edgeIndex 3 _ _ _
+
+end PetrankRothLayer0NonVacuity
