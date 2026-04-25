@@ -3065,9 +3065,12 @@ lex-min, V1-10 / F-04, MEDIUM) has been completed:
     `Pi.preorder` diamond at the witness site.
   * A `decide`-backed evaluation confirming
     `CanonicalForm.ofLexMin.canon ![true, false, true] =
-    ![false, true, true]` under the full `Equiv.Perm (Fin 3)`
-    action (the weight-2 orbit's lex-min is the unique
-    weight-2 bitstring whose leading bit is `false`).
+    ![true, true, false]` under the full `Equiv.Perm (Fin 3)`
+    action — matching GAP's
+    `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}` exactly
+    (the weight-2 orbit's lex-min under the GAP-matching
+    "leftmost-true wins" convention is the unique weight-2
+    bitstring with `true` at positions 0 and 1).
   * A `decide`-backed evaluation on a singleton orbit:
     `canon ![false, false, false] = ![false, false, false]`
     (weight-0 is the only length-3 weight-0 bitstring, so the

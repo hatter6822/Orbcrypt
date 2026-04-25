@@ -10,7 +10,8 @@ import Orbcrypt.GroupAction.Invariant
 S_n action on bitstrings {0,1}^n: `Bitstring` type alias, `MulAction` instance
 for `Equiv.Perm (Fin n)`, Hamming weight definition, and weight-invariance
 proof. Also exposes a computable lex-order `LinearOrder` on `Bitstring n`
-(earliest-index-first), the natural choice for the concrete
+matching the GAP reference implementation's `CanonicalImage(G, x, OnSets)`
+convention — the canonical-form choice used by the concrete
 `CanonicalForm.ofLexMin` instantiation on HGOE (Workstream F of the
 2026-04-23 audit).
 
@@ -23,14 +24,14 @@ proof. Also exposes a computable lex-order `LinearOrder` on `Bitstring n`
 * `Orbcrypt.hammingWeight` — number of 1-bits in a bitstring
 * `Orbcrypt.hammingWeight_invariant` — Hamming weight is S_n-invariant
 * `Orbcrypt.bitstringLinearOrder` — computable lex `LinearOrder (Bitstring n)`
-  transported from `List Bool`'s lex order via `List.ofFn`. With `false < true`
-  (Mathlib's `Bool.linearOrder`) this is the standard earliest-index-first
-  lex convention: `false ↦ 0`, `true ↦ 1`, and the order agrees with the
-  big-endian binary encoding of the bitstring. Concretely, on
-  `Bitstring 3`:
-    ![false, false, false] < ![false, false, true] < ![false, true, false]
-    < ![false, true, true] < ![true, false, false] < ![true, false, true]
-    < ![true, true, false] < ![true, true, true].
+  matching GAP's `CanonicalImage` set-lex convention via the inverted-Bool
+  composition `List.ofFn ∘ (! ∘ ·)` (transports `List.Lex` under
+  Mathlib's `false < true` to "leftmost-true wins" on bitstrings —
+  equivalent to comparing GAP-style support sets element-wise on
+  sorted-ascending position lists). Concretely on `Bitstring 3`:
+    ![true, true, true] < ![true, true, false] < ![true, false, true]
+    < ![true, false, false] < ![false, true, true] < ![false, true, false]
+    < ![false, false, true] < ![false, false, false].
   `decide` reduces `Finset.min'` of a small concrete orbit by walking this
   order.
 
