@@ -1895,3 +1895,75 @@ example :
   concreteHidingBundle.in_orbit 1
 
 end NonVacuityWitnesses
+
+-- ============================================================================
+-- R-CE Layer 0 — Petrank–Roth bit-layout primitives
+-- (`Orbcrypt/Hardness/PetrankRoth/BitLayout.lean`)
+-- ============================================================================
+
+#print axioms Orbcrypt.PetrankRoth.numEdges
+#print axioms Orbcrypt.PetrankRoth.dimPR
+#print axioms Orbcrypt.PetrankRoth.codeSizePR
+#print axioms Orbcrypt.PetrankRoth.numEdges_le
+#print axioms Orbcrypt.PetrankRoth.dimPR_pos
+#print axioms Orbcrypt.PetrankRoth.codeSizePR_pos
+#print axioms Orbcrypt.PetrankRoth.dimPR_eq_codeSizePR
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.equivSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.instFintype
+#print axioms Orbcrypt.PetrankRoth.EdgeSlot.toPair
+#print axioms Orbcrypt.PetrankRoth.sum_fin_val_eq_numEdges
+#print axioms Orbcrypt.PetrankRoth.edgeSlot_card
+#print axioms Orbcrypt.PetrankRoth.edgeSlotEquiv
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints
+#print axioms Orbcrypt.PetrankRoth.edgeIndex
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_lt
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_edgeIndex
+#print axioms Orbcrypt.PetrankRoth.edgeIndex_edgeEndpoints
+#print axioms Orbcrypt.PetrankRoth.prCoord
+#print axioms Orbcrypt.PetrankRoth.prCoordKind
+#print axioms Orbcrypt.PetrankRoth.prCoord_prCoordKind
+#print axioms Orbcrypt.PetrankRoth.prCoordKind_prCoord
+#print axioms Orbcrypt.PetrankRoth.prCoordEquiv
+
+namespace PetrankRothLayer0NonVacuity
+open Orbcrypt.PetrankRoth
+
+/-- **R-CE Layer 0 non-vacuity witness.** `numEdges`, `dimPR`,
+    `codeSizePR` evaluate to the expected closed-form values at small
+    `m`, and `codeSizePR_pos` discharges the strengthened
+    `GIReducesToCE` Prop's `codeSize_pos` field at `m = 0`. -/
+example : numEdges 4 = 6 ∧ dimPR 3 = 16 ∧ codeSizePR 3 = 16 ∧
+          (0 < codeSizePR 0) :=
+  ⟨rfl, rfl, rfl, codeSizePR_pos 0⟩
+
+/-- **R-CE Layer 0 non-vacuity witness.** `prCoord` evaluates to
+    distinct columns for distinct constructor families, exhibiting
+    the four-family partition structure that downstream layers
+    consume. -/
+example :
+    (prCoord 3 (.vertex ⟨0, by decide⟩)).val = 0 ∧
+    (prCoord 3 (.incid ⟨0, by decide⟩)).val = 3 ∧
+    (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 6 ∧
+    (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 15 :=
+  ⟨rfl, rfl, rfl, rfl⟩
+
+/-- **R-CE Layer 0 non-vacuity witness.** `prCoordEquiv` round-trips
+    on the sentinel — the round-trip is the lemma the encoder
+    construction (Layer 1) consumes when interpreting the encoded
+    block. -/
+example : prCoordKind 3 (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)) =
+          PRCoordKind.sentinel :=
+  prCoordKind_prCoord 3 _
+
+/-- **R-CE Layer 0 non-vacuity witness.** `edgeEndpoints` /
+    `edgeIndex` round-trip on a concrete edge `(0, 1)` in
+    `Fin 3`.  This is the bijection the marker-forcing reverse
+    direction (Layer 4) extracts the edge permutation through. -/
+example :
+    edgeEndpoints 3 (edgeIndex 3 ⟨0, by decide⟩ ⟨1, by decide⟩
+      (by decide)) =
+    (⟨0, by decide⟩, ⟨1, by decide⟩) :=
+  edgeEndpoints_edgeIndex 3 _ _ _
+
+end PetrankRothLayer0NonVacuity
