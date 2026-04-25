@@ -1,4 +1,11 @@
 import Orbcrypt.GroupAction.Basic
+-- Workstream I6 (audit 2026-04-23, finding K-02): the new
+-- probabilistic predicate `ObliviousSamplingConcreteHiding` consumes
+-- `PMF.map`, `uniformPMF`, `advantage`, and `orbitDist` from the
+-- probabilistic foundations layer.
+import Orbcrypt.Probability.Monad
+import Orbcrypt.Probability.Advantage
+import Orbcrypt.Crypto.CompOIA
 
 /-!
 # Orbcrypt.PublicKey.ObliviousSampling
@@ -17,7 +24,12 @@ This module addresses three units of the public-key extension workstream:
 * **13.1 — Oblivious Orbit Sampling Definition** (`OrbitalRandomizers`,
   `obliviousSample`).
 * **13.2 — Oblivious Sampling Correctness** (`oblivious_sample_in_orbit`,
-  plus the sender-privacy `Prop`, `ObliviousSamplingHiding`).
+  plus the deterministic sender-privacy `Prop`,
+  `ObliviousSamplingPerfectHiding` (renamed from
+  `ObliviousSamplingHiding` in Workstream I6, audit 2026-04-23 finding
+  K-02), and the **probabilistic** `ObliviousSamplingConcreteHiding`
+  predicate added by the same workstream as the genuinely ε-smooth
+  analogue suitable for release-facing security claims).
 * **13.3 — Randomizer Refresh Protocol** (`refreshRandomizers`, together with
   `refreshRandomizers_in_orbit` and the structural
   **epoch-range-determinism** predicate `RefreshDependsOnlyOnEpochRange`).
@@ -26,6 +38,31 @@ This module addresses three units of the public-key extension workstream:
   index range, *not* on any cryptographic independence notion (see
   the naming-corrective audit note in the docstring for
   `RefreshDependsOnlyOnEpochRange`).
+
+## Workstream I6 additions (audit 2026-04-23, finding K-02)
+
+* `Orbcrypt.ObliviousSamplingPerfectHiding` — renamed from
+  `ObliviousSamplingHiding`. The pre-I name overstated its
+  cryptographic relevance: the predicate is `False` on every non-
+  trivial bundle (`t ≥ 2` with distinct randomizers refute it via
+  the index-recovery view). The post-I name accurately conveys its
+  strength as the *deterministic perfect-extremum*; the genuinely
+  ε-smooth probabilistic analogue is `ObliviousSamplingConcrete-
+  Hiding` below.
+* `Orbcrypt.oblivious_sampling_view_constant_under_perfect_hiding` —
+  renamed companion theorem for `ObliviousSamplingPerfectHiding`.
+* `Orbcrypt.ObliviousSamplingConcreteHiding` — probabilistic ε-bounded
+  hiding predicate. Asserts that the sender's obliviously-sampled
+  output is at advantage ≤ ε from a fresh uniform orbit sample
+  (`orbitDist`). For ε = 0 this is "perfect oblivious sampling"; for
+  ε > 0 this is ε-computational obliviousness.
+* `Orbcrypt.oblivious_sampling_view_advantage_bound` — extraction
+  shape mirroring `concrete_oia_implies_1cpa`: extracts the ε bound
+  from the predicate at any specific Boolean view.
+* `Orbcrypt.ObliviousSamplingConcreteHiding_zero_witness` —
+  non-vacuity witness at ε = 0 on a singleton-orbit bundle, replacing
+  the pre-I deterministic predicate's pathological-strength caveat
+  with a machine-checked inhabitability proof.
 
 ## Open problem
 
@@ -147,31 +184,42 @@ theorem oblivious_sample_in_orbit [Group G] [MulAction G X] {t : ℕ}
   hClosed _ _ (ors.in_orbit i) (ors.in_orbit j)
 
 /--
-**Sender-privacy requirement (as a Prop).**
+**Sender-privacy requirement, deterministic perfect-extremum form**
+(renamed from `ObliviousSamplingHiding` in Workstream I6, audit
+2026-04-23 finding K-02).
 
-The whole point of oblivious sampling is that the sender — who sees only the
-published randomizers `(ors.randomizers i)` and the public `combine` operation
-— learns *nothing* about the secret group `G`.
+The whole point of oblivious sampling is that the sender — who sees
+only the published randomizers `(ors.randomizers i)` and the public
+`combine` operation — learns *nothing* about the secret group `G`.
 
-We formalise this via index-indistinguishability of the sender's view: for
-any Boolean observation on `(r_i, r_j, combine r_i r_j)` and `(r_k, r_l,
-combine r_k r_l)`, the observations coincide. Equivalently, the sender's
-distribution over `(input_1, input_2, output)` is invariant under the choice
-of index pair.
+This Prop formalises hiding via *index-indistinguishability* of the
+sender's view: for any Boolean observation on `(r_i, r_j, combine
+r_i r_j)` and `(r_k, r_l, combine r_k r_l)`, the observations
+coincide. Equivalently, the sender's distribution over
+`(input_1, input_2, output)` is invariant under the choice of index
+pair.
 
-**This is a strong deterministic hiding property and is *not* expected to
-hold unconditionally for concrete bundles.** It is the same kind of
-pathological-strength definition as the deterministic `OIA` in
-`Orbcrypt.Crypto.OIA` — for `t ≥ 2` with randomizers that are distinct
-orbit elements, a view that literally returns `decide (r = ors.randomizers 0)`
-witnesses that `ObliviousSamplingHiding` does not hold. Phase 8's
-probabilistic framework (`Crypto.CompOIA`) can be extended to give a
-satisfiable probabilistic analogue; we defer that to future work.
+**Naming corrective (Workstream I6, audit K-02).** The pre-I name
+`ObliviousSamplingHiding` suggested cryptographic relevance, but the
+predicate is **`False` on every non-trivial bundle** (`t ≥ 2` with
+distinct randomizers): the view `view r₀ r₁ x := decide (r₀ =
+ors.randomizers 0)` is `true` at `(0, j)` and `false` at `(1, j)`
+whenever `randomizers 0 ≠ randomizers 1`. The post-I name
+`ObliviousSamplingPerfectHiding` accurately conveys its strength as
+the *deterministic perfect-extremum* — it asserts that *all* views
+agree on *all* index pairs, which is "perfect" in the strict
+deterministic sense (no ε slack).
 
-Theorems in this module carry `ObliviousSamplingHiding` as a hypothesis
-rather than an axiom so no vacuous security claim is implied.
+**For genuinely ε-smooth oblivious-sampling hiding**, see
+`ObliviousSamplingConcreteHiding` below: the probabilistic analogue
+that admits intermediate ε ∈ (0, 1] expressing real cryptographic
+hiding under a stronger pseudo-randomness assumption on `combine`.
+
+Theorems in this module carry `ObliviousSamplingPerfectHiding` as
+a hypothesis rather than an axiom so no vacuous security claim is
+implied.
 -/
-def ObliviousSamplingHiding [Group G] [MulAction G X] {t : ℕ}
+def ObliviousSamplingPerfectHiding [Group G] [MulAction G X] {t : ℕ}
     (ors : OrbitalRandomizers G X t) (combine : X → X → X) : Prop :=
   ∀ (view : X → X → X → Bool) (i j k l : Fin t),
     view (ors.randomizers i) (ors.randomizers j)
@@ -180,20 +228,29 @@ def ObliviousSamplingHiding [Group G] [MulAction G X] {t : ℕ}
         (combine (ors.randomizers k) (ors.randomizers l))
 
 /--
-**Hiding corollary.** If `ObliviousSamplingHiding` holds, any Boolean view
-of `obliviousSample` is independent of the chosen index pair.
+**Hiding corollary** (renamed from `oblivious_sampling_view_constant`
+in Workstream I6, audit 2026-04-23 finding K-02). If
+`ObliviousSamplingPerfectHiding` holds, any Boolean view of
+`obliviousSample` is independent of the chosen index pair.
 
-This is an immediate extraction: `ObliviousSamplingHiding` is precisely the
-statement that such views coincide. It is stated separately so callers can
-use `oblivious_sampling_view_constant hHide ...` without unfolding the
-definition.
+This is an immediate extraction: `ObliviousSamplingPerfectHiding` is
+precisely the statement that such views coincide. It is stated
+separately so callers can use
+`oblivious_sampling_view_constant_under_perfect_hiding hHide ...`
+without unfolding the definition.
+
+**Naming corrective (Workstream I6).** The rename mirrors the
+predicate's rename to `ObliviousSamplingPerfectHiding` — the
+companion theorem makes the dependency on the perfect-extremum
+hypothesis explicit in the identifier itself.
 -/
-theorem oblivious_sampling_view_constant [Group G] [MulAction G X] {t : ℕ}
+theorem oblivious_sampling_view_constant_under_perfect_hiding
+    [Group G] [MulAction G X] {t : ℕ}
     (ors : OrbitalRandomizers G X t) (combine : X → X → X)
     (hClosed : ∀ (x y : X), x ∈ MulAction.orbit G ors.basePoint →
       y ∈ MulAction.orbit G ors.basePoint →
       combine x y ∈ MulAction.orbit G ors.basePoint)
-    (hHide : ObliviousSamplingHiding ors combine)
+    (hHide : ObliviousSamplingPerfectHiding ors combine)
     (view : X → X → X → Bool) (i j k l : Fin t) :
     view (ors.randomizers i) (ors.randomizers j)
         (obliviousSample ors combine hClosed i j) =
@@ -201,6 +258,141 @@ theorem oblivious_sampling_view_constant [Group G] [MulAction G X] {t : ℕ}
         (obliviousSample ors combine hClosed k l) := by
   simp only [obliviousSample_eq]
   exact hHide view i j k l
+
+-- ============================================================================
+-- Workstream I6 (audit 2026-04-23, finding K-02): probabilistic
+-- ε-smooth oblivious-sampling hiding predicate + non-vacuity witness.
+-- ============================================================================
+
+/--
+**Probabilistic oblivious-sampling hiding** (Workstream I6, audit
+2026-04-23 finding K-02).
+
+The sender's view of an obliviously-sampled output is ε-close to a
+fresh uniform sample of the orbit. Concretely: sample a uniform
+index pair `(i, j) : Fin t × Fin t` and apply `combine` to the
+corresponding randomizers; the resulting distribution is at
+advantage ≤ ε from `orbitDist (G := G) ors.basePoint`.
+
+For ε = 0 this is *perfect oblivious sampling*; for intermediate
+ε this is *ε-computational obliviousness* that can be discharged
+from a stronger pseudo-randomness assumption on `combine`.
+
+**Replaces the deterministic `ObliviousSamplingPerfectHiding`** —
+which is `False` on every non-trivial bundle — with the genuinely
+ε-smooth analogue suitable for release-facing security claims.
+
+**Type-class context.** `[Fintype G]` and `[Nonempty G]` are needed
+to define `orbitDist`; `[NeZero t]` (i.e. `t ≥ 1`) gives `Nonempty
+(Fin t × Fin t)`, which `uniformPMF (Fin t × Fin t)` requires.
+`[DecidableEq X]` aligns with the `orbitDist` API (note: `orbitDist`
+itself does not strictly require `DecidableEq X`, but the extraction
+lemma `oblivious_sampling_view_advantage_bound` is sometimes called
+in contexts where `DecidableEq X` is also in scope; we keep it for
+uniformity with the rest of the probabilistic chain).
+
+**Non-vacuity.** See `ObliviousSamplingConcreteHiding_zero_witness`
+below for the perfect-security witness on singleton-orbit bundles
+(parallel to `concreteOIA_zero_of_subsingleton_message` and
+`concreteKEMOIA_uniform_zero_of_singleton_orbit` in Workstream I1
+and I2 respectively).
+-/
+def ObliviousSamplingConcreteHiding [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] {t : ℕ} [NeZero t]
+    (ors : OrbitalRandomizers G X t)
+    (combine : X → X → X) (ε : ℝ) : Prop :=
+  ∀ (D : X → Bool),
+    advantage D
+      (PMF.map (fun (p : Fin t × Fin t) =>
+        combine (ors.randomizers p.1) (ors.randomizers p.2))
+        (uniformPMF (Fin t × Fin t)))
+      (orbitDist (G := G) ors.basePoint) ≤ ε
+
+/--
+**Advantage extraction from `ObliviousSamplingConcreteHiding`**
+(Workstream I6, audit 2026-04-23 finding K-02). For any specific
+Boolean view, the advantage is bounded by the predicate's ε.
+
+Mirrors the `concrete_oia_implies_1cpa` extraction pattern on the
+scheme-OIA side: a one-line specialisation of the universal-`D`
+predicate to a particular distinguisher.
+-/
+theorem oblivious_sampling_view_advantage_bound
+    [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] {t : ℕ} [NeZero t]
+    (ors : OrbitalRandomizers G X t)
+    (combine : X → X → X) (ε : ℝ)
+    (hHide : ObliviousSamplingConcreteHiding ors combine ε)
+    (D : X → Bool) :
+    advantage D
+      (PMF.map (fun (p : Fin t × Fin t) =>
+        combine (ors.randomizers p.1) (ors.randomizers p.2))
+        (uniformPMF (Fin t × Fin t)))
+      (orbitDist (G := G) ors.basePoint) ≤ ε :=
+  hHide D
+
+/--
+**Non-vacuity witness for `ObliviousSamplingConcreteHiding` at
+ε = 0** (Workstream I6, audit 2026-04-23 finding K-02).
+
+When the group action fixes the basepoint (singleton orbit) and
+`combine` returns the basepoint regardless of inputs, both PMFs
+reduce to `PMF.pure ors.basePoint`, and the advantage between two
+equal point masses is `0` by `advantage_self`.
+
+**Proof.** Two structural reductions composed:
+* LHS: `combine := fun _ _ => ors.basePoint` makes the inner
+  function in the `PMF.map` constant, so by `PMF.map_const` the
+  push-forward is `PMF.pure ors.basePoint`.
+* RHS: under `h_fix`, `(fun g => g • ors.basePoint) = (fun _ =>
+  ors.basePoint)`, so the `orbitDist` push-forward also reduces
+  via `PMF.map_const` to `PMF.pure ors.basePoint`.
+
+After both reductions the goal is `advantage D (PMF.pure x)
+(PMF.pure x) ≤ 0`, discharged by `advantage_self`.
+
+**Hypothesis is non-trivially populated.** Any KEM/scheme whose
+basepoint is a fixed point of the group action discharges
+`h_fix` — including (but not limited to) the trivial group acting
+on any space, or any group acting trivially on a singleton.
+
+**Cryptographic interpretation.** The Phase-13 oblivious-sampling
+parallel of `concreteOIA_zero_of_subsingleton_message` (scheme
+layer) and `concreteKEMOIA_uniform_zero_of_singleton_orbit` (KEM
+layer). Together the three witnesses inhabit the meaningful
+(perfect-security) extremum across the entire post-Workstream-I
+probabilistic chain.
+-/
+theorem ObliviousSamplingConcreteHiding_zero_witness
+    [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] {t : ℕ} [NeZero t]
+    (ors : OrbitalRandomizers G X t)
+    (h_fix : ∀ g : G, g • ors.basePoint = ors.basePoint) :
+    ObliviousSamplingConcreteHiding ors
+      (fun _ _ => ors.basePoint) 0 := by
+  intro D
+  -- Goal: advantage D LHS-PMF RHS-PMF ≤ 0.
+  -- Reduce LHS: `combine = fun _ _ => ors.basePoint` is constant in
+  -- both arguments, so `PMF.map (fun p => combine (...) (...)) _ =
+  -- PMF.map (Function.const _ ors.basePoint) _ = PMF.pure ors.basePoint`.
+  have h_lhs :
+      PMF.map (fun (_ : Fin t × Fin t) => ors.basePoint)
+        (uniformPMF (Fin t × Fin t)) =
+      PMF.pure ors.basePoint :=
+    PMF.map_const _ _
+  -- Reduce RHS: under `h_fix`, `(fun g => g • ors.basePoint) =
+  -- (fun _ => ors.basePoint)`, so `orbitDist` is also a point mass.
+  have hConst_g : (fun g : G => g • ors.basePoint) =
+      Function.const G ors.basePoint := by
+    funext g
+    exact h_fix g
+  have h_rhs :
+      orbitDist (G := G) ors.basePoint = PMF.pure ors.basePoint := by
+    unfold orbitDist
+    rw [hConst_g]
+    exact PMF.map_const _ _
+  rw [h_lhs, h_rhs]
+  exact le_of_eq (advantage_self _ _)
 
 -- ============================================================================
 -- Work Unit 13.3: Randomizer Refresh Protocol

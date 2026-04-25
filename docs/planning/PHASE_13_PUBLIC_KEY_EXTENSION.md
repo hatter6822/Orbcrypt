@@ -259,7 +259,8 @@ Track C: 13.5 (CommAction) → 13.6 (CommPKE)           → 13.7 (Analysis)
 | `OrbitalRandomizers` structure | `PublicKey/ObliviousSampling.lean` | Bundle of orbit samples with membership certificate |
 | `obliviousSample` | `PublicKey/ObliviousSampling.lean` | Client-side combiner, parameterised by closure proof |
 | `oblivious_sample_in_orbit` | `PublicKey/ObliviousSampling.lean` | Orbit-membership theorem (direct application of `hClosed`) |
-| `ObliviousSamplingHiding`, `oblivious_sampling_view_constant` | `PublicKey/ObliviousSampling.lean` | Sender-privacy predicate + corollary |
+| `ObliviousSamplingPerfectHiding`, `oblivious_sampling_view_constant_under_perfect_hiding` (renamed from `ObliviousSamplingHiding` / `oblivious_sampling_view_constant` in Workstream I6 of the 2026-04-23 audit, finding K-02; the post-I name accurately conveys the perfect-extremum strength — `False` on every non-trivial bundle) | `PublicKey/ObliviousSampling.lean` | Sender-privacy predicate + corollary (deterministic perfect-extremum form) |
+| `ObliviousSamplingConcreteHiding`, `oblivious_sampling_view_advantage_bound`, `ObliviousSamplingConcreteHiding_zero_witness` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Probabilistic ε-smooth sender-privacy predicate + structural extraction lemma + non-vacuity witness at ε = 0 on singleton-orbit bundles |
 | `refreshRandomizers`, `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Epoch-indexed bundle with orbit proof |
 | `RefreshDependsOnlyOnEpochRange`, `refresh_depends_only_on_epoch_range` (renamed from `RefreshIndependent` / `refresh_independent` in Workstream L3) | `PublicKey/ObliviousSampling.lean` | Structural determinism of disjoint epochs |
 | `OrbitKeyAgreement` structure, `sessionKey` | `PublicKey/KEMAgreement.lean` | Two-party key agreement |

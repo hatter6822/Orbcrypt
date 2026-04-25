@@ -724,7 +724,7 @@ Phase 4 (Core Theorems) has been completed:
 - `Theorems/Correctness.lean` — `encrypt_mem_orbit` (ciphertext in orbit), `canon_encrypt` (canonical form preserved), `decrypt_unique` (message recovery uniqueness), `correctness` (decrypt inverts encrypt). Axioms: `propext`, `Classical.choice`, `Quot.sound` (standard Lean only)
 - `Theorems/InvariantAttack.lean` — `invariantAttackAdversary` construction, `invariant_on_encrypt` helper, `invariantAttackAdversary_correct` (case split proof), `invariant_attack` (separating invariant implies existence of a distinguishing adversary `∃ A, hasAdvantage`; informal shorthand "complete break" — see headline row #2 for the full three-convention advantage catalogue). Axioms: `propext` only
 - `Theorems/OIAImpliesCPA.lean` — `oia_specialized` (OIA instantiation), `hasAdvantage_iff` (clean unfolding), `no_advantage_from_oia` (advantage elimination), `oia_implies_1cpa` (OIA implies IND-1-CPA security). Axioms: zero (OIA is a hypothesis, not an axiom)
-- Track D (contrapositive): `adversary_yields_distinguisher`, `insecure_implies_separating`
+- Track D (contrapositive): `adversary_yields_distinguisher`, `insecure_implies_orbit_distinguisher` (renamed from `insecure_implies_separating` in Workstream I3 of the 2026-04-23 audit, finding D-07 — the body delivers an orbit-distinguisher, not a G-invariant separating function as the pre-I name suggested), `distinct_messages_have_invariant_separator` (the genuine G-invariant separator the pre-I name advertised; Workstream I3, NEW substantive theorem at standalone status)
 - All 16 work units (4.1–4.16) implemented with zero `sorry`, zero warnings, zero custom axioms
 - `lake build` succeeds with exit code 0 (902 jobs, zero errors)
 
@@ -760,7 +760,7 @@ Phase 8 (Probabilistic Foundations) has been completed:
 - `Probability/Negligible.lean` — `IsNegligible` (standard crypto negligible function definition); `isNegligible_zero`, `IsNegligible.add`, `IsNegligible.mul_const` (closure properties)
 - `Probability/Advantage.lean` — `advantage` (distinguishing advantage `|Pr[D=1|d₀] - Pr[D=1|d₁]|`); `advantage_nonneg`, `advantage_symm`, `advantage_self`, `advantage_le_one` (basic properties); `advantage_triangle` (triangle inequality); `hybrid_argument` (general n-hybrid argument by induction)
 - `Crypto/CompOIA.lean` — `orbitDist` (orbit distribution via PMF.map); `orbitDist_support`, `orbitDist_pos_of_mem` (support characterization); `ConcreteOIA` (concrete-security OIA with explicit bound ε); `concreteOIA_zero_implies_perfect`, `concreteOIA_mono`, `concreteOIA_one` (basic lemmas); `SchemeFamily` (security-parameter-indexed families); `SchemeFamily.repsAt` / `SchemeFamily.orbitDistAt` / `SchemeFamily.advantageAt` (readability helpers, Workstream A7 / F-13 — definitionally equal to the pre-refactor `@`-threaded forms, recoverable via `simp [SchemeFamily.advantageAt, SchemeFamily.orbitDistAt, SchemeFamily.repsAt]`); `CompOIA` (asymptotic computational OIA, now phrased via `advantageAt`); `det_oia_implies_concrete_zero` (bridge: deterministic OIA → ConcreteOIA(0))
-- `Crypto/CompSecurity.lean` — `indCPAAdvantage` (probabilistic IND-1-CPA advantage); `indCPAAdvantage_eq` (unfolding lemma); `concrete_oia_implies_1cpa` (ConcreteOIA(ε) → advantage ≤ ε); `concreteOIA_one_meaningful` (ConcreteOIA(1) is trivially satisfied); `CompIsSecure` (asymptotic security); `comp_oia_implies_1cpa` (CompOIA → computational security); `MultiQueryAdversary` structure; `single_query_bound` (per-query advantage ≤ ε, building block for multi-query)
+- `Crypto/CompSecurity.lean` — `indCPAAdvantage` (probabilistic IND-1-CPA advantage); `indCPAAdvantage_eq` (unfolding lemma); `concrete_oia_implies_1cpa` (ConcreteOIA(ε) → advantage ≤ ε); `indCPAAdvantage_le_one` (renamed from `concreteOIA_one_meaningful` in Workstream I1 of the 2026-04-23 audit, finding C-15 — Mathlib-style `_le_one` simp lemma; the pre-I name overstated the content); `concreteOIA_zero_of_subsingleton_message` (Workstream I1 NEW substantive non-vacuity witness — perfect concrete-security at ε = 0 on every subsingleton-message scheme, the cryptographic content the pre-I `_meaningful` name advertised but did not deliver); `CompIsSecure` (asymptotic security); `comp_oia_implies_1cpa` (CompOIA → computational security); `MultiQueryAdversary` structure; `single_query_bound` (per-query advantage ≤ ε, building block for multi-query)
 - All 10 work units (8.1–8.10) implemented with zero `sorry`, zero custom axioms
 - 5 new Lean files, ~30 new public declarations
 - `lake build` succeeds for all 21 modules (zero errors)
@@ -802,7 +802,7 @@ Phase 12 (Hardness Alignment — LESS/MEDS/TI) has been completed:
 - `lake build` succeeds for all 29 modules (zero errors)
 
 Phase 13 (Public-Key Extension) has been completed:
-- `PublicKey/ObliviousSampling.lean` — `OrbitalRandomizers` (bundle of orbit samples with membership certificate); `obliviousSample`, `obliviousSample_eq` (simp); `oblivious_sample_in_orbit` (orbit-membership theorem via closure hypothesis); `ObliviousSamplingHiding` (`Prop`-valued sender-privacy requirement, honest docstring about pathological-strength nature); `oblivious_sampling_view_constant` (immediate corollary carrying `ObliviousSamplingHiding` as hypothesis); `refreshRandomizers`, `refreshRandomizers_apply` (simp), `refreshRandomizers_in_orbit`, `refreshRandomizers_orbitalRandomizers` (epoch-indexed bundle constructor) with simp lemmas `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers`; `RefreshDependsOnlyOnEpochRange`, `refresh_depends_only_on_epoch_range` (structural determinism: refresh output depends only on sampler outputs over the per-epoch index range; renamed from `RefreshIndependent` / `refresh_independent` in Workstream L3, audit F-AUDIT-2026-04-21-M4)
+- `PublicKey/ObliviousSampling.lean` — `OrbitalRandomizers` (bundle of orbit samples with membership certificate); `obliviousSample`, `obliviousSample_eq` (simp); `oblivious_sample_in_orbit` (orbit-membership theorem via closure hypothesis); `ObliviousSamplingPerfectHiding` (renamed from `ObliviousSamplingHiding` in Workstream I6 of the 2026-04-23 audit, finding K-02 — `Prop`-valued deterministic sender-privacy requirement; the post-I name accurately conveys its perfect-extremum strength: the predicate is `False` on every non-trivial bundle); `oblivious_sampling_view_constant_under_perfect_hiding` (immediate corollary carrying `ObliviousSamplingPerfectHiding` as hypothesis; renamed companion theorem); `ObliviousSamplingConcreteHiding` (Workstream I6 NEW probabilistic ε-smooth predicate suitable for release-facing security claims — the sender's obliviously-sampled output is at advantage ≤ ε from a fresh uniform orbit sample); `oblivious_sampling_view_advantage_bound` (Workstream I6 NEW structural extraction lemma mirroring `concrete_oia_implies_1cpa`); `ObliviousSamplingConcreteHiding_zero_witness` (Workstream I6 NEW non-vacuity witness at ε = 0 on singleton-orbit bundles); `refreshRandomizers`, `refreshRandomizers_apply` (simp), `refreshRandomizers_in_orbit`, `refreshRandomizers_orbitalRandomizers` (epoch-indexed bundle constructor) with simp lemmas `refreshRandomizers_orbitalRandomizers_basePoint` / `_randomizers`; `RefreshDependsOnlyOnEpochRange`, `refresh_depends_only_on_epoch_range` (structural determinism: refresh output depends only on sampler outputs over the per-epoch index range; renamed from `RefreshIndependent` / `refresh_independent` in Workstream L3, audit F-AUDIT-2026-04-21-M4)
 - `PublicKey/KEMAgreement.lean` — `OrbitKeyAgreement` (two-party KEM structure with combiner); `encapsA`, `encapsB`, `sessionKey`; `kem_agreement_correctness` (bi-view identity: both decapsulation paths reduce to `sessionKey a b`, strengthened in Workstream A5 / F-19); `kem_agreement_alice_view`, `kem_agreement_bob_view` (each party's post-decap view equals `sessionKey`); `SessionKeyExpansionIdentity` Prop + unconditional `sessionKey_expands_to_canon_form` structural decomposition identity exhibiting `sessionKey` in terms of both parties' secret `keyDerive` and `canonForm.canon` (renamed from `SymmetricKeyAgreementLimitation` / `symmetric_key_agreement_limitation` in Workstream L4, audit F-AUDIT-2026-04-21-M5; the identity is a `rfl`-level decomposition, not an impossibility claim)
 - `PublicKey/CommutativeAction.lean` — `CommGroupAction` (typeclass extending `MulAction` with commutativity); `csidh_exchange` with simp lemmas `csidh_exchange_alice/bob/shared`; `csidh_correctness` (`a • b • x = b • a • x`); `csidh_views_agree`; `CommOrbitPKE` (public-key structure with `pk_valid` field); `encrypt`, `decrypt` + simp lemmas; `comm_pke_correctness` (CSIDH-style PKE correctness); `comm_pke_shared_secret` (sender/recipient views match); `CommGroupAction.selfAction` (`def`, not `instance`, for `CommGroup` acting on itself, to avoid typeclass diamonds); `selfAction_comm` theorem witnessing satisfiability
 - `docs/PUBLIC_KEY_ANALYSIS.md` — feasibility analysis document covering: (1) oblivious sampling viability with open `combine` problem, (2) KEM agreement limitation (symmetric setup), (3) CSIDH-style commutative action path with open concrete instantiation, (4) fundamental non-commutativity obstacle, (5) summary table and Phase 13 theorem registry
@@ -1001,7 +1001,11 @@ Phase 16 (Formal Verification of New Components) has been completed:
   `h_step` hypothesis on `indQCPA_from_perStepBound` (renamed from
   `indQCPA_bound_via_hybrid` in Workstream C of the 2026-04-23
   audit),
-  `ObliviousSamplingHiding` strength, `SessionKeyExpansionIdentity`
+  `ObliviousSamplingPerfectHiding` strength (renamed from
+  `ObliviousSamplingHiding` in Workstream I6 of the 2026-04-23
+  audit, finding K-02; the genuinely ε-smooth probabilistic
+  analogue `ObliviousSamplingConcreteHiding` is added alongside),
+  `SessionKeyExpansionIdentity`
   (formerly `SymmetricKeyAgreementLimitation`),
   Carter-Wegman as satisfiability witness only, multi-query KEM-CCA
   out of scope), and the Phase 16 exit-criteria checklist.
@@ -2447,7 +2451,78 @@ of the audit plan):**
       / zero-custom-axiom posture is preserved; every new audit-script
       `example` elaborates with standard-trio-only axioms.
 - [ ] **Workstream H** — Safe decapsulation + computable decryption (pending).
-- [ ] **Workstream I** — Naming hygiene (pending).
+- [x] **Workstream I** — Naming hygiene via *strengthening, not
+      rebadging* (closed by landing 2026-04-25). Six pre-I weak
+      identifiers were strengthened (where the property could be
+      proved in-tree) or renamed (where the property is genuinely
+      out of reach), per `CLAUDE.md`'s sibling Security-by-
+      docstring prohibition. Files touched:
+      `Orbcrypt/Crypto/CompSecurity.lean` (I1: rename
+      `concreteOIA_one_meaningful` → `indCPAAdvantage_le_one` +
+      add NEW `concreteOIA_zero_of_subsingleton_message`),
+      `Orbcrypt/KEM/CompSecurity.lean` (I2: delete
+      `concreteKEMOIA_one_meaningful` as redundant duplicate of
+      `kemAdvantage_le_one` + add NEW
+      `concreteKEMOIA_uniform_zero_of_singleton_orbit`),
+      `Orbcrypt/Theorems/OIAImpliesCPA.lean` +
+      `Orbcrypt/GroupAction/Invariant.lean` (I3: rename
+      `insecure_implies_separating` →
+      `insecure_implies_orbit_distinguisher` + add NEW helper
+      `canon_indicator_isGInvariant` + add NEW substantive
+      `distinct_messages_have_invariant_separator`),
+      `Orbcrypt/Hardness/CodeEquivalence.lean` (I4: in-place
+      strengthening of `GIReducesToCE` with `codeSize_pos` +
+      `encode_card_eq` non-degeneracy fields ruling out the
+      audit-J03 `encode _ _ := ∅` degenerate witness at the type
+      level; add `GIReducesToCE_card_nondegeneracy_witness`
+      structural witness),
+      `Orbcrypt/Hardness/TensorAction.lean` (I5: in-place
+      strengthening of `GIReducesToTI` with
+      `encode_nonzero_of_pos_dim` non-degeneracy field ruling
+      out the audit-J08 constant-zero encoder at the type level;
+      add `GIReducesToTI_nondegeneracy_witness` structural
+      witness),
+      `Orbcrypt/PublicKey/ObliviousSampling.lean` (I6: rename
+      `ObliviousSamplingHiding` → `ObliviousSamplingPerfectHiding`
+      + rename `oblivious_sampling_view_constant` →
+      `oblivious_sampling_view_constant_under_perfect_hiding`
+      + add NEW probabilistic ε-smooth predicate
+      `ObliviousSamplingConcreteHiding` + structural extraction
+      `oblivious_sampling_view_advantage_bound` + non-vacuity
+      witness `ObliviousSamplingConcreteHiding_zero_witness` at
+      ε = 0 on singleton-orbit bundles).
+      `scripts/audit_phase_16.lean`: every pre-I `#print axioms`
+      identifier renamed; 9 new entries added; 13 new non-vacuity
+      `example` blocks plus negative-pressure regressions
+      confirming the strengthened `GIReducesToCE` /
+      `GIReducesToTI` Props correctly *reject* the audit-flagged
+      degenerate encoders at compile time.
+      `Orbcrypt.lean`: dependency-graph block extended with the
+      `PublicKey.ObliviousSampling` rename; Phase 16 snapshot
+      updated to reflect post-I identifier names; Vacuity map
+      gains a Workstream-I subsection (6-row pre-I-↔-post-I
+      pairing table); Workstream I snapshot section appended.
+      `lakefile.lean` bumped from `0.1.12` to `0.1.13`. **9 new
+      public declarations** + **4 renamed declarations**
+      (content-neutral) + **2 strengthened in-place** (signature-
+      level non-degeneracy fields) + **1 deletion** (redundant
+      duplicate). Module count remains 39; public declaration
+      count rises from 358 to 366. Zero-sorry / zero-custom-axiom
+      posture preserved. **Deviation from audit plan:** the plan's
+      claimed `GIReducesToCE_singleton_witness` and
+      `GIReducesToTI_constant_one_witness` (full inhabitants of
+      the strengthened iffs) are mathematically incorrect — the
+      singleton/constant encoders force RHS to be always True
+      while LHS (the GI predicate) fails for non-isomorphic
+      graphs at `m ≥ 2`. The Workstream-I landing replaces them
+      with type-level structural non-degeneracy witnesses
+      (`GIReducesToCE_card_nondegeneracy_witness` /
+      `GIReducesToTI_nondegeneracy_witness`); a full inhabitant
+      of the iff requires a tight Karp reduction (CFI 1992 /
+      Petrank–Roth 1997 / Grochow–Qiao 2021) and remains
+      research-scope (audit plan § 15.1 / R-15). The deviation
+      is recorded honestly in the Workstream-I snapshot in
+      `Orbcrypt.lean` and in the affected theorem docstrings.
 - [ ] **Workstream J** — Invariant-attack framing + negligible closures (pending).
 - [ ] **Workstream K** — Root-file split + legacy-script relocation (pending).
 - [ ] **Workstream L** — Medium-severity structural cleanup (pending).

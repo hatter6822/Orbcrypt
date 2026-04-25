@@ -22,8 +22,18 @@ meaningful probabilistic result.
   adversary has IND-1-CPA advantage at most ε (Theorem 8.7a)
 * `Orbcrypt.comp_oia_implies_1cpa` — CompOIA implies computational security
 * `Orbcrypt.single_query_bound` — per-query advantage bounded by ConcreteOIA
-* `Orbcrypt.concreteOIA_one_meaningful` — ConcreteOIA(1) is trivially true,
-  demonstrating the definition is satisfiable
+* `Orbcrypt.indCPAAdvantage_le_one` — Mathlib-style sanity simp lemma:
+  `indCPAAdvantage scheme A ≤ 1` for every scheme and adversary. Renamed
+  from the pre-Workstream-I `concreteOIA_one_meaningful` so the
+  identifier accurately describes its content (a `_le_one` simp lemma in
+  the `kemAdvantage_le_one` mould, not a "meaningful" non-vacuity
+  claim). Workstream I of the 2026-04-23 audit, finding C-15.
+* `Orbcrypt.concreteOIA_zero_of_subsingleton_message` — substantive
+  non-vacuity witness for `ConcreteOIA` at the meaningful (perfect-
+  security) extremum: every scheme on a subsingleton message space
+  satisfies `ConcreteOIA scheme 0`. Workstream I1 (audit C-15) — the
+  cryptographic-content delivery that the pre-I `_meaningful` rename
+  did not provide.
 * `Orbcrypt.indCPAAdvantage_eq` — unfolding lemma for IND-1-CPA advantage
 * `Orbcrypt.indCPAAdvantage_collision_zero` — when the adversary's
   challenge pair collides (`m₀ = m₁`), the probabilistic IND-1-CPA
@@ -198,18 +208,67 @@ theorem concrete_oia_implies_1cpa {G : Type*} {X : Type*} {M : Type*}
 -- Work Unit 8.7b: Concrete security is meaningful
 -- ============================================================================
 
-/-- ConcreteOIA(1) is trivially true, demonstrating that the definition is
-    satisfiable — unlike the deterministic OIA, which is `False` for any
-    scheme with ≥ 2 distinct orbits.
+/-- **Mathlib-style sanity simp lemma** (Workstream I1, audit
+    2026-04-23 finding C-15). `indCPAAdvantage scheme A ≤ 1` for every
+    scheme and every adversary — an immediate corollary of
+    `advantage_le_one`. The bound is *not* a non-vacuity claim about
+    `ConcreteOIA`: the IND-1-CPA advantage is a property of the
+    `advantage` function between any two PMFs, independent of the
+    scheme structure.
 
-    The meaningful content of ConcreteOIA is in the VALUE of `ε`: smaller
-    `ε` means stronger security. This lemma shows the weakest possible
-    bound is always achievable. -/
-theorem concreteOIA_one_meaningful {G : Type*} {X : Type*} {M : Type*}
+    **Naming corrective.** Renamed from `concreteOIA_one_meaningful`
+    to `indCPAAdvantage_le_one` because the pre-I name overstated the
+    content. The "meaningful" satisfaction of `ConcreteOIA scheme ε`
+    happens at ε ≪ 1, not at ε = 1; the bound proven here is purely a
+    triangle-inequality consequence of the `advantage` definition. The
+    new name follows the Mathlib convention used by
+    `kemAdvantage_le_one` (line 347 of `KEM/CompSecurity.lean`).
+
+    **Substantive non-vacuity for `ConcreteOIA`** — perfect security
+    at the meaningful (small-ε) end of the spectrum — is delivered by
+    `concreteOIA_zero_of_subsingleton_message` below. -/
+@[simp]
+theorem indCPAAdvantage_le_one {G : Type*} {X : Type*} {M : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
     indCPAAdvantage scheme A ≤ 1 :=
   advantage_le_one _ _ _
+
+/-- **Substantive non-vacuity witness for `ConcreteOIA`** at the
+    meaningful (perfect-security) extremum.
+
+    Every scheme on a subsingleton message space satisfies
+    `ConcreteOIA scheme 0`. This is the cryptographic-content delivery
+    that the pre-Workstream-I `concreteOIA_one_meaningful` lemma did
+    *not* provide: the `ε = 1` bound is a triangle-inequality artefact
+    of `advantage`, while the `ε = 0` bound here is a structural
+    consequence of the message space being a subsingleton.
+
+    **Proof.** Under `Subsingleton M`, every pair `(m₀, m₁)` is
+    provably equal, so `scheme.reps m₀ = scheme.reps m₁`, hence
+    `orbitDist (reps m₀) = orbitDist (reps m₁)`, hence the advantage
+    of every distinguisher between them is `0` by `advantage_self`.
+
+    **Inhabited hypothesis.** `Subsingleton M` is satisfied by `Unit`,
+    by any singleton type, by `Fin 1`, etc. — a non-trivially populated
+    constraint. Together with `concreteOIA_one` (the trivial-bound
+    sanity witness), this lemma anchors both extrema of the predicate's
+    `[0, 1]` spectrum.
+
+    **Audit trace.** Workstream I1 of the 2026-04-23 audit, finding
+    C-15: closes the gap that the pre-I `concreteOIA_one_meaningful`
+    name advertised (a "meaningful non-vacuity witness") but its body
+    did not deliver (a generic `≤ 1` bound). -/
+theorem concreteOIA_zero_of_subsingleton_message
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    [Subsingleton M]
+    (scheme : OrbitEncScheme G X M) :
+    ConcreteOIA scheme 0 := by
+  intro D m₀ m₁
+  have hm : m₀ = m₁ := Subsingleton.elim _ _
+  rw [hm]
+  exact le_of_eq (advantage_self _ _)
 
 -- ============================================================================
 -- Work Unit 8.6c: Relationship to deterministic hasAdvantage

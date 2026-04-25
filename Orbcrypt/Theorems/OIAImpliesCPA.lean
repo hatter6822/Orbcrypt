@@ -1,5 +1,10 @@
 import Orbcrypt.Crypto.Security
 import Orbcrypt.Crypto.OIA
+-- Workstream I3 (audit 2026-04-23, finding D-07): the new theorem
+-- `distinct_messages_have_invariant_separator` consumes
+-- `IsGInvariant` and `canon_indicator_isGInvariant` from
+-- `GroupAction/Invariant.lean`.
+import Orbcrypt.GroupAction.Invariant
 
 /-!
 # Orbcrypt.Theorems.OIAImpliesCPA
@@ -37,7 +42,18 @@ Additionally, Track D (optional) proves the contrapositive direction:
   the release-facing corollary matching the literature's IND-1-CPA game
   (challenger rejects `(m, m)` before sampling).
 * `Orbcrypt.adversary_yields_distinguisher` — advantage implies a distinguisher
-* `Orbcrypt.insecure_implies_separating` — insecurity implies a separating function
+* `Orbcrypt.insecure_implies_orbit_distinguisher` — insecurity implies a
+  Boolean orbit-distinguisher (renamed from the pre-Workstream-I
+  `insecure_implies_separating`; the renamed identifier accurately
+  describes the weaker content — an arbitrary Boolean distinguisher,
+  *not* a G-invariant separating function). Audit 2026-04-23 finding
+  D-07, Workstream I3.
+* `Orbcrypt.distinct_messages_have_invariant_separator` — the
+  cryptographic-content delivery the pre-I name advertised: from any
+  two distinct messages, exhibit a **G-invariant** Boolean function
+  separating their representatives. Strictly stronger than
+  `insecure_implies_orbit_distinguisher` (no adversary required;
+  conclusion includes G-invariance). Workstream I3 (audit D-07).
 
 ## References
 
@@ -193,23 +209,121 @@ theorem adversary_yields_distinguisher [Group G] [MulAction G X] [DecidableEq X]
 -- ============================================================================
 
 /--
-**Contrapositive.** If the scheme is insecure, a separating function exists.
-Together with the invariant attack theorem, this establishes:
-  insecurity ↔ existence of a separating invariant
-(modulo the distinction between G-invariant functions and arbitrary
-distinguishers).
+**Insecurity yields an orbit distinguisher (renamed from the pre-
+Workstream-I `insecure_implies_separating`).**
 
-**Scope limitation:** This theorem shows that *some* Boolean function
-distinguishes orbit samples, but does not prove that function is G-invariant.
-The full equivalence would require showing that any distinguisher can be
-"averaged" into a G-invariant one, which requires probabilistic reasoning
-beyond the current scope. -/
-theorem insecure_implies_separating [Group G] [MulAction G X] [DecidableEq X]
+If the scheme is insecure, there exists a Boolean function that
+distinguishes a specific pair `(g₀ • reps m₀, g₁ • reps m₁)`. The
+distinguisher returned is the adversary's `guess` function, which is
+**not in general G-invariant**.
+
+**Naming corrective (Workstream I3, audit 2026-04-23 finding D-07).**
+Pre-I this theorem was named `insecure_implies_separating`, which
+suggested it produced a *G-invariant separating function* (in the
+sense of `IsSeparating` from `GroupAction/Invariant.lean`). The body
+delivers only the second conjunct of `IsSeparating` — value
+disagreement on a single pair — but no G-invariance claim. The
+rename restores accuracy: the conclusion is an *orbit distinguisher*
+(a Boolean test that disagrees on two specific orbit-action images),
+not a separating G-invariant function.
+
+**For G-invariant separation** see
+`distinct_messages_have_invariant_separator` below, which delivers
+genuine G-invariance unconditionally on any two distinct messages
+(no adversary required, no `hasAdvantage` hypothesis). The two
+theorems sit alongside each other: `insecure_implies_orbit_
+distinguisher` for adversary-extracted distinguishers (which may
+fail G-invariance), and `distinct_messages_have_invariant_separator`
+for the structural existence of a G-invariant separator on any
+distinct-message pair. -/
+theorem insecure_implies_orbit_distinguisher
+    [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M)
     (A : Adversary X M) (hAdv : hasAdvantage scheme A) :
     ∃ (f : X → Bool) (m₀ m₁ : M),
       ∃ g₀ g₁ : G, f (g₀ • scheme.reps m₀) ≠ f (g₁ • scheme.reps m₁) := by
   obtain ⟨f, m₀, m₁, g₀, g₁, h⟩ := adversary_yields_distinguisher scheme A hAdv
   exact ⟨f, m₀, m₁, g₀, g₁, h⟩
+
+/--
+**G-invariant separator from message distinctness** (Workstream I3,
+audit 2026-04-23 finding D-07).
+
+Given any two **distinct** messages `m₀ ≠ m₁`, there exists a
+G-invariant Boolean function on `X` that takes different values on
+their representatives `scheme.reps m₀` and `scheme.reps m₁`.
+
+This is the **cryptographic content** the pre-Workstream-I name
+`insecure_implies_separating` (renamed to
+`insecure_implies_orbit_distinguisher`) advertised but did not
+deliver. The pre-I theorem produced an arbitrary distinguisher
+extracted from a hypothetical adversary; this theorem produces a
+function that is G-invariant (in the sense of
+`GroupAction/Invariant.lean`'s `IsGInvariant`) **and** separating
+(in the sense of `IsSeparating`'s second conjunct), and it does so
+**unconditionally** on the message-distinctness hypothesis (no
+adversary, no `hasAdvantage`).
+
+**Construction.** The canonical-form discriminator
+`f x := decide (scheme.canonForm.canon x = scheme.canonForm.canon
+(scheme.reps m₀))` is:
+
+* **G-invariant** by `canon_indicator_isGInvariant`
+  (`GroupAction/Invariant.lean`), which composes `decide (· = c)`
+  with the G-invariant `scheme.canonForm.canon`.
+* **Separating** for `m₀ ≠ m₁` because `scheme.reps_distinct`
+  guarantees the orbits differ, hence the canonical forms differ
+  (contrapositive of `canon_eq_implies_orbit_eq` in
+  `GroupAction/Canonical.lean`). The LHS evaluates to `true` by
+  reflexivity; the RHS evaluates to `false` by the contrapositive.
+
+**Status.** Standalone (release-citable). This closes the
+release-messaging gap that audit findings F-06 (2026-04-14) and
+D-07 (2026-04-23) flagged: the scheme's vulnerability to the
+invariant attack of `Theorems/InvariantAttack.lean` is now
+machine-checked at the *predicate-existence* level, not just at
+the *adversary-existence* level. -/
+theorem distinct_messages_have_invariant_separator
+    [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    {m₀ m₁ : M} (h_ne : m₀ ≠ m₁) :
+    ∃ f : X → Bool,
+      IsGInvariant (G := G) f ∧
+      f (scheme.reps m₀) ≠ f (scheme.reps m₁) := by
+  -- Witness: the canonical-form discriminator at `canon (reps m₀)`.
+  refine ⟨fun x => decide (scheme.canonForm.canon x =
+                             scheme.canonForm.canon
+                               (scheme.reps m₀)),
+          canon_indicator_isGInvariant scheme.canonForm _,
+          ?_⟩
+  -- Separation: distinct messages have distinct orbits (by
+  -- `reps_distinct`), hence distinct canonical forms.
+  have h_orbit_ne :
+      MulAction.orbit G (scheme.reps m₀) ≠
+      MulAction.orbit G (scheme.reps m₁) :=
+    scheme.reps_distinct m₀ m₁ h_ne
+  have h_canon_ne :
+      scheme.canonForm.canon (scheme.reps m₀) ≠
+      scheme.canonForm.canon (scheme.reps m₁) := by
+    intro h_eq
+    exact h_orbit_ne
+      (canon_eq_implies_orbit_eq scheme.canonForm _ _ h_eq)
+  -- Goal: decide (canon (reps m₀) = canon (reps m₀)) ≠
+  --       decide (canon (reps m₁) = canon (reps m₀))
+  -- LHS reduces to `true` by reflexivity; RHS reduces to `false` by
+  -- `decide_eq_false` applied to the symmetric form of `h_canon_ne`.
+  -- Beta-reduce the lambda applications so the rewrites match.
+  show decide (scheme.canonForm.canon (scheme.reps m₀) =
+              scheme.canonForm.canon (scheme.reps m₀)) ≠
+       decide (scheme.canonForm.canon (scheme.reps m₁) =
+              scheme.canonForm.canon (scheme.reps m₀))
+  have h_lhs : decide (scheme.canonForm.canon (scheme.reps m₀) =
+                       scheme.canonForm.canon (scheme.reps m₀)) = true :=
+    decide_eq_true rfl
+  have h_rhs : decide (scheme.canonForm.canon (scheme.reps m₁) =
+                       scheme.canonForm.canon (scheme.reps m₀)) = false :=
+    decide_eq_false (Ne.symm h_canon_ne)
+  rw [h_lhs, h_rhs]
+  decide
 
 end Orbcrypt

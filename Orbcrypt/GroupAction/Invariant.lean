@@ -21,6 +21,11 @@ the encryption scheme is completely broken.
 * `Orbcrypt.IsSeparating` — invariant function that distinguishes two points
 * `Orbcrypt.separating_implies_distinct_orbits` — separation implies distinct orbits
 * `Orbcrypt.canonical_isGInvariant` — canonical form is G-invariant
+* `Orbcrypt.canon_indicator_isGInvariant` — Boolean indicator
+  `fun x => decide (can.canon x = c)` is G-invariant. Workstream I3
+  (audit 2026-04-23, finding D-07): the structural building block for
+  `distinct_messages_have_invariant_separator`, witnessing that a
+  canonical-form discriminator yields a G-invariant Boolean function.
 
 ## References
 
@@ -155,6 +160,35 @@ theorem canonical_isGInvariant (can : CanonicalForm G X) :
   -- orbit G (g • x) = orbit G x by MulAction.orbit_smul
   -- Then can.orbit_iff gives canon (g • x) = canon x
   exact (can.orbit_iff (g • x) x).mpr (MulAction.orbit_smul g x)
+
+/--
+**Canonical-form indicator is G-invariant** (Workstream I3, audit
+2026-04-23 finding D-07).
+
+For any canonical form `can : CanonicalForm G X` and any fixed point
+`c : X`, the Boolean indicator `fun x => decide (can.canon x = c)` is
+G-invariant. The proof composes `decide (· = c)` with the G-invariant
+`can.canon` via `canonical_isGInvariant`.
+
+**Role.** This is the structural building block for
+`distinct_messages_have_invariant_separator` in
+`Theorems/OIAImpliesCPA.lean`: any canonical-form-derived discriminator
+delivers G-invariance unconditionally, which the pre-Workstream-I
+`insecure_implies_separating` theorem (now renamed
+`insecure_implies_orbit_distinguisher`) did not provide. Exposed as a
+free-standing Mathlib-style lemma so consumers can build their own
+G-invariant Boolean tests without re-deriving the canonical-form
+invariance argument at every call site.
+-/
+theorem canon_indicator_isGInvariant [DecidableEq X]
+    (can : CanonicalForm G X) (c : X) :
+    IsGInvariant (G := G) (fun x => decide (can.canon x = c)) := by
+  intro g x
+  -- Goal: decide (can.canon (g • x) = c) = decide (can.canon x = c).
+  -- `canonical_isGInvariant can g x : can.canon (g • x) = can.canon x`
+  -- rewrites the LHS to match the RHS exactly.
+  show decide (can.canon (g • x) = c) = decide (can.canon x = c)
+  rw [canonical_isGInvariant can g x]
 
 end CanonicalInvariant
 
