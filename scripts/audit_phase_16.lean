@@ -1470,22 +1470,29 @@ lambda-abstraction). Pre-G the structure was instantiable only at the
 λ = 128 row of the Phase-14 sweep; the post-G shape lets every
 λ ∈ {80, 128, 192, 256} security tier inhabit `HGOEKeyExpansion lam …`
 with a `group_order_log` discharged at compile time by `decide` /
-`Nat.le.refl`.
+`le_refl`.
 
 Each witness below is a complete `HGOEKeyExpansion lam n M` value
-with:
-* `b * ℓ = n` (Stage 1 parameter validity);
-* `code_dim ≤ n` (Stage 2 dimension validity);
-* `group_order_log ≥ lam` discharged via the trivially-true bound
-  `lam ≤ lam` (we choose `group_order_log := lam` for simplicity);
+that mirrors the **balanced tier** of `docs/PARAMETERS.md` §6.2
+(the default recommended deployment for each λ):
+* `b = 4`, `ℓ = λ`, `n = 4·λ` (Stage 1 parameter validity:
+  `n = b * ℓ` decides);
+* `code_dim = 2·λ ≤ n` (Stage 2 dimension validity);
+* `group_order_log := lam` and `group_large_enough` discharged via
+  the trivially-true bound `lam ≤ lam` (we choose
+  `group_order_log := lam` — the lower-bound floor; production
+  deployments choose `group_order_log` strictly above `lam` per the
+  scaling-model thresholds in `docs/PARAMETERS.md` §4);
 * `weight = 0` and `reps := fun _ => fun _ => false` (Stage 4
   uniformity holds vacuously: the all-zero bitstring has Hamming
-  weight 0 by `Finset.filter_false`).
+  weight 0 by the helper `hammingWeight_zero_bitstring` below).
 
-The witnesses are deliberately tiny (singleton message space `Unit`)
-so the elaboration cost is constant across security levels; the
-non-trivial part is the `group_large_enough` discharge, which is the
-property the Workstream-G refactor exists to make instantiable. -/
+The witnesses use the singleton message space `Unit` to keep the
+Stage 4 obligation trivial; production HGOE uses a real message
+space `M` of orbit indices and a `reps` function whose Hamming
+weight equals `⌊n/2⌋`. The non-trivial part of the witness — and
+the property the Workstream-G refactor exists to make
+instantiable — is the `group_large_enough` field. -/
 
 /-- A reusable Stage-4 helper: under the all-zero bitstring `_ ↦ false`,
     the Hamming weight is 0 because the underlying filter is empty.
@@ -1499,37 +1506,55 @@ private theorem hammingWeight_zero_bitstring (n : ℕ) :
   -- predicate decides to `False` at every input.
   simp
 
+-- Defensive `#print axioms` on the Stage-4 helper. The four tier
+-- witnesses below consume `hammingWeight_zero_bitstring` to discharge
+-- `reps_same_weight`; if a future change introduces a `sorry` or a
+-- custom axiom in the helper, this line surfaces it in the audit
+-- output (the witness `example`s themselves are anonymous and have no
+-- individual `#print axioms`, so without this line a regression in
+-- the helper could pass silently). The CI parser walks every
+-- "depends on axioms" entry and rejects anything outside the standard
+-- Lean trio.
+#print axioms hammingWeight_zero_bitstring
+
 /-- **Workstream G non-vacuity witness at λ = 80.** The smallest of
-    the four documented Phase-14 tiers (`docs/PARAMETERS.md`,
-    `docs/benchmarks/results_80.csv`). The `group_large_enough`
-    field is `group_order_log ≥ 80`, discharged by `le_refl _`
-    after we choose `group_order_log := 80`. The bitstring length
-    `n = 256` matches the §2 balanced-tier recommendation
-    `n = 4 · λ = 320` rounded down to the smallest convenient
-    `b · ℓ` factorisation; here `b = 4`, `ℓ = 64`, so `n = 4 · 64 =
-    256` (`param_valid`). Code dimension `code_dim = 128 ≤ 256`
-    (`code_valid`). -/
-example : HGOEKeyExpansion 80 256 Unit where
+    the four documented Phase-14 tiers (`docs/PARAMETERS.md` §6.5).
+    Parameter values match the **balanced tier** (default recommended,
+    `docs/PARAMETERS.md` §6.2): `b = 4`, `ℓ = λ = 80`, `n = 4·λ =
+    320`, `code_dim = 2·λ = 160`. The `group_large_enough` field
+    `group_order_log ≥ 80` is discharged by `le_refl _` after we
+    choose `group_order_log := 80` (the lower-bound floor; production
+    deployments choose strictly larger per `log₂|G| = 161` from the
+    §6.2 row).
+
+    Stage 4 (weight uniformity) is satisfied vacuously: the
+    `reps := fun _ _ => false` choice gives every representative
+    Hamming weight 0, which equals `weight := 0`. Production HGOE
+    uses `weight = ⌊n/2⌋ = 160`, but the `weight := 0` choice
+    suffices for non-vacuity (the structure is inhabited; the
+    Workstream-G fix is about `group_large_enough`, not Stage 4). -/
+example : HGOEKeyExpansion 80 320 Unit where
   b := 4
-  ℓ := 64
+  ℓ := 80
   param_valid := by decide
-  code_dim := 128
+  code_dim := 160
   code_valid := by decide
   group_order_log := 80
   group_large_enough := le_refl _
   weight := 0
   reps := fun _ _ => false
-  reps_same_weight := fun _ => hammingWeight_zero_bitstring 256
+  reps_same_weight := fun _ => hammingWeight_zero_bitstring 320
 
 /-- **Workstream G non-vacuity witness at λ = 128.** The original
     pre-Workstream-G hard-coded tier — the only level the pre-G
     structure could inhabit. Now expressed as one tier among four,
-    with the same Lean-level discharge pattern. Matches the
-    aggressive-tier row of `docs/benchmarks/results_128.csv` at
-    `b = 8`, `ℓ = 64`, `n = 512`. -/
+    with the same Lean-level discharge pattern. Parameter values
+    match the **balanced tier** (default, `docs/PARAMETERS.md`
+    §6.2): `b = 4`, `ℓ = λ = 128`, `n = 4·λ = 512`, `code_dim =
+    2·λ = 256`. -/
 example : HGOEKeyExpansion 128 512 Unit where
-  b := 8
-  ℓ := 64
+  b := 4
+  ℓ := 128
   param_valid := by decide
   code_dim := 256
   code_valid := by decide
@@ -1540,11 +1565,13 @@ example : HGOEKeyExpansion 128 512 Unit where
   reps_same_weight := fun _ => hammingWeight_zero_bitstring 512
 
 /-- **Workstream G non-vacuity witness at λ = 192.** A Phase-14 tier
-    that the pre-G hard-coded `≥ 128` bound made strictly *over*-
+    that the pre-G hard-coded `≥ 128` bound made strictly *under*-
     discharging (an `HGOEKeyExpansion` claiming `≥ 128` security is
     *not* a witness of `≥ 192` security; the post-G shape requires
-    each tier to discharge its own bound). Matches the conservative-
-    tier shape with `b = 4`, `ℓ = 192`, `n = 768`. -/
+    each tier to discharge its own bound). Parameter values match
+    the **balanced tier** (default, `docs/PARAMETERS.md` §6.2):
+    `b = 4`, `ℓ = λ = 192`, `n = 4·λ = 768`, `code_dim = 2·λ =
+    384`. -/
 example : HGOEKeyExpansion 192 768 Unit where
   b := 4
   ℓ := 192
@@ -1558,12 +1585,14 @@ example : HGOEKeyExpansion 192 768 Unit where
   reps_same_weight := fun _ => hammingWeight_zero_bitstring 768
 
 /-- **Workstream G non-vacuity witness at λ = 256.** The largest of
-    the four documented tiers, matching `docs/benchmarks/results_256.
-    csv`. The pre-G structure could *not* discharge `group_order_log
-    ≥ 256` in general (only `≥ 128` was demanded), so callers
-    targeting the highest security level had no machine-checked
-    obligation that the group was actually large enough. The post-G
-    structure forces them to supply the witness. -/
+    the four documented tiers. The pre-G structure could *not*
+    discharge `group_order_log ≥ 256` in general (only `≥ 128` was
+    demanded), so callers targeting the highest security level had
+    no machine-checked obligation that the group was actually large
+    enough. The post-G structure forces them to supply the witness.
+    Parameter values match the **balanced tier** (default,
+    `docs/PARAMETERS.md` §6.2): `b = 4`, `ℓ = λ = 256`, `n = 4·λ =
+    1024`, `code_dim = 2·λ = 512`. -/
 example : HGOEKeyExpansion 256 1024 Unit where
   b := 4
   ℓ := 256

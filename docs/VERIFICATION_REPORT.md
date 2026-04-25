@@ -2067,7 +2067,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   **G2.** `scripts/audit_phase_16.lean`: a new "Workstream G
   non-vacuity witnesses" section under
   `§ 12 NonVacuityWitnesses` lands four `example` blocks, one
-  per documented Phase-14 tier (`HGOEKeyExpansion 80 256 Unit`,
+  per documented Phase-14 tier (`HGOEKeyExpansion 80 320 Unit`,
   `HGOEKeyExpansion 128 512 Unit`, `HGOEKeyExpansion 192 768
   Unit`, `HGOEKeyExpansion 256 1024 Unit`). Each witness
   exhibits a complete `HGOEKeyExpansion lam n Unit` value with
@@ -2106,15 +2106,20 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   **Verification.** `lake build` succeeds for all 39 modules
   with zero warnings / zero errors. `scripts/audit_phase_16.
   lean` emits standard-trio-only axiom output for `#print axioms
-  HGOEKeyExpansion`; the four non-vacuity `example`s elaborate
-  cleanly with all field discharges resolving via `le_refl _`,
-  `decide`, or `simp`. The module count remains 39; public
-  declaration count remains 358 (the structure gains a
-  parameter, not a field); the Phase-16 `#print axioms` audit
-  total is unchanged at 382 (the existing `#print axioms
-  HGOEKeyExpansion` line continues to fire); the zero-sorry /
-  zero-custom-axiom posture is preserved; the standard-trio-
-  only axiom-dependency posture is preserved.
+  HGOEKeyExpansion` and for the new defensive `#print axioms
+  hammingWeight_zero_bitstring` (the private helper used to
+  discharge Stage-4 weight-uniformity for the four tier
+  witnesses). All four non-vacuity `example`s elaborate cleanly
+  with field discharges resolving via `le_refl _`, `decide`, or
+  `simp`. The module count remains 39; public declaration count
+  remains 358 (the structure gains a parameter, not a field);
+  the Phase-16 `#print axioms` audit total rises from 382 to
+  383 (the new line covers the audit-script-internal
+  `hammingWeight_zero_bitstring` helper, ensuring CI surfaces
+  any future helper regression that anonymous `example`s would
+  otherwise hide); the zero-sorry / zero-custom-axiom posture
+  is preserved; the standard-trio-only axiom-dependency posture
+  is preserved.
 
   **Patch version.** `lakefile.lean` bumped from `0.1.11` to
   `0.1.12` for Workstream G — the `HGOEKeyExpansion` signature

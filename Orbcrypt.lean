@@ -2421,7 +2421,7 @@ above `lam` (e.g., L3 in `docs/benchmarks/results_128.csv` has
   WORKSTREAM_PLAN.md` § 10.
 * `scripts/audit_phase_16.lean` — adds a "Workstream G non-
   vacuity witnesses" section with **four** `example`s, one per
-  documented tier (`HGOEKeyExpansion 80 256 Unit`,
+  documented tier (`HGOEKeyExpansion 80 320 Unit`,
   `HGOEKeyExpansion 128 512 Unit`, `HGOEKeyExpansion 192 768
   Unit`, `HGOEKeyExpansion 256 1024 Unit`). Each witness
   discharges every structure field including
@@ -2505,9 +2505,14 @@ count remains 39; public declaration count remains 358. The
 zero-sorry / zero-custom-axiom posture and the standard-trio-
 only axiom-dependency posture are preserved. The Phase-16
 audit script gains four new non-vacuity examples plus one
-helper, three regression examples (field projection, λ
-monotonicity), and one `private theorem`; the `#print axioms`
-total is unchanged (the audit script's `#print axioms
-HGOEKeyExpansion` entry already existed and continues to
-fire).
+private helper `hammingWeight_zero_bitstring` (a
+script-internal `private theorem` proving the all-zero
+bitstring has Hamming weight 0, used to discharge Stage-4
+weight-uniformity for the four tier witnesses) plus two
+regression examples (field projection, λ monotonicity); the
+`#print axioms` total rises from 382 to 383, with the new
+entry being a defensive `#print axioms
+hammingWeight_zero_bitstring` line that surfaces any future
+helper regression in the CI parser even though the witness
+`example`s themselves are anonymous.
 -/

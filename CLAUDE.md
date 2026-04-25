@@ -2424,7 +2424,7 @@ of the audit plan):**
       `scripts/audit_phase_16.lean` (G2): adds a "Workstream G non-
       vacuity witnesses" section under
       `§ 12 NonVacuityWitnesses` with four `example` blocks — one
-      per documented Phase-14 tier (`HGOEKeyExpansion 80 256 Unit`,
+      per documented Phase-14 tier (`HGOEKeyExpansion 80 320 Unit`,
       `HGOEKeyExpansion 128 512 Unit`, `HGOEKeyExpansion 192 768 Unit`,
       `HGOEKeyExpansion 256 1024 Unit`) — plus a private helper
       `hammingWeight_zero_bitstring` reused by all four to discharge
@@ -3250,8 +3250,14 @@ standard Lean trio (`propext`, `Classical.choice`,
 `Quot.sound`); none depends on `sorryAx` or a custom axiom.
 `lake build` succeeds for all 39 modules with zero warnings /
 zero errors. `scripts/audit_phase_16.lean` emits standard-trio-
-only axiom output for `#print axioms HGOEKeyExpansion`; the
-four non-vacuity `example`s elaborate cleanly.
+only axiom output for `#print axioms HGOEKeyExpansion` and for
+the new defensive `#print axioms hammingWeight_zero_bitstring`
+(the audit-script-internal `private theorem` used to discharge
+Stage-4 weight-uniformity for the four tier witnesses); the
+four non-vacuity `example`s elaborate cleanly. The Phase-16
+`#print axioms` total rises from 382 to 383 (the new line
+covers the helper, ensuring CI surfaces any future helper
+regression that anonymous `example`s would otherwise hide).
 
 Patch version: `lakefile.lean` bumped from `0.1.11` to
 `0.1.12` for Workstream G — the `HGOEKeyExpansion` signature
