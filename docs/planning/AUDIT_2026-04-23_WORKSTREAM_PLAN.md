@@ -1667,14 +1667,28 @@ example : ∃ (G : Subgroup (Equiv.Perm (Fin 3))),
   refine ⟨Subgroup.closure {σ}, trivial⟩
 
 /-- The lex-min canonical form of `![true, false, true]` under the
-    subgroup `⟨Equiv.swap 0 1⟩` is `![false, true, true]` (swapping
-    positions 0 and 1 gives the lex-smaller bit pattern). -/
+    subgroup `⟨Equiv.swap 0 1⟩` is `![true, false, true]` itself
+    (the swap of positions 0 and 1 yields `![false, true, true]`,
+    but under the GAP-matching `bitstringLinearOrder`'s "leftmost-
+    true wins" convention, the input `![true, false, true]` has its
+    leftmost true at position 0 while `![false, true, true]` has
+    its leftmost true at position 1, so the input itself is the
+    lex-min of the orbit).
+
+    NOTE: this expected value reflects the GAP-matching order
+    landed in Workstream F. An earlier sketch in this planning
+    document predicted `![false, true, true]` based on the
+    standard `false < true` Bool ordering interpretation; the
+    actual implementation uses the inverted-Bool composition
+    `List.ofFn ∘ (! ∘ ·)` so that Lean's canonical-form choice
+    matches the GAP reference's `CanonicalImage(G, x, OnSets)`
+    output point-for-point. -/
 -- Evaluation test (expected to reduce by `decide` at compile time):
 example :
     let σ : Equiv.Perm (Fin 3) := Equiv.swap 0 1
     let G : Subgroup (Equiv.Perm (Fin 3)) := Subgroup.closure {σ}
     let can := CanonicalForm.ofLexMin G
-    can.canon ![true, false, true] = ![false, true, true] := by
+    can.canon ![true, false, true] = ![true, false, true] := by
   decide
 end LexMinWitness
 ```
@@ -1753,9 +1767,11 @@ All six § 9.6 exit criteria met:
    Classical.choice, Quot.sound]` — standard Lean trio only.
 2. ✅ Non-vacuity witness (F3d) exhibits
    `CanonicalForm.ofLexMin.canon ![true, false, true] =
-   ![false, true, true]` under `Equiv.Perm (Fin 3)` on
-   `Bitstring 3` via `decide`; a second `decide`-backed
-   example confirms the singleton-orbit case
+   ![true, true, false]` under `Equiv.Perm (Fin 3)` on
+   `Bitstring 3` via `decide` — matching GAP's
+   `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}` exactly; a
+   second `decide`-backed example confirms the singleton-orbit
+   case
    `canon ![false, false, false] = ![false, false, false]`.
 3. ✅ `hgoeScheme.ofLexMin` (in
    `Orbcrypt/Construction/HGOE.lean`) eliminates the `can`
@@ -3712,12 +3728,17 @@ example : ¬ KEMOIA toyKEM :=
 ### C.4 Workstream F — `CanonicalForm.ofLexMin` concrete computation
 
 ```lean
--- Non-vacuity: ofLexMin computes a lex-min on a concrete bitstring
+-- Non-vacuity: ofLexMin computes a lex-min on a concrete bitstring,
+-- matching GAP's CanonicalImage(G, x, OnSets) convention exactly.
+-- Under the GAP-matching `bitstringLinearOrder` ("leftmost-true
+-- wins"), the input ![true, false, true] under the swap-only
+-- subgroup is its own lex-min (its leftmost-true is at position 0,
+-- the smallest possible).
 example :
     let σ : Equiv.Perm (Fin 3) := Equiv.swap 0 1
     let G : Subgroup (Equiv.Perm (Fin 3)) := Subgroup.closure {σ}
     let can : CanonicalForm (↥G) (Bitstring 3) := CanonicalForm.ofLexMin G
-    can.canon ![true, false, true] = ![false, true, true] := by
+    can.canon ![true, false, true] = ![true, false, true] := by
   decide
 ```
 

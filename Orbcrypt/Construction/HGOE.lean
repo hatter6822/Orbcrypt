@@ -73,11 +73,24 @@ def hgoeScheme {M : Type*}
   canonForm := can
 
 /-- Convenience constructor: HGOE scheme whose `CanonicalForm` is the
-    lex-min canonical form under Orbcrypt's `bitstringLinearOrder`
-    (earliest-index-first, `false < true`). Eliminates the
-    `CanonicalForm` parameter for callers who use the standard lex
-    convention — the GAP reference implementation in
-    `implementation/gap/orbcrypt_keygen.g` uses exactly this order.
+    lex-min canonical form under Orbcrypt's `bitstringLinearOrder`,
+    **matching the GAP reference implementation's choice of orbit
+    representative exactly**.
+
+    The GAP prototype in `implementation/gap/orbcrypt_kem.g` invokes
+    `CanonicalImage(G, support_set, OnSets)` from the GAP `images`
+    package. That returns the lex-minimum support-set representation
+    under GAP's set ordering: sorted ascending element lists compared
+    element-wise, with smaller-position-true winning. The Lean
+    `bitstringLinearOrder` is constructed (via the inverted-Bool
+    composition `List.ofFn ∘ (! ∘ ·)`) to match this convention
+    point-for-point: for every orbit `O` under any subgroup
+    `G ≤ S_n`, `CanonicalForm.ofLexMin.canon` and GAP's
+    `CanonicalImage` pick the *same* element of `O` as the canonical
+    representative. This means the Lean specification of HGOE
+    encryption / decryption now formally specifies the GAP reference
+    implementation's pipeline (modulo abstract layers like
+    `keyDerive`), not merely *a* valid HGOE instantiation.
 
     Requires `[Fintype ↥G]` (the ambient group is finite, so the orbit
     is a `Fintype`) and `[DecidableEq (Bitstring n)]` (automatic for
@@ -88,7 +101,8 @@ def hgoeScheme {M : Type*}
     Closes audit finding V1-10 / F-04 (Workstream F of the 2026-04-23
     audit): `hgoeScheme`'s previously-abstract `CanonicalForm`
     parameter now has a concrete in-tree witness at every finite
-    subgroup of `Equiv.Perm (Fin n)`. -/
+    subgroup of `Equiv.Perm (Fin n)` — and that witness matches the
+    GAP reference implementation's canonical-form choice. -/
 def hgoeScheme.ofLexMin {M : Type*}
     (G : Subgroup (Equiv.Perm (Fin n))) [Fintype (↥G)]
     (reps : M → Bitstring n)

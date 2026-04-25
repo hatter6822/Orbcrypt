@@ -2386,15 +2386,19 @@ of the audit plan):**
       `CanonicalForm` parameter for any finite subgroup of
       `Equiv.Perm (Fin n)` under Orbcrypt's computable
       `bitstringLinearOrder` lex order
-      (`Orbcrypt/Construction/Permutation.lean`,
-      earliest-index-first via `List.ofFn` + `List.Lex`, exposed
-      as a `@[reducible] def` rather than a global instance to
-      avoid a diamond with Mathlib's pointwise `Pi.partialOrder`).
-      `scripts/audit_phase_16.lean` gains four non-vacuity
-      witnesses (F3d): an explicit-LT lex-order direction check,
-      two `decide`-backed `CanonicalForm.ofLexMin.canon`
-      evaluations on concrete `Bitstring 3` inputs (weight-2 orbit
-      → `![false, true, true]`; singleton orbit → identity),
+      (`Orbcrypt/Construction/Permutation.lean`, set-lex matching
+      the GAP reference implementation's
+      `CanonicalImage(G, x, OnSets)` convention: leftmost-true
+      wins, implemented via `List.ofFn ∘ (! ∘ ·)` to invert the
+      Bool order; exposed as a `@[reducible] def` rather than a
+      global instance to avoid a diamond with Mathlib's pointwise
+      `Pi.partialOrder`). `scripts/audit_phase_16.lean` gains
+      four non-vacuity witnesses (F3d): an explicit-LT lex-order
+      direction check, two `decide`-backed
+      `CanonicalForm.ofLexMin.canon` evaluations on concrete
+      `Bitstring 3` inputs (weight-2 orbit → `![true, true, false]`
+      matching GAP's `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}`;
+      singleton orbit → identity),
       and a type-elaboration witness for `hgoeScheme.ofLexMin` at
       `G := ⊤ ≤ S_3` with `M := Unit`. `lakefile.lean` bumped
       `0.1.10 → 0.1.11`. 9 new public declarations
@@ -3014,20 +3018,27 @@ lex-min, V1-10 / F-04, MEDIUM) has been completed:
   (restatement of `mem_orbit` at the `ofLexMin` level).
 - `Orbcrypt/Construction/Permutation.lean` — (F-prereq)
   `bitstringLinearOrder` (`@[reducible] def`, not a global
-  `instance`) registers a computable earliest-index-first lex
-  order on `Bitstring n` via `LinearOrder.lift'`
-  (`List.ofFn` + `List.Lex` + `Bool.linearOrder`). Exposed as a
-  `def` to avoid the diamond with Mathlib's pointwise
-  `Pi.partialOrder` — registering a global `LinearOrder
-  (Bitstring n)` would leave Lean's typeclass search with two
-  definitionally-distinct `LT (Bitstring n)` instances and
-  break `decide` on any comparison. Callers bind it locally:
+  `instance`) registers a computable lex order on `Bitstring n`
+  matching the GAP reference implementation's
+  `CanonicalImage(G, x, OnSets)` convention: bitstrings are
+  compared via their support sets (sorted ascending position
+  lists), with smaller-position-true winning ("leftmost-true
+  wins"). Implemented via `LinearOrder.lift'` over the
+  inverted-Bool composition `List.ofFn ∘ (! ∘ ·)`, with
+  `Bool.not_inj` discharging injectivity. Exposed as a `def` to
+  avoid the diamond with Mathlib's pointwise `Pi.partialOrder` —
+  registering a global `LinearOrder (Bitstring n)` would leave
+  Lean's typeclass search with two definitionally-distinct
+  `LT (Bitstring n)` instances and break `decide` on any
+  comparison. Callers bind it locally:
   `letI : LinearOrder (Bitstring n) := bitstringLinearOrder`.
-  The order gives `false ↦ 0`, `true ↦ 1`, and the standard
-  lex convention: on `Bitstring 3`,
-  `![false, false, false] < ![false, false, true] <
-   ![false, true, false] < … < ![true, true, true]`. `decide`
-  reduces `Finset.min'` under this order on small inputs.
+  Concretely on `Bitstring 3`,
+  `![T, T, T] < ![T, T, F] < ![T, F, T] < ![T, F, F] <
+   ![F, T, T] < ![F, T, F] < ![F, F, T] < ![F, F, F]`. The
+  weight-2 lex-min element `![T, T, F]` matches GAP's
+  `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}` exactly.
+  `decide` reduces `Finset.min'` under this order on small
+  inputs.
 - `Orbcrypt/Construction/HGOE.lean` — (F4) adds
   `hgoeScheme.ofLexMin`, a convenience constructor that
   auto-fills the `CanonicalForm` parameter for any finite

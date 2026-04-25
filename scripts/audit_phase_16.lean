@@ -1319,18 +1319,18 @@ computable canonical form — not merely a type-checking skeleton — by
 reducing `canon x` to the expected lex-min orbit element via `decide`.
 
 The lex order used here is `bitstringLinearOrder` from
-`Orbcrypt/Construction/Permutation.lean`: earliest-index-first with
-`false < true`. Bound locally via `letI` (not as a global instance)
-to avoid a diamond with Mathlib's pointwise `Pi.partialOrder`. -/
+`Orbcrypt/Construction/Permutation.lean`. It matches the GAP
+reference implementation's `CanonicalImage(G, x, OnSets)` convention:
+bitstrings are compared via their support sets (sorted ascending
+position lists), with smaller-position-true winning ("leftmost-true
+wins"). Bound locally via `letI` (not as a global instance) to avoid
+a diamond with Mathlib's pointwise `Pi.partialOrder`. -/
 
-/-- The lex order agrees with the big-endian binary encoding on a pair
-    of weight-2 bitstrings: `![false, true, true]` encodes to 3, while
-    `![true, false, true]` encodes to 5, so the former is strictly
-    less in the lex order. This is the order-direction sanity check
-    that guarantees `canon` of the orbit below picks
-    `![false, true, true]` — the weight-2 bitstring whose leading
-    `false` places it strictly below every weight-2 bitstring with a
-    leading `true`.
+/-- Order-direction sanity check matching GAP's `CanonicalImage`
+    convention: among weight-2 bitstrings of length 3,
+    `![true, true, false]` (= GAP set {0, 1}) is strictly less than
+    `![true, false, true]` (= GAP set {0, 2}) — element-wise lex on
+    the sorted position list gives 1 < 2 at position 1.
 
     Uses `@LT.lt` with the explicit `bitstringLinearOrder.toLT`
     instead of the unqualified `<` so that Lean's typeclass search
@@ -1342,34 +1342,34 @@ to avoid a diamond with Mathlib's pointwise `Pi.partialOrder`. -/
     typeclass.) -/
 example :
     @LT.lt (Bitstring 3) bitstringLinearOrder.toLT
-      (![false, true, true] : Bitstring 3)
+      (![true, true, false] : Bitstring 3)
       (![true, false, true] : Bitstring 3) := by
   decide
 
 /-- `CanonicalForm.ofLexMin` computes the lex-min orbit element on a
-    small concrete instance. Under the full symmetric group
+    small concrete instance, **matching the GAP reference
+    implementation's choice exactly**. Under the full symmetric group
     `Equiv.Perm (Fin 3)` (all 6 coordinate permutations), the orbit
-    of any weight-2 bitstring is exactly the set of all weight-2
-    bitstrings:
+    of any weight-2 bitstring is the set of all weight-2 bitstrings:
         `{![true, true, false], ![true, false, true], ![false, true, true]}`.
-    In the `bitstringLinearOrder` lex order, the minimum is
-    `![false, true, true]` (the unique weight-2 bitstring whose
-    leading bit is `false`). `decide` reduces the whole chain
-    — orbit enumeration, `.toFinset` conversion, `Finset.min'`
-    search — to the expected answer at compile time. -/
+    In `bitstringLinearOrder` (GAP set-lex), the minimum is
+    `![true, true, false]` — corresponding to GAP's
+    `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}`. `decide` reduces
+    the whole chain — orbit enumeration, `.toFinset` conversion,
+    `Finset.min'` search — to the expected answer at compile time. -/
 example :
     letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
     let can := CanonicalForm.ofLexMin
       (G := Equiv.Perm (Fin 3)) (X := Bitstring 3)
     can.canon (![true, false, true] : Bitstring 3) =
-      (![false, true, true] : Bitstring 3) := by
+      (![true, true, false] : Bitstring 3) := by
   decide
 
-/-- The weight-2 orbit representative under `Equiv.Perm (Fin 3)` is the
-    all-false `![false, false, false]` for a weight-0 input — the only
-    weight-0 bitstring of length 3 is itself, so the orbit is a
-    singleton and its min is the element itself. Verifies the
-    `ofLexMin` reduction stays correct on a singleton orbit. -/
+/-- Singleton-orbit case: the `![false, false, false]` bitstring is
+    fixed by every permutation of length-3 (it has no `true` bits to
+    permute), so its orbit is the singleton `{![false, false, false]}`.
+    `canon` returns the input unchanged. Verifies `ofLexMin` reduces
+    correctly on a singleton orbit (no non-trivial choice to make). -/
 example :
     letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
     let can := CanonicalForm.ofLexMin

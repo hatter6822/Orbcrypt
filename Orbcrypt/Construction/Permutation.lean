@@ -163,14 +163,36 @@ theorem hammingWeight_invariant :
 
 -- ============================================================================
 -- Workstream F (2026-04-23 audit, V1-10 / F-04):
--- computable LinearOrder on Bitstring n via List.ofFn + List.Lex.
+-- computable LinearOrder on Bitstring n matching GAP's CanonicalImage
+-- under `OnSets` (set-lex on sorted ascending support sets).
 -- ============================================================================
 
-/-- Computable lex `LinearOrder` on `Bitstring n` — the natural
-    earliest-index-first ordering under `false < true`. Transports
-    Mathlib's computable `LinearOrder (List Bool)` (via `List.Lex`)
-    through the `List.ofFn` injection, which is injective for fixed
-    `n`.
+/-- Computable lex `LinearOrder` on `Bitstring n` matching the GAP
+    reference implementation's canonical-form choice. The GAP
+    prototype in `implementation/gap/orbcrypt_kem.g` represents
+    bitstrings as **support sets** (sorted ascending lists of
+    `true`-positions) and computes canonical forms via
+    `CanonicalImage(G, x, OnSets)` from the `images` package. The
+    `OnSets` canonical image is the lex-min set in the orbit under
+    GAP's set comparison, which is element-wise lex on the sorted
+    ascending list — equivalent to "leftmost-true-position-wins".
+
+    To match this convention, we lift `LinearOrder (List Bool)` (which
+    uses `false < true` per Mathlib's `Bool.linearOrder`) through the
+    composition `List.ofFn ∘ (! ∘ ·)`, i.e., we invert each bit
+    before comparing. Comparing `(! ∘ x) < (! ∘ y)` under
+    `false < true` is *definitionally* the same as comparing `x < y`
+    under `true < false`, so the resulting linear order on
+    `Bitstring n` puts bitstrings with `true` at earlier positions
+    *first* — exactly GAP's convention.
+
+    Concretely for `Bitstring 3` (writing `T = true`, `F = false`):
+
+        ![T, T, T] < ![T, T, F] < ![T, F, T] < ![T, F, F] <
+        ![F, T, T] < ![F, T, F] < ![F, F, T] < ![F, F, F].
+
+    The lex-min weight-2 element in `Bitstring 3` is `![T, T, F]` —
+    matching GAP's `CanonicalImage(S_3, {0,1}, OnSets) = {0, 1}`.
 
     **Exposed as `def`, not `instance`, to avoid the diamond with
     Mathlib's pointwise `Pi.partialOrder`** (which gives a *different*
@@ -188,27 +210,14 @@ theorem hammingWeight_invariant :
     let can := CanonicalForm.ofLexMin (G := ↥G) (X := Bitstring n)
     ```
 
-    This keeps `CanonicalForm.ofLexMin` parametric over
-    `[LinearOrder X]`; consumers who want a different order (e.g.
-    `Lex.linearOrder`, dictionary-style) supply their own `letI` in
-    place of this one. The scope-locality matches how Mathlib ships
-    `Lex` as a type synonym rather than a global `Pi` linear order.
-
-    Concretely this gives `false ↦ 0`, `true ↦ 1`, and the usual
-    earliest-index-first tiebreak: on `Bitstring 3`,
-
-        ![false, false, false] < ![false, false, true] <
-        ![false, true, false] < ![false, true, true] <
-        ![true, false, false] < ![true, false, true] <
-        ![true, true, false] < ![true, true, true].
-
     `decide` reduces `Finset.min'` under this order on small inputs
-    because the underlying `List.Lex`, `List.ofFn`, and
-    `Bool.linearOrder` are all fully computable. This is the order
-    the Workstream-F non-vacuity witness in
+    because the underlying `List.Lex`, `List.ofFn`, `Bool.linearOrder`,
+    and `Bool.not` are all fully computable. This is the order the
+    Workstream-F non-vacuity witness in
     `scripts/audit_phase_16.lean` binds via `letI` to machine-check
-    that `ofLexMin.canon ![true, false, true] = ![false, true, true]`
-    on a concrete subgroup of `Equiv.Perm (Fin 3)`.
+    that `ofLexMin.canon ![true, false, true] = ![true, true, false]`
+    on a concrete subgroup of `Equiv.Perm (Fin 3)` — matching the
+    output of GAP's `CanonicalImage(S_3, {0, 2}, OnSets) = {0, 1}`.
 
     Marked `@[reducible]` so that `letI` binders at consumer sites
     preserve definitional transparency when chasing `DecidableLT` /
@@ -219,6 +228,15 @@ theorem hammingWeight_invariant :
     constant. -/
 @[reducible]
 def bitstringLinearOrder : LinearOrder (Bitstring n) :=
-  LinearOrder.lift' (fun x : Bitstring n => List.ofFn x) List.ofFn_injective
+  LinearOrder.lift'
+    (fun x : Bitstring n => List.ofFn (fun i => !(x i)))
+    (fun x y h => by
+      -- Injectivity: List.ofFn (! ∘ x) = List.ofFn (! ∘ y) ⇒
+      --   ! ∘ x = ! ∘ y      (List.ofFn_injective on Fin n → Bool)
+      --   x = y              (Bool.not_inj pointwise).
+      have h' : (fun i => !(x i)) = (fun i => !(y i)) :=
+        List.ofFn_injective h
+      funext i
+      exact Bool.not_inj (congr_fun h' i))
 
 end Orbcrypt

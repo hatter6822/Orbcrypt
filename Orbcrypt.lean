@@ -116,8 +116,9 @@ Mathlib.GroupTheory.Perm.Basic
           ▼
 Construction.Permutation ◄── GroupAction.Invariant
    (also provides `bitstringLinearOrder`,
-    a computable lex `LinearOrder (Bitstring n)`
-    via `LinearOrder.lift' List.ofFn`; Workstream F)
+    a computable lex `LinearOrder (Bitstring n)` matching the
+    GAP reference's `CanonicalImage(G, x, OnSets)` convention
+    via `LinearOrder.lift' (List.ofFn ∘ (! ∘ ·))`; Workstream F)
           │
           ▼
 Construction.HGOE              Construction.HGOEKEM
@@ -2244,10 +2245,18 @@ New module `Orbcrypt/GroupAction/CanonicalLexMin.lean` (the
 
 `Orbcrypt/Construction/Permutation.lean` gains the
 `bitstringLinearOrder` (`@[reducible] def`, not a global
-instance) via `LinearOrder.lift' List.ofFn List.ofFn_injective`
-over `List.Lex`. Exposed as a `def` to avoid the diamond with
-Mathlib's pointwise `Pi.partialOrder`; callers bind it locally
-via `letI`.
+instance) — a computable lex order on `Bitstring n` matching the
+GAP reference implementation's `CanonicalImage(G, x, OnSets)`
+convention exactly: bitstrings are compared via their support
+sets (sorted ascending position lists), with smaller-position-
+true winning. Implemented via `LinearOrder.lift' (List.ofFn ∘
+(! ∘ ·))`, with `Bool.not_inj` discharging injectivity. The
+inverted-Bool composition transports Mathlib's `false < true`
+list-lex order to `true < false` on `Bitstring n`, yielding
+"leftmost-true wins" — definitionally identical to GAP's
+set-lex on sorted ascending support sets. Exposed as a `def`
+to avoid the diamond with Mathlib's pointwise `Pi.partialOrder`;
+callers bind it locally via `letI`.
 
 `Orbcrypt/Construction/HGOE.lean` gains `hgoeScheme.ofLexMin`
 (F4) — the convenience constructor that auto-fills the
