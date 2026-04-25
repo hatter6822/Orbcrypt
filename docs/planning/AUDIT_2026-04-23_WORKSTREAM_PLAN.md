@@ -125,12 +125,14 @@ runway.
 
 **Effort estimate.** Pre-release slate (**A**+**B**+**C**+**D**+**E**) ≈
 **32 hours** of dedicated engineering + review. Preferred additions
-(**F**+**G**+**H**+**I**+**J**) ≈ **38 hours** more — Workstream **I** is
-revised from the pre-revision 4 h naming-only estimate to **14 h** because
-the section is now scoped to *strengthen* the codebase rather than rebadge
-weak content (eight new substantive theorems land at standard-trio axioms).
-Polish (**K**+**L**+**M**+**N**) ≈ **15 hours** more. Total pre-v1.0
-engineering budget if every non-research workstream lands: **~85 hours**.
+(**F**+**G**+**H**+**I**+**J**) ≈ **33 hours** more — Workstream **I** is
+revised from the pre-revision 4 h naming-only estimate to **14.5 h**
+because the section is now scoped to *strengthen* the codebase rather than
+rebadge weak content (nine new public declarations land at standard-trio
+axioms, plus four renames + one deletion + two in-place Prop signature
+strengthenings). Polish (**K**+**L**+**M**+**N**) ≈ **15 hours** more.
+**Total pre-v1.0 engineering budget if every non-research workstream
+lands: ~80.5 hours**.
 The research milestones (**O**, R-01 through R-16) are multi-month and
 explicitly scoped to v1.1+ / v2.0.
 
@@ -219,14 +221,14 @@ identifiers; those are not release-blocking.
 | **F** | Concrete `CanonicalForm` witness: land `CanonicalForm.ofLexMin` on finite subgroups of `S_n` acting on `Bitstring n`, closing the "no concrete canonical form in Lean" gap. | F-04, V1-10 | 4 h | none | preferred |
 | **G** | λ-parameterised `HGOEKeyExpansion`: generalise `group_large_enough` from the hard-coded `≥ 128` bound to a parameter `λ : ℕ` with `group_order_log ≥ λ`, unlocking the {80, 192, 256} security levels the Phase-14 sweep already documents. | H-03, D16, V1-13, Z-06 | 3 h | none | preferred |
 | **H** | Safe decapsulation + computable decryption: `decapsSafe : X → Option K` that rejects out-of-orbit ciphertexts; `decryptCompute` using `Finset.decidableExistsOfFinset` with an agreement theorem against `decrypt`. | E-04, C-01, X-02, V1-12, V1-14 | 6 h | **F** | preferred |
-| **I** | Naming hygiene **via strengthening, not rebadging**: replace pre-I weak identifiers with the actual cryptographic content their names advertised — perfect-security non-vacuity witnesses for `ConcreteOIA` / `ConcreteKEMOIA_uniform` (replacing the trivial `_meaningful` lemmas), G-invariant separator from `reps_distinct` (replacing the non-G-invariant `insecure_implies_separating`), non-degeneracy fields on `GIReducesToCE` / `GIReducesToTI` (replacing the degenerate-encoder admission), probabilistic ε-smooth `ObliviousSamplingConcreteHiding` (replacing the deterministic `False`-on-non-trivial-bundle predicate). Per `CLAUDE.md`'s Security-by-docstring prohibition's *prove-the-property* clause: this is the strengthening branch of the rule, not the rename branch. Eight new substantive theorems land at standard-trio axioms. | C-15, E-11, D-07, J-03, J-08, K-02, V1-15 | 14 h | none | preferred |
+| **I** | Naming hygiene **via strengthening, not rebadging**: replace pre-I weak identifiers with the actual cryptographic content their names advertised — perfect-security non-vacuity witnesses for `ConcreteOIA` / `ConcreteKEMOIA_uniform` (replacing the trivial `_meaningful` lemmas), G-invariant separator from `reps_distinct` (replacing the non-G-invariant `insecure_implies_separating`), non-degeneracy fields on `GIReducesToCE` / `GIReducesToTI` (replacing the degenerate-encoder admission), probabilistic ε-smooth `ObliviousSamplingConcreteHiding` (replacing the deterministic `False`-on-non-trivial-bundle predicate). Per `CLAUDE.md`'s Security-by-docstring prohibition's *prove-the-property* clause: this is the strengthening branch of the rule, not the rename branch. Nine new public declarations land at standard-trio axioms; four pre-I identifiers are renamed; one is deleted; two `GIReducesTo*` Props gain non-degeneracy fields in place. | C-15, E-11, D-07, J-03, J-08, K-02, V1-15 | 14.5 h | none | preferred |
 | **J** | Invariant-attack framing + negligible-function closure: tighten `invariant_attack` statement (D-04/D-13); add `IsNegligible.of_le` / `IsNegligible.const_mul` closure lemmas (G-04, G-05). | D-04, D-05, D-06, D13, G-04, G-05, G-06, V1-16 | 5 h | none | preferred |
 | **K** | Root-file split + legacy script relocation: split the 1585-line `Orbcrypt.lean` docstring into `CHANGELOG.md` + `AXIOM_TRANSPARENCY.md`; move per-workstream audit scripts to `scripts/legacy/`. | M-01, M-02, M-03, N-03, N-04, V1-17, V1-18, V1-21 | 6 h | **A**, **I** | polish |
 | **L** | Medium-severity structural cleanup: findings without dedicated workstreams — `CanonicalForm` bundled idempotence (B-04), `advantage` `toReal` threading (G-06/G-08), `probEvent`/`probTrue` consolidation (G-01/G-02), `hybridDist` left/right convention (C-14), `AuthOrbitKEM.encaps` triple (I-05), `DEM` security note (I-06), `MAC` metadata (I-02), `Tensor3` bundling (J-10), `SurrogateTensor` universe posture audit (X-04), combiner probabilistic lower bound (K-10/K-11), `hgoeKEM` unconstrained `keyDerive` (F-08), `nonceDecaps` aliasing (H-07), `OrbitalRandomizers` distinctness (K-04), `Hardness/Reductions.lean` split (J-14). Each is a single-file docstring or small-diff edit. | 30+ assorted MED findings | 8 h | none | polish |
 | **M** | Low-severity cosmetic polish: docstring tightening (B-01, B-02, B-05, B-06, C-02, C-03, C-09, C-11, C-16, D-01, D-02, D-03, D-08, D-09, E-02, E-03, E-05, F-01, F-02, F-03, F-06, F-07, G-03, G-07, G-09, H-04, H-05, H-06, I-01, I-09, J-02, J-05, J-06, J-07, J-09, J-11, J-13, K-03, K-06, K-08, K-09, L-01, L-02, L-04, L-05, L-06, N-01, N-02, N-05, N-06, P-02, P-03, P-04, X-03, X-04, X-05). | 60+ assorted LOW/INFO findings | 6 h | none | polish |
 | **N** | Optional pre-release engineering enhancements: authenticated hybrid layer (I-07/V1-19), `KEMAdversary.ofGame` adapter (E-07/V1-20), K2 design-note consolidation (E-08/V1-22). | V1-19, V1-20, V1-22, I-07, E-07, E-08 | 5 h | **B** | nice-to-have |
 | **O** | Research & performance catalogue (NOT engineering deliverables): R-01 through R-16 research milestones, Z-01 through Z-10 performance milestones. Tracked for transparency; content assigned to v1.1+ and v2.0 roadmaps. | R-*, Z-* | n/a | n/a | v1.1+ / v2.0 |
-| — | **Totals** | 140+ findings | ≈ 70 h | — | — |
+| — | **Totals** | 140+ findings | ≈ 80.5 h | — | — |
 
 **Parallelism.** Workstreams **A**, **C**, **D**, **E**, **F**, **G**,
 **I**, **J**, **L**, **M** are mutually independent and can run in
@@ -285,11 +287,13 @@ into its target branch". Unlinked workstreams are parallel-safe.
 serially lands the blocking slate in ~23 h of coding time; two
 implementers working concurrently land it in ~8 h (bottleneck is
 Workstream A at 8 h). Preferred slate (adding **F → H** and **I, J**)
-adds another ~29 h serial or ~10 h parallel — Workstream **I**'s
+adds another ~33 h serial or ~10 h parallel — Workstream **I**'s
 strengthening rewrite (adopted in this revision in place of the
 pre-revision rebadging plan) raises its individual estimate from
-4 h to 14 h, but I1–I6 are mutually independent and parallelise
-trivially across two implementers.
+4 h to 14.5 h, but I1–I6 are mutually independent and parallelise
+trivially across two implementers (≈ 6.5 h max-track + 2 h sequential
+I7 audit-script + documentation sweep ≈ 8.5 h parallel for the
+Workstream-I subportion alone).
 
 **Critical-path longest chain:** `F → H → N` at 6 + 6 + 5 = 17 h. This
 is the longest sequential dependency and determines the earliest
@@ -2273,8 +2277,11 @@ path provides equivalent behaviour externally).
 ## 12. Workstream I — Naming hygiene via *strengthening*, not rebadging
 
 **Severity.** HIGH (D-07 / J-03 / J-08 / K-02 / V1-15) + MEDIUM
-(C-15 / E-11 / V1-15). **Effort.** ≈ 14 h (≈ 6 h with two
-parallel implementers, partitioned by file). **Scope.** Source-
+(C-15 / E-11 / V1-15). **Effort.** ≈ 14.5 h serial (sum of
+work-unit estimates I1–I7); ≈ 8.5 h with two parallel
+implementers (the I1–I6 partition runs in two ~6.5 h tracks
+followed by the 2 h sequential I7 audit-script + documentation
+sweep). **Scope.** Source-
 level theorem additions plus minimal renames across six modules
 (`Orbcrypt/Crypto/CompSecurity.lean`,
 `Orbcrypt/KEM/CompSecurity.lean`,
@@ -2341,47 +2348,72 @@ The six pre-I targets sort cleanly into the two categories:
 | 5 | `GIReducesToTI` | J-08 | (2) refinement | Strengthened predicate adds a non-zero-tensor field `encode m adj ≠ (fun _ _ _ => 0)` for `m ≥ 1`. Rules out the constant-zero degenerate witness flagged by audit. Same non-vacuity / naming pattern as #4. |
 | 6 | `ObliviousSamplingHiding` | K-02 | (2) refinement | Land the genuinely ε-smooth probabilistic predicate `ObliviousSamplingConcreteHiding ors combine ε` over the uniform-index push-forward; prove a non-vacuity witness at ε = 0 for the trivial-action case (orbit is a singleton, so the obliviously-sampled output and the uniform orbit sample coincide). The pre-I deterministic predicate is renamed `ObliviousSamplingPerfectHiding` (matching its `False`-on-non-trivial-bundles strength); the rename is `(2)`'s residual fallback because a probabilistic refinement is *added* on top, not as a substitute. |
 
-The six pre-I weak identifiers correspond to **eight** post-I
-declarations (one per row, plus the renames in rows #3 and #6):
+The six pre-I weak identifiers correspond to a structured set
+of post-I declaration changes. The categorisation below
+matches the per-work-unit specifications in § 12.4 and the
+acceptance-criterion #5 list in § 12.6 verbatim — implementers
+and reviewers can use any of the three lists as the canonical
+source of truth.
 
-* New strong-content theorems: `concreteOIA_zero_of_
-  subsingleton_message`, `concreteKEMOIA_uniform_zero_of_
-  singleton_orbit`, `distinct_messages_have_invariant_
-  separator`, `ObliviousSamplingConcreteHiding`.
-* New non-vacuity witnesses: `concreteOIA_zero_of_subsingleton_
-  message_witness` (concrete `Unit`-message scheme with
-  `Equiv.Perm (Fin 1)` action), `concreteKEMOIA_uniform_zero_
-  of_singleton_orbit_witness` (concrete trivial-action KEM),
-  `distinct_messages_have_invariant_separator_witness`
-  (concrete two-message scheme exercising the full
-  G-invariance-and-separation conjunction),
-  `ObliviousSamplingConcreteHiding_zero_witness` (concrete
-  trivial-action bundle).
-* Renamed weak forms: `insecure_implies_orbit_distinguisher`
-  (was `insecure_implies_separating`),
+* **New strong-content theorems (4) — the cryptographic-content
+  delivery of the rewrite.** `concreteOIA_zero_of_subsingleton_
+  message` (perfect concrete-security at ε = 0),
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit` (perfect
+  uniform-form KEM security at ε = 0),
+  `distinct_messages_have_invariant_separator`
+  (G-invariant separator from `reps_distinct`),
+  `ObliviousSamplingConcreteHiding` (genuinely ε-smooth
+  probabilistic hiding predicate).
+* **New helper / extraction lemmas (2).**
+  `canon_indicator_isGInvariant` (G-invariance of the
+  canonical-form discriminator; reusable Mathlib-style lemma
+  added to `GroupAction/Canonical.lean`),
+  `oblivious_sampling_view_advantage_bound` (extraction-shape
+  wrapper mirroring `concrete_oia_implies_1cpa`).
+* **New non-vacuity witnesses (3 named theorems + 4
+  audit-script `example`s).** Named theorems land alongside
+  their parent declarations: `GIReducesToCE_singleton_
+  witness` (witnesses the strengthened I4 Prop at the trivial
+  1-vertex encoder), `GIReducesToTI_constant_one_witness`
+  (witnesses the strengthened I5 Prop at the constant-1
+  tensor encoder over `ZMod 2`),
+  `ObliviousSamplingConcreteHiding_zero_witness` (witnesses
+  I6's ε-smooth predicate at the singleton-orbit case).
+  Audit-script-only `example`s land in
+  `scripts/audit_phase_16.lean`'s `NonVacuityWitnesses`
+  namespace: one each for I1, I2, I3, plus the negative-
+  pressure regression `example`s for I4 and I5 that confirm
+  the strengthened Props correctly *reject* the audit-flagged
+  degenerate encoders.
+* **Renamed weak forms (4) — pre-I content accurately
+  re-described.** `indCPAAdvantage_le_one` (was
+  `concreteOIA_one_meaningful`),
+  `insecure_implies_orbit_distinguisher` (was
+  `insecure_implies_separating`),
   `ObliviousSamplingPerfectHiding` (was
   `ObliviousSamplingHiding`),
   `oblivious_sampling_view_constant_under_perfect_hiding`
   (was `oblivious_sampling_view_constant`).
-* Strengthened predicates with retained names: `GIReducesToCE`,
-  `GIReducesToTI` (now non-degenerate by signature; the same
-  identifier carries the stronger Prop because no downstream
-  consumer references the pre-I weak form except documentation
-  prose).
-* Mathlib-style simp lemma: `indCPAAdvantage_le_one`
-  (renamed from `concreteOIA_one_meaningful`; `kemAdvantage_le_
-  one` already exists, so the KEM-side `_meaningful` deletion
-  introduces no new lemma).
+* **Strengthened predicates with retained names (2) —
+  signature-level non-degeneracy fields added.**
+  `GIReducesToCE` (gains `codeSize`, `codeSize_pos`,
+  `encode_card_eq` fields), `GIReducesToTI` (gains
+  `encode_nonzero_of_pos_dim` field). The same identifier
+  carries the stronger Prop because no downstream consumer
+  references the pre-I weak form except documentation prose.
+* **One deletion.** `concreteKEMOIA_one_meaningful`
+  (redundant duplicate of `kemAdvantage_le_one`; consumers
+  migrate to the pre-existing identifier).
 
-Total cryptographic-content addition: **four new theorems with
-genuine ε-smooth or perfect-security content**, plus **four
-non-vacuity witnesses**, plus signature-level strengthening of
-the two `GIReducesTo*` Props. Counted as new public declarations
-that must each appear in `scripts/audit_phase_16.lean`'s
-`#print axioms` block: 8 new theorem-level entries +
-2 strengthened Prop entries (textually identical name, but new
-field structure justifies a fresh `#print axioms` line for
-discipline) = **10 new audit-script entries**.
+**Total counts.** **9 new public declarations** (4 strong-
+content + 2 helpers + 3 named witnesses); **4 renames**
+(content-neutral); **1 deletion**; **2 strengthened
+in-place** (`GIReducesTo*` non-degeneracy fields). The
+audit-script `#print axioms` block gains **9 new entries**
+plus **4 rename-only entries** (renamed identifiers carrying
+unchanged proofs still get a fresh `#print axioms` line for
+discipline) **+ 2 in-place re-runs** (for the strengthened
+Props), minus **1 deletion** = **14 net entries** post-I.
 
 **Why this satisfies the release-messaging policy.** Per
 `CLAUDE.md`'s Release messaging policy (introduced by
@@ -2937,28 +2969,34 @@ theorem concreteKEMOIA_uniform_zero_of_singleton_orbit
     (h_fix : ∀ g : G, g • kem.basePoint = kem.basePoint) :
     ConcreteKEMOIA_uniform kem 0 := by
   intro D g_ref
-  -- Show kemEncapsDist kem = PMF.pure (encaps kem g_ref).
+  -- Reduction: under `h_fix`, every `g : G` produces the same
+  -- encapsulation, so `kemEncapsDist kem` collapses to a point
+  -- mass at `encaps kem g_ref`.
   have h_eq : kemEncapsDist kem =
       PMF.pure (encaps kem g_ref) := by
-    rw [kemEncapsDist]
-    refine PMF.ext ?_
-    intro p
-    rw [PMF.map_apply]
-    -- Every encaps under the singleton-orbit hypothesis lands at
-    -- (basePoint, keyDerive (canon basePoint)) = encaps kem g_ref.
-    -- Detail: omitted here; the formal proof reduces to a
-    -- support-equality argument plus the fixed-point hypothesis.
-    sorry  -- placeholder; full proof in implementation PR
+    -- IMPLEMENTER: Discharge via `PMF.ext` on an arbitrary
+    -- `p : X × K`, then `PMF.map_apply`. Under `h_fix g`,
+    -- `encaps kem g = encaps kem g_ref` for every `g` (because
+    -- `encaps` is a function of `g • basePoint`, which is
+    -- `basePoint` for every `g`). The preimage of `{p}` under
+    -- `encaps kem` is therefore either all of `G` (when `p =
+    -- encaps kem g_ref`) or empty (otherwise). The `tsum` over
+    -- `uniformPMF G` discharges by `tsum_const` + the
+    -- `Fintype.card G • (Fintype.card G)⁻¹ = 1` identity in
+    -- `ENNReal`. Exact Mathlib lemma chain depends on the
+    -- pinned commit; the structural shape is fixed.
+    sorry
   rw [h_eq]
   exact le_of_eq (advantage_self _ _)
 ```
 
-**Note on the proof sketch.** The body above contains a
-`sorry` placeholder for documentation purposes only; the full
-implementation discharges the support-equality via
-`PMF.pure_apply` + the fixed-point hypothesis. The
-implementation PR must contain a complete `sorry`-free proof
-or this work unit is not landable.
+**Note on the proof skeleton.** The body contains a `sorry`
+placeholder that the implementer must discharge before the PR
+is mergeable. The reduction is *structural* (a `PMF.map`-of-a-
+constant identity under the fixed-point hypothesis); **no
+cryptographic content sits inside the `sorry`**. CI's
+`sorryAx` check rejects any PR that lands this theorem with
+`sorry` intact — no exemption.
 
 **Acceptance.**
 
@@ -3059,8 +3097,20 @@ theorem distinct_messages_have_invariant_separator
     intro h_eq
     exact h_orbit_ne
       (canon_eq_implies_orbit_eq scheme.canonForm _ _ h_eq)
-  simp only [decide_eq_true_eq, decide_eq_false_iff_not]
-  exact (Ne.symm h_canon_ne).symm
+  -- Goal: decide (canon (reps m₀) = canon (reps m₀))
+  --     ≠ decide (canon (reps m₁) = canon (reps m₀))
+  -- LHS reduces to `true` (reflexivity); RHS reduces to `false`
+  -- (by the symmetric form of h_canon_ne, applied to
+  -- `decide_eq_false`). A `Bool` inequality between `true` and
+  -- `false` is `Bool.true_ne_false`.
+  have h_lhs : decide (scheme.canonForm.canon (scheme.reps m₀) =
+                       scheme.canonForm.canon (scheme.reps m₀)) = true :=
+    decide_eq_true rfl
+  have h_rhs : decide (scheme.canonForm.canon (scheme.reps m₁) =
+                       scheme.canonForm.canon (scheme.reps m₀)) = false :=
+    decide_eq_false (Ne.symm h_canon_ne)
+  rw [h_lhs, h_rhs]
+  exact Bool.true_ne_false
 ```
 
 **Acceptance.**
@@ -3387,42 +3437,58 @@ theorem ObliviousSamplingConcreteHiding_zero_witness
     [Group G] [Fintype G] [Nonempty G]
     [MulAction G X] [DecidableEq X] {t : ℕ} [NeZero t]
     (ors : OrbitalRandomizers G X t)
-    (h_fix : ∀ g : G, g • ors.basePoint = ors.basePoint)
-    (h_combine_bp :
-      ∀ x y, x ∈ MulAction.orbit G ors.basePoint →
-             y ∈ MulAction.orbit G ors.basePoint →
-             ∀ z, z = ors.basePoint →
-             ∀ w, w = ors.basePoint →
-             (fun _ _ => ors.basePoint) x y = z) :
+    (h_fix : ∀ g : G, g • ors.basePoint = ors.basePoint) :
     ObliviousSamplingConcreteHiding ors
       (fun _ _ => ors.basePoint) 0 := by
   intro D
-  -- Both PMFs are point masses at `ors.basePoint`:
-  -- LHS: combine returns basePoint regardless.
-  -- RHS: orbit is singleton, so orbitDist is point mass.
-  have h_lhs : (PMF.map (fun (p : Fin t × Fin t) =>
-      ors.basePoint) (uniformPMF (Fin t × Fin t))) =
+  -- Both PMFs reduce to the point mass `PMF.pure ors.basePoint`:
+  --   * LHS: `combine = fun _ _ => ors.basePoint`, so the
+  --     pre-image under `PMF.map` is the constant function
+  --     returning `ors.basePoint`; `PMF.map`-of-a-constant on a
+  --     non-empty index type is a point mass.
+  --   * RHS: `orbitDist (G := G) ors.basePoint =
+  --     PMF.map (fun g => g • ors.basePoint) (uniformPMF G)`;
+  --     under `h_fix` every `g • ors.basePoint = ors.basePoint`,
+  --     so the map is again a point mass at `ors.basePoint`.
+  -- After both reductions the advantage is between two equal
+  -- point masses; `advantage_self` discharges the goal.
+  have h_lhs :
+      PMF.map (fun (_ : Fin t × Fin t) => ors.basePoint)
+        (uniformPMF (Fin t × Fin t)) =
       PMF.pure ors.basePoint := by
-    rw [PMF.map_const]
-  have h_rhs : orbitDist (G := G) ors.basePoint =
+    -- IMPLEMENTER: Discharge via `PMF.map`-of-a-constant
+    -- (Mathlib `PMF.map_const` or its equivalent in the pinned
+    -- Mathlib commit). A concrete fallback: `PMF.ext` on
+    -- arbitrary `x`, splitting `x = ors.basePoint` versus not,
+    -- with `PMF.map_apply` + `tsum_const` finishing both
+    -- branches. Either lemma name resolves transparently against
+    -- the project's Mathlib pin.
+    sorry
+  have h_rhs :
+      orbitDist (G := G) ors.basePoint =
       PMF.pure ors.basePoint := by
-    -- orbit is singleton because every g fixes basePoint
-    rw [orbitDist]
-    refine PMF.ext ?_
-    intro x
-    rw [PMF.map_apply]
-    -- Reduces to: probability mass at x is 1 if x = basePoint,
-    -- else 0; uses h_fix to prove this.
-    sorry  -- placeholder; full proof in implementation PR
+    -- IMPLEMENTER: Same shape as `h_lhs`. The `h_fix` hypothesis
+    -- collapses `fun g => g • ors.basePoint` into the constant
+    -- `fun _ => ors.basePoint`; reuse the same `PMF.map`-of-a-
+    -- constant lemma.
+    sorry
   rw [h_lhs, h_rhs]
   exact le_of_eq (advantage_self _ _)
 ```
 
-**Note on the proof sketch.** The body contains a `sorry`
-placeholder for documentation purposes only; the full
-implementation discharges via `PMF.support_pure_iff` plus
-`h_fix`. The implementation PR must contain a complete
-`sorry`-free proof.
+**Note on the proof skeleton.** The body contains two `sorry`
+placeholders that the implementer must discharge before the PR
+is mergeable. Both reductions are *structural* (no
+cryptographic content): they are statements about Mathlib's
+`PMF.map`-of-a-constant behaviour, with a one-line discharge
+in the typical Mathlib pin. The plan does **not** ship a Lean-
+ready proof here because the exact Mathlib lemma name
+(`PMF.map_const`, `PMF.map_pure_eq`, or a `PMF.ext` discharge)
+depends on the pinned Mathlib commit; the implementer audits
+which form is currently available and uses it directly. **No
+audit-script `example` may invoke this theorem until both
+`sorry`s are replaced**; CI's `sorryAx` check will reject the
+PR otherwise.
 
 4. **Rename** `ObliviousSamplingHiding` →
    `ObliviousSamplingPerfectHiding` and
@@ -3550,12 +3616,34 @@ contains:
   `oblivious_sampling_view_constant` `#print axioms` lines
   are renamed in-place to the new identifiers.
 
-**Total post-I `#print axioms` block additions: 10 new
-entries; 1 deletion** (`concreteKEMOIA_one_meaningful`);
-**3 renames** (`ObliviousSamplingHiding`,
-`oblivious_sampling_view_constant`,
-`insecure_implies_separating`); **1 attribute-only edit**
-(`concreteOIA_one_meaningful` → `indCPAAdvantage_le_one`).
+**Total post-I `#print axioms` block changes** (matching the
+canonical count in § 12.1):
+
+* **9 new entries** (one per new public declaration):
+  `concreteOIA_zero_of_subsingleton_message`,
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit`,
+  `canon_indicator_isGInvariant`,
+  `distinct_messages_have_invariant_separator`,
+  `GIReducesToCE_singleton_witness`,
+  `GIReducesToTI_constant_one_witness`,
+  `ObliviousSamplingConcreteHiding`,
+  `oblivious_sampling_view_advantage_bound`,
+  `ObliviousSamplingConcreteHiding_zero_witness`.
+* **4 rename-only entries** (renamed identifier replaces
+  pre-I name; proof unchanged): `indCPAAdvantage_le_one`,
+  `insecure_implies_orbit_distinguisher`,
+  `ObliviousSamplingPerfectHiding`,
+  `oblivious_sampling_view_constant_under_perfect_hiding`.
+* **2 in-place re-runs** (Prop signature changes; identifier
+  retained): `GIReducesToCE`, `GIReducesToTI`.
+* **1 deletion** (no replacement entry; consumers cite the
+  pre-existing `kemAdvantage_le_one`):
+  `concreteKEMOIA_one_meaningful`.
+
+Net audit-script delta: **9 new + 4 renamed + 2 re-run − 1
+deleted = 14 entries** present post-I where the pre-I script
+had **5** in the corresponding regions (the 5 pre-I weak
+identifiers that got renamed/strengthened/deleted).
 
 **Acceptance.**
 
@@ -3587,7 +3675,7 @@ entries; 1 deletion** (`concreteKEMOIA_one_meaningful`);
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| **I-R1** — I3's `decide_eq_true_eq` / `decide_eq_false_iff_not` rewrite chain fails to elaborate due to subtle Bool/Prop coercion mismatches at the conclusion site. | Med | Med | Rewrite the conclusion with explicit `Bool.decide_eq_true` / `Bool.decide_eq_false_iff_eq_false` if the `simp only` form doesn't fire. Worst case: rewrite via `by_cases (canon (reps m₀) = canon (reps m₀))` (true by `rfl`) and split on the second canon equality. |
+| **I-R1** — I3's `decide_eq_true rfl` / `decide_eq_false (Ne.symm h_canon_ne)` / `Bool.true_ne_false` chain depends on the exact Mathlib lemma names; if the pinned commit renamed any of them (e.g., `Bool.true_ne_false` → `Bool.true_neq_false`), the proof fails to elaborate. | Low | Low | All three lemmas are in Lean *core* (`Init/SimpLemmas.lean`), not Mathlib, so they are stable across Mathlib pin bumps. If any *does* fail, the fallback is a `by_cases` split on `decide (canon (reps m₀) = canon (reps m₁))`: the `true` branch contradicts `h_canon_ne` via `of_decide_eq_true`; the `false` branch closes by `Bool.true_ne_false` after explicit `decide_eq_true rfl` for the LHS. |
 | **I-R2** — I6's PMF.map / orbitDist proof requires `[NeZero t]` plus `Nonempty (Fin t × Fin t)` to satisfy `uniformPMF`; if the `Nonempty` synthesis fails, add `[Fact (0 < t)]` or `[NeZero t]` explicitly. | Low | Low | Explicit `letI : Nonempty (Fin t × Fin t) := …` at the proof site. The instance is structurally available because `[NeZero t]` is already required. |
 | **I-R3** — I4's strengthened `GIReducesToCE` breaks `Hardness/Reductions.lean`'s `obtain ⟨dim, encode, h_iff⟩ := h_red` consumer pattern (post-I the destructure has 5 binders). | Med | Low | Audit every consumer of `GIReducesToCE` and `GIReducesToTI` (in pre-I they are unconsumed by any in-tree theorem; the only references are documentation prose). Update consumer destructure patterns to `⟨dim, codeSize, encode, h_pos, h_card, h_iff⟩` and `⟨dim, encode, h_nonzero, h_iff⟩` respectively. **Pre-I confirmation:** `grep -rn "obtain.*GIReducesToCE\|let.*GIReducesToCE\|⟨.*encode.*h_iff⟩"` over `Orbcrypt/` returns zero matches (the Props are unconsumed except as hypotheses passed through `Hardness/Reductions.lean`'s deterministic chain, which doesn't destructure). The risk is therefore latent only on future consumers; current consumers are unaffected. |
 | **I-R4** — Workstream I and Workstream A's release-messaging policy interact: the post-I deletion of pre-I weak identifiers may invalidate Workstream-A citation guidance written before Workstream I lands. | Low | Med | Workstream I updates `CLAUDE.md`'s "Three core theorems" status column entries for any row that references the renamed/deleted identifiers (currently: rows #2, #3 reference `insecure_implies_separating`; row #14 references `GIReducesToCE` / `GIReducesToTI`). I7's documentation sweep is the single point of truth for release-messaging consistency. |
@@ -3641,22 +3729,51 @@ checkbox in this list ticks green.
    returns zero matches (`\b` boundaries on `ObliviousSamplingHiding`
    and `oblivious_sampling_view_constant` to avoid false-positive
    on the renamed `_perfect_hiding` forms).
-5. Eight post-I new declarations are present and
-   axiom-clean:
-   * `indCPAAdvantage_le_one`
-   * `concreteOIA_zero_of_subsingleton_message`
-   * `concreteKEMOIA_uniform_zero_of_singleton_orbit`
-   * `canon_indicator_isGInvariant`
-   * `distinct_messages_have_invariant_separator`
-   * `insecure_implies_orbit_distinguisher` (renamed)
-   * `ObliviousSamplingConcreteHiding`
-   * `oblivious_sampling_view_advantage_bound`
-   * `ObliviousSamplingConcreteHiding_zero_witness`
-   * `ObliviousSamplingPerfectHiding` (renamed)
+5. **Nine post-I new declarations** are present and
+   axiom-clean (depend only on `[propext, Classical.choice,
+   Quot.sound]`):
+   * `concreteOIA_zero_of_subsingleton_message` *(I1, new
+     theorem — perfect concrete-security at ε = 0 on every
+     subsingleton-message scheme)*
+   * `concreteKEMOIA_uniform_zero_of_singleton_orbit` *(I2,
+     new theorem — perfect uniform-form KEM security at ε = 0
+     on every singleton-orbit KEM)*
+   * `canon_indicator_isGInvariant` *(I3, new helper lemma in
+     `GroupAction/Canonical.lean`)*
+   * `distinct_messages_have_invariant_separator` *(I3, new
+     theorem — G-invariant separator from `reps_distinct`)*
+   * `ObliviousSamplingConcreteHiding` *(I6, new ε-smooth
+     probabilistic predicate)*
+   * `oblivious_sampling_view_advantage_bound` *(I6, new
+     extraction theorem)*
+   * `ObliviousSamplingConcreteHiding_zero_witness` *(I6, new
+     non-vacuity witness at ε = 0 on a singleton-orbit
+     bundle)*
+   * `GIReducesToCE_singleton_witness` *(I4, new non-vacuity
+     witness for the strengthened `GIReducesToCE` Prop)*
+   * `GIReducesToTI_constant_one_witness` *(I5, new non-vacuity
+     witness for the strengthened `GIReducesToTI` Prop)*
+
+   **Four post-I renamed declarations** retain pre-rename
+   axiom dependencies (rename is content-neutral):
+   * `indCPAAdvantage_le_one` *(was `concreteOIA_one_meaningful`;
+     I1 — Mathlib-style sanity simp lemma)*
+   * `insecure_implies_orbit_distinguisher` *(was
+     `insecure_implies_separating`; I3 — pre-I content
+     accurately renamed to flag the missing G-invariance)*
+   * `ObliviousSamplingPerfectHiding` *(was
+     `ObliviousSamplingHiding`; I6 — pre-I deterministic
+     predicate accurately renamed to flag its perfect-extremum
+     strength)*
    * `oblivious_sampling_view_constant_under_perfect_hiding`
-     (renamed)
-   * `GIReducesToCE_singleton_witness`
-   * `GIReducesToTI_constant_one_witness`
+     *(was `oblivious_sampling_view_constant`; I6 —
+     companion-theorem rename for naming symmetry)*
+
+   **One post-I deletion** (no replacement; consumers migrate
+   to the existing `kemAdvantage_le_one`):
+   * `concreteKEMOIA_one_meaningful` *(I2 — redundant duplicate
+     of `kemAdvantage_le_one`; deletion has no semantic
+     impact)*
 6. Two strengthened Props (`GIReducesToCE` and
    `GIReducesToTI`) carry the new non-degeneracy fields,
    verified by `#print` of the definition + manual review of
@@ -5196,7 +5313,12 @@ example : @GIReducesToTI (ZMod 2) _ :=
 -- and admits a non-vacuity witness at ε = 0 on any singleton-
 -- orbit bundle. The pre-I deterministic `ObliviousSampling-
 -- Hiding` (renamed `ObliviousSamplingPerfectHiding`) is
--- retained as the perfect-extremum sibling.
+-- retained as the perfect-extremum sibling. Note the witness
+-- takes only the `h_fix` hypothesis — the constant-combine
+-- function `(fun _ _ => ors.basePoint)` is directly threaded
+-- by the witness's signature; no separate `h_combine_bp`
+-- argument is required because `(fun _ _ => ors.basePoint) x y
+-- = ors.basePoint` is `rfl`.
 example {G : Type} [Group G] [Fintype G] [Nonempty G]
     [MulAction G Unit] [DecidableEq Unit]
     (ors : OrbitalRandomizers G Unit 1)
@@ -5204,7 +5326,6 @@ example {G : Type} [Group G] [Fintype G] [Nonempty G]
     ObliviousSamplingConcreteHiding ors
       (fun _ _ => ors.basePoint) 0 :=
   ObliviousSamplingConcreteHiding_zero_witness ors h_fix
-    (fun _ _ _ _ _ _ _ _ => rfl)
 ```
 
 ### C.8 Workstream J — invariant-framing + negligible closures
