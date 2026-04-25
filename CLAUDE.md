@@ -3383,6 +3383,126 @@ not a field); the zero-sorry / zero-custom-axiom posture is
 preserved; the standard-trio-only axiom-dependency posture is
 preserved.
 
+Workstream R-CE (Audit 2026-04-25 — Petrank–Roth GI ≤ CE Karp
+reduction, R-15-CE / Option B forward-only landing) has been
+completed (2026-04-25):
+
+- **Layer 0 — Bit-layout primitives.**
+  `Orbcrypt/Hardness/PetrankRoth/BitLayout.lean` (already landed
+  pre-session, double-checked).  Block length
+  `dimPR m = m + 4 * numEdges m + 1` decomposed as `m` vertex
+  columns + `numEdges m` incidence columns + `3 * numEdges m`
+  marker columns + 1 sentinel.  `PRCoordKind` inductive over the
+  four families with `DecidableEq`, `Fintype` (via `equivSum`),
+  and a bijection `prCoordEquiv : PRCoordKind m ≃ Fin (dimPR m)`
+  via `prCoord` / `prCoordKind`.  `edgeEndpoints` /
+  `edgeIndex` provide the bijection between `Fin (numEdges m)`
+  and ordered pairs `(u, v)` with `u.val < v.val` via the
+  `EdgeSlot m := Σ v : Fin m, Fin v.val` packaging.
+
+- **Layer 1 — Encoder + cardinality.**
+  `Orbcrypt/Hardness/PetrankRoth.lean` (~600 lines): the four
+  codeword families
+  (`vertexCodeword`, `edgeCodeword`, `markerCodeword`,
+  `sentinelCodeword`), within-family injectivity
+  (`vertexCodeword_injective`, `edgeCodeword_injective`,
+  `markerCodeword_injective`), pairwise cross-family disjointness
+  (`*_ne_*`), the encoder `prEncode m adj`, the membership shape
+  `mem_prEncode`, and the cardinality identity `prEncode_card :
+  (prEncode m adj).card = codeSizePR m`.  The `edgePresent` /
+  `edgeCodeword` formulation symmetrises over endpoint ordering
+  (`adj p.1 p.2 || adj p.2 p.1`) — this is invariant under the
+  canonicalisation of σ-image endpoints and matches the Karp
+  reduction's iff statement (which does not assume `adj` is
+  symmetric).
+
+- **Layer 2 — Forward direction.**
+  `Orbcrypt/Hardness/PetrankRoth.lean` (cont., ~600 lines):
+  the vertex-permutation-induced edge permutation
+  `liftedEdgePerm m σ : Equiv.Perm (Fin (numEdges m))` (with
+  canonicalisation of σ-image endpoints via `liftedEdgePermFun`
+  + the round-trip `liftedEdgePermFun_left_inv`); the dimension-
+  level lift `liftAut m σ : Equiv.Perm (Fin (dimPR m))` via
+  conjugation with `prCoordEquiv`; the four action lemmas
+  (`permuteCodeword_liftAut_vertexCodeword`,
+  `permuteCodeword_liftAut_edgeCodeword`,
+  `permuteCodeword_liftAut_markerCodeword`,
+  `permuteCodeword_liftAut_sentinelCodeword`); the symmetric
+  edge-presence transfer `edgePresent_liftedEdgePerm`; and the
+  headline `prEncode_forward : (∃ σ, ∀ i j, adj₁ i j = adj₂ (σ
+  i) (σ j)) → ArePermEquivalent (prEncode m adj₁) (prEncode m
+  adj₂)`.  Auxiliary helpers `decide_or_to_bool`,
+  `decide_or_iff_bool` (private) cleanly bridge iff-on-
+  disjunctions to bool-equality of `decide`s.
+
+- **Layer 3 — Column-weight invariance infrastructure.**
+  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (~150
+  lines): `colWeight C i` defined as the count of codewords in
+  `C` that are `true` at column `i`; basic algebraic identities
+  (`colWeight_empty`, `colWeight_singleton_self/_other`,
+  `colWeight_union_disjoint`); and the headline
+  `colWeight_permuteCodeword_image` proving column weights are
+  preserved by `permuteCodeword`-image of a Finset (up to π's
+  coordinate relabelling).  This is the foundational invariance
+  result Layer 4 will consume.
+
+- **Layers 4–7 — Marker-forcing reverse direction
+  (research-scope).**  The reverse direction (extracting σ from
+  any CE-witness π) and the headline
+  `petrankRoth_isInhabitedKarpReduction` are deferred per the
+  audit-plan Risk Gate (`docs/planning/AUDIT_2026-04-25_R15_KARP
+  _REDUCTIONS_PLAN.md` § "R-CE Layer 4 risk register").  The
+  Petrank–Roth marker-forcing argument requires Layers 4.1–4.10
+  (~800–1500 lines, ~7–14 days), which exceed the single-session
+  scope.  The Layer-3 column-weight infrastructure is in place
+  as the foundation; the residual research item is tracked as
+  **R-15-residual-CE-reverse** in the audit plan.  As a
+  consequence, the existing `GIReducesToCE` Prop remains
+  inhabited only via the type-level `_card_nondegeneracy_witness`
+  (no full iff witness is added by this landing).
+
+Files touched:
+- `Orbcrypt/Hardness/PetrankRoth.lean` — new file (~1180 lines),
+  Layers 1–2 with the `prEncode_forward` headline.
+- `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` — new file
+  (~155 lines), Layer 3 column-weight infrastructure.
+- `Orbcrypt/Hardness/PetrankRoth/BitLayout.lean` — unchanged (pre-
+  session Layer 0 landing was double-checked and confirmed
+  correct).
+- `Orbcrypt/Hardness/CodeEquivalence.lean` — `GIReducesToCE`
+  documentation extended with the Workstream-R-CE landing
+  status.
+- `Orbcrypt.lean` — root file extended to import the two new
+  Hardness submodules.
+- `scripts/audit_phase_16.lean` — Layer 1 (16 entries +
+  non-vacuity), Layer 2 (19 entries + non-vacuity), Layer 3 (6
+  entries + non-vacuity) added.
+- `lakefile.lean` — `version` bumped from `0.1.15` to `0.1.16`.
+
+Traceability: audit-plan item `R-15` (GI ≤ CE) is partially
+closed — the forward direction lands as `prEncode_forward`; the
+reverse direction is deferred to research-scope
+**R-15-residual-CE-reverse** per the Risk Gate. No Layer 4–7
+declarations are introduced; the existing `GIReducesToCE` Prop's
+`_card_nondegeneracy_witness` remains the only structural
+inhabitant.
+
+Verification: every Layer 1, 2, 3 declaration depends only on
+the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`); none depends on `sorryAx` or a custom axiom.
+`lake build` succeeds for all 41 modules (39 pre-session + the
+new `Hardness/PetrankRoth.lean` and `Hardness/PetrankRoth/Marker
+Forcing.lean`) with zero warnings / zero errors. The Phase-16
+audit script's `#print axioms` total expands by 41 entries (16
+Layer 1 + 19 Layer 2 + 6 Layer 3).
+
+Patch version: `lakefile.lean` bumped from `0.1.15` to `0.1.16`
+for Workstream R-CE — two new public-API modules add new public
+declarations, warranting the patch-version bump per `CLAUDE.md`'s
+version-bump discipline. The 39-module total rises to 41; the
+zero-sorry / zero-custom-axiom posture and the standard-trio-only
+axiom-dependency posture are both preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

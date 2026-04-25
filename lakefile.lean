@@ -2,7 +2,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.1.15"
+  version := v!"0.1.16"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -11,7 +11,7 @@ package "orbcrypt" where
 
 -- Pinned to Mathlib4 commit fa6418a8 (matches lake-manifest.json)
 -- Compatible with lean4:v4.30.0-rc1 (see lean-toolchain)
--- Last verified: 2026-04-25 (Workstream I landing)
+-- Last verified: 2026-04-25 (Workstream R-CE Option-B landing)
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md

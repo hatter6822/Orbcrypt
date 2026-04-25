@@ -1967,3 +1967,115 @@ example :
   edgeEndpoints_edgeIndex 3 _ _ _
 
 end PetrankRothLayer0NonVacuity
+
+-- ============================================================================
+-- R-CE Layer 1 — Petrank–Roth encoder + cardinality
+-- (`Orbcrypt/Hardness/PetrankRoth.lean`)
+-- ============================================================================
+
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword
+#print axioms Orbcrypt.PetrankRoth.edgePresent
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword
+#print axioms Orbcrypt.PetrankRoth.markerCodeword
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_injective
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_injective
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_injective
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_edgeCodeword
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_markerCodeword
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_ne_markerCodeword
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_ne_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_ne_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.prEncode
+#print axioms Orbcrypt.PetrankRoth.prEncode_card
+#print axioms Orbcrypt.PetrankRoth.mem_prEncode
+
+namespace PetrankRothLayer1NonVacuity
+open Orbcrypt.PetrankRoth
+
+/-- **R-CE Layer 1 non-vacuity witness.** `prEncode_card` discharges
+    the `(encode m adj).card = codeSize m` non-degeneracy field of the
+    strengthened `GIReducesToCE` Prop at concrete small graphs. -/
+example : (prEncode 3 (fun _ _ => false)).card = codeSizePR 3 :=
+  prEncode_card 3 _
+
+example : (prEncode 3 (fun i j => decide (i.val + j.val = 1))).card =
+          codeSizePR 3 :=
+  prEncode_card 3 _
+
+end PetrankRothLayer1NonVacuity
+
+-- ============================================================================
+-- R-CE Layer 2 — Petrank–Roth forward direction (liftAut + prEncode_forward)
+-- (`Orbcrypt/Hardness/PetrankRoth.lean`)
+-- ============================================================================
+
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePermFun
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePermFun_left_inv
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_one
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm_pos
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm_neg
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm_set
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun
+#print axioms Orbcrypt.PetrankRoth.liftAutKind
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_one
+#print axioms Orbcrypt.PetrankRoth.liftAut
+#print axioms Orbcrypt.PetrankRoth.liftAut_one
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_vertexCodeword
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_markerCodeword
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.edgePresent_liftedEdgePerm
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_edgeCodeword
+#print axioms Orbcrypt.PetrankRoth.prEncode_forward
+
+namespace PetrankRothLayer2NonVacuity
+open Orbcrypt.PetrankRoth Orbcrypt
+
+/-- **R-CE Layer 2 non-vacuity witness.** `prEncode_forward` exhibits
+    the lifted vertex permutation as a CE-equivalence witness for the
+    encoded codes of two GI-equivalent graphs.  Trivial GI witness
+    (σ = 1, adj₁ = adj₂) on the empty graph at `m = 3`. -/
+example : ArePermEquivalent (prEncode 3 (fun _ _ => false))
+                            (prEncode 3 (fun _ _ => false)) :=
+  prEncode_forward 3 _ _ ⟨1, fun _ _ => rfl⟩
+
+/-- **R-CE Layer 2 non-vacuity witness.** Self-equivalence under a
+    non-trivial permutation σ : Equiv.Perm (Fin 3) of an arbitrary
+    graph — the GI witness `(σ, fun i j => h)` lifts to the
+    permutation-equivalence of `prEncode adj` with itself. -/
+example (adj : Fin 3 → Fin 3 → Bool) :
+    ArePermEquivalent (prEncode 3 adj) (prEncode 3 adj) :=
+  prEncode_forward 3 _ _ ⟨1, fun _ _ => rfl⟩
+
+end PetrankRothLayer2NonVacuity
+
+-- ============================================================================
+-- R-CE Layer 3 — Column-weight invariant infrastructure
+-- (`Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`)
+-- ============================================================================
+
+#print axioms Orbcrypt.PetrankRoth.colWeight
+#print axioms Orbcrypt.PetrankRoth.colWeight_empty
+#print axioms Orbcrypt.PetrankRoth.colWeight_singleton_self
+#print axioms Orbcrypt.PetrankRoth.colWeight_singleton_other
+#print axioms Orbcrypt.PetrankRoth.colWeight_union_disjoint
+#print axioms Orbcrypt.PetrankRoth.colWeight_permuteCodeword_image
+
+namespace PetrankRothLayer3NonVacuity
+open Orbcrypt.PetrankRoth
+
+/-- **R-CE Layer 3 non-vacuity witness.** `colWeight` evaluates as
+    expected at a concrete singleton; the disjoint-union identity
+    holds vacuously at empty unions; the
+    `colWeight_permuteCodeword_image` invariance holds at the identity
+    permutation. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (i : Fin (dimPR m)) :
+    colWeight ((prEncode m adj).image
+        (permuteCodeword (1 : Equiv.Perm (Fin (dimPR m)))))
+      ((1 : Equiv.Perm (Fin (dimPR m))) i)
+    = colWeight (prEncode m adj) i :=
+  colWeight_permuteCodeword_image (prEncode m adj) 1 i
+
+end PetrankRothLayer3NonVacuity

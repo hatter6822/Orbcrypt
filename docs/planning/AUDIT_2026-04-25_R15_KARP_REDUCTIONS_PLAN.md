@@ -101,6 +101,22 @@ this plan for the full delta breakdown.
 
 **Total estimate: 3,000–5,000 lines across 38 sub-tasks / 8 layers / 4–6 weeks.**
 
+**Landing status (as of 2026-04-25): Option B — forward-only.**
+Layers 0, 1, 2, 3 are landed (`Orbcrypt/Hardness/PetrankRoth/BitLayout.lean`,
+`Orbcrypt/Hardness/PetrankRoth.lean`,
+`Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`) with the headline
+`prEncode_forward` proving the easier iff direction.  Layer 3
+provides the column-weight invariance infrastructure
+(`colWeight_permuteCodeword_image`) underlying the reverse direction.
+Layers 4–7 (the marker-forcing endpoint recovery →
+`prEncode_reverse` → `prEncode_iff` → headline
+`petrankRoth_isInhabitedKarpReduction`) are deferred per the Risk
+Gate as **R-15-residual-CE-reverse** (research-scope, ~800–1500
+lines, ~7–14 days).  The full inhabitant of `GIReducesToCE` (which
+requires both iff directions) therefore remains research-scope; the
+type-level `GIReducesToCE_card_nondegeneracy_witness` in
+`Orbcrypt/Hardness/CodeEquivalence.lean` is unchanged.
+
 ## R-CE module organisation
 
 | File | Purpose | Target lines |

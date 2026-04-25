@@ -35,10 +35,21 @@ and establishes the PAut (Permutation Automorphism group) framework.
 * `Orbcrypt.GIReducesToCE_card_nondegeneracy_witness` —
   type-level satisfiability witness confirming the strengthened
   non-degeneracy fields (positive uniform `codeSize`, fixed `dim`,
-  pure encoder) are independently inhabitable. A *full* inhabitant
-  of `GIReducesToCE` (discharging the iff) requires a tight Karp
-  reduction (CFI 1992, Petrank–Roth 1997); these are research-scope
-  (audit plan § 15.1 / R-15). Workstream I4 (audit J-03).
+  pure encoder) are independently inhabitable.
+
+  **Petrank–Roth Karp reduction status (Workstream R-CE,
+  Option-B landing 2026-04-25).** The Petrank–Roth (1997) construction
+  is implemented in `Orbcrypt/Hardness/PetrankRoth.lean` and
+  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`.  The forward
+  direction `prEncode_forward` lands clean (Layers 0–2): given a GI
+  witness σ, the lifted permutation `liftAut σ` exhibits the encoded
+  codes as permutation-equivalent.  The reverse direction (Layers 4–7,
+  the marker-forcing endpoint recovery) is the multi-week residual
+  research-scope item tracked as **R-15-residual-CE-reverse** in
+  `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`'s
+  Risk Gate; Layer 3's column-weight invariant infrastructure is in
+  place as the foundation.  The full inhabitant of `GIReducesToCE`
+  (discharging both iff directions) therefore remains research-scope.
 
 ## Main results
 
