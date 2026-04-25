@@ -348,11 +348,17 @@ def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
     Petrank–Roth witness would discharge both Props simultaneously;
     that witness remains research-scope (audit plan § 15.1 / R-15).
 
-    **Non-vacuity.** See `GIReducesToCE_singleton_witness` below for
-    the trivial 1-vertex inhabitant — it confirms the strengthened
-    Prop is type-inhabitable (matching the Workstream-G
-    `tight_one_exists` non-vacuity discipline) without claiming any
-    cryptographically meaningful reduction. -/
+    **Non-vacuity.** See `GIReducesToCE_card_nondegeneracy_witness`
+    below for a structural witness confirming the strengthened
+    non-degeneracy fields (`codeSize_pos`, `encode_card_eq`) are
+    independently inhabitable (`dim m := 1`, `codeSize m := 1`,
+    `encode m adj := {fun _ => false}`). A *full* inhabitant of
+    `GIReducesToCE` (discharging the iff) requires the research-scope
+    CFI 1992 / Petrank–Roth 1997 encoding: with a constant encoder
+    the iff's RHS becomes always True, forcing LHS (the GI predicate)
+    to be always True, but the GI predicate fails for non-isomorphic
+    graphs at `m ≥ 2`. The deviation from the audit plan is recorded
+    in `Orbcrypt.lean`'s Workstream-I snapshot. -/
 def GIReducesToCE : Prop :=
   ∃ (dim : ℕ → ℕ) (codeSize : ℕ → ℕ)
     (encode : (m : ℕ) → (Fin m → Fin m → Bool) →
@@ -409,11 +415,16 @@ def GIReducesToCE : Prop :=
     well-formed, positive-cardinality, uniformly-sized image, but the
     iff itself is the research-scope content.
 
-    For consumers needing the existential `Nonempty GIReducesToCE`,
-    we expose `GIReducesToCE_nonempty_via_research` as a `Nonempty`-
-    flavoured satisfiability claim: it asserts the type is non-empty
-    *up to the research-scope iff discharge*. This is honest about
-    the depth of the gap.
+    For consumers needing a structural witness of the strengthened
+    non-degeneracy fields (independent of the iff), the theorem
+    `GIReducesToCE_card_nondegeneracy_witness` below packages
+    `dim m := 1`, `codeSize m := 1`, and `encode m adj := {fun _ =>
+    false}` together with proofs of the two non-degeneracy
+    obligations. This confirms the non-degeneracy fields are
+    independently inhabitable; a *full* inhabitant of `GIReducesToCE`
+    (discharging the iff) requires the research-scope CFI 1992 /
+    Petrank–Roth 1997 encoding (audit plan § 15.1 / R-15). This is
+    honest about the depth of the gap.
 
     **What is *machine-checked* by the strengthening.** The
     `0 < codeSize` and `card = codeSize` non-degeneracy obligations
