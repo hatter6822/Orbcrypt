@@ -48,6 +48,7 @@ Orbcrypt/
   GroupAction/
     Basic.lean                        Orbits, stabilizers, orbit partition, orbit-stabilizer wrapper
     Canonical.lean                    Canonical forms: definition, uniqueness, idempotence
+    CanonicalLexMin.lean              CanonicalForm.ofLexMin constructor (Workstream F / F2–F3c)
     Invariant.lean                    G-invariant functions, separating condition, orbit constancy
   Crypto/
     Scheme.lean                       AOE scheme syntax (Setup, Enc, Dec)
@@ -131,7 +132,11 @@ scripts/
             /        |         \
  GroupAction.   GroupAction.   (orbit lemmas
   Canonical      Invariant     feed both)
-           \        |         /
+     |       \        |         /
+     |        \       |        /
+     v
+ GroupAction.CanonicalLexMin (Workstream F: ofLexMin constructor
+   consumes Canonical + Finset.min' + Fintype orbit)
             \       |        /
              Crypto.Scheme ─────────── KEM.Syntax
             /              \               |
@@ -2366,7 +2371,47 @@ of the audit plan):**
       zero-sorry / zero-custom-axiom posture preserved; public
       declaration count rises from 347 to 349; Phase-16 audit script
       `#print axioms` total rises from 342 to 344.
-- [ ] **Workstream F** — Concrete `CanonicalForm` from lex-min (pending).
+- [x] **Workstream F** — Concrete `CanonicalForm` from lex-min (closed
+      by landing 2026-04-24). `Orbcrypt/GroupAction/CanonicalLexMin.lean`
+      (new module, 40th `.lean` file) lands `CanonicalForm.ofLexMin`
+      — a computable constructor that takes `[Group G] [MulAction G X]
+      [Fintype G] [DecidableEq X] [LinearOrder X]` and produces a
+      `CanonicalForm G X` via `Finset.min'` on the orbit's
+      `.toFinset`; the three fields (`canon`, `mem_orbit`,
+      `orbit_iff`) discharge through `Finset.min'_mem`,
+      `Set.mem_toFinset`, `MulAction.orbit_eq_iff`, and
+      `Set.toFinset_congr` respectively (F2 + F3a + F3b + F3c).
+      `Orbcrypt/Construction/HGOE.lean` gains `hgoeScheme.ofLexMin`
+      — a convenience constructor (F4) auto-filling the
+      `CanonicalForm` parameter for any finite subgroup of
+      `Equiv.Perm (Fin n)` under Orbcrypt's computable
+      `bitstringLinearOrder` lex order
+      (`Orbcrypt/Construction/Permutation.lean`, set-lex matching
+      the GAP reference implementation's
+      `CanonicalImage(G, x, OnSets)` convention: leftmost-true
+      wins, implemented via `List.ofFn ∘ (! ∘ ·)` to invert the
+      Bool order; exposed as a `@[reducible] def` rather than a
+      global instance to avoid a diamond with Mathlib's pointwise
+      `Pi.partialOrder`). `scripts/audit_phase_16.lean` gains
+      four non-vacuity witnesses (F3d): an explicit-LT lex-order
+      direction check, two `decide`-backed
+      `CanonicalForm.ofLexMin.canon` evaluations on concrete
+      `Bitstring 3` inputs (weight-2 orbit → `![true, true, false]`
+      matching GAP's `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}`;
+      singleton orbit → identity),
+      and a type-elaboration witness for `hgoeScheme.ofLexMin` at
+      `G := ⊤ ≤ S_3` with `M := Unit`. `lakefile.lean` bumped
+      `0.1.10 → 0.1.11`. 9 new public declarations
+      (`orbitFintype`, `mem_orbit_toFinset_iff`,
+      `orbit_toFinset_nonempty`, `CanonicalForm.ofLexMin`,
+      `CanonicalForm.ofLexMin_canon`,
+      `CanonicalForm.ofLexMin_canon_mem_orbit`,
+      `bitstringLinearOrder`, `hgoeScheme.ofLexMin`,
+      `hgoeScheme.ofLexMin_reps`); module count 39 → 40;
+      public declaration count 349 → 358; every new declaration
+      depends only on the standard Lean trio (`propext`,
+      `Classical.choice`, `Quot.sound`); zero sorry, zero custom
+      axiom.
 - [ ] **Workstream G** — λ-parameterised `HGOEKeyExpansion` (pending).
 - [ ] **Workstream H** — Safe decapsulation + computable decryption (pending).
 - [ ] **Workstream I** — Naming hygiene (pending).
@@ -2935,6 +2980,155 @@ total rises from 342 to 344; the non-vacuity witness block gains
 two new `example` bindings (plus four supporting fixture definitions
 — one `MulAction` instance, one `OrbitEncScheme`, one local
 `MulAction` alias, one `OrbitKEM`).
+
+Workstream F (Audit 2026-04-23 — Concrete `CanonicalForm` from
+lex-min, V1-10 / F-04, MEDIUM) has been completed:
+- `Orbcrypt/GroupAction/CanonicalLexMin.lean` — (F1) new module,
+  the 40th `.lean` file under `Orbcrypt/`. Placement decision per
+  the audit plan's § 9.4 F1 recommendation: keep
+  `Orbcrypt/GroupAction/Canonical.lean` lean (pure abstract
+  structure) and bundle the concrete-construction helpers in a
+  dedicated submodule. The module defines
+  `CanonicalForm.ofLexMin`, the computable constructor taking
+  `[Group G] [MulAction G X] [Fintype G] [DecidableEq X]
+  [LinearOrder X]` and producing a `CanonicalForm G X` as the
+  `Finset.min'` of the orbit's `.toFinset`. Three supporting
+  declarations: `orbitFintype` (the `Fintype (MulAction.orbit G x)`
+  instance inherited from `Set.fintypeRange`, since `orbit` is
+  definitionally `Set.range`); `mem_orbit_toFinset_iff`
+  (`@[simp]` lemma bridging `Set.mem_toFinset` to the Orbcrypt
+  naming convention); `orbit_toFinset_nonempty`
+  (base-point-witness lemma for `Finset.min'`'s non-emptiness
+  obligation). The constructor's three `CanonicalForm` fields
+  discharge as follows (F2 + F3b + F3c):
+  * `canon` (F2) — `(MulAction.orbit G x).toFinset.min'
+    (orbit_toFinset_nonempty x)`.
+  * `mem_orbit` (F2) — via `Finset.min'_mem` +
+    `mem_orbit_toFinset_iff`.
+  * `orbit_iff` forward (F3b) — extract the shared `min'`
+    element `m`, conclude `m ∈ orbit G x` and `m ∈ orbit G y` by
+    `Finset.min'_mem` + membership iff, then thread through
+    `MulAction.orbit_eq_iff` twice to conclude
+    `orbit G x = orbit G m = orbit G y`.
+  * `orbit_iff` reverse (F3c) — `Set.toFinset_congr` on equal
+    orbit sets produces equal `.toFinset`s; `congr 1` reduces
+    the remaining `min'` equation to the finset equality.
+  Two companion lemmas: `CanonicalForm.ofLexMin_canon` (`@[simp]`
+  unfolding lemma) and `CanonicalForm.ofLexMin_canon_mem_orbit`
+  (restatement of `mem_orbit` at the `ofLexMin` level).
+- `Orbcrypt/Construction/Permutation.lean` — (F-prereq)
+  `bitstringLinearOrder` (`@[reducible] def`, not a global
+  `instance`) registers a computable lex order on `Bitstring n`
+  matching the GAP reference implementation's
+  `CanonicalImage(G, x, OnSets)` convention: bitstrings are
+  compared via their support sets (sorted ascending position
+  lists), with smaller-position-true winning ("leftmost-true
+  wins"). Implemented via `LinearOrder.lift'` over the
+  inverted-Bool composition `List.ofFn ∘ (! ∘ ·)`, with
+  `Bool.not_inj` discharging injectivity. Exposed as a `def` to
+  avoid the diamond with Mathlib's pointwise `Pi.partialOrder` —
+  registering a global `LinearOrder (Bitstring n)` would leave
+  Lean's typeclass search with two definitionally-distinct
+  `LT (Bitstring n)` instances and break `decide` on any
+  comparison. Callers bind it locally:
+  `letI : LinearOrder (Bitstring n) := bitstringLinearOrder`.
+  Concretely on `Bitstring 3`,
+  `![T, T, T] < ![T, T, F] < ![T, F, T] < ![T, F, F] <
+   ![F, T, T] < ![F, T, F] < ![F, F, T] < ![F, F, F]`. The
+  weight-2 lex-min element `![T, T, F]` matches GAP's
+  `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}` exactly.
+  `decide` reduces `Finset.min'` under this order on small
+  inputs.
+- `Orbcrypt/Construction/HGOE.lean` — (F4) adds
+  `hgoeScheme.ofLexMin`, a convenience constructor that
+  auto-fills the `CanonicalForm` parameter for any finite
+  subgroup of `Equiv.Perm (Fin n)` under `bitstringLinearOrder`.
+  Requires `[Fintype ↥G]` (the ambient group is finite, so
+  the orbit is a `Fintype`). Threads `letI` internally so
+  callers needn't bring the `LinearOrder` themselves; the
+  global `Pi.partialOrder` diamond is not activated. Companion
+  `@[simp]` lemma `hgoeScheme.ofLexMin_reps` witnesses that
+  the `reps` field is preserved through the convenience
+  constructor (structural sanity for downstream invariant /
+  attack proofs).
+- `Orbcrypt.lean` — the 40th `.lean` file is wired in via
+  `import Orbcrypt.GroupAction.CanonicalLexMin` between the
+  existing `Canonical` and `Invariant` imports, matching the
+  module-dependency-graph order.
+- `scripts/audit_phase_16.lean` — (F3d) five new `#print axioms`
+  entries for the Workstream-F declarations, plus four new
+  non-vacuity `example` bindings under a new
+  `## Workstream F non-vacuity witnesses` section header:
+  * An explicit-LT lex-order direction check
+    (`@LT.lt (Bitstring 3) bitstringLinearOrder.toLT ...`)
+    using explicit `toLT` projection to sidestep the
+    `Pi.preorder` diamond at the witness site.
+  * A `decide`-backed evaluation confirming
+    `CanonicalForm.ofLexMin.canon ![true, false, true] =
+    ![true, true, false]` under the full `Equiv.Perm (Fin 3)`
+    action — matching GAP's
+    `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}` exactly
+    (the weight-2 orbit's lex-min under the GAP-matching
+    "leftmost-true wins" convention is the unique weight-2
+    bitstring with `true` at positions 0 and 1).
+  * A `decide`-backed evaluation on a singleton orbit:
+    `canon ![false, false, false] = ![false, false, false]`
+    (weight-0 is the only length-3 weight-0 bitstring, so the
+    orbit is a singleton).
+  * A type-elaboration witness for `hgoeScheme.ofLexMin` at
+    `G := ⊤ ≤ S_3`, `M := Unit`, with `DecidablePred (· ∈ ⊤)`
+    discharged by `fun _ => isTrue trivial`. Confirms the
+    Workstream-F4 convenience constructor elaborates at a
+    concrete finite subgroup of `Equiv.Perm (Fin 3)`.
+  Also adds two new imports (`Mathlib.Data.Fintype.Perm`,
+  `Mathlib.Data.Fin.VecNotation`) to supply
+  `Fintype (Equiv.Perm (Fin 3))` and the `![...]` syntax at
+  the witness sites; neither is transitively available through
+  `import Orbcrypt`.
+
+Traceability: audit finding V1-10 / F-04 (MEDIUM,
+`hgoeScheme`'s `CanonicalForm` parameter has no constructed
+in-tree witness) is resolved. Every downstream theorem that
+types `{can : CanonicalForm (↥G) …}` now has a concrete
+construction available via `CanonicalForm.ofLexMin` (at any
+finite subgroup + computable linear order) or
+`hgoeScheme.ofLexMin` (specialised to `Bitstring n` with
+Orbcrypt's `bitstringLinearOrder`). See
+`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 9 for
+the specification and Appendix A for the finding-to-work-unit
+mapping.
+
+Verification: `scripts/audit_phase_16.lean` exercises every
+Workstream-F declaration via `#print axioms` and four
+non-vacuity `example` bindings. Every new declaration depends
+only on standard-trio axioms (`propext`, `Classical.choice`,
+`Quot.sound`); none depends on `sorryAx` or a custom axiom.
+`lake build` succeeds (3,368 jobs — 3,367 pre-F plus one new
+module build node — with zero warnings / zero errors). The
+CI's "Verify no sorry" step (comment-aware Perl strip) passes;
+the CI's "Verify no unexpected axioms" step passes; the CI's
+Phase-16 audit-script step passes (the de-wrap parser
+confirms standard-trio-only across all 347+ `#print axioms`
+calls).
+
+Patch version: `lakefile.lean` bumped from `0.1.10` to
+`0.1.11` for Workstream F — nine new public declarations land
+(one across the new `CanonicalLexMin.lean` module, one in
+`Permutation.lean`, two in `HGOE.lean`, plus the three
+supporting lemmas and the two companion lemmas in
+`CanonicalLexMin.lean`), and `Orbcrypt.lean`'s import list
+gains a new entry. The 38-module total rises to 39; the
+public declaration count rises from 349 to 358; the
+zero-sorry / zero-custom-axiom posture is preserved; the
+standard-trio-only axiom-dependency posture is preserved. The
+Phase-16 audit script's `#print axioms` total rises from 344
+to 353 (nine new entries: `orbitFintype`,
+`mem_orbit_toFinset_iff`, `orbit_toFinset_nonempty`,
+`CanonicalForm.ofLexMin`, `CanonicalForm.ofLexMin_canon`,
+`CanonicalForm.ofLexMin_canon_mem_orbit`,
+`bitstringLinearOrder`, `hgoeScheme.ofLexMin`,
+`hgoeScheme.ofLexMin_reps`); the non-vacuity witness block
+gains four new `example` bindings.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`

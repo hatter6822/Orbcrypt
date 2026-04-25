@@ -1927,3 +1927,108 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   inside `scripts/audit_phase_16.lean` — the audit script is
   not part of `Orbcrypt.lean`'s public surface, so these do not
   count toward the public-declaration total.
+
+* **2026-04-24 (Workstream F)** — Concrete `CanonicalForm` from
+  lex-min (audit finding V1-10 / F-04, MEDIUM). Landed the
+  `CanonicalForm.ofLexMin` constructor and the
+  `hgoeScheme.ofLexMin` convenience wrapper so every downstream
+  theorem that types `{can : CanonicalForm (↥G) (Bitstring n)}`
+  now has a concrete Lean-side witness.
+
+  **New module.** `Orbcrypt/GroupAction/CanonicalLexMin.lean`
+  (the 40th `.lean` file under `Orbcrypt/`) defining:
+  * `CanonicalForm.ofLexMin` — computable lex-min canonical-form
+    constructor parametric over `[Group G] [MulAction G X]
+    [Fintype G] [DecidableEq X] [LinearOrder X]`;
+  * `orbitFintype` (F3a) — the `Fintype (MulAction.orbit G x)`
+    instance inherited from `Set.fintypeRange`, since `orbit`
+    is definitionally `Set.range`;
+  * `mem_orbit_toFinset_iff` (F3a) — named alias for
+    `Set.mem_toFinset` (which is already `@[simp]` in Mathlib, so no
+    further `@[simp]` annotation is needed; the Orbcrypt-side name
+    keeps explicit term-mode references readable);
+  * `orbit_toFinset_nonempty` (F3a) — base-point-witness lemma
+    for `Finset.min'`'s non-emptiness obligation;
+  * `CanonicalForm.ofLexMin_canon` (`@[simp]`, F2) — unfolding
+    lemma;
+  * `CanonicalForm.ofLexMin_canon_mem_orbit` — restatement of
+    `mem_orbit` at the `ofLexMin` level.
+
+  **Supporting changes.**
+  * `Orbcrypt/Construction/Permutation.lean` — adds
+    `bitstringLinearOrder` (`@[reducible] def`, not a global
+    instance) — a computable lex order on `Bitstring n` matching
+    the GAP reference implementation's `CanonicalImage(G, x,
+    OnSets)` convention exactly: bitstrings are compared via
+    their support sets (sorted ascending position lists), with
+    smaller-position-true winning. Implemented via
+    `LinearOrder.lift' (List.ofFn ∘ (! ∘ ·))`, with
+    `Bool.not_inj` discharging injectivity. The inverted-Bool
+    composition transports Mathlib's `false < true` list-lex
+    order to `true < false` on `Bitstring n`, yielding
+    "leftmost-true wins" — definitionally identical to GAP's
+    set-lex on sorted ascending support sets. Exposed as a `def`
+    to avoid the diamond with Mathlib's pointwise
+    `Pi.partialOrder`; callers bind it locally via `letI`.
+  * `Orbcrypt/Construction/HGOE.lean` — adds
+    `hgoeScheme.ofLexMin` (F4) and the companion `@[simp]`
+    lemma `hgoeScheme.ofLexMin_reps`.
+  * `Orbcrypt.lean` — imports
+    `Orbcrypt.GroupAction.CanonicalLexMin` between the
+    existing `Canonical` and `Invariant` entries; adds a
+    Workstream-F snapshot section at the end of the axiom-
+    transparency report.
+  * `scripts/audit_phase_16.lean` — six new `#print axioms`
+    entries (three in §1 GroupAction, three in §4 Construction),
+    plus four non-vacuity `example` bindings under a new
+    `## Workstream F non-vacuity witnesses` section:
+    an explicit-LT lex-order direction check (bypassing the
+    `Pi.preorder` diamond at the witness site), two
+    `decide`-backed `CanonicalForm.ofLexMin.canon` evaluations
+    on concrete `Bitstring 3` inputs (weight-2 orbit →
+    `![true, true, false]` matching GAP's
+    `CanonicalImage(S_3, {0, 1}, OnSets) = {0, 1}`; singleton
+    orbit → identity), and a type-elaboration witness for
+    `hgoeScheme.ofLexMin` at `G := ⊤ ≤ S_3`. Two new Mathlib
+    imports (`Mathlib.Data.Fintype.Perm`,
+    `Mathlib.Data.Fin.VecNotation`) supply
+    `Fintype (Equiv.Perm (Fin 3))` and the `![...]` syntax at
+    the witness sites.
+  * `CLAUDE.md` — source-layout tree gains the
+    `CanonicalLexMin.lean` entry; module-dependency graph
+    extended with the Workstream-F node; Workstream status
+    tracker row for F marked closed; Workstream-F snapshot
+    appended after the Workstream-E snapshot.
+  * `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 9.6
+    Exit criteria gain a "Closure status (2026-04-24)"
+    subsection; Appendix B Workstream tracker row for F marked
+    **closed**.
+
+  **Traceability.** Audit finding V1-10 / F-04 (MEDIUM,
+  `hgoeScheme`'s `CanonicalForm` parameter has no constructed
+  in-tree witness) is resolved. Every downstream theorem that
+  types `{can : CanonicalForm (↥G) …}` now has a concrete
+  construction available via `CanonicalForm.ofLexMin` (at any
+  finite subgroup + computable linear order) or
+  `hgoeScheme.ofLexMin` (specialised to `Bitstring n` under
+  `bitstringLinearOrder`). See
+  `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 9 for
+  the workstream specification and § 9.6 for the closed exit
+  criteria.
+
+  **Verification.** `lake build` succeeds for all 40 modules
+  (3,368 jobs) with zero warnings / zero errors.
+  `scripts/audit_phase_16.lean` emits only standard-trio
+  axioms (`propext`, `Classical.choice`, `Quot.sound`) for every
+  Workstream-F declaration; none depends on `sorryAx` or a
+  custom axiom. The four new non-vacuity `example` bindings
+  elaborate and close their goals — three via `decide` and
+  one via direct term construction. The module count rises
+  from 39 to 40; public declaration count rises from 349 to
+  358; the Phase-16 `#print axioms` audit total rises from
+  373 to 382; the zero-sorry / zero-custom-axiom posture is
+  preserved.
+
+  **Patch version.** `lakefile.lean` bumped from `0.1.10` to
+  `0.1.11` for Workstream F, triggered by the nine new public
+  declarations per `CLAUDE.md`'s version-bump discipline.

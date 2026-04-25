@@ -34,7 +34,7 @@ consolidated end-to-end verification report in
 [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md), the
 comprehensive `#print axioms` audit script in
 [`scripts/audit_phase_16.lean`](scripts/audit_phase_16.lean) exercising
-every public declaration (346+ total post-Workstream-K, zero `sorryAx`,
+every public declaration (358+ total post-Workstream-F, zero `sorryAx`,
 zero custom axioms), and a CI regression sentinel that de-wraps Lean's
 multi-line axiom lists before scanning so a custom axiom cannot hide on
 a continuation line.
@@ -91,7 +91,7 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 
 | Layer | Modules | Content |
 |-------|---------|---------|
-| Group Actions | `GroupAction/{Basic, Canonical, Invariant}` | Orbit/stabilizer API, canonical forms, G-invariant functions |
+| Group Actions | `GroupAction/{Basic, Canonical, CanonicalLexMin, Invariant}` | Orbit/stabilizer API, canonical forms (abstract + concrete `ofLexMin` constructor matching GAP's `CanonicalImage`, Workstream F), G-invariant functions |
 | Crypto Framework | `Crypto/{Scheme, Security, OIA, CompOIA, CompSecurity}` | Scheme, adversary, OIA, probabilistic security |
 | Core Theorems | `Theorems/{Correctness, InvariantAttack, OIAImpliesCPA}` | Three headline results + contrapositive direction |
 | KEM | `KEM/{Syntax, Encapsulate, Correctness, Security, CompSecurity}` | KEM reformulation, KEMOIA, KEM security, probabilistic KEM security (Workstream E1) |
@@ -104,15 +104,22 @@ not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
 
 ### Build Stats
 
-- 38 Lean source files + root import file
-- 347 public declarations (def / theorem / structure / class / instance / abbrev), all with docstrings
-- 371 declarations exercised by `scripts/audit_phase_16.lean` with `#print axioms` (every public declaration plus auto-generated field accessors and non-vacuity witnesses; all depend only on the standard Lean trio `propext` / `Classical.choice` / `Quot.sound`, or on *no* axioms at all)
+- 39 Lean source files + root import file (Workstream F of the
+  2026-04-23 audit added `GroupAction/CanonicalLexMin.lean` for the
+  concrete `CanonicalForm.ofLexMin` constructor)
+- 358 public declarations (def / theorem / structure / class /
+  instance / abbrev), all with docstrings
+- 382 declarations exercised by `scripts/audit_phase_16.lean` with
+  `#print axioms` (every public declaration plus auto-generated
+  field accessors and non-vacuity witnesses; all depend only on the
+  standard Lean trio `propext` / `Classical.choice` / `Quot.sound`,
+  or on *no* axioms at all)
 - Zero `sorry`, zero custom axioms, zero warnings
-- `lake build Orbcrypt` runs 3,367 jobs successfully
+- `lake build Orbcrypt` runs 3,368 jobs successfully
 - Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1; see [Toolchain decision](docs/VERIFICATION_REPORT.md#toolchain-decision-workstream-d) — Workstream D, Scenario C, ships v1.0 off the rc, stable upgrade deferred to v1.1)
 - `lakefile.lean` defensively pins `linter.unusedVariables := true` (Lean core, defensive) and `linter.docPrime := true` (Mathlib, meaningful enable — Workstream D / D3)
 - GitHub Actions CI on every push (build + sorry scan + axiom-decl scan + Phase 16 audit regression sentinel)
-- Package version: `0.1.9` (see `lakefile.lean`; latest bump by Workstream D of the 2026-04-23 audit, V1-6 / A-01 / A-02 / A-03)
+- Package version: `0.1.11` (see `lakefile.lean`; latest bump by Workstream F of the 2026-04-23 audit, V1-10 / F-04 — concrete `CanonicalForm.ofLexMin` constructor matching GAP's `CanonicalImage` convention)
 
 ## Build
 

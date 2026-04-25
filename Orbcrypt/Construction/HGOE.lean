@@ -1,4 +1,5 @@
 import Orbcrypt.Construction.Permutation
+import Orbcrypt.GroupAction.CanonicalLexMin
 import Orbcrypt.Crypto.Security
 import Orbcrypt.Theorems.Correctness
 import Orbcrypt.Theorems.InvariantAttack
@@ -12,7 +13,11 @@ weight defense (same-weight representatives defeat weight-based attacks).
 
 ## Main definitions and results
 
-* `Orbcrypt.hgoeScheme` — concrete `OrbitEncScheme` for HGOE
+* `Orbcrypt.hgoeScheme` — concrete `OrbitEncScheme` for HGOE (takes a
+  `CanonicalForm` parameter)
+* `Orbcrypt.hgoeScheme.ofLexMin` — convenience constructor that auto-fills
+  the `CanonicalForm` parameter with `CanonicalForm.ofLexMin` under the
+  computable `bitstringLinearOrder` lex order (Workstream F / F4)
 * `Orbcrypt.hgoe_correctness` — correctness of HGOE (decryption inverts encryption)
 * `Orbcrypt.hammingWeight_invariant_subgroup` — Hamming weight invariant under subgroups
 * `Orbcrypt.hgoe_weight_attack` — Hamming weight attack when weights differ
@@ -23,6 +28,9 @@ weight defense (same-weight representatives defeat weight-based attacks).
 * DEVELOPMENT.md §7.1 — Hamming weight defense
 * COUNTEREXAMPLE.md — Hamming weight attack
 * formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md — work units 5.7–5.11
+* docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 9 — Workstream F
+  (V1-10 / F-04): `hgoeScheme.ofLexMin` closes the concrete-canonical-form
+  gap by wiring `CanonicalForm.ofLexMin` into the HGOE constructor.
 -/
 
 namespace Orbcrypt
@@ -63,6 +71,60 @@ def hgoeScheme {M : Type*}
   reps := reps
   reps_distinct := hDistinct
   canonForm := can
+
+/-- Convenience constructor: HGOE scheme whose `CanonicalForm` is the
+    lex-min canonical form under Orbcrypt's `bitstringLinearOrder`,
+    **matching the GAP reference implementation's choice of orbit
+    representative exactly**.
+
+    The GAP prototype in `implementation/gap/orbcrypt_kem.g` invokes
+    `CanonicalImage(G, support_set, OnSets)` from the GAP `images`
+    package. That returns the lex-minimum support-set representation
+    under GAP's set ordering: sorted ascending element lists compared
+    element-wise, with smaller-position-true winning. The Lean
+    `bitstringLinearOrder` is constructed (via the inverted-Bool
+    composition `List.ofFn ∘ (! ∘ ·)`) to match this convention
+    point-for-point: for every orbit `O` under any subgroup
+    `G ≤ S_n`, `CanonicalForm.ofLexMin.canon` and GAP's
+    `CanonicalImage` pick the *same* element of `O` as the canonical
+    representative. This means the Lean specification of HGOE
+    encryption / decryption now formally specifies the GAP reference
+    implementation's pipeline (modulo abstract layers like
+    `keyDerive`), not merely *a* valid HGOE instantiation.
+
+    Requires `[Fintype ↥G]` (the ambient group is finite, so the orbit
+    is a `Fintype`) and `[DecidableEq (Bitstring n)]` (automatic for
+    `Fin n → Bool`). Registers `bitstringLinearOrder` locally via
+    `letI`, so callers needn't bring the `LinearOrder` themselves and
+    the global `Pi.partialOrder` diamond is not activated.
+
+    Closes audit finding V1-10 / F-04 (Workstream F of the 2026-04-23
+    audit): `hgoeScheme`'s previously-abstract `CanonicalForm`
+    parameter now has a concrete in-tree witness at every finite
+    subgroup of `Equiv.Perm (Fin n)` — and that witness matches the
+    GAP reference implementation's canonical-form choice. -/
+def hgoeScheme.ofLexMin {M : Type*}
+    (G : Subgroup (Equiv.Perm (Fin n))) [Fintype (↥G)]
+    (reps : M → Bitstring n)
+    (hDistinct : ∀ m₁ m₂ : M, m₁ ≠ m₂ →
+      MulAction.orbit (↥G) (reps m₁) ≠ MulAction.orbit (↥G) (reps m₂)) :
+    OrbitEncScheme (↥G) (Bitstring n) M :=
+  letI : LinearOrder (Bitstring n) := bitstringLinearOrder
+  hgoeScheme G (CanonicalForm.ofLexMin (G := ↥G) (X := Bitstring n))
+    reps hDistinct
+
+/-- `hgoeScheme.ofLexMin` preserves the `reps` field of its input — the
+    canonical form is auto-filled without altering the representative
+    assignment. A structural sanity lemma that consumers can reach
+    for when threading `reps` through downstream invariant or attack
+    proofs built on top of `ofLexMin`. -/
+@[simp]
+theorem hgoeScheme.ofLexMin_reps {M : Type*}
+    (G : Subgroup (Equiv.Perm (Fin n))) [Fintype (↥G)]
+    (reps : M → Bitstring n)
+    (hDistinct : ∀ m₁ m₂ : M, m₁ ≠ m₂ →
+      MulAction.orbit (↥G) (reps m₁) ≠ MulAction.orbit (↥G) (reps m₂)) :
+    (hgoeScheme.ofLexMin G reps hDistinct).reps = reps := rfl
 
 -- ============================================================================
 -- Work Unit 5.9: HGOE Correctness Instantiation

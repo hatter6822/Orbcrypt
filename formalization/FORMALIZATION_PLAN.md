@@ -52,6 +52,7 @@ is hard" in RSA. We state it as an axiom and prove that security follows from it
 |------|-------------|---------------|
 | Group action fundamentals | Orbits, stabilizers, partition theorem, orbit-stabilizer | `GroupAction/Basic.lean` |
 | Canonical forms | Abstract canonical form definition, uniqueness, idempotence | `GroupAction/Canonical.lean` |
+| Concrete canonical form | `CanonicalForm.ofLexMin` — lex-minimum orbit element as a computable witness (Workstream F of the 2026-04-23 audit) | `GroupAction/CanonicalLexMin.lean` |
 | G-invariant functions | Definition, properties, separating condition | `GroupAction/Invariant.lean` |
 | AOE scheme syntax | `OrbitEncScheme` structure with `encrypt` and `decrypt` | `Crypto/Scheme.lean` |
 | IND-CPA security game | Adversary structure, advantage definition | `Crypto/Security.lean` |
@@ -88,6 +89,7 @@ Orbcrypt/
     ├── GroupAction/
     │   ├── Basic.lean                -- Orbit, stabilizer, orbit partition
     │   ├── Canonical.lean            -- Canonical forms under group actions
+    │   ├── CanonicalLexMin.lean      -- Concrete ofLexMin constructor (Workstream F)
     │   └── Invariant.lean            -- G-invariant functions and properties
     ├── Crypto/
     │   ├── Scheme.lean               -- AOE scheme syntax (Setup, Enc, Dec)
