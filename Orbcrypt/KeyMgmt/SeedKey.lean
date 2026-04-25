@@ -28,7 +28,11 @@ canonical form — is deterministically reconstructed.
   plus a **machine-checkable bit-length compression witness** (audit
   F-AUDIT-2026-04-21-M2 / Workstream L1).
 * `Orbcrypt.seed_kem_correctness` — seed-based KEM correctness
-* `Orbcrypt.HGOEKeyExpansion` — specification of the 7-stage key expansion pipeline
+* `Orbcrypt.HGOEKeyExpansion` — λ-parameterised specification of the 7-stage key
+  expansion pipeline (post-Workstream-G of audit 2026-04-23, finding V1-13 /
+  H-03 / Z-06 / D16: takes a security parameter `lam : ℕ` and asks
+  `group_order_log ≥ lam`, unlocking the λ ∈ {80, 192, 256} rows of the
+  Phase-14 sweep that the pre-G hard-coded `≥ 128` bound made unreachable)
 * `Orbcrypt.seed_determines_key` — equal seeds produce equal key material
 * `Orbcrypt.OrbitEncScheme.toSeedKey` — backward compatibility bridge
 
@@ -110,9 +114,13 @@ even though the elementwise comparison permits much more.
 ## References
 
 * DEVELOPMENT.md §6.2.1 — QC code key expansion pipeline
+* `docs/PARAMETERS.md` §2 — λ ∈ {80, 128, 192, 256} parameter recommendations
+  (cross-referenced from `HGOEKeyExpansion`'s `lam` parameter)
 * formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 9, work units 9.1–9.3, 9.6–9.7
 * `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 — Workstream L1
   (witnessed-compression refactor, 2026-04-22)
+* `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 10 — Workstream G
+  (λ-parameterised `HGOEKeyExpansion`, 2026-04-25)
 -/
 
 namespace Orbcrypt
@@ -235,13 +243,38 @@ An implementation must satisfy these properties. The pipeline is:
    Hamming weight (defense against the attack in COUNTEREXAMPLE.md).
 
 **Parameters:**
-- `n`: bitstring length (security parameter)
+- `lam`: security parameter λ (in bits). Production deployments use
+  `lam ∈ {80, 128, 192, 256}`, matching the Phase-14 parameter sweep in
+  `docs/PARAMETERS.md`. The Lean identifier is spelled `lam` rather than
+  `λ` because `λ` is a Lean reserved token (lambda-abstraction). Named-
+  argument syntax accepts the spelling: `HGOEKeyExpansion (lam := 128)
+  (n := 512) M`.
+- `n`: bitstring length (must be at least `lam`-bit-secure under the
+  scaling model in `docs/PARAMETERS.md` §4)
 - `M`: message type (orbit indices)
 
 **Note:** Fields 1–3 specify structural properties of the code construction.
 Field 4 specifies the Hamming weight defense from COUNTEREXAMPLE.md.
+
+**Pre-Workstream-G note (audit 2026-04-23, finding V1-13 / H-03 / Z-06 /
+D16).** Until Workstream G of the 2026-04-23 pre-release audit landed,
+this structure hard-coded the bound `group_order_log ≥ 128` rather than
+parameterising it by λ. The pre-G shape was instantiable only at the
+λ = 128 row of the Phase-14 sweep; the λ ∈ {80, 192, 256} rows could
+not discharge the bound (λ = 80 was strictly weaker than 128, λ ≥ 192
+was strictly stronger). The post-G shape takes `lam : ℕ` as an explicit
+structure parameter and asks `group_order_log ≥ lam`; the Phase-14
+sweep's four security tiers are now Lean-instantiable witnesses (see
+`scripts/audit_phase_16.lean`'s "Workstream G non-vacuity witnesses"
+section for one `HGOEKeyExpansion lam …` example per security level).
+The Lean-verified `≥ lam` bound is a **lower bound**, not an exact
+bound: the actual group order chosen at deployment can be larger
+(e.g., the λ = 128 GAP fixture chooses `group_order_log` well above
+the 128 floor; see `docs/benchmarks/results_128.csv`). External
+release claims about HGOE's λ coverage should cite this λ-parameterised
+form together with the corresponding row of `docs/PARAMETERS.md`.
 -/
-structure HGOEKeyExpansion (n : ℕ) (M : Type*) where
+structure HGOEKeyExpansion (lam : ℕ) (n : ℕ) (M : Type*) where
   /-- Stage 1: block size for the quasi-cyclic code. -/
   b : ℕ
   /-- Stage 1: number of circulant blocks. -/
@@ -254,8 +287,13 @@ structure HGOEKeyExpansion (n : ℕ) (M : Type*) where
   code_valid : code_dim ≤ n
   /-- Stage 3: log₂ of the automorphism group order. -/
   group_order_log : ℕ
-  /-- Stage 3: group must be large enough for λ = 128 bit security. -/
-  group_large_enough : group_order_log ≥ 128
+  /-- Stage 3: group must be large enough for `lam`-bit security. The
+      Lean-verified bound is a *lower bound* (`group_order_log ≥ lam`);
+      production deployments choose `group_order_log` strictly above
+      `lam` per the scaling-model thresholds in `docs/PARAMETERS.md`
+      §4 (brute-force orbit enumeration, birthday on orbits, Babai's
+      GI bound, algebraic QC-folding). -/
+  group_large_enough : group_order_log ≥ lam
   /-- Stage 4: target Hamming weight for all representatives. -/
   weight : ℕ
   /-- Stage 4: orbit representative function. -/

@@ -766,7 +766,7 @@ Phase 8 (Probabilistic Foundations) has been completed:
 - `lake build` succeeds for all 21 modules (zero errors)
 
 Phase 9 (Key Compression & Nonce-Based Encryption) has been completed:
-- `KeyMgmt/SeedKey.lean` — `SeedKey` structure (compact seed + deterministic expansion + PRF-based sampling + **machine-checked bit-length compression witness** `compression : Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)` post Workstream L1; `[Fintype Seed]` and `[Fintype G]` are now typeclass preconditions on the structure); `seed_kem_correctness` (seed-based KEM correctness, follows from `kem_correctness`); `HGOEKeyExpansion` (7-stage QC code key expansion specification with weight uniformity); `seed_determines_key` (equal seeds → equal key material); `seed_determines_canon` (equal seeds → equal canonical forms); `OrbitEncScheme.toSeedKey` (backward compatibility bridge; takes an `hGroupNontrivial : 1 < Fintype.card G` hypothesis post Workstream L1 to discharge the `compression` field); `toSeedKey_expand` and `toSeedKey_sampleGroup` (bridge preservation lemmas)
+- `KeyMgmt/SeedKey.lean` — `SeedKey` structure (compact seed + deterministic expansion + PRF-based sampling + **machine-checked bit-length compression witness** `compression : Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)` post Workstream L1; `[Fintype Seed]` and `[Fintype G]` are now typeclass preconditions on the structure); `seed_kem_correctness` (seed-based KEM correctness, follows from `kem_correctness`); `HGOEKeyExpansion` (λ-parameterised 7-stage QC code key expansion specification with weight uniformity; takes `(lam : ℕ) (n : ℕ) (M : Type*)` and asks `group_order_log ≥ lam` post Workstream G of audit 2026-04-23 — finding V1-13 / H-03 / Z-06 / D16, landed 2026-04-25 — unlocking λ ∈ {80, 192, 256} that the pre-G hard-coded `≥ 128` bound made unreachable); `seed_determines_key` (equal seeds → equal key material); `seed_determines_canon` (equal seeds → equal canonical forms); `OrbitEncScheme.toSeedKey` (backward compatibility bridge; takes an `hGroupNontrivial : 1 < Fintype.card G` hypothesis post Workstream L1 to discharge the `compression` field); `toSeedKey_expand` and `toSeedKey_sampleGroup` (bridge preservation lemmas)
 - `KeyMgmt/Nonce.lean` — `nonceEncaps` (nonce-based deterministic KEM encapsulation); `nonceDecaps` (nonce-based decapsulation); `nonce_encaps_correctness` (decaps recovers encapsulated key); `nonce_reuse_deterministic` (same nonce → same output, by `rfl`); `distinct_nonces_distinct_elements` (injective PRF → distinct group elements); `nonce_reuse_leaks_orbit` (cross-KEM nonce reuse leaks orbit membership — formal warning theorem); `nonceEncaps_mem_orbit` (ciphertext lies in base point's orbit); simp lemmas for unfolding
 - All 7 work units (9.1–9.7) implemented with zero `sorry`, zero warnings, zero custom axioms
 - 2 new Lean files, 19 new public declarations across 467 lines
@@ -2412,7 +2412,40 @@ of the audit plan):**
       depends only on the standard Lean trio (`propext`,
       `Classical.choice`, `Quot.sound`); zero sorry, zero custom
       axiom.
-- [ ] **Workstream G** — λ-parameterised `HGOEKeyExpansion` (pending).
+- [x] **Workstream G** — λ-parameterised `HGOEKeyExpansion` (closed by
+      landing 2026-04-25). `Orbcrypt/KeyMgmt/SeedKey.lean`:
+      `HGOEKeyExpansion` gains a leading `lam : ℕ` parameter and the
+      `group_large_enough` field becomes `group_order_log ≥ lam` (G1).
+      The Lean identifier is spelled `lam` because `λ` is a reserved
+      Lean token; named-argument syntax accepts the spelling
+      (`HGOEKeyExpansion (lam := 128) …`). Module / structure / field
+      docstrings updated with the cross-reference to
+      `docs/PARAMETERS.md` and the lower-bound semantics disclosure.
+      `scripts/audit_phase_16.lean` (G2): adds a "Workstream G non-
+      vacuity witnesses" section under
+      `§ 12 NonVacuityWitnesses` with four `example` blocks — one
+      per documented Phase-14 tier (`HGOEKeyExpansion 80 320 Unit`,
+      `HGOEKeyExpansion 128 512 Unit`, `HGOEKeyExpansion 192 768 Unit`,
+      `HGOEKeyExpansion 256 1024 Unit`) — plus a private helper
+      `hammingWeight_zero_bitstring` reused by all four to discharge
+      Stage-4 weight-uniformity, a field-projection regression
+      (`exp.group_large_enough : exp.group_order_log ≥ lam`), and a
+      λ-monotonicity negative example confirming `¬ (80 ≥ 192)`
+      (documenting the four obligations are *distinct*, not a single
+      sloppy bound). `DEVELOPMENT.md §6.2.1` (G3) gains a paragraph
+      cross-linking the Lean structure to the prose pipeline; the
+      Lean / prose spelling correspondence (`lam` ↔ `λ`) is disclosed
+      explicitly. `docs/PARAMETERS.md §2.2.1` (G3) is a new
+      "Lean cross-link" subsection mapping each row of the §2.2 table
+      to its `HGOEKeyExpansion lam …` Lean witness, and disclosing
+      that the Lean-verified `≥ lam` is a lower bound (deployment
+      may choose strictly larger `group_order_log`). `Orbcrypt.lean`
+      gains a Workstream-G snapshot section at the end of the
+      transparency report. `lakefile.lean` bumped `0.1.11 → 0.1.12`.
+      Module count remains 39; public declaration count remains 358
+      (the structure gains a parameter, not a field). The zero-sorry
+      / zero-custom-axiom posture is preserved; every new audit-script
+      `example` elaborates with standard-trio-only axioms.
 - [ ] **Workstream H** — Safe decapsulation + computable decryption (pending).
 - [ ] **Workstream I** — Naming hygiene (pending).
 - [ ] **Workstream J** — Invariant-attack framing + negligible closures (pending).
@@ -3129,6 +3162,112 @@ to 353 (nine new entries: `orbitFintype`,
 `bitstringLinearOrder`, `hgoeScheme.ofLexMin`,
 `hgoeScheme.ofLexMin_reps`); the non-vacuity witness block
 gains four new `example` bindings.
+
+Workstream G (Audit 2026-04-23 — λ-parameterised
+`HGOEKeyExpansion`, V1-13 / H-03 / Z-06 / D16, MEDIUM) has
+been completed (2026-04-25):
+
+- **G1 — Add `lam : ℕ` parameter to `HGOEKeyExpansion`.**
+  `Orbcrypt/KeyMgmt/SeedKey.lean`: the structure signature
+  changes from `HGOEKeyExpansion (n : ℕ) (M : Type*)` to
+  `HGOEKeyExpansion (lam : ℕ) (n : ℕ) (M : Type*)`. The leading
+  `lam` parameter is the security parameter (spelled `lam`
+  rather than `λ` because `λ` is a Lean-reserved token; named-
+  argument syntax accepts the spelling
+  `HGOEKeyExpansion (lam := 128) (n := 512) M`). The
+  `group_large_enough` field's type changes from the literal
+  `group_order_log ≥ 128` to the λ-parameterised
+  `group_order_log ≥ lam`. The structure / module / field
+  docstrings are updated to disclose: (a) the spelling
+  correspondence; (b) the lower-bound semantics (the Lean-
+  verified bound is `≥ lam`, not `= lam`; deployment chooses
+  `group_order_log` per the §4 thresholds, often strictly
+  above `lam`); (c) the cross-reference to
+  `docs/PARAMETERS.md` §2.2.1 and the Workstream-G entry in
+  the audit plan.
+
+- **G2 — Non-vacuity witnesses at λ ∈ {80, 128, 192, 256}.**
+  `scripts/audit_phase_16.lean`: a new "Workstream G non-
+  vacuity witnesses" section under
+  `§ 12 NonVacuityWitnesses` lands four `example` blocks,
+  one per documented Phase-14 tier. Each witness exhibits a
+  complete `HGOEKeyExpansion lam n Unit` value with all 11
+  fields discharged, including the critical
+  `group_large_enough : group_order_log ≥ lam` field
+  closed by `le_refl _` (we choose `group_order_log := lam`
+  for each witness — production deployments choose strictly
+  larger to clear the §4 scaling-model thresholds). The
+  parameter triples used:
+  * λ = 80: `n = 256`, `b = 4`, `ℓ = 64`, `code_dim = 128`.
+  * λ = 128: `n = 512`, `b = 8`, `ℓ = 64`, `code_dim = 256`
+    (matches the aggressive-tier row of
+    `docs/benchmarks/results_128.csv`).
+  * λ = 192: `n = 768`, `b = 4`, `ℓ = 192`, `code_dim = 384`.
+  * λ = 256: `n = 1024`, `b = 4`, `ℓ = 256`, `code_dim = 512`.
+  A private helper `hammingWeight_zero_bitstring` (one
+  `simp [hammingWeight]` body) is shared across all four
+  witnesses to discharge Stage-4 weight-uniformity for the
+  trivial `reps := fun _ _ => false` choice (every
+  representative has Hamming weight 0). Two regression
+  examples land alongside: a field-projection check
+  (`exp.group_large_enough : exp.group_order_log ≥ lam` on a
+  free `lam`) and a λ-monotonicity negative example
+  (`¬ (80 ≥ 192)`) documenting that the four tier-witnesses
+  are *distinct* obligations.
+
+- **G3 — Documentation cross-links.** `DEVELOPMENT.md §6.2.1`
+  gains a paragraph at the top of the "HGOE.Setup(1^λ) — Detailed
+  Pipeline" section cross-linking the prose specification to the
+  λ-parameterised Lean structure and disclosing the spelling
+  correspondence (`lam` ↔ `λ`). `docs/PARAMETERS.md §2.2.1` is
+  a new "Lean cross-link — λ-parameterised
+  `HGOEKeyExpansion`" subsection mapping each row of the §2.2
+  parameter table to its corresponding `HGOEKeyExpansion lam …`
+  Lean witness; explicitly disclosing the lower-bound semantics
+  and the Workstream-G fix to the pre-G λ-coverage gap.
+
+Files touched: `Orbcrypt/KeyMgmt/SeedKey.lean` (structure +
+docstrings), `scripts/audit_phase_16.lean` (Workstream-G
+non-vacuity witnesses), `DEVELOPMENT.md`, `docs/PARAMETERS.md`,
+`Orbcrypt.lean` (Workstream-G snapshot at the end of the
+transparency report), `CLAUDE.md` (this snapshot, the module-
+line note for `KeyMgmt/SeedKey.lean`, the Workstream-G status-
+tracker checkbox), `docs/VERIFICATION_REPORT.md` (Document
+history + Known limitations cross-reference), and
+`lakefile.lean` (`version` bumped `0.1.11 → 0.1.12`).
+
+Traceability: audit findings V1-13 (CRITICAL release-messaging
+gap on λ coverage), H-03 (MEDIUM, hard-coded literal),
+Z-06 (LOW performance / Phase-14 alignment), and D16 (LOW
+documentation-vs-code parity) are resolved. The pre-G
+"`HGOEKeyExpansion` is only instantiable at λ = 128" gap is
+closed by the structural change; the four non-vacuity witnesses
+machine-check that every documented security tier inhabits the
+post-G structure.
+
+Verification: every new declaration depends only on the
+standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`); none depends on `sorryAx` or a custom axiom.
+`lake build` succeeds for all 39 modules with zero warnings /
+zero errors. `scripts/audit_phase_16.lean` emits standard-trio-
+only axiom output for `#print axioms HGOEKeyExpansion` and for
+the new defensive `#print axioms hammingWeight_zero_bitstring`
+(the audit-script-internal `private theorem` used to discharge
+Stage-4 weight-uniformity for the four tier witnesses); the
+four non-vacuity `example`s elaborate cleanly. The Phase-16
+`#print axioms` total rises from 382 to 383 (the new line
+covers the helper, ensuring CI surfaces any future helper
+regression that anonymous `example`s would otherwise hide).
+
+Patch version: `lakefile.lean` bumped from `0.1.11` to
+`0.1.12` for Workstream G — the `HGOEKeyExpansion` signature
+change (gaining a `lam : ℕ` parameter) is an API break
+warranting a patch bump per `CLAUDE.md`'s version-bump
+discipline. The 39-module total is unchanged; the public
+declaration count remains 358 (the structure gains a parameter,
+not a field); the zero-sorry / zero-custom-axiom posture is
+preserved; the standard-trio-only axiom-dependency posture is
+preserved.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`

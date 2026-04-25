@@ -2354,4 +2354,165 @@ to 39; public declaration count rises from 349 to 358. The
 zero-sorry / zero-custom-axiom posture and the standard-trio-
 only axiom-dependency posture are preserved. The Phase-16
 audit script's `#print axioms` total rises from 373 to 382.
+
+## Workstream G Snapshot (audit 2026-04-23, finding V1-13 / H-03 / Z-06 / D16)
+
+### Problem
+
+`HGOEKeyExpansion` (`Orbcrypt/KeyMgmt/SeedKey.lean`) hard-coded
+`group_large_enough : group_order_log ≥ 128` as a literal field
+type — the `128` was a magic number, not a structure parameter.
+The Phase-14 parameter sweep (`docs/PARAMETERS.md`,
+`docs/benchmarks/results_{80,128,192,256}.csv`) documents four
+security tiers (λ ∈ {80, 128, 192, 256}); only λ = 128 had a
+corresponding Lean-instantiable witness.
+
+* **λ = 80 was strictly weaker** than the literal: a deployment
+  targeting λ = 80 would carry around a `≥ 128` proof obligation
+  it could not actually discharge from its λ = 80 group order.
+  Such a deployment was *unable* to inhabit `HGOEKeyExpansion`
+  in Lean.
+* **λ ∈ {192, 256} were strictly stronger** than the literal:
+  a deployment claiming λ = 256 security was getting only the
+  λ = 128 strength guarantee out of `HGOEKeyExpansion`. The
+  type system was *under-constraining* the high-security tiers
+  — the structure couldn't tell the difference between a
+  λ = 128 and a λ = 256 caller.
+
+This was a release-messaging gap: external prose advertised
+λ ∈ {80, 128, 192, 256} coverage; the Lean content only
+covered λ = 128. The audit catalogued this as MEDIUM-severity
+finding V1-13 / H-03 / Z-06 / D16.
+
+### Fix
+
+`HGOEKeyExpansion` now takes a leading `lam : ℕ` parameter:
+
+```
+structure HGOEKeyExpansion (lam : ℕ) (n : ℕ) (M : Type*) where
+  ...
+  group_order_log : ℕ
+  group_large_enough : group_order_log ≥ lam
+  ...
+```
+
+The Lean identifier is spelled `lam` rather than `λ` because `λ`
+is a reserved Lean token (lambda-abstraction). Named-argument
+syntax accepts the spelling:
+`HGOEKeyExpansion (lam := 128) (n := 512) M`. The structure
+field `group_large_enough` is now λ-parameterised rather than
+hard-coded.
+
+The Lean-verified `≥ lam` bound is a **lower bound**, not an
+exact bound: deployment chooses `group_order_log` per the §4
+scaling-model thresholds in `docs/PARAMETERS.md`, often strictly
+above `lam` (e.g., L3 in `docs/benchmarks/results_128.csv` has
+`log₂|G| = 130 > 128`).
+
+### Files touched
+
+* `Orbcrypt/KeyMgmt/SeedKey.lean` — `HGOEKeyExpansion` gains the
+  leading `lam : ℕ` parameter; `group_large_enough` becomes
+  `group_order_log ≥ lam`. Module docstring + structure
+  docstring + field docstring updated to disclose the
+  λ-parameterisation, the lower-bound semantics, and the cross-
+  reference to `docs/PARAMETERS.md`. New entry in the
+  References list pointing at `docs/planning/AUDIT_2026-04-23_
+  WORKSTREAM_PLAN.md` § 10.
+* `scripts/audit_phase_16.lean` — adds a "Workstream G non-
+  vacuity witnesses" section with **four** `example`s, one per
+  documented tier (`HGOEKeyExpansion 80 320 Unit`,
+  `HGOEKeyExpansion 128 512 Unit`, `HGOEKeyExpansion 192 768
+  Unit`, `HGOEKeyExpansion 256 1024 Unit`). Each witness
+  discharges every structure field including
+  `group_large_enough` via `le_refl _` (we choose
+  `group_order_log := lam` for simplicity — production
+  deployments can choose strictly larger). Adds a private
+  helper `hammingWeight_zero_bitstring` (used by all four
+  witnesses to discharge Stage-4 `reps_same_weight` for the
+  all-zero `reps` function), a field-projection regression
+  example confirming `exp.group_large_enough : exp.group_order_
+  log ≥ lam` is extractable on a free `lam`, and a
+  λ-monotonicity negative example confirming `¬ (80 ≥ 192)` —
+  documenting that the four tier-witnesses are **distinct**
+  obligations, not one obligation with a sloppy bound.
+* `DEVELOPMENT.md §6.2.1` — gains a paragraph cross-linking the
+  λ-parameterised `HGOEKeyExpansion` to the prose specification,
+  noting the Lean / prose spelling correspondence (`lam` ↔ `λ`).
+* `docs/PARAMETERS.md §2` — gains a new §2.2.1 "Lean cross-link"
+  subsection mapping each of the four λ rows in §2.2 to the
+  corresponding `HGOEKeyExpansion lam …` Lean witness.
+* `Orbcrypt.lean` — this snapshot section.
+* `CLAUDE.md` — module-line note for `KeyMgmt/SeedKey.lean`,
+  Workstream-G status-tracker checkbox, version-log entry, and
+  this Workstream-G change-log entry.
+* `docs/VERIFICATION_REPORT.md` — Document-history entry +
+  Known-limitations cross-reference.
+* `lakefile.lean` — `version` bumped `0.1.11 → 0.1.12`.
+
+### Axiom transparency
+
+`HGOEKeyExpansion` continues to depend only on the standard
+Lean trio:
+
+```
+#print axioms HGOEKeyExpansion
+  -- [propext, Classical.choice, Quot.sound]
+```
+
+Each of the four non-vacuity witnesses elaborates without
+introducing any custom axiom; the field discharges are
+`le_refl _`, `decide`, and `Finset.filter_false`, all of
+which transitively depend only on the standard trio. Zero
+`sorryAx`; zero custom axioms.
+
+### Consumer impact
+
+The structure signature changes from `HGOEKeyExpansion (n : ℕ)
+(M : Type*)` to `HGOEKeyExpansion (lam : ℕ) (n : ℕ) (M :
+Type*)`. Existing callers that constructed an
+`HGOEKeyExpansion n M` value at the implicit-128 bound must
+now pass `lam := 128` explicitly. There is exactly one such
+call site in the public Orbcrypt source tree (the
+`#print axioms` line in `scripts/audit_phase_16.lean`, which
+takes the structure as a name only and is unaffected by the
+arity change). Downstream library consumers must update their
+construction sites; the migration is mechanical.
+
+External release claims about HGOE's λ coverage now track
+machine-checked witnesses rather than untracked prose. A
+deployment targeting λ = 256 inhabits `HGOEKeyExpansion 256
+…`; a λ = 80 deployment inhabits `HGOEKeyExpansion 80 …`; the
+type system enforces that each tier discharges its own bound.
+
+### Research-scope follow-ups
+
+None. The Workstream-G refactor is a purely structural change
+that lifts a hard-coded literal to a parameter; it introduces
+no new proof obligations and does not depend on any
+research-scope hardness witness. The four non-vacuity witnesses
+are already concrete witnesses at all four documented tiers.
+
+### Patch version
+
+`lakefile.lean` bumped from `0.1.11` to `0.1.12` for Workstream
+G — the `HGOEKeyExpansion` signature change is an API break
+warranting a patch bump per `CLAUDE.md`'s version-bump
+discipline. No new public declarations are added (the structure
+gains a parameter, not a field; field count and projection
+arity at construction sites are otherwise unchanged). Module
+count remains 39; public declaration count remains 358. The
+zero-sorry / zero-custom-axiom posture and the standard-trio-
+only axiom-dependency posture are preserved. The Phase-16
+audit script gains four new non-vacuity examples plus one
+private helper `hammingWeight_zero_bitstring` (a
+script-internal `private theorem` proving the all-zero
+bitstring has Hamming weight 0, used to discharge Stage-4
+weight-uniformity for the four tier witnesses) plus two
+regression examples (field projection, λ monotonicity); the
+`#print axioms` total rises from 382 to 383, with the new
+entry being a defensive `#print axioms
+hammingWeight_zero_bitstring` line that surfaces any future
+helper regression in the CI parser even though the witness
+`example`s themselves are anonymous.
 -/
