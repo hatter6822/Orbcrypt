@@ -34,15 +34,6 @@ Prop, then proves a quantitative security reduction (KEM version of
 * `Orbcrypt.concrete_kemoia_implies_secure` — main reduction: for any
   adversary and any pair `g₀, g₁ : G`, the per-pair KEM advantage is
   bounded by `ε` (Workstream E1d).
-* `Orbcrypt.concreteKEMOIA_uniform_zero_of_singleton_orbit` —
-  substantive non-vacuity witness for `ConcreteKEMOIA_uniform` at the
-  meaningful (perfect-security) extremum: every KEM whose group action
-  fixes the basepoint satisfies `ConcreteKEMOIA_uniform kem 0`. The
-  KEM-layer parallel of `concreteOIA_zero_of_subsingleton_message`.
-  Workstream I2 of the 2026-04-23 audit, finding E-11 — replaces the
-  pre-Workstream-I `concreteKEMOIA_one_meaningful` lemma (which was a
-  redundant duplicate of `kemAdvantage_le_one`) with substantive
-  cryptographic content.
 
 ## Workstream H additions (audit 2026-04-21, H2)
 
@@ -394,11 +385,15 @@ theorem concrete_kemoia_implies_secure [Group G] [Fintype G] [Nonempty G]
 -- `concreteKEMOIA_one_meaningful`, a redundant duplicate of
 -- `kemAdvantage_le_one` (line 347 above). Workstream I2 of the
 -- 2026-04-23 audit (finding E-11) deleted that lemma — consumers
--- migrate to `kemAdvantage_le_one` for the trivial `≤ 1` sanity bound
--- — and replaced it with the substantive non-vacuity witness
--- `concreteKEMOIA_uniform_zero_of_singleton_orbit` below, which
--- establishes perfect security at the meaningful (small-ε) end of
--- the `ConcreteKEMOIA_uniform` spectrum.
+-- migrate to `kemAdvantage_le_one` for the trivial `≤ 1` sanity
+-- bound. The original Workstream-I2 replacement
+-- `concreteKEMOIA_uniform_zero_of_singleton_orbit` (perfect-security
+-- ε = 0 on degenerate singleton-orbit KEMs) was removed by the
+-- post-Workstream-I audit (2026-04-25) as theatrical: it required
+-- the KEM to have only one possible ciphertext, collapsing the
+-- security game. The honest non-vacuity story for
+-- `ConcreteKEMOIA_uniform` is the trivial `≤ 1` bound via
+-- `concreteKEMOIA_uniform_one`.
 
 -- ============================================================================
 -- Workstream E1d (continued) — Uniform-form KEM security reduction
@@ -451,67 +446,6 @@ theorem concrete_kemoia_uniform_implies_secure
     (g_ref : G) :
     kemAdvantage_uniform kem A g_ref ≤ ε :=
   hOIA (fun p => A.guess kem.basePoint p.1 p.2) g_ref
-
-/-- **Substantive non-vacuity witness for the genuinely ε-smooth
-    KEM-OIA predicate** (Workstream I2, audit 2026-04-23 finding
-    E-11).
-
-    Every KEM whose group action fixes the basepoint satisfies
-    `ConcreteKEMOIA_uniform kem 0` — perfect uniform-form security at
-    the meaningful end of the spectrum. The hypothesis is non-trivially
-    populated: any KEM with a fixed-point basepoint discharges it,
-    including (but not limited to) the trivial group acting on any
-    space and any group acting trivially.
-
-    **Proof.** Under the singleton-orbit hypothesis,
-    `g • basePoint = basePoint` for every `g : G`, so `encaps kem g`
-    is a constant function of `g` (both components — the ciphertext
-    `g • basePoint` and the derived key
-    `keyDerive (canon (g • basePoint))` — depend only on
-    `g • basePoint`, which is `basePoint` for every `g`). Hence
-    `kemEncapsDist kem`, defined as `PMF.map encaps (uniformPMF G)`,
-    collapses to the point mass at `encaps kem g_ref` (for any `g_ref`,
-    in particular the one supplied by `ConcreteKEMOIA_uniform`'s
-    quantifier) via Mathlib's `PMF.map_const`. Two equal point masses
-    have advantage `0` by `advantage_self`.
-
-    **Cryptographic interpretation.** The KEM-layer parallel of
-    `concreteOIA_zero_of_subsingleton_message`'s perfect-security
-    extremum on the scheme side (Workstream I1). Together they
-    inhabit both ends of the `[0, 1]` ε-spectrum on the genuinely
-    ε-smooth probabilistic predicates — `ConcreteOIA` at ε = 0 on
-    subsingleton message spaces, `ConcreteKEMOIA_uniform` at ε = 0
-    on singleton-orbit KEMs, and `ConcreteOIA` / `ConcreteKEMOIA_
-    uniform` at ε = 1 on every scheme/KEM via the `_one` /
-    `_uniform_one` triangle-inequality lemmas.
-
-    **Audit trace.** Replaces the pre-Workstream-I
-    `concreteKEMOIA_one_meaningful` lemma (a redundant duplicate of
-    `kemAdvantage_le_one`) with substantive cryptographic content. -/
-theorem concreteKEMOIA_uniform_zero_of_singleton_orbit
-    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
-    (kem : OrbitKEM G X K)
-    (h_fix : ∀ g : G, g • kem.basePoint = kem.basePoint) :
-    ConcreteKEMOIA_uniform kem 0 := by
-  intro D g_ref
-  -- Goal: advantage D (kemEncapsDist kem) (PMF.pure (encaps kem g_ref)) ≤ 0.
-  -- Reduction: under `h_fix`, `encaps kem` is a constant function of
-  -- its `g` argument, so `kemEncapsDist kem = PMF.pure (encaps kem g_ref)`.
-  have hConst : (fun g : G => encaps kem g) =
-      Function.const G (encaps kem g_ref) := by
-    funext g
-    -- `encaps kem g = (g • basePoint, keyDerive (canon (g • basePoint)))`;
-    -- both `g • basePoint` and `g_ref • basePoint` reduce to `basePoint`
-    -- by `h_fix`, so the two encapsulations are equal.
-    show encaps kem g = encaps kem g_ref
-    unfold encaps
-    rw [h_fix g, h_fix g_ref]
-  have h_eq : kemEncapsDist kem = PMF.pure (encaps kem g_ref) := by
-    unfold kemEncapsDist
-    rw [hConst]
-    exact PMF.map_const _ _
-  rw [h_eq]
-  exact le_of_eq (advantage_self _ _)
 
 -- ============================================================================
 -- Workstream H (audit 2026-04-21, finding H2, MEDIUM) —

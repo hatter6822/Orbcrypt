@@ -289,11 +289,12 @@ open Orbcrypt
 -- Workstream I1 (audit 2026-04-23, finding C-15): pre-I
 -- `concreteOIA_one_meaningful` renamed to `indCPAAdvantage_le_one`
 -- (Mathlib-style `_le_one` simp lemma — content unchanged, name now
--- accurately describes the trivial `≤ 1` bound). The substantive
--- non-vacuity content moved to
--- `concreteOIA_zero_of_subsingleton_message`.
+-- accurately describes the trivial `≤ 1` bound). The post-Workstream-I
+-- audit (2026-04-25) removed the `concreteOIA_zero_of_subsingleton_
+-- message` companion as theatrical: it required `[Subsingleton M]`,
+-- a hypothesis under which there is only one message and therefore
+-- no security game to play.
 #print axioms indCPAAdvantage_le_one
-#print axioms concreteOIA_zero_of_subsingleton_message
 #print axioms CompIsSecure
 #print axioms comp_oia_implies_1cpa
 #print axioms MultiQueryAdversary
@@ -335,9 +336,13 @@ open Orbcrypt
 -- `concreteKEMOIA_one_meaningful` was a redundant duplicate of
 -- `kemAdvantage_le_one` (line 347 of `KEM/CompSecurity.lean`); deleted
 -- in Workstream I2. Consumers cite `kemAdvantage_le_one` for the
--- trivial `≤ 1` bound. Substantive non-vacuity content delivered by
--- `concreteKEMOIA_uniform_zero_of_singleton_orbit` (post-I).
-#print axioms concreteKEMOIA_uniform_zero_of_singleton_orbit
+-- trivial `≤ 1` bound. The post-Workstream-I audit (2026-04-25)
+-- removed `concreteKEMOIA_uniform_zero_of_singleton_orbit` as
+-- theatrical: it required `∀ g, g • basePoint = basePoint`, a
+-- hypothesis under which the KEM has only one ciphertext and
+-- therefore no security game to play. The cryptographically
+-- meaningful KEM-layer non-vacuity story remains
+-- `concreteKEMOIA_uniform_one` (the universal-bound anchor).
 #print axioms kemAdvantage_uniform
 #print axioms kemAdvantage_uniform_nonneg
 #print axioms kemAdvantage_uniform_le_one
@@ -588,8 +593,22 @@ open Orbcrypt
 #print axioms ObliviousSamplingPerfectHiding
 #print axioms oblivious_sampling_view_constant_under_perfect_hiding
 #print axioms ObliviousSamplingConcreteHiding
-#print axioms oblivious_sampling_view_advantage_bound
-#print axioms ObliviousSamplingConcreteHiding_zero_witness
+-- Workstream I post-audit (2026-04-25): removed
+-- `oblivious_sampling_view_advantage_bound` (one-line wrapper —
+-- callers can apply the predicate directly) and
+-- `ObliviousSamplingConcreteHiding_zero_witness` (theatrical
+-- ε = 0 witness on degenerate singleton-orbit bundles). Replaced
+-- with a non-degenerate concrete fixture:
+-- `concreteHidingBundle` + `concreteHidingCombine`. The bundle's
+-- orbit has cardinality 2 (max on Bool); the combine push-forward
+-- is biased (1/4 mass on `true`). The on-paper worst-case
+-- adversary advantage is `1/4`, but the precise Lean proof is
+-- research-scope R-12 (see the in-module docstring). The audit
+-- script exercises the non-degenerate fixture's well-typedness
+-- via the example below; the substantive cryptographic content
+-- is the *fixture's non-degeneracy*, not a tight ε bound.
+#print axioms concreteHidingBundle
+#print axioms concreteHidingCombine
 #print axioms refreshRandomizers
 #print axioms refreshRandomizers_apply
 #print axioms refreshRandomizers_in_orbit
@@ -1693,26 +1712,17 @@ example : ¬ ((80 : ℕ) ≥ 192) := by decide
 
 /-! ## Workstream I1 non-vacuity (audit C-15) -/
 
-/-- `concreteOIA_zero_of_subsingleton_message` fires on every scheme
-    whose message space is `Subsingleton`. The trivial `Unit`-message
-    scheme satisfies the hypothesis, so the predicate returns
-    `ConcreteOIA scheme 0` — perfect concrete-security at the
-    meaningful end of the spectrum. -/
-example : True := by
-  let trivialScheme_I1 : OrbitEncScheme (Equiv.Perm (Fin 1)) Unit Unit :=
-    { reps := fun _ => ()
-      reps_distinct := fun _ _ h => (h (Subsingleton.elim _ _)).elim
-      canonForm :=
-        { canon := id
-          mem_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
-          orbit_iff := fun _ _ => by simp } }
-  have hPerfect : ConcreteOIA trivialScheme_I1 0 :=
-    concreteOIA_zero_of_subsingleton_message trivialScheme_I1
-  trivial
-
 /-- `indCPAAdvantage_le_one` (renamed from `concreteOIA_one_meaningful`)
     fires on any scheme/adversary pair, delivering the trivial `≤ 1`
-    bound directly as a Mathlib-style simp lemma. -/
+    bound directly as a Mathlib-style simp lemma.
+
+    **Post-audit (2026-04-25):** the originally-paired
+    `concreteOIA_zero_of_subsingleton_message` "perfect-security
+    extremum" witness was removed as theatrical: it required
+    `[Subsingleton M]`, a hypothesis under which there is only one
+    message and therefore no security game to play. The honest I1
+    deliverable is the rename + the matching audit-script entry
+    here. -/
 example {G : Type} {X : Type} {M : Type}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) (A : Adversary X M) :
@@ -1721,20 +1731,18 @@ example {G : Type} {X : Type} {M : Type}
 
 /-! ## Workstream I2 non-vacuity (audit E-11) -/
 
-/-- `concreteKEMOIA_uniform_zero_of_singleton_orbit` fires on every KEM
-    whose group action fixes the basepoint. The trivial KEM on `Unit`
-    under `Equiv.Perm (Fin 1)` satisfies the hypothesis vacuously
-    (every action of every group on `Unit` is fixed-point), so the
-    predicate returns `ConcreteKEMOIA_uniform kem 0` — perfect
-    uniform-form security at the meaningful extremum. -/
-example : ConcreteKEMOIA_uniform trivialKEM 0 :=
-  concreteKEMOIA_uniform_zero_of_singleton_orbit trivialKEM
-    (fun _ => Subsingleton.elim _ _)
-
 /-- `kemAdvantage_le_one` (the existing sanity bound that
     Workstream I2 redirected consumers to after deleting the
     redundant pre-I `concreteKEMOIA_one_meaningful`) fires on every
-    KEM/adversary triple. -/
+    KEM/adversary triple.
+
+    **Post-audit (2026-04-25):** the originally-paired
+    `concreteKEMOIA_uniform_zero_of_singleton_orbit` "perfect-security
+    extremum" witness was removed as theatrical: it required
+    `∀ g, g • basePoint = basePoint`, a hypothesis under which the KEM
+    has only one possible ciphertext and therefore no security game
+    to play. The honest I2 deliverable is the deletion +
+    redirection-to-`kemAdvantage_le_one`, exercised here. -/
 example {G : Type} {X : Type} {K : Type}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (A : KEMAdversary X K) (g₀ g₁ : G) :
@@ -1834,42 +1842,17 @@ example : (fun (_ _ _ : Fin 1) => (0 : ZMod 2)) =
 
 /-- A trivial `OrbitalRandomizers (Equiv.Perm (Fin 1)) Unit 1` bundle
     on the singleton space `Unit`. Used as the concrete fixture for
-    the `ObliviousSamplingConcreteHiding_zero_witness` example
-    below. -/
+    the `ObliviousSamplingPerfectHiding` rename-regression check
+    below. The non-degenerate `Equiv.Perm Bool` fixture
+    (`concreteHidingBundle` + `concreteHidingCombine`) lives in
+    `Orbcrypt/PublicKey/ObliviousSampling.lean` and is exercised by
+    its own `#print axioms` lines earlier in this script (post-
+    audit 2026-04-25); the precise ε = 1/4 bound on that fixture
+    is research-scope R-12. -/
 def trivialOrs_I6 : OrbitalRandomizers (Equiv.Perm (Fin 1)) Unit 1 where
   basePoint := ()
   randomizers := fun _ => ()
   in_orbit := fun _ => ⟨1, Subsingleton.elim _ _⟩
-
-/-- `ObliviousSamplingConcreteHiding_zero_witness` fires on any
-    bundle whose group action fixes the basepoint, with `combine` the
-    constant-basepoint function. The trivial `Unit` bundle satisfies
-    both hypotheses vacuously, so the predicate returns
-    `ObliviousSamplingConcreteHiding ors combine 0` — perfect
-    oblivious sampling at the meaningful extremum. -/
-example : ObliviousSamplingConcreteHiding trivialOrs_I6
-    (fun _ _ => trivialOrs_I6.basePoint) 0 :=
-  ObliviousSamplingConcreteHiding_zero_witness trivialOrs_I6
-    (fun _ => Subsingleton.elim _ _)
-
-/-- `oblivious_sampling_view_advantage_bound` extracts the ε bound
-    from the predicate at any specific Boolean view. Confirms the
-    extraction-shape lemma is well-typed on a concrete (
-    `ObliviousSamplingConcreteHiding ors combine 0` from the witness
-    above) hypothesis. -/
-example (D : Unit → Bool) :
-    advantage D
-      (PMF.map (fun (p : Fin 1 × Fin 1) =>
-        (fun (_ _ : Unit) => trivialOrs_I6.basePoint)
-          (trivialOrs_I6.randomizers p.1)
-          (trivialOrs_I6.randomizers p.2))
-        (uniformPMF (Fin 1 × Fin 1)))
-      (orbitDist (G := Equiv.Perm (Fin 1)) trivialOrs_I6.basePoint) ≤ 0 :=
-  oblivious_sampling_view_advantage_bound trivialOrs_I6
-    (fun _ _ => trivialOrs_I6.basePoint) 0
-    (ObliviousSamplingConcreteHiding_zero_witness trivialOrs_I6
-      (fun _ => Subsingleton.elim _ _))
-    D
 
 /-- `ObliviousSamplingPerfectHiding` (renamed from
     `ObliviousSamplingHiding`) and its companion theorem
@@ -1877,10 +1860,38 @@ example (D : Unit → Bool) :
     well-typed on the trivial bundle. The deterministic predicate is
     `True` here because the bundle has only one `(i, j)` pair (i.e.
     `Fin 1 × Fin 1`), so both sides of the equality coincide
-    trivially. -/
+    trivially. This is a *rename-regression check*, not a
+    cryptographic-content claim. -/
 example : ObliviousSamplingPerfectHiding trivialOrs_I6
     (fun _ _ => trivialOrs_I6.basePoint) := by
   intro _ _ _ _ _
   rfl
+
+/-- **Workstream I post-audit (2026-04-25): non-degenerate fixture
+    structural exercise.** Confirms `concreteHidingBundle` and
+    `concreteHidingCombine` are well-typed inhabitants of
+    `OrbitalRandomizers (Equiv.Perm Bool) Bool 2` and `Bool → Bool →
+    Bool` respectively, and that `ObliviousSamplingConcreteHiding`
+    accepts them as arguments. This exercises the *fixture* — the
+    substantive Workstream-I post-audit content — without claiming
+    the precise ε = 1/4 bound (research-scope R-12).
+
+    For the trivial bound `ε = 1`, `advantage_le_one` discharges
+    `ObliviousSamplingConcreteHiding _ _ 1` immediately by the
+    predicate's universal `∀ D, advantage ≤ ε` form. -/
+example : ObliviousSamplingConcreteHiding concreteHidingBundle
+    concreteHidingCombine 1 := by
+  intro D
+  exact advantage_le_one _ _ _
+
+/-- **Workstream I post-audit fixture sanity check.** The bundle's
+    base point lies in its own orbit (trivially via the identity
+    permutation), and the second randomizer (`true`) lies in the
+    orbit via `Equiv.swap false true`. Exercises the bundle's
+    `in_orbit` field on a concrete index. -/
+example :
+    concreteHidingBundle.randomizers 1 ∈
+      MulAction.orbit (Equiv.Perm Bool) concreteHidingBundle.basePoint :=
+  concreteHidingBundle.in_orbit 1
 
 end NonVacuityWitnesses

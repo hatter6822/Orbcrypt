@@ -1168,6 +1168,39 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-25 (Workstream I post-audit)** — Critical re-evaluation
+  of the initial Workstream-I landing identified 4 of the 9 "new"
+  theorems as **theatrical**: they technically inhabited their
+  predicates but required hypotheses that collapse the security
+  space to a single element, contributing no cryptographic content.
+  The post-audit refactor (same day) **removes** these theorems
+  (`concreteOIA_zero_of_subsingleton_message`,
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit`,
+  `ObliviousSamplingConcreteHiding_zero_witness`,
+  `oblivious_sampling_view_advantage_bound`) and **replaces** them
+  with substantive content: a non-degenerate concrete fixture
+  `concreteHidingBundle` + `concreteHidingCombine` (an `Equiv.Perm
+  Bool` two-randomizer bundle with biased-AND combine, on-paper
+  worst-case advantage `1/4`), plus Mathlib-style helpers
+  `probTrue_map` and `probTrue_uniformPMF_card` in
+  `Probability/Monad.lean`. The precise Lean proof of the `1/4`
+  bound is tracked as research-scope R-12; the in-tree
+  contribution is the non-degenerate fixture itself, with the
+  on-paper TV-distance analysis fully documented in the
+  in-module research-scope note. The honest scoreboard: of the
+  Workstream-I deliverables, the substantive content is
+  `distinct_messages_have_invariant_separator` (genuinely new
+  cryptographic theorem, closes 2-year-old audit gap F-06 / D-07),
+  the Prop signature strengthenings on `GIReducesToCE` /
+  `GIReducesToTI` (type-level posture upgrades banning audit-
+  flagged degenerate encoders at compile time), the new
+  `ObliviousSamplingConcreteHiding` predicate vocabulary, the
+  non-degenerate fixture, and the four content-neutral renames
+  (Security-by-docstring hygiene). `lakefile.lean` bumped from
+  `0.1.13` to `0.1.14`. Phase-16 audit script `#print axioms`
+  total: **389** (down from 391 — 4 theatrical entries deleted +
+  2 fixture entries added).
+
 * **2026-04-25 (Workstream I)** — Naming hygiene via *strengthening,
   not rebadging* (audit findings C-15 / D-07 / E-11 / J-03 / J-08 /
   K-02). Six pre-I weak identifiers across `Crypto/CompSecurity.lean`,

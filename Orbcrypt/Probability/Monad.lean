@@ -141,4 +141,44 @@ theorem mem_support_uniformPMFTuple {α : Type*} (Q : ℕ)
     f ∈ (uniformPMFTuple α Q).support :=
   mem_support_uniformPMF f
 
+-- ============================================================================
+-- Push-forward and uniform-Fintype computational helpers
+-- ============================================================================
+
+/-- **`probTrue` push-forward through `PMF.map`.** For any `f : α → β`
+    and any Boolean `D : β → Bool`, the probability that `D` returns
+    `true` under `μ.map f` equals the probability that `D ∘ f` returns
+    `true` under `μ`.
+
+    Direct consequence of `PMF.toOuterMeasure_map_apply`: the push-
+    forward outer measure on a set equals the original outer measure
+    on the preimage. -/
+theorem probTrue_map {α β : Type*} (μ : PMF α) (f : α → β) (D : β → Bool) :
+    probTrue (μ.map f) D = probTrue μ (D ∘ f) := by
+  unfold probTrue
+  rw [PMF.toOuterMeasure_map_apply]
+  rfl
+
+/-- **`probTrue` of a uniform PMF as a filter-cardinality ratio.** For
+    a Fintype `α` with `[DecidableEq]` and any Boolean `D : α → Bool`,
+    `probTrue (uniformPMF α) D = |{x ∈ α | D x = true}| / |α|`.
+
+    The right-hand side lives in `ℝ≥0∞` (extended non-negative reals),
+    matching `probTrue`'s codomain. The proof routes through Mathlib's
+    `PMF.toOuterMeasure_uniformOfFintype_apply` after rewriting
+    `{x | D x = true}` to a `Finset.filter`. -/
+theorem probTrue_uniformPMF_card {α : Type*} [Fintype α] [Nonempty α]
+    [DecidableEq α] (D : α → Bool) :
+    probTrue (uniformPMF α) D
+    = ((Finset.univ.filter (fun x => D x = true)).card : ℝ≥0∞)
+      / (Fintype.card α : ℝ≥0∞) := by
+  classical
+  unfold probTrue uniformPMF
+  -- Apply the uniform-Fintype outer-measure formula.
+  rw [PMF.toOuterMeasure_uniformOfFintype_apply]
+  -- Translate `Fintype.card ↥{x | D x = true}` into the
+  -- `Finset.filter ... |>.card` form.
+  congr 1
+  exact_mod_cast Fintype.card_subtype (fun x => D x = true)
+
 end Orbcrypt

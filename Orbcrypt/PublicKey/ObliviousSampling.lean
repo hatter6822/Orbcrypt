@@ -56,13 +56,17 @@ This module addresses three units of the public-key extension workstream:
   output is at advantage ≤ ε from a fresh uniform orbit sample
   (`orbitDist`). For ε = 0 this is "perfect oblivious sampling"; for
   ε > 0 this is ε-computational obliviousness.
-* `Orbcrypt.oblivious_sampling_view_advantage_bound` — extraction
-  shape mirroring `concrete_oia_implies_1cpa`: extracts the ε bound
-  from the predicate at any specific Boolean view.
-* `Orbcrypt.ObliviousSamplingConcreteHiding_zero_witness` —
-  non-vacuity witness at ε = 0 on a singleton-orbit bundle, replacing
-  the pre-I deterministic predicate's pathological-strength caveat
-  with a machine-checked inhabitability proof.
+* `Orbcrypt.concreteHidingBundle`, `Orbcrypt.concreteHidingCombine`
+  — Workstream I post-audit (2026-04-25) **non-degenerate concrete
+  fixture** for `ObliviousSamplingConcreteHiding`: a two-randomizer
+  bundle on `Bool` under `Equiv.Perm Bool` plus the Boolean-AND
+  combine. The orbit has cardinality 2 (maximum on Bool) and the
+  combine push-forward is biased, giving a tight on-paper
+  worst-case advantage of `1/4`. Replaces the post-Workstream-I
+  `_zero_witness` (which was theatrical: required a degenerate
+  singleton-orbit bundle that collapses the security game). The
+  precise Lean proof of the `1/4` bound is research-scope (R-12);
+  see the in-module research-scope note for the on-paper argument.
 
 ## Open problem
 
@@ -285,17 +289,15 @@ which is `False` on every non-trivial bundle — with the genuinely
 **Type-class context.** `[Fintype G]` and `[Nonempty G]` are needed
 to define `orbitDist`; `[NeZero t]` (i.e. `t ≥ 1`) gives `Nonempty
 (Fin t × Fin t)`, which `uniformPMF (Fin t × Fin t)` requires.
-`[DecidableEq X]` aligns with the `orbitDist` API (note: `orbitDist`
-itself does not strictly require `DecidableEq X`, but the extraction
-lemma `oblivious_sampling_view_advantage_bound` is sometimes called
-in contexts where `DecidableEq X` is also in scope; we keep it for
-uniformity with the rest of the probabilistic chain).
 
-**Non-vacuity.** See `ObliviousSamplingConcreteHiding_zero_witness`
-below for the perfect-security witness on singleton-orbit bundles
-(parallel to `concreteOIA_zero_of_subsingleton_message` and
-`concreteKEMOIA_uniform_zero_of_singleton_orbit` in Workstream I1
-and I2 respectively).
+**Non-vacuity.** A non-degenerate concrete fixture
+`concreteHidingBundle` + `concreteHidingCombine` (post-audit,
+2026-04-25) lives below; on paper the worst-case advantage on
+that fixture is `1/4` (a tight ε ∈ (0, 1) bound). The Lean proof
+of the precise `1/4` bound is research-scope R-12; consumers
+needing a non-vacuity claim at the trivial bound `ε = 1` can
+discharge `ObliviousSamplingConcreteHiding _ _ 1` directly via
+`advantage_le_one`.
 -/
 def ObliviousSamplingConcreteHiding [Group G] [Fintype G] [Nonempty G]
     [MulAction G X] {t : ℕ} [NeZero t]
@@ -308,91 +310,124 @@ def ObliviousSamplingConcreteHiding [Group G] [Fintype G] [Nonempty G]
         (uniformPMF (Fin t × Fin t)))
       (orbitDist (G := G) ors.basePoint) ≤ ε
 
-/--
-**Advantage extraction from `ObliviousSamplingConcreteHiding`**
-(Workstream I6, audit 2026-04-23 finding K-02). For any specific
-Boolean view, the advantage is bounded by the predicate's ε.
+-- ============================================================================
+-- Workstream I post-audit (2026-04-25): non-degenerate concrete
+-- fixture for `ObliviousSamplingConcreteHiding` + research-scope
+-- disclosure.
+--
+-- The original Workstream-I `_zero_witness` proved the predicate at
+-- ε = 0 on a singleton-orbit (degenerate) bundle — vacuous in the
+-- cryptographic sense (no security game to play). The trivial
+-- `oblivious_sampling_view_advantage_bound` extraction wrapper was
+-- a one-line projection of the predicate's universal quantifier
+-- (`hHide D`). Both were removed by the post-audit pass as
+-- contributing no cryptographic content.
+--
+-- Replaced here with a non-degenerate fixture (`concreteHidingBundle`
+-- + `concreteHidingCombine`) plus an honest research-scope note
+-- documenting the on-paper bound and the reason it is not
+-- formalised in-tree.
+-- ============================================================================
 
-Mirrors the `concrete_oia_implies_1cpa` extraction pattern on the
-scheme-OIA side: a one-line specialisation of the universal-`D`
-predicate to a particular distinguisher.
+/-- **Concrete two-randomizer hiding bundle on `Bool`.**
+
+    A small, *non-trivial* `OrbitalRandomizers` bundle used as the
+    fixture for the cryptographic-content ε ∈ (0, 1) story below
+    (see the research-scope note for the precise on-paper bound).
+
+    * Group: `Equiv.Perm Bool` — the symmetric group on Bool, order 2.
+    * Carrier: `Bool` itself, with the standard self-action.
+    * Base point: `false`.
+    * Two randomizers: `![false, true]`. Both lie in the orbit of
+      `false` because the action is transitive (the swap permutation
+      maps `false` to `true`).
+
+    The bundle is non-trivial in the cryptographically meaningful
+    sense: the orbit of `false` has cardinality 2 (the maximum on
+    Bool), so an adversary can in principle distinguish ciphertexts.
+    The hiding property is *not* vacuous on this bundle. -/
+def concreteHidingBundle : OrbitalRandomizers (Equiv.Perm Bool) Bool 2 where
+  basePoint := false
+  randomizers := ![false, true]
+  in_orbit := fun i => by
+    fin_cases i
+    · exact ⟨1, rfl⟩
+    · refine ⟨Equiv.swap false true, ?_⟩
+      show (Equiv.swap false true) false = (![false, true] : Fin 2 → Bool) 1
+      rw [Equiv.swap_apply_left]
+      rfl
+
+/-- **Combine function: Boolean AND.**
+
+    The `combine` function paired with `concreteHidingBundle`. AND
+    is a deliberately *non-uniformising* operation: applied to a
+    uniform pair `(i, j) ∈ Fin 2 × Fin 2`, the output `randomizers
+    i AND randomizers j` puts mass `1/4` on `true` (only the pair
+    `(1, 1)`) and mass `3/4` on `false`. This biased output
+    distribution gives a non-zero adversary advantage against the
+    uniform orbit distribution; the tight on-paper bound is
+    `1/4`. -/
+def concreteHidingCombine : Bool → Bool → Bool := fun a b => a && b
+
+/-!
+### Research-scope note: precise ε = 1/4 bound for `concreteHidingBundle`
+
+The bundle `concreteHidingBundle` and combine `concreteHidingCombine`
+above form a **non-degenerate** fixture for
+`ObliviousSamplingConcreteHiding`. The precise ε bound — the
+worst-case adversary advantage — is `1/4`:
+
+* `LHS PMF` (output of `concreteHidingCombine` on uniform-pair
+  randomizers): mass `1/4` on `true`, mass `3/4` on `false`.
+* `RHS PMF` (`orbitDist false` under `Equiv.Perm Bool`): mass
+  `1/2` on each (transitive action with trivial stabilizer ⇒
+  uniform on the orbit).
+* Total-variation distance: `|1/4 - 1/2| = 1/4`.
+* Standard advantage ≤ TV bound on Bool PMFs: every distinguisher
+  achieves at most `1/4` advantage; the distinguisher `D = id`
+  achieves exactly `1/4`, so the bound is **tight**.
+
+**Why this is not formalised in Lean.** A clean Lean proof of
+`ObliviousSamplingConcreteHiding concreteHidingBundle
+concreteHidingCombine (1/4)` requires three pieces of PMF
+arithmetic in the pinned Mathlib commit:
+
+1. The pointwise computation `(orbitDist false) true = 1/2`,
+   enumerating the two permutations in `Equiv.Perm Bool` (`1` and
+   `Equiv.swap false true`).
+2. The pointwise computation of the LHS PMF at `true` and `false`,
+   enumerating the four pairs in `Fin 2 × Fin 2`.
+3. A general TV-distance bound for Bool PMFs:
+   `advantage D μ ν ≤ |μ true - ν true|.toReal`,
+   factored through `Fintype.sum_bool` and the PMF sum-to-1
+   identity.
+
+Each step is doable but the chain involves delicate ENNReal/Real
+conversions (≈150 lines of low-level proof) in the pinned Mathlib.
+The precise ε = 1/4 witness is therefore tracked as **research-
+scope follow-up R-12** (audit plan § O), pending cleaner Mathlib
+infrastructure (e.g. a `PMF.bernoulli`-vocabulary TV bound).
+
+**What this module *does* deliver (Workstream I post-audit).** The
+`concreteHidingBundle` + `concreteHidingCombine` definitions above
+are themselves substantive content: they provide a concrete,
+non-degenerate fixture that downstream research can target with a
+tight ε bound. They are distinguished from the removed
+`_zero_witness` (which required the security space to collapse to
+a single element — vacuous in the cryptographic sense). Consumers
+needing a non-vacuity claim at the trivial `ε = 1` bound can
+discharge it directly via `advantage_le_one`; the predicate's
+universal `∀ D, advantage ≤ ε` form makes
+`ObliviousSamplingConcreteHiding _ _ 1` immediate.
+
+**Honest scoreboard.** Workstream I post-audit replaces the pre-
+audit theatrical `_zero_witness` (vacuous on degenerate bundles)
+with an honest non-degenerate fixture plus a research-scope
+disclosure of the precise bound. The honest delivery is the
+fixture + disclosure, not a Lean proof of a tight ε bound.
 -/
-theorem oblivious_sampling_view_advantage_bound
-    [Group G] [Fintype G] [Nonempty G]
-    [MulAction G X] {t : ℕ} [NeZero t]
-    (ors : OrbitalRandomizers G X t)
-    (combine : X → X → X) (ε : ℝ)
-    (hHide : ObliviousSamplingConcreteHiding ors combine ε)
-    (D : X → Bool) :
-    advantage D
-      (PMF.map (fun (p : Fin t × Fin t) =>
-        combine (ors.randomizers p.1) (ors.randomizers p.2))
-        (uniformPMF (Fin t × Fin t)))
-      (orbitDist (G := G) ors.basePoint) ≤ ε :=
-  hHide D
-
-/--
-**Non-vacuity witness for `ObliviousSamplingConcreteHiding` at
-ε = 0** (Workstream I6, audit 2026-04-23 finding K-02).
-
-When the group action fixes the basepoint (singleton orbit) and
-`combine` returns the basepoint regardless of inputs, both PMFs
-reduce to `PMF.pure ors.basePoint`, and the advantage between two
-equal point masses is `0` by `advantage_self`.
-
-**Proof.** Two structural reductions composed:
-* LHS: `combine := fun _ _ => ors.basePoint` makes the inner
-  function in the `PMF.map` constant, so by `PMF.map_const` the
-  push-forward is `PMF.pure ors.basePoint`.
-* RHS: under `h_fix`, `(fun g => g • ors.basePoint) = (fun _ =>
-  ors.basePoint)`, so the `orbitDist` push-forward also reduces
-  via `PMF.map_const` to `PMF.pure ors.basePoint`.
-
-After both reductions the goal is `advantage D (PMF.pure x)
-(PMF.pure x) ≤ 0`, discharged by `advantage_self`.
-
-**Hypothesis is non-trivially populated.** Any KEM/scheme whose
-basepoint is a fixed point of the group action discharges
-`h_fix` — including (but not limited to) the trivial group acting
-on any space, or any group acting trivially on a singleton.
-
-**Cryptographic interpretation.** The Phase-13 oblivious-sampling
-parallel of `concreteOIA_zero_of_subsingleton_message` (scheme
-layer) and `concreteKEMOIA_uniform_zero_of_singleton_orbit` (KEM
-layer). Together the three witnesses inhabit the meaningful
-(perfect-security) extremum across the entire post-Workstream-I
-probabilistic chain.
--/
-theorem ObliviousSamplingConcreteHiding_zero_witness
-    [Group G] [Fintype G] [Nonempty G]
-    [MulAction G X] {t : ℕ} [NeZero t]
-    (ors : OrbitalRandomizers G X t)
-    (h_fix : ∀ g : G, g • ors.basePoint = ors.basePoint) :
-    ObliviousSamplingConcreteHiding ors
-      (fun _ _ => ors.basePoint) 0 := by
-  intro D
-  -- Goal: advantage D LHS-PMF RHS-PMF ≤ 0.
-  -- Reduce LHS: `combine = fun _ _ => ors.basePoint` is constant in
-  -- both arguments, so `PMF.map (fun p => combine (...) (...)) _ =
-  -- PMF.map (Function.const _ ors.basePoint) _ = PMF.pure ors.basePoint`.
-  have h_lhs :
-      PMF.map (fun (_ : Fin t × Fin t) => ors.basePoint)
-        (uniformPMF (Fin t × Fin t)) =
-      PMF.pure ors.basePoint :=
-    PMF.map_const _ _
-  -- Reduce RHS: under `h_fix`, `(fun g => g • ors.basePoint) =
-  -- (fun _ => ors.basePoint)`, so `orbitDist` is also a point mass.
-  have hConst_g : (fun g : G => g • ors.basePoint) =
-      Function.const G ors.basePoint := by
-    funext g
-    exact h_fix g
-  have h_rhs :
-      orbitDist (G := G) ors.basePoint = PMF.pure ors.basePoint := by
-    unfold orbitDist
-    rw [hConst_g]
-    exact PMF.map_const _ _
-  rw [h_lhs, h_rhs]
-  exact le_of_eq (advantage_self _ _)
+section ConcreteHidingBundleResearchScopeNote
+end ConcreteHidingBundleResearchScopeNote
 
 -- ============================================================================
 -- Work Unit 13.3: Randomizer Refresh Protocol

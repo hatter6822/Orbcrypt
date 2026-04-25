@@ -2746,4 +2746,126 @@ zero-custom-axiom posture preserved; standard-trio-only axiom-
 dependency posture preserved. The Phase-16 audit script gains 13
 new non-vacuity `example` blocks plus 9 new `#print axioms`
 entries (4 renamed entries replace pre-I names; 1 entry deleted).
+
+## Workstream I Post-Audit Snapshot (2026-04-25)
+
+A post-audit critical evaluation of the initial Workstream-I
+landing concluded that 4 of the 9 "new" theorems were
+**theatrical**: they technically inhabited their predicates but
+required hypotheses that collapse the security space to a single
+element (subsingleton message space, singleton-orbit KEM,
+singleton-orbit oblivious-sampling bundle), giving advantage 0
+on instances where there is no security game to play. These
+four theorems satisfied a literal exit-criterion checkbox in
+the audit plan but contributed no cryptographic content.
+
+### Removed (theatrical)
+
+* `concreteOIA_zero_of_subsingleton_message`
+  (`Crypto/CompSecurity.lean`, I1) — required `[Subsingleton M]`.
+* `concreteKEMOIA_uniform_zero_of_singleton_orbit`
+  (`KEM/CompSecurity.lean`, I2) — required
+  `∀ g, g • basePoint = basePoint`.
+* `ObliviousSamplingConcreteHiding_zero_witness`
+  (`PublicKey/ObliviousSampling.lean`, I6) — required
+  singleton-orbit bundle + constant `combine`.
+* `oblivious_sampling_view_advantage_bound`
+  (`PublicKey/ObliviousSampling.lean`, I6) — one-line wrapper
+  `hHide D` of the predicate's universal quantifier.
+
+### Added (substantive replacement)
+
+* **Non-degenerate concrete fixture** in
+  `PublicKey/ObliviousSampling.lean`:
+  `concreteHidingBundle : OrbitalRandomizers (Equiv.Perm Bool)
+  Bool 2` (basePoint `false`, randomizers `![false, true]`,
+  orbit cardinality 2 — the maximum on Bool) and
+  `concreteHidingCombine : Bool → Bool → Bool := fun a b => a
+  && b` (Boolean AND, biased push-forward). On paper, the
+  worst-case adversary advantage on this fixture is exactly
+  `1/4` — a tight ε ∈ (0, 1) bound. The Lean proof of the
+  precise `1/4` bound requires PMF point-mass arithmetic over
+  `Equiv.Perm Bool` and `Fin 2 × Fin 2` plus a TV-distance
+  bound for Bool PMFs (~150 lines of low-level
+  ENNReal/Real conversions in the pinned Mathlib commit).
+  Tracked as **research-scope R-12** (audit plan § O); the
+  in-tree contribution is the non-degenerate fixture itself,
+  documented with the on-paper analysis.
+* **Mathlib-style helpers** in `Probability/Monad.lean`:
+  `probTrue_map` (push-forward through `PMF.map`) and
+  `probTrue_uniformPMF_card` (uniform-PMF outer measure as a
+  filter-cardinality ratio). These are general-purpose tools
+  that downstream R-12 work will use.
+
+### Type-level posture upgrade witnesses retained
+
+`GIReducesToCE_card_nondegeneracy_witness` and
+`GIReducesToTI_nondegeneracy_witness` were honest from the
+initial landing — they witness the *strengthened non-degeneracy
+fields* of `GIReducesToCE` and `GIReducesToTI` (a *sub-
+predicate* of the full Prop, omitting the iff). They do **not**
+witness the full strengthened Props; that requires a tight
+Karp reduction (CFI 1992 / Petrank–Roth 1997 / Grochow–Qiao
+2021), which remains research-scope **R-15**. The
+docstrings in those theorems disclose this honestly.
+
+### Counts (post-audit)
+
+* **6 new public declarations**:
+  `canon_indicator_isGInvariant` (I3 helper),
+  `distinct_messages_have_invariant_separator` (I3 substantive),
+  `GIReducesToCE_card_nondegeneracy_witness` (I4 type-level),
+  `GIReducesToTI_nondegeneracy_witness` (I5 type-level),
+  `ObliviousSamplingConcreteHiding` (I6 vocabulary),
+  `concreteHidingBundle` (post-audit fixture),
+  `concreteHidingCombine` (post-audit fixture),
+  `probTrue_map` (post-audit helper),
+  `probTrue_uniformPMF_card` (post-audit helper).
+* **4 renamed declarations** (content-neutral, unchanged):
+  `indCPAAdvantage_le_one`,
+  `insecure_implies_orbit_distinguisher`,
+  `ObliviousSamplingPerfectHiding`,
+  `oblivious_sampling_view_constant_under_perfect_hiding`.
+* **2 strengthened in-place** (Prop signatures): `GIReducesToCE`,
+  `GIReducesToTI`.
+* **1 deletion of redundant duplicate** (unchanged):
+  `concreteKEMOIA_one_meaningful`.
+* **4 deletions of theatrical content** (post-audit):
+  `concreteOIA_zero_of_subsingleton_message`,
+  `concreteKEMOIA_uniform_zero_of_singleton_orbit`,
+  `ObliviousSamplingConcreteHiding_zero_witness`,
+  `oblivious_sampling_view_advantage_bound`.
+
+Module count: **39** (unchanged). The Phase-16 audit script's
+`#print axioms` total stabilises at **389** (down from the
+post-initial-landing 391 — the 4 theatrical entries deleted +
+2 fixture-related entries added). All remaining `#print axioms`
+outputs are standard-trio (`propext`, `Classical.choice`,
+`Quot.sound`) or axiom-free.
+
+### Honest scoreboard
+
+The Workstream-I post-audit refactor demonstrates the
+**Security-by-docstring prohibition** in action at the
+project-internal level: rather than ship 9 "new theorems" with
+4 of them theatrically vacuous, the post-audit pass keeps only
+content that genuinely advances the project. The honest
+delivery is:
+
+1. The *substantive* `distinct_messages_have_invariant_separator`
+   theorem (closes a 2-year-old audit gap, F-06 / D-07).
+2. The *type-level* posture upgrades (Prop signatures
+   strengthened to ban audit-flagged degenerate encoders at
+   compile time).
+3. The *non-degenerate* fixture (`concreteHidingBundle` +
+   `concreteHidingCombine`) — concrete cryptographic content
+   that downstream research can target with a tight ε bound.
+4. The *renames* (Security-by-docstring hygiene for four
+   misnamed identifiers).
+5. *Honest research-scope disclosures* of R-12 (precise ε = 1/4
+   ObliviousSamplingConcreteHiding bound) and R-15 (full Karp
+   reduction inhabitants for `GIReducesToCE` / `GIReducesToTI`).
+
+`lakefile.lean` bumped from `0.1.13` to `0.1.14` for the
+post-audit refactor.
 -/

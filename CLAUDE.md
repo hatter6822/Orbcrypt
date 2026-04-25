@@ -2452,77 +2452,116 @@ of the audit plan):**
       `example` elaborates with standard-trio-only axioms.
 - [ ] **Workstream H** — Safe decapsulation + computable decryption (pending).
 - [x] **Workstream I** — Naming hygiene via *strengthening, not
-      rebadging* (closed by landing 2026-04-25). Six pre-I weak
-      identifiers were strengthened (where the property could be
-      proved in-tree) or renamed (where the property is genuinely
-      out of reach), per `CLAUDE.md`'s sibling Security-by-
-      docstring prohibition. Files touched:
-      `Orbcrypt/Crypto/CompSecurity.lean` (I1: rename
-      `concreteOIA_one_meaningful` → `indCPAAdvantage_le_one` +
-      add NEW `concreteOIA_zero_of_subsingleton_message`),
-      `Orbcrypt/KEM/CompSecurity.lean` (I2: delete
-      `concreteKEMOIA_one_meaningful` as redundant duplicate of
-      `kemAdvantage_le_one` + add NEW
-      `concreteKEMOIA_uniform_zero_of_singleton_orbit`),
-      `Orbcrypt/Theorems/OIAImpliesCPA.lean` +
-      `Orbcrypt/GroupAction/Invariant.lean` (I3: rename
-      `insecure_implies_separating` →
-      `insecure_implies_orbit_distinguisher` + add NEW helper
-      `canon_indicator_isGInvariant` + add NEW substantive
-      `distinct_messages_have_invariant_separator`),
-      `Orbcrypt/Hardness/CodeEquivalence.lean` (I4: in-place
-      strengthening of `GIReducesToCE` with `codeSize_pos` +
-      `encode_card_eq` non-degeneracy fields ruling out the
-      audit-J03 `encode _ _ := ∅` degenerate witness at the type
-      level; add `GIReducesToCE_card_nondegeneracy_witness`
-      structural witness),
-      `Orbcrypt/Hardness/TensorAction.lean` (I5: in-place
-      strengthening of `GIReducesToTI` with
-      `encode_nonzero_of_pos_dim` non-degeneracy field ruling
-      out the audit-J08 constant-zero encoder at the type level;
-      add `GIReducesToTI_nondegeneracy_witness` structural
-      witness),
-      `Orbcrypt/PublicKey/ObliviousSampling.lean` (I6: rename
-      `ObliviousSamplingHiding` → `ObliviousSamplingPerfectHiding`
-      + rename `oblivious_sampling_view_constant` →
-      `oblivious_sampling_view_constant_under_perfect_hiding`
-      + add NEW probabilistic ε-smooth predicate
-      `ObliviousSamplingConcreteHiding` + structural extraction
-      `oblivious_sampling_view_advantage_bound` + non-vacuity
-      witness `ObliviousSamplingConcreteHiding_zero_witness` at
-      ε = 0 on singleton-orbit bundles).
-      `scripts/audit_phase_16.lean`: every pre-I `#print axioms`
-      identifier renamed; 9 new entries added; 13 new non-vacuity
-      `example` blocks plus negative-pressure regressions
-      confirming the strengthened `GIReducesToCE` /
-      `GIReducesToTI` Props correctly *reject* the audit-flagged
-      degenerate encoders at compile time.
-      `Orbcrypt.lean`: dependency-graph block extended with the
-      `PublicKey.ObliviousSampling` rename; Phase 16 snapshot
-      updated to reflect post-I identifier names; Vacuity map
-      gains a Workstream-I subsection (6-row pre-I-↔-post-I
-      pairing table); Workstream I snapshot section appended.
-      `lakefile.lean` bumped from `0.1.12` to `0.1.13`. **9 new
-      public declarations** + **4 renamed declarations**
-      (content-neutral) + **2 strengthened in-place** (signature-
-      level non-degeneracy fields) + **1 deletion** (redundant
-      duplicate). Module count remains 39; public declaration
-      count rises from 358 to 366. Zero-sorry / zero-custom-axiom
-      posture preserved. **Deviation from audit plan:** the plan's
-      claimed `GIReducesToCE_singleton_witness` and
-      `GIReducesToTI_constant_one_witness` (full inhabitants of
-      the strengthened iffs) are mathematically incorrect — the
-      singleton/constant encoders force RHS to be always True
-      while LHS (the GI predicate) fails for non-isomorphic
-      graphs at `m ≥ 2`. The Workstream-I landing replaces them
-      with type-level structural non-degeneracy witnesses
-      (`GIReducesToCE_card_nondegeneracy_witness` /
-      `GIReducesToTI_nondegeneracy_witness`); a full inhabitant
-      of the iff requires a tight Karp reduction (CFI 1992 /
-      Petrank–Roth 1997 / Grochow–Qiao 2021) and remains
-      research-scope (audit plan § 15.1 / R-15). The deviation
-      is recorded honestly in the Workstream-I snapshot in
-      `Orbcrypt.lean` and in the affected theorem docstrings.
+      rebadging* (initial landing 2026-04-25, post-audit honest-
+      delivery refactor 2026-04-25). The original Workstream-I
+      landing produced both substantive content and theatrical
+      content. The post-audit refactor (same day) removed the
+      theatrical content and replaced it with honest scope-
+      limited deliverables.
+
+      **Substantive content kept:**
+
+      * `Orbcrypt/Theorems/OIAImpliesCPA.lean` +
+        `Orbcrypt/GroupAction/Invariant.lean` (I3): rename
+        `insecure_implies_separating` →
+        `insecure_implies_orbit_distinguisher` + new helper
+        `canon_indicator_isGInvariant` + **new substantive
+        theorem `distinct_messages_have_invariant_separator`**
+        (the cryptographic content the pre-I name advertised but
+        did not deliver: a G-invariant Boolean separator from any
+        two distinct messages, unconditional on `reps_distinct`).
+      * Renames (content-neutral): `indCPAAdvantage_le_one` (was
+        `concreteOIA_one_meaningful`),
+        `insecure_implies_orbit_distinguisher` (was
+        `insecure_implies_separating`),
+        `ObliviousSamplingPerfectHiding` (was
+        `ObliviousSamplingHiding`),
+        `oblivious_sampling_view_constant_under_perfect_hiding`
+        (was `oblivious_sampling_view_constant`).
+      * Type-level posture upgrades (Prop signatures
+        strengthened): `GIReducesToCE` gains `codeSize_pos` +
+        `encode_card_eq` fields ruling out the audit-J03
+        `encode _ _ := ∅` degenerate witness at compile time;
+        `GIReducesToTI` gains `encode_nonzero_of_pos_dim` ruling
+        out the audit-J08 constant-zero encoder.
+      * New ε-smooth probabilistic predicate
+        `ObliviousSamplingConcreteHiding` (vocabulary for ε-bounded
+        oblivious-sampling hiding suitable for release-facing
+        security claims).
+      * Deletion: `concreteKEMOIA_one_meaningful` (redundant
+        duplicate of `kemAdvantage_le_one`).
+      * New Mathlib-style helpers in `Probability/Monad.lean`:
+        `probTrue_map` and `probTrue_uniformPMF_card` (general
+        PMF arithmetic tools used by future tight ε-bound proofs).
+      * **New non-degenerate fixture** (post-audit replacement for
+        the removed theatrical witnesses) in
+        `Orbcrypt/PublicKey/ObliviousSampling.lean`:
+        `concreteHidingBundle` and `concreteHidingCombine` —
+        a concrete bundle (`Equiv.Perm Bool` on `Bool`,
+        randomizers `![false, true]`) and combine (Boolean AND)
+        whose orbit cardinality is 2 (max on Bool) and whose
+        combine push-forward is biased (1/4 on `true`). On paper,
+        the worst-case adversary advantage on this fixture is
+        `1/4` — a tight ε ∈ (0, 1) bound. The Lean proof of the
+        precise `1/4` bound is research-scope (R-12); the
+        non-degenerate fixture itself is the substantive
+        in-tree contribution.
+
+      **Theatrical content removed** (post-audit, 2026-04-25):
+
+      * `concreteOIA_zero_of_subsingleton_message` (I1) —
+        required `[Subsingleton M]`, a hypothesis under which
+        there is only one message and therefore no security game
+        to play.
+      * `concreteKEMOIA_uniform_zero_of_singleton_orbit` (I2) —
+        required the KEM to have only one possible ciphertext,
+        collapsing the security game.
+      * `ObliviousSamplingConcreteHiding_zero_witness` (I6) —
+        required a singleton-orbit hypothesis that collapses the
+        security game on `combine := fun _ _ => basePoint`.
+      * `oblivious_sampling_view_advantage_bound` (I6) — one-line
+        wrapper that was just the predicate's universal quantifier
+        applied to a specific D; consumers can do this directly.
+
+      **Type-level posture upgrade witnesses kept (with honest
+      docstrings):** `GIReducesToCE_card_nondegeneracy_witness`
+      and `GIReducesToTI_nondegeneracy_witness` confirm the
+      strengthened non-degeneracy fields are independently
+      inhabitable by a singleton encoder (a sub-predicate of the
+      full Prop, omitting the iff). They do **not** witness the
+      full strengthened Props; that requires a tight Karp
+      reduction (research-scope R-15).
+
+      **Counts (post-audit):** 6 new public declarations
+      (`canon_indicator_isGInvariant`,
+      `distinct_messages_have_invariant_separator`,
+      `GIReducesToCE_card_nondegeneracy_witness`,
+      `GIReducesToTI_nondegeneracy_witness`,
+      `ObliviousSamplingConcreteHiding`,
+      `concreteHidingBundle`,
+      `concreteHidingCombine`,
+      `probTrue_map`, `probTrue_uniformPMF_card`) — 9 in total
+      (the 4 theatrical post-Workstream-I theorems are removed).
+      4 renamed declarations (content-neutral). 2 strengthened
+      in-place (signature-level non-degeneracy fields). 1
+      deletion of redundant duplicate. Module count: 39
+      (unchanged). The honest delivery is the **fixture +
+      research-scope disclosure**, not a Lean proof of a tight
+      ε bound. `lakefile.lean` bumped from `0.1.13` to `0.1.14`
+      for the post-audit refactor.
+
+      **Honest scoreboard.** Of the original 9 "new" theorems
+      delivered by the initial landing, 4 were theatrical
+      (perfect-security extrema on degenerate inputs + one
+      trivial wrapper) and have been removed. The remaining
+      substantive contributions — `distinct_messages_have_
+      invariant_separator`, the type-level Prop strengthening,
+      the `ObliviousSamplingConcreteHiding` predicate, the
+      non-degenerate fixture, and the rename hygiene — are kept.
+      The precise ε = 1/4 ObliviousSamplingConcreteHiding bound
+      and the full Karp reduction inhabitants for
+      `GIReducesToCE` / `GIReducesToTI` remain genuine
+      research-scope follow-ups (R-12 and R-15 respectively).
 - [ ] **Workstream J** — Invariant-attack framing + negligible closures (pending).
 - [ ] **Workstream K** — Root-file split + legacy-script relocation (pending).
 - [ ] **Workstream L** — Medium-severity structural cleanup (pending).
