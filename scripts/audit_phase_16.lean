@@ -1459,4 +1459,140 @@ example
     (hgoeScheme.ofLexMin G reps hDistinct).reps = reps :=
   hgoeScheme.ofLexMin_reps G reps hDistinct
 
+/-! ## Workstream G non-vacuity witnesses
+
+The Workstream-G refactor (audit 2026-04-23, finding V1-13 / H-03 /
+Z-06 / D16) replaces `HGOEKeyExpansion`'s hard-coded
+`group_large_enough : group_order_log ≥ 128` field with a
+λ-parameterised `group_order_log ≥ lam` (where `lam : ℕ` is a leading
+structure parameter, named `lam` because Lean 4 reserves `λ` for
+lambda-abstraction). Pre-G the structure was instantiable only at the
+λ = 128 row of the Phase-14 sweep; the post-G shape lets every
+λ ∈ {80, 128, 192, 256} security tier inhabit `HGOEKeyExpansion lam …`
+with a `group_order_log` discharged at compile time by `decide` /
+`Nat.le.refl`.
+
+Each witness below is a complete `HGOEKeyExpansion lam n M` value
+with:
+* `b * ℓ = n` (Stage 1 parameter validity);
+* `code_dim ≤ n` (Stage 2 dimension validity);
+* `group_order_log ≥ lam` discharged via the trivially-true bound
+  `lam ≤ lam` (we choose `group_order_log := lam` for simplicity);
+* `weight = 0` and `reps := fun _ => fun _ => false` (Stage 4
+  uniformity holds vacuously: the all-zero bitstring has Hamming
+  weight 0 by `Finset.filter_false`).
+
+The witnesses are deliberately tiny (singleton message space `Unit`)
+so the elaboration cost is constant across security levels; the
+non-trivial part is the `group_large_enough` discharge, which is the
+property the Workstream-G refactor exists to make instantiable. -/
+
+/-- A reusable Stage-4 helper: under the all-zero bitstring `_ ↦ false`,
+    the Hamming weight is 0 because the underlying filter is empty.
+    Concretely, `hammingWeight (fun _ => false)` unfolds to
+    `(Finset.univ.filter (fun i => false = true)).card`; the predicate
+    is constantly false, so the filter is `∅` and `Finset.card ∅ = 0`. -/
+private theorem hammingWeight_zero_bitstring (n : ℕ) :
+    hammingWeight (n := n) (fun _ : Fin n => false) = 0 := by
+  unfold hammingWeight
+  -- `Finset.univ.filter (fun _ => false = true) = ∅` because the
+  -- predicate decides to `False` at every input.
+  simp
+
+/-- **Workstream G non-vacuity witness at λ = 80.** The smallest of
+    the four documented Phase-14 tiers (`docs/PARAMETERS.md`,
+    `docs/benchmarks/results_80.csv`). The `group_large_enough`
+    field is `group_order_log ≥ 80`, discharged by `le_refl _`
+    after we choose `group_order_log := 80`. The bitstring length
+    `n = 256` matches the §2 balanced-tier recommendation
+    `n = 4 · λ = 320` rounded down to the smallest convenient
+    `b · ℓ` factorisation; here `b = 4`, `ℓ = 64`, so `n = 4 · 64 =
+    256` (`param_valid`). Code dimension `code_dim = 128 ≤ 256`
+    (`code_valid`). -/
+example : HGOEKeyExpansion 80 256 Unit where
+  b := 4
+  ℓ := 64
+  param_valid := by decide
+  code_dim := 128
+  code_valid := by decide
+  group_order_log := 80
+  group_large_enough := le_refl _
+  weight := 0
+  reps := fun _ _ => false
+  reps_same_weight := fun _ => hammingWeight_zero_bitstring 256
+
+/-- **Workstream G non-vacuity witness at λ = 128.** The original
+    pre-Workstream-G hard-coded tier — the only level the pre-G
+    structure could inhabit. Now expressed as one tier among four,
+    with the same Lean-level discharge pattern. Matches the
+    aggressive-tier row of `docs/benchmarks/results_128.csv` at
+    `b = 8`, `ℓ = 64`, `n = 512`. -/
+example : HGOEKeyExpansion 128 512 Unit where
+  b := 8
+  ℓ := 64
+  param_valid := by decide
+  code_dim := 256
+  code_valid := by decide
+  group_order_log := 128
+  group_large_enough := le_refl _
+  weight := 0
+  reps := fun _ _ => false
+  reps_same_weight := fun _ => hammingWeight_zero_bitstring 512
+
+/-- **Workstream G non-vacuity witness at λ = 192.** A Phase-14 tier
+    that the pre-G hard-coded `≥ 128` bound made strictly *over*-
+    discharging (an `HGOEKeyExpansion` claiming `≥ 128` security is
+    *not* a witness of `≥ 192` security; the post-G shape requires
+    each tier to discharge its own bound). Matches the conservative-
+    tier shape with `b = 4`, `ℓ = 192`, `n = 768`. -/
+example : HGOEKeyExpansion 192 768 Unit where
+  b := 4
+  ℓ := 192
+  param_valid := by decide
+  code_dim := 384
+  code_valid := by decide
+  group_order_log := 192
+  group_large_enough := le_refl _
+  weight := 0
+  reps := fun _ _ => false
+  reps_same_weight := fun _ => hammingWeight_zero_bitstring 768
+
+/-- **Workstream G non-vacuity witness at λ = 256.** The largest of
+    the four documented tiers, matching `docs/benchmarks/results_256.
+    csv`. The pre-G structure could *not* discharge `group_order_log
+    ≥ 256` in general (only `≥ 128` was demanded), so callers
+    targeting the highest security level had no machine-checked
+    obligation that the group was actually large enough. The post-G
+    structure forces them to supply the witness. -/
+example : HGOEKeyExpansion 256 1024 Unit where
+  b := 4
+  ℓ := 256
+  param_valid := by decide
+  code_dim := 512
+  code_valid := by decide
+  group_order_log := 256
+  group_large_enough := le_refl _
+  weight := 0
+  reps := fun _ _ => false
+  reps_same_weight := fun _ => hammingWeight_zero_bitstring 1024
+
+/-- **Field-projection regression.** Given any
+    `HGOEKeyExpansion lam n M`, the `group_large_enough` field must
+    project to the λ-parameterised inequality `group_order_log ≥
+    lam`. Exercising this at a free `lam` confirms a future change
+    that hard-coded the bound back to `≥ 128` (or any other literal)
+    would fail to elaborate. -/
+example (lam n : ℕ) (M : Type) (exp : HGOEKeyExpansion lam n M) :
+    exp.group_order_log ≥ lam :=
+  exp.group_large_enough
+
+/-- **λ-monotonicity regression.** A witness at λ' ≤ λ does *not*
+    upgrade automatically to a witness at λ — the post-G obligation
+    `group_order_log ≥ λ` is genuinely stronger than `≥ λ'` whenever
+    `λ' < λ`. We exhibit the failure-mode by negation: at `lam' = 80`
+    and `lam = 192`, the inequality `80 ≥ 192` is decidably false.
+    This documents that the four tier-witnesses above are *distinct*
+    obligations, not one obligation with a sloppy bound. -/
+example : ¬ ((80 : ℕ) ≥ 192) := by decide
+
 end NonVacuityWitnesses

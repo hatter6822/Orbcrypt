@@ -632,6 +632,20 @@ inputs, outputs, and validation checks.
 
 #### 6.2.1 HGOE.Setup(1^λ) — Detailed Pipeline
 
+The Lean formalisation in `Orbcrypt/KeyMgmt/SeedKey.lean` exposes this
+pipeline as the **λ-parameterised** structure `HGOEKeyExpansion lam n M`
+(Workstream G of audit 2026-04-23, finding V1-13 / H-03 / Z-06 / D16,
+landed 2026-04-25). The leading parameter `lam : ℕ` corresponds to the
+security parameter `λ` in this prose specification (the Lean spelling
+is `lam` because `λ` is a Lean-reserved token). Every Phase-14 row of
+`docs/PARAMETERS.md` §2 — λ ∈ {80, 128, 192, 256} — is now a Lean-
+instantiable witness with `group_order_log ≥ lam` discharged at
+compile time; see `scripts/audit_phase_16.lean` "Workstream G non-
+vacuity witnesses" for one machine-checked instantiation per security
+level. The pre-G hard-coded `≥ 128` bound made the structure
+*inhabitable only at λ = 128*; the post-G shape lifts that limitation
+without changing the underlying pipeline content described below.
+
 **Stage 1 — Parameter derivation.**
 - Input: security parameter λ.
 - Compute: block length b = 8, index ℓ = ⌈λ / log₂ b⌉ = ⌈λ/3⌉, n = b · ℓ,

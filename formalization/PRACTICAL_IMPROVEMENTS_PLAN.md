@@ -1351,6 +1351,18 @@ in 2 new Lean files.
   clean and allowing the weight-uniformity property to reference actual orbit
   representatives.
 
+- **`HGOEKeyExpansion` λ-parameterised (post Workstream G of audit
+  2026-04-23, finding V1-13 / H-03 / Z-06 / D16, landed 2026-04-25).**
+  The Phase-9 plan above hard-coded `group_large_enough :
+  group_order_log ≥ 128`. Workstream G of the 2026-04-23 pre-release
+  audit added a leading security parameter `(lam : ℕ)` to the
+  structure and changed the field's type to `group_order_log ≥ lam`,
+  unlocking the λ ∈ {80, 192, 256} security tiers from the Phase-14
+  parameter sweep that the pre-G hard-coded bound made unreachable.
+  See `Orbcrypt.lean` "Workstream G Snapshot" and
+  `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 10 for the
+  full landing notes.
+
 **Files created:**
 - `Orbcrypt/KeyMgmt/SeedKey.lean` — `SeedKey`, `seed_kem_correctness`,
   `HGOEKeyExpansion`, `seed_determines_key`, `seed_determines_canon`,

@@ -223,7 +223,7 @@ Instantiation with S\_n acting on bitstrings.
 
 | Module | Key Content |
 |--------|-------------|
-| `SeedKey.lean` | `SeedKey` structure, `HGOEKeyExpansion` spec, `seed_kem_correctness`, backward compatibility |
+| `SeedKey.lean` | `SeedKey` structure, `HGOEKeyExpansion` spec (λ-parameterised post Workstream G of audit 2026-04-23 — finding V1-13 / H-03 / Z-06 / D16, landed 2026-04-25; takes `(lam : ℕ) (n : ℕ) (M : Type*)` and asks `group_order_log ≥ lam`), `seed_kem_correctness`, backward compatibility |
 | `Nonce.lean` | `nonceEncaps`, `nonceDecaps`, nonce-misuse resistance, orbit leakage warning |
 
 ### Layer 8: Public-Key Extension (`PublicKey/`) — Phase 13

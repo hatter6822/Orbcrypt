@@ -157,6 +157,37 @@ Dec time is the mean decapsulation time from
 `orbcrypt_benchmarks.csv`; ciphertext size is `⌈n/8⌉` bytes for the
 KEM-only ciphertext.
 
+### 2.2.1 Lean cross-link — λ-parameterised `HGOEKeyExpansion`
+
+Each row of the table above corresponds to an instantiable Lean
+witness of the structure
+`HGOEKeyExpansion lam n M` declared in
+`Orbcrypt/KeyMgmt/SeedKey.lean`. The leading `lam : ℕ` parameter
+**is** the security parameter `λ` of this section (the Lean
+identifier is spelled `lam` because `λ` is a reserved Lean token). The
+structure's `group_large_enough : group_order_log ≥ lam` field is the
+machine-checked obligation that the underlying group is at least
+`λ`-bit secure; the `log₂|G|` column above shows the actual
+`group_order_log` value chosen at deployment, which is always ≥ `λ`
+(strict for L3, L5, L7).
+
+Workstream G of the 2026-04-23 pre-release audit (finding V1-13 /
+H-03 / Z-06 / D16, landed 2026-04-25) lifted the pre-G hard-coded
+`group_order_log ≥ 128` bound to `≥ lam`, so all four security
+tiers (L1, L3, L5, L7) are now Lean-instantiable. Pre-G, only L3
+(λ = 128) had a corresponding Lean witness; L1 was strictly weaker
+than the bound, and L5 / L7 received only the L3 strength
+guarantee — a release-messaging gap that the audit flagged as
+MEDIUM-severity. See `scripts/audit_phase_16.lean` "Workstream G
+non-vacuity witnesses" for the four `example`s machine-checking
+that each tier inhabits the structure.
+
+The Lean-verified `≥ lam` bound is a **lower bound**, not an exact
+bound: deployment chooses `group_order_log` per the §4 scaling-model
+thresholds, often strictly above `lam`. Release claims about HGOE's
+security level should cite this λ-parameterised form together with
+the corresponding row above.
+
 ### 2.3 Caveat — Phase 11 baseline is a performance proxy, not a
 secure parameter set
 
