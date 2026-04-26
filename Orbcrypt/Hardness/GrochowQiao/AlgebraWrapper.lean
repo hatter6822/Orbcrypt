@@ -407,5 +407,43 @@ theorem pathAlgebraMul_assoc (m : ℕ)
   -- Rewrite LHS bind chain to RHS via pathMul_assoc.
   rw [pathMul_assoc m x y b]
 
+-- ============================================================================
+-- A.2.5 — Multiplicative identity (`pathAlgebraOne`).
+-- ============================================================================
+
+/-- The multiplicative identity in the path algebra is the sum of
+all vertex idempotents `∑_v e_v`. -/
+noncomputable def pathAlgebraOne (m : ℕ) : pathAlgebraQuotient m :=
+  ∑ v : Fin m, vertexIdempotent m v
+
+noncomputable instance pathAlgebraQuotient.instOne (m : ℕ) :
+    One (pathAlgebraQuotient m) := ⟨pathAlgebraOne m⟩
+
+/-- Helper: sum-of-functions evaluation via Finset.sum on each
+output. -/
+private lemma sum_pathAlg_apply (m : ℕ) (s : Finset (Fin m))
+    (g : Fin m → pathAlgebraQuotient m) (a : QuiverArrow m) :
+    (∑ v ∈ s, g v) a = ∑ v ∈ s, g v a :=
+  Finset.sum_apply a s g
+
+/-- Explicit application of `pathAlgebraOne` on basis elements. -/
+theorem pathAlgebraOne_apply_id (m : ℕ) (w : Fin m) :
+    pathAlgebraOne m (.id w) = 1 := by
+  show (∑ v : Fin m, vertexIdempotent m v) (.id w) = 1
+  rw [sum_pathAlg_apply]
+  rw [Finset.sum_eq_single w]
+  · simp [vertexIdempotent]
+  · intros v _ hv
+    simp [vertexIdempotent, hv]
+  · intro h_not; exact absurd (Finset.mem_univ w) h_not
+
+theorem pathAlgebraOne_apply_edge (m : ℕ) (u v : Fin m) :
+    pathAlgebraOne m (.edge u v) = 0 := by
+  show (∑ w : Fin m, vertexIdempotent m w) (.edge u v) = 0
+  rw [sum_pathAlg_apply]
+  apply Finset.sum_eq_zero
+  intros w _
+  simp [vertexIdempotent]
+
 end GrochowQiao
 end Orbcrypt
