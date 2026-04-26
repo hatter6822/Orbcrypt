@@ -3895,6 +3895,79 @@ Future research-scope work can discharge these Props and obtain a
 fully unconditional `@GIReducesToTI ℚ _` inhabitant via
 `grochowQiao_isInhabitedKarpReduction_under_obligations`.
 
+Workstream R-TI Track B + A.1 + A.2 partial — Forward obligation
+discharged unconditionally (2026-04-26 extension):
+
+- **Track B (PermMatrix.lean, NEW module).** Implements the GL³
+  matrix-action verification (Layer T3.6) using Mathlib's
+  `Equiv.Perm.permMatrix` API:
+  * `liftedSigmaMatrix m σ` lifts the slot permutation to a
+    permutation matrix in `Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ`.
+  * `liftedSigmaGL m σ` packages this into the general linear group
+    via `Matrix.GeneralLinearGroup.mkOfDetNeZero`.
+  * `matMulTensor{1,2,3}_permMatrix` proves single-axis tensor-action
+    collapse via `Finset.sum_eq_single`.
+  * `tensorContract_permMatrix_triple` composes the three single-axis
+    lemmas into the full GL³ collapse.
+  * `gl_triple_liftedSigmaGL_smul` is the `MulAction`-level statement.
+  * `grochowQiaoEncode_gl_isomorphic` (B.8) is the structural form
+    of the forward direction's GL³ matrix-action verification.
+
+- **`grochowQiao_forwardObligation` (in GrochowQiao.lean, NEW)**
+  closes `GrochowQiaoForwardObligation` unconditionally by composing
+  Track B's `grochowQiaoEncode_gl_isomorphic` with the existing
+  encoder-equivariance lemma. **One of the two research-scope Props
+  introduced at the 2026-04-26 partial-closure landing is now
+  closed.**
+
+- **Track A.1 (in PathAlgebra.lean).** Implements `pathMul_assoc`
+  (Layer T1.7) — the basis-element-level associativity of path
+  multiplication. Proven via 8-case structural recursion on the
+  three `QuiverArrow` constructors; arrow-arrow cases collapse to
+  `none = none` unconditionally; remaining cases discharge via
+  `simp` + `split_ifs`.
+
+- **Track A.2 partial (AlgebraWrapper.lean, NEW module).**
+  Establishes the path-algebra carrier as a ℚ-vector space:
+  * `pathAlgebraQuotient m := QuiverArrow m → ℚ` carrier type.
+  * `AddCommGroup`, `Module ℚ` instances via `Pi`.
+  * `pathAlgebraMul` definition + `Mul` instance via convolution
+    over the `pathMul` table.
+  * `vertexIdempotent m v` and `arrowElement m u v` named basis
+    elements with apply-on-constructor simp lemmas.
+  * `pathAlgebraMul_apply` unfolding lemma.
+
+  **Status note.** The full Mathlib `Algebra ℚ` typeclass instance
+  (Layer T4.8 — requires `mul_assoc` lift, Ring instance, etc.)
+  is not yet built. The downstream rigidity argument can be
+  structured at the basis-element level using `pathMul_quiverMap`-
+  style multiplicative bijections rather than `AlgEquiv`, avoiding
+  the full Algebra typeclass dependency.
+
+- **`grochowQiao_isInhabitedKarpReduction_under_rigidity`
+  (in GrochowQiao.lean, NEW).** Single-hypothesis conditional
+  inhabitant of `@GIReducesToTI ℚ _`. Pre-Track-B, the conditional
+  inhabitant required two Props (`GrochowQiaoForwardObligation`
+  AND `GrochowQiaoRigidity`); post-Track-B it requires only
+  `GrochowQiaoRigidity`. When that is discharged (research-scope
+  R-15-residual-TI-reverse), the inhabitant becomes unconditional.
+
+- **`grochowQiao_partial_closure_status` extended** to assert
+  `GrochowQiaoForwardObligation` as a now-unconditional consequence.
+
+- **Audit script** `scripts/audit_phase_16.lean` extended with 26
+  new `#print axioms` entries plus 7 new non-vacuity `example`
+  bindings. Total declarations exercised: 462.
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.18` to `0.1.19`.
+
+**Status of remaining R-TI work.** The Layer T4.1–T5.4 rigidity
+argument (the actual Grochow–Qiao SIAM J. Comp. 2023 §4.3 proof,
+~80 pages on paper, ~2,000+ LOC of Lean) is genuine multi-month
+research-scope work and is **not** completed in this extension.
+The `GrochowQiaoRigidity` Prop hypothesis remains open and tracked
+as **R-15-residual-TI-reverse**.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

@@ -2332,6 +2332,39 @@ end PetrankRothLayer3NonVacuity
 #print axioms Orbcrypt.GrochowQiao.grochowQiao_isInhabitedKarpReduction_under_obligations
 #print axioms Orbcrypt.GrochowQiao.grochowQiao_partial_closure_status
 
+-- Track B (post-2026-04-26 R-TI extension Track B implementation).
+-- PermMatrix.lean B.1-B.8: GL³ matrix-action verification.
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaMatrix
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaMatrix_apply
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaMatrix_det_ne_zero
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaGL
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaGL_val
+#print axioms Orbcrypt.GrochowQiao.matMulTensor1_permMatrix
+#print axioms Orbcrypt.GrochowQiao.matMulTensor2_permMatrix
+#print axioms Orbcrypt.GrochowQiao.matMulTensor3_permMatrix
+#print axioms Orbcrypt.GrochowQiao.tensorContract_permMatrix_triple
+#print axioms Orbcrypt.GrochowQiao.gl_triple_liftedSigmaGL_smul
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_gl_isomorphic
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_forwardObligation
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_isInhabitedKarpReduction_under_rigidity
+
+-- Track A.1: pathMul_assoc.
+#print axioms Orbcrypt.GrochowQiao.pathMul_assoc
+
+-- Track A.2 partial: pathAlgebraQuotient + Mul + basis elements.
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraQuotient
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraQuotient.addCommGroup
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraQuotient.module
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraMul
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraQuotient.instMul
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraMul_apply
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.arrowElement
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_apply_id
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_apply_edge
+#print axioms Orbcrypt.GrochowQiao.arrowElement_apply_id
+#print axioms Orbcrypt.GrochowQiao.arrowElement_apply_edge
+
 -- Top-level `Orbcrypt/Hardness/GrochowQiao.lean` re-exports.
 #print axioms Orbcrypt.GrochowQiao.grochowQiao_encode_nonzero_field
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_self_isomorphic
@@ -2577,16 +2610,65 @@ example (h_forward : GrochowQiaoForwardObligation)
   grochowQiao_isInhabitedKarpReduction_under_obligations h_forward h_rigidity
 
 /-- **R-TI Layer T6.4 non-vacuity witness (partial closure status).**
-    Documents the unconditional content: the encoder is non-zero on
-    every non-empty graph, and the empty-graph reverse direction is
-    unconditional. -/
+    Documents the unconditional content: encoder non-zero, empty-graph
+    reverse, AND `GrochowQiaoForwardObligation` discharged
+    (post-Track-B extension). -/
 example :
     (∀ m, 1 ≤ m → ∀ adj : Fin m → Fin m → Bool,
         grochowQiaoEncode m adj ≠ (fun _ _ _ => 0)) ∧
     (∀ adj₁ adj₂ : Fin 0 → Fin 0 → Bool,
         AreTensorIsomorphic (grochowQiaoEncode 0 adj₁)
                             (grochowQiaoEncode 0 adj₂) →
-        ∃ σ : Equiv.Perm (Fin 0), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) :=
+        ∃ σ : Equiv.Perm (Fin 0), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ∧
+    GrochowQiaoForwardObligation :=
   grochowQiao_partial_closure_status
+
+-- Post-2026-04-26 R-TI Track B + A.1 + A.2 partial extensions.
+
+/-- **R-TI Track B.1 non-vacuity witness (lifted permutation matrix
+    elaborates).** -/
+example : liftedSigmaMatrix 3 (1 : Equiv.Perm (Fin 3)) =
+          ((1 : Equiv.Perm (Fin (dimGQ 3))).permMatrix ℚ) := by
+  simp [liftedSigmaMatrix, liftedSigma_one]
+
+/-- **R-TI Track B.2 non-vacuity witness (lifted GL element exists).** -/
+example : ∃ g : GL (Fin (dimGQ 3)) ℚ, g = liftedSigmaGL 3 (1 : Equiv.Perm (Fin 3)) :=
+  ⟨liftedSigmaGL 3 1, rfl⟩
+
+/-- **R-TI Track B.6 non-vacuity witness (triple-permutation tensor
+    collapse to identity at σ = 1).** -/
+example (T : Tensor3 (dimGQ 3) ℚ) :
+    tensorContract ((1 : Equiv.Perm (Fin (dimGQ 3))).permMatrix ℚ)
+                    ((1 : Equiv.Perm (Fin (dimGQ 3))).permMatrix ℚ)
+                    ((1 : Equiv.Perm (Fin (dimGQ 3))).permMatrix ℚ) T = T := by
+  rw [tensorContract_permMatrix_triple]; rfl
+
+/-- **R-TI Track B.8 non-vacuity witness (forward obligation
+    discharged unconditionally).** -/
+example : GrochowQiaoForwardObligation := grochowQiao_forwardObligation
+
+/-- **R-TI Track A.1 non-vacuity witness (pathMul_assoc on a concrete
+    triple).** Vertex idempotent triple-product associativity. -/
+example (m : ℕ) (v : Fin m) :
+    Option.bind (pathMul m (.id v) (.id v))
+                (fun ab => pathMul m ab (.id v)) =
+    Option.bind (pathMul m (.id v) (.id v))
+                (fun bc => pathMul m (.id v) bc) :=
+  pathMul_assoc m (.id v) (.id v) (.id v)
+
+/-- **R-TI Track A.2 non-vacuity witness (vertex idempotent and
+    arrow element distinctness on basis evaluation).** -/
+example (m : ℕ) (v : Fin m) :
+    vertexIdempotent m v (.id v) = (1 : ℚ) ∧
+    vertexIdempotent m v (.edge v v) = (0 : ℚ) := by
+  refine ⟨?_, ?_⟩
+  · simp [vertexIdempotent]
+  · simp [vertexIdempotent]
+
+/-- **R-TI new conditional inhabitant (single Prop hypothesis).**
+    Post-Track-B, the Karp-reduction inhabitant requires only the
+    rigidity Prop. -/
+example (h_rigidity : GrochowQiaoRigidity) : @GIReducesToTI ℚ _ :=
+  grochowQiao_isInhabitedKarpReduction_under_rigidity h_rigidity
 
 end GrochowQiaoNonVacuity

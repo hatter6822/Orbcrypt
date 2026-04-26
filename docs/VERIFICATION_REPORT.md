@@ -1168,6 +1168,45 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-26 (Workstream R-TI Track B + A.1 + A.2 partial —
+  forward obligation discharged unconditionally)** — Track B
+  (`Orbcrypt/Hardness/GrochowQiao/PermMatrix.lean`, NEW module)
+  implements the Layer T3.6 GL³ matrix-action verification using
+  Mathlib's `Equiv.Perm.permMatrix` API. The chain
+  `liftedSigmaMatrix → liftedSigmaGL →
+  matMulTensor{1,2,3}_permMatrix → tensorContract_permMatrix_triple
+  → grochowQiaoEncode_gl_isomorphic` closes
+  `GrochowQiaoForwardObligation` unconditionally via the new
+  theorem `grochowQiao_forwardObligation`.
+
+  **New single-Prop conditional inhabitant.**
+  `grochowQiao_isInhabitedKarpReduction_under_rigidity` provides
+  `@GIReducesToTI ℚ _` conditional on only `GrochowQiaoRigidity`
+  (one fewer Prop than the pre-extension version).
+
+  **Track A.1.** `pathMul_assoc` (Layer T1.7) lands as an 8-case
+  structural recursion proof, providing the foundational
+  associativity for path-algebra multiplication.
+
+  **Track A.2 partial.** `AlgebraWrapper.lean` (NEW module)
+  establishes the path-algebra as a ℚ-vector space with the
+  `pathAlgebraMul` operation and named basis elements
+  (`vertexIdempotent`, `arrowElement`). The full Mathlib
+  `Algebra ℚ` typeclass instance is not yet built; the downstream
+  rigidity argument can be structured at the basis-element level
+  to avoid the typeclass dependency.
+
+  **Audit script:** 26 new `#print axioms` entries + 7 new
+  non-vacuity examples. Total: 462 declarations exercised.
+
+  **Status of remaining R-TI work.** Phases C, D, E, F, G, H of
+  the 2026-04-26 implementation plan are NOT completed in this
+  extension. The Layer T4.1–T5.4 rigidity argument remains
+  research-scope **R-15-residual-TI-reverse** (multi-month work,
+  ~80 pages of Grochow–Qiao SIAM J. Comp. 2023 §4.3).
+
+  `lakefile.lean` bumped from `0.1.18` to `0.1.19`.
+
 * **2026-04-26 (Workstream R-TI Layers T2.5–T6 + stretch partial-
   closure extension)** — Extension landing on top of the same-day
   Layer T0–T3 landing. Adds the encoder evaluation + padding-

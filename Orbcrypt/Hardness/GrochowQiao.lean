@@ -271,13 +271,34 @@ theorem grochowQiao_isInhabitedKarpReduction_under_obligations
    grochowQiaoEncode_nonzero_of_pos_dim,
    grochowQiaoEncode_iff h_forward h_rigidity⟩
 
+/-- **Single-hypothesis conditional Karp-reduction inhabitant.**
+
+Post-2026-04-26 R-TI extension (Track B / B.8) discharged
+`GrochowQiaoForwardObligation` unconditionally via the permutation-
+matrix tensor-action collapse infrastructure. So the conditional
+inhabitant now requires only the rigidity Prop:
+
+```lean
+@GIReducesToTI ℚ _ ← GrochowQiaoRigidity
+```
+
+When `GrochowQiaoRigidity` is discharged (research-scope
+**R-15-residual-TI-reverse**), this becomes a complete unconditional
+inhabitant. -/
+theorem grochowQiao_isInhabitedKarpReduction_under_rigidity
+    (h_rigidity : GrochowQiaoRigidity) :
+    @GIReducesToTI ℚ _ :=
+  grochowQiao_isInhabitedKarpReduction_under_obligations
+    grochowQiao_forwardObligation h_rigidity
+
 -- ============================================================================
 -- Layer T6.4 — Final non-vacuity disclosure.
 -- ============================================================================
 
 /-- **Final non-vacuity disclosure (Layer T6.4).**
 
-Documents the post-T6 status of the Grochow–Qiao reduction:
+Documents the post-2026-04-26 R-TI extension status of the Grochow–
+Qiao reduction:
 
 * The **encoder** (`grochowQiaoEncode`), **forward direction at the
   encoder-equality level** (`grochowQiaoEncode_forward_equality`),
@@ -285,23 +306,31 @@ Documents the post-T6 status of the Grochow–Qiao reduction:
   `grochowQiaoEncode_reverse_one`), and **non-degeneracy**
   (`grochowQiaoEncode_nonzero_of_pos_dim`) are landed unconditionally.
 * The **GL³ matrix-action upgrade of the forward direction**
-  (`GrochowQiaoForwardObligation`) and the **rigidity argument**
-  (`GrochowQiaoRigidity`) are landed as `Prop`-typed obligations
-  with consumer-facing conditional theorems
-  (`grochowQiaoEncode_iff`,
-  `grochowQiao_isInhabitedKarpReduction_under_obligations`).
+  (`GrochowQiaoForwardObligation`) is now **discharged
+  unconditionally** via `grochowQiao_forwardObligation` (Track B
+  of the 2026-04-26 implementation, using
+  `Orbcrypt/Hardness/GrochowQiao/PermMatrix.lean`).
+* The **rigidity argument** (`GrochowQiaoRigidity`) remains a
+  `Prop`-typed obligation; it is consumed by the single-hypothesis
+  conditional inhabitant
+  `grochowQiao_isInhabitedKarpReduction_under_rigidity`. Discharging
+  this Prop is research-scope **R-15-residual-TI-reverse**
+  (~80 pages of Grochow–Qiao SIAM J. Comp. 2023 §4.3).
 
-The full Karp-reduction inhabitant becomes unconditional once both
-Props are discharged (research-scope follow-ups). -/
+The full Karp-reduction inhabitant `@GIReducesToTI ℚ _` becomes
+unconditional once `GrochowQiaoRigidity` is discharged. -/
 theorem grochowQiao_partial_closure_status :
     -- Encoder produces non-zero tensors for all non-empty graphs.
     (∀ m, 1 ≤ m → ∀ adj, grochowQiaoEncode m adj ≠ (fun _ _ _ => 0)) ∧
     -- Empty-graph reverse direction is unconditional.
     (∀ adj₁ adj₂ : Fin 0 → Fin 0 → Bool,
       AreTensorIsomorphic (grochowQiaoEncode 0 adj₁) (grochowQiaoEncode 0 adj₂) →
-      ∃ σ : Equiv.Perm (Fin 0), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) :=
+      ∃ σ : Equiv.Perm (Fin 0), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ∧
+    -- Forward obligation is now unconditional.
+    GrochowQiaoForwardObligation :=
   ⟨grochowQiaoEncode_nonzero_of_pos_dim,
-   grochowQiaoEncode_reverse_zero⟩
+   grochowQiaoEncode_reverse_zero,
+   grochowQiao_forwardObligation⟩
 
 end GrochowQiao
 end Orbcrypt
