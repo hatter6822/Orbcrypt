@@ -1904,23 +1904,39 @@ end NonVacuityWitnesses
 #print axioms Orbcrypt.PetrankRoth.numEdges
 #print axioms Orbcrypt.PetrankRoth.dimPR
 #print axioms Orbcrypt.PetrankRoth.codeSizePR
+#print axioms Orbcrypt.PetrankRoth.numEdges_zero
+#print axioms Orbcrypt.PetrankRoth.numEdges_one
+#print axioms Orbcrypt.PetrankRoth.numEdges_two
+#print axioms Orbcrypt.PetrankRoth.numEdges_three
+#print axioms Orbcrypt.PetrankRoth.numEdges_four
 #print axioms Orbcrypt.PetrankRoth.numEdges_le
 #print axioms Orbcrypt.PetrankRoth.dimPR_pos
 #print axioms Orbcrypt.PetrankRoth.codeSizePR_pos
 #print axioms Orbcrypt.PetrankRoth.dimPR_eq_codeSizePR
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.toSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.ofSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.ofSum_toSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.toSum_ofSum
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.equivSum
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.instFintype
-#print axioms Orbcrypt.PetrankRoth.EdgeSlot.toPair
-#print axioms Orbcrypt.PetrankRoth.sum_fin_val_eq_numEdges
+#print axioms Orbcrypt.PetrankRoth.otherVertex
+#print axioms Orbcrypt.PetrankRoth.otherVertex_ne_self
+#print axioms Orbcrypt.PetrankRoth.otherVertexInverse
+#print axioms Orbcrypt.PetrankRoth.otherVertex_otherVertexInverse
+#print axioms Orbcrypt.PetrankRoth.otherVertexInverse_otherVertex
 #print axioms Orbcrypt.PetrankRoth.edgeSlot_card
 #print axioms Orbcrypt.PetrankRoth.edgeSlotEquiv
 #print axioms Orbcrypt.PetrankRoth.edgeEndpoints
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_ne
 #print axioms Orbcrypt.PetrankRoth.edgeIndex
-#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_lt
 #print axioms Orbcrypt.PetrankRoth.edgeEndpoints_edgeIndex
 #print axioms Orbcrypt.PetrankRoth.edgeIndex_edgeEndpoints
 #print axioms Orbcrypt.PetrankRoth.prCoord
+#print axioms Orbcrypt.PetrankRoth.prCoord_vertex_val
+#print axioms Orbcrypt.PetrankRoth.prCoord_incid_val
+#print axioms Orbcrypt.PetrankRoth.prCoord_marker_val
+#print axioms Orbcrypt.PetrankRoth.prCoord_sentinel_val
 #print axioms Orbcrypt.PetrankRoth.prCoordKind
 #print axioms Orbcrypt.PetrankRoth.prCoord_prCoordKind
 #print axioms Orbcrypt.PetrankRoth.prCoordKind_prCoord
@@ -1931,21 +1947,24 @@ open Orbcrypt.PetrankRoth
 
 /-- **R-CE Layer 0 non-vacuity witness.** `numEdges`, `dimPR`,
     `codeSizePR` evaluate to the expected closed-form values at small
-    `m`, and `codeSizePR_pos` discharges the strengthened
+    `m` (under the directed-edge enumeration `numEdges m = m * (m -
+    1)`), and `codeSizePR_pos` discharges the strengthened
     `GIReducesToCE` Prop's `codeSize_pos` field at `m = 0`. -/
-example : numEdges 4 = 6 ∧ dimPR 3 = 16 ∧ codeSizePR 3 = 16 ∧
+example : numEdges 4 = 12 ∧ dimPR 3 = 28 ∧ codeSizePR 3 = 28 ∧
           (0 < codeSizePR 0) :=
   ⟨rfl, rfl, rfl, codeSizePR_pos 0⟩
 
 /-- **R-CE Layer 0 non-vacuity witness.** `prCoord` evaluates to
     distinct columns for distinct constructor families, exhibiting
     the four-family partition structure that downstream layers
-    consume. -/
+    consume.  At `m = 3` (with `numEdges 3 = 6` directed slots) the
+    incidence range is `[3, 9)`, the marker range is `[9, 27)`, and
+    the sentinel is at column `27`. -/
 example :
     (prCoord 3 (.vertex ⟨0, by decide⟩)).val = 0 ∧
     (prCoord 3 (.incid ⟨0, by decide⟩)).val = 3 ∧
-    (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 6 ∧
-    (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 15 :=
+    (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 9 ∧
+    (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 27 :=
   ⟨rfl, rfl, rfl, rfl⟩
 
 /-- **R-CE Layer 0 non-vacuity witness.** `prCoordEquiv` round-trips
@@ -1978,15 +1997,35 @@ end PetrankRothLayer0NonVacuity
 #print axioms Orbcrypt.PetrankRoth.edgeCodeword
 #print axioms Orbcrypt.PetrankRoth.markerCodeword
 #print axioms Orbcrypt.PetrankRoth.sentinelCodeword
+-- Codeword evaluation simp lemmas (Layer 1.2):
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_sentinel
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_sentinel
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_sentinel
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_sentinel
+-- Within-family injectivity (Layer 1.3):
 #print axioms Orbcrypt.PetrankRoth.vertexCodeword_injective
 #print axioms Orbcrypt.PetrankRoth.edgeCodeword_injective
 #print axioms Orbcrypt.PetrankRoth.markerCodeword_injective
+-- Cross-family disjointness (Layer 1.4):
 #print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_edgeCodeword
 #print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_markerCodeword
 #print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_sentinelCodeword
 #print axioms Orbcrypt.PetrankRoth.edgeCodeword_ne_markerCodeword
 #print axioms Orbcrypt.PetrankRoth.edgeCodeword_ne_sentinelCodeword
 #print axioms Orbcrypt.PetrankRoth.markerCodeword_ne_sentinelCodeword
+-- Encoder + cardinality (Layers 1.5–1.6):
 #print axioms Orbcrypt.PetrankRoth.prEncode
 #print axioms Orbcrypt.PetrankRoth.prEncode_card
 #print axioms Orbcrypt.PetrankRoth.mem_prEncode
@@ -2011,23 +2050,38 @@ end PetrankRothLayer1NonVacuity
 -- (`Orbcrypt/Hardness/PetrankRoth.lean`)
 -- ============================================================================
 
+-- Edge permutation (Layer 2.1–2.2):
 #print axioms Orbcrypt.PetrankRoth.liftedEdgePermFun
 #print axioms Orbcrypt.PetrankRoth.liftedEdgePermFun_left_inv
 #print axioms Orbcrypt.PetrankRoth.liftedEdgePerm
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_apply
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_symm_apply
 #print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_one
-#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm_pos
-#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm_neg
-#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm_set
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePermFun
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm
+-- liftAut construction (Layer 2.3):
 #print axioms Orbcrypt.PetrankRoth.liftAutKindFun
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_vertex
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_incid
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_marker
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_sentinel
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_left_inv
 #print axioms Orbcrypt.PetrankRoth.liftAutKind
-#print axioms Orbcrypt.PetrankRoth.liftAutKind_one
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_apply
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_symm_apply
 #print axioms Orbcrypt.PetrankRoth.liftAut
+#print axioms Orbcrypt.PetrankRoth.liftAut_apply
+#print axioms Orbcrypt.PetrankRoth.liftAut_symm_apply
+-- Group-homomorphism lemmas (Layer 2.4):
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_one
 #print axioms Orbcrypt.PetrankRoth.liftAut_one
+-- Forward action lemmas (Layer 2.5–2.8):
 #print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_vertexCodeword
 #print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_markerCodeword
 #print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_sentinelCodeword
 #print axioms Orbcrypt.PetrankRoth.edgePresent_liftedEdgePerm
 #print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_edgeCodeword
+-- Forward direction assembly (Layer 2.9):
 #print axioms Orbcrypt.PetrankRoth.prEncode_forward
 
 namespace PetrankRothLayer2NonVacuity

@@ -1193,20 +1193,36 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   invariance under `permuteCodeword`-image of a Finset (Layer 3).
 
   **Audit / lakefile updates.** `lakefile.lean` `version` bumped
-  `0.1.15 → 0.1.16`; 41 new `#print axioms` entries (16 Layer 1 +
-  19 Layer 2 + 6 Layer 3) and corresponding `NonVacuityWitnesses`
-  examples added to `scripts/audit_phase_16.lean`.  Every new
-  declaration depends only on the standard Lean trio (`propext`,
-  `Classical.choice`, `Quot.sound`); none depends on `sorryAx` or a
-  custom axiom.  `lake build` succeeds for all 41 modules with zero
-  warnings / zero errors.
+  `0.1.15 → 0.1.16`; 107 `#print axioms` entries (40 Layer 0 + 33
+  Layer 1 + 28 Layer 2 + 6 Layer 3) and corresponding
+  `NonVacuityWitnesses` examples added to
+  `scripts/audit_phase_16.lean`.  Every new declaration depends
+  only on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`); none depends on `sorryAx` or a custom axiom.
+  `lake build` succeeds for all 43 modules with zero warnings /
+  zero errors.
 
-  **R-15 closure status.** GI ≤ CE remains research-scope: the full
-  iff (and therefore a complete inhabitant of `GIReducesToCE`) is
-  deferred to **R-15-residual-CE-reverse**.  The Layer-3 column-
-  weight invariance result is the foundational machinery the reverse
-  direction will consume; Layer 4's marker-forcing endpoint
-  recovery is the multi-week residual research-scope item.
+  **Encoder design — directed-edge.** Layer 0 enumerates
+  `numEdges m = m * (m - 1)` directed edge slots: ordered pairs
+  `(u, v)` with `u ≠ v`, packaged as `Fin m × Fin (m - 1)` via the
+  skip-the-source layout `otherVertex` / `otherVertexInverse`
+  bijection.  The Layer-1 encoder reads adjacency directly via
+  `edgePresent m adj e := adj p.1 p.2`, so the encoder
+  distinguishes `(u, v)` from `(v, u)` and the iff in
+  `Orbcrypt.GIReducesToCE` extends to arbitrary (possibly
+  asymmetric) `adj`.  The Layer-2 forward direction proves
+  `prEncode_forward` unconditionally — no canonicalisation case
+  split, no symmetry assumption, no special-case handling.
+
+  **R-15 closure status.** Layer 0–3 of the GI ≤ CE Karp reduction
+  are landed and audit-clean.  Layers 4–7 (marker-forcing reverse
+  direction → `prEncode_reverse` → `prEncode_iff` → headline
+  `petrankRoth_isInhabitedKarpReduction` inhabiting the full
+  `GIReducesToCE` Prop) are the multi-week residual work tracked as
+  research-scope **R-15-residual-CE-reverse** per the Risk Gate.
+  The Layer-3 column-weight invariance
+  (`colWeight_permuteCodeword_image`) is the foundational
+  invariance machinery Layer 4 will consume.
 
 * **2026-04-25 (Workstream I post-audit)** — Critical re-evaluation
   of the initial Workstream-I landing identified 4 of the 9 "new"

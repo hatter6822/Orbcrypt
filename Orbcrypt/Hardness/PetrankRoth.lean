@@ -44,6 +44,31 @@ column-weight invariant and marker-forcing reverse direction live in
 * **Layer 7** — `petrankRoth_isInhabitedKarpReduction` discharging
   the strengthened `GIReducesToCE` Prop.
 
+## Encoder design — directed-edge semantics
+
+The encoder is **direction-faithful**: it distinguishes the directed
+edge `(u, v)` from `(v, u)`.  Concretely, the Layer-0 enumeration
+uses `numEdges m = m * (m - 1)` directed slots — ordered pairs
+`(u, v)` with `u ≠ v` — and `edgePresent m adj e = adj p.1 p.2`
+directly reads the asymmetric adjacency at each slot.
+
+* This makes the iff in `Orbcrypt.GIReducesToCE` provable for
+  **arbitrary** (possibly asymmetric) `adj` once the marker-forcing
+  reverse direction (Layer 4) is in place.
+* Symmetric (undirected) `adj` is the standard cryptographic case
+  where this distinction collapses: every undirected edge `{u, v}`
+  produces two equal codewords (one per directed orientation), and
+  the reverse direction reduces to undirected GI.
+* No canonicalisation of σ-image endpoints is needed — the directed
+  permutation `liftedEdgePerm σ` simply maps `(u, v) ↦ (σ u, σ v)`,
+  preserving order automatically.
+
+**What `prEncode_forward` proves.** Given a GI witness
+`σ : Equiv.Perm (Fin m)` with `∀ i j, adj₁ i j = adj₂ (σ i) (σ j)`,
+the lifted permutation `liftAut σ : Equiv.Perm (Fin (dimPR m))`
+exhibits the encoded codes as permutation-equivalent.  The proof is
+unconditional in σ and in adj — no symmetry assumption required.
+
 ## Naming
 
 Identifiers describe content (codeword family, encoding cardinality,
@@ -70,24 +95,22 @@ column (the vertex-`v` column) and `false` everywhere else.  Weight 1. -/
 def vertexCodeword (m : ℕ) (v : Fin m) : Fin (dimPR m) → Bool :=
   fun i => decide (prCoordKind m i = .vertex v)
 
-/-- "Edge present" predicate symmetric in the endpoint ordering.
+/-- "Edge present" predicate for directed edge slot `e`.
 
-The Karp reduction's iff statement
-`(∃ σ, ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ↔ ArePermEquivalent (...)`
-does not assume `adj` is symmetric.  When σ canonicalises endpoints by
-swapping the order, the asymmetric formula `adj p.1 p.2` would change.
-We therefore use the **symmetrised** predicate
-`adj p.1 p.2 || adj p.2 p.1`, which is invariant under swap of the
-endpoint ordering and matches the Karp-reduction semantics for both
-directed and undirected graphs.  For symmetric `adj` this coincides
-with `adj p.1 p.2`. -/
+The Layer-0 directed-edge enumeration (`numEdges m = m * (m - 1)`)
+indexes ordered pairs `(p.1, p.2)` with `p.1 ≠ p.2`.  An edge slot is
+*present* in the directed graph `adj` exactly when `adj p.1 p.2 =
+true` — directly asymmetric, distinguishing `(u, v)` from `(v, u)`.
+This makes `prEncode m adj` faithful to the directed-graph
+information of `adj`. -/
 noncomputable def edgePresent (m : ℕ) (adj : Fin m → Fin m → Bool)
     (e : Fin (numEdges m)) : Bool :=
   let p := edgeEndpoints m e
-  adj p.1 p.2 || adj p.2 p.1
+  adj p.1 p.2
 
-/-- Edge codeword for edge slot `e : Fin (numEdges m)` under adjacency
-`adj`.  Weight depends on whether `edgePresent m adj e` is true:
+/-- Edge codeword for directed edge slot `e : Fin (numEdges m)` under
+adjacency `adj`.  Weight depends on whether `edgePresent m adj e` is
+true:
 
 * If the edge is present, the codeword has `true` at three columns:
   the two vertex columns `p.1`, `p.2` and the incidence column for
@@ -470,26 +493,6 @@ theorem prEncode_card (m : ℕ) (adj : Fin m → Fin m → Bool) :
 -- Sub-task 2.1 — Vertex-permutation-induced edge permutation.
 -- ============================================================================
 
-/-- The raw underlying function `Fin (numEdges m) → Fin (numEdges m)` of
-the edge permutation induced by a vertex permutation `σ`.
-
-For each edge `e` with endpoints `(u, w) := edgeEndpoints m e` (with
-`u.val < w.val`), apply σ to both: `(σ u, σ w)`.  Canonicalise (swap
-if needed) to enforce `(.).1.val < (.).2.val`, then read back via
-`edgeIndex`. -/
-noncomputable def liftedEdgePermFun (m : ℕ) (σ : Equiv.Perm (Fin m))
-    (e : Fin (numEdges m)) : Fin (numEdges m) :=
-  let p := edgeEndpoints m e
-  if h : (σ p.1).val < (σ p.2).val then
-    edgeIndex m (σ p.1) (σ p.2) h
-  else
-    edgeIndex m (σ p.2) (σ p.1) (by
-      have hne : (σ p.1 : Fin m) ≠ σ p.2 := σ.injective.ne
-        (Fin.ne_of_lt (edgeEndpoints_lt m e))
-      have hne_val : (σ p.1).val ≠ (σ p.2).val :=
-        fun heq => hne (Fin.ext heq)
-      omega)
-
 /-- Bool-equality on disjunctions: `(decide p || decide q) = decide (p ∨ q)`. -/
 private theorem decide_or_to_bool (p q : Prop) [Decidable p] [Decidable q] :
     (decide p || decide q) = decide (p ∨ q) := by
@@ -514,50 +517,6 @@ private theorem decide_or_iff_bool (p q r s : Prop)
   rw [decide_or_to_bool, decide_or_to_bool]
   exact decide_eq_decide.mpr h
 
-/-- Proof irrelevance for `edgeIndex`: if the endpoints agree, the
-proof argument is irrelevant. -/
-private theorem edgeIndex_congr (m : ℕ) (u v u' v' : Fin m)
-    (heu : u = u') (hev : v = v')
-    (h : u.val < v.val) (h' : u'.val < v'.val) :
-    edgeIndex m u v h = edgeIndex m u' v' h' := by
-  subst heu; subst hev; rfl
-
-/-- Endpoints of `liftedEdgePermFun σ e` in the
-"σ-preserves-ordering" branch. -/
-private theorem liftedEdgePermFun_endpoints_pos (m : ℕ)
-    (σ : Equiv.Perm (Fin m)) (e : Fin (numEdges m))
-    (h : (σ (edgeEndpoints m e).1).val < (σ (edgeEndpoints m e).2).val) :
-    edgeEndpoints m (liftedEdgePermFun m σ e) =
-      (σ (edgeEndpoints m e).1, σ (edgeEndpoints m e).2) := by
-  show edgeEndpoints m (liftedEdgePermFun m σ e) = _
-  have heq : liftedEdgePermFun m σ e =
-      edgeIndex m (σ (edgeEndpoints m e).1) (σ (edgeEndpoints m e).2) h := by
-    show (let p := edgeEndpoints m e
-          if h' : (σ p.1).val < (σ p.2).val then
-            edgeIndex m (σ p.1) (σ p.2) h'
-          else _) = _
-    simp only [dif_pos h]
-  rw [heq]
-  exact edgeEndpoints_edgeIndex m _ _ h
-
-/-- Endpoints of `liftedEdgePermFun σ e` in the
-"σ-reverses-ordering" branch. -/
-private theorem liftedEdgePermFun_endpoints_neg (m : ℕ)
-    (σ : Equiv.Perm (Fin m)) (e : Fin (numEdges m))
-    (h : ¬ (σ (edgeEndpoints m e).1).val < (σ (edgeEndpoints m e).2).val)
-    (h' : (σ (edgeEndpoints m e).2).val < (σ (edgeEndpoints m e).1).val) :
-    edgeEndpoints m (liftedEdgePermFun m σ e) =
-      (σ (edgeEndpoints m e).2, σ (edgeEndpoints m e).1) := by
-  show edgeEndpoints m (liftedEdgePermFun m σ e) = _
-  have heq : liftedEdgePermFun m σ e =
-      edgeIndex m (σ (edgeEndpoints m e).2) (σ (edgeEndpoints m e).1) h' := by
-    show (let p := edgeEndpoints m e
-          if h'' : (σ p.1).val < (σ p.2).val then _
-          else edgeIndex m (σ p.2) (σ p.1) _) = _
-    simp only [dif_neg h]
-  rw [heq]
-  exact edgeEndpoints_edgeIndex m _ _ h'
-
 /-- Helper: `σ⁻¹ (σ x) = x` for `Equiv.Perm`. -/
 private theorem perm_inv_apply_self (m : ℕ) (σ : Equiv.Perm (Fin m))
     (x : Fin m) : σ⁻¹ (σ x) = x := σ.symm_apply_apply x
@@ -566,110 +525,53 @@ private theorem perm_inv_apply_self (m : ℕ) (σ : Equiv.Perm (Fin m))
 private theorem perm_apply_inv_self (m : ℕ) (σ : Equiv.Perm (Fin m))
     (x : Fin m) : σ (σ⁻¹ x) = x := σ.apply_symm_apply x
 
+/-- The raw underlying function `Fin (numEdges m) → Fin (numEdges m)` of
+the directed edge permutation induced by a vertex permutation `σ`.
+
+For each directed edge `e` with endpoints `(u, w) := edgeEndpoints m e`
+(with `u ≠ w`, no order constraint), apply σ to both endpoints: the
+σ-image is `(σ u, σ w)`, also with `σ u ≠ σ w` by injectivity, and
+`edgeIndex m (σ u) (σ w) (σ w ≠ σ u)` reads it back as a directed
+edge slot.  No canonicalisation is needed — directed slots preserve
+endpoint ordering. -/
+noncomputable def liftedEdgePermFun (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (e : Fin (numEdges m)) : Fin (numEdges m) :=
+  let p := edgeEndpoints m e
+  edgeIndex m (σ p.1) (σ p.2)
+    (σ.injective.ne (edgeEndpoints_ne m e))
+
+/-- Endpoints of `liftedEdgePermFun σ e` are exactly `(σ u, σ w)`,
+where `(u, w) := edgeEndpoints m e`.  Directed slots preserve order. -/
+theorem edgeEndpoints_liftedEdgePermFun (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (e : Fin (numEdges m)) :
+    edgeEndpoints m (liftedEdgePermFun m σ e) =
+      (σ (edgeEndpoints m e).1, σ (edgeEndpoints m e).2) := by
+  unfold liftedEdgePermFun
+  exact edgeEndpoints_edgeIndex m _ _ _
+
 /-- Round-trip: `liftedEdgePermFun σ⁻¹` is a left inverse of
 `liftedEdgePermFun σ`. -/
 theorem liftedEdgePermFun_left_inv (m : ℕ) (σ : Equiv.Perm (Fin m))
     (e : Fin (numEdges m)) :
     liftedEdgePermFun m σ⁻¹ (liftedEdgePermFun m σ e) = e := by
-  set p := edgeEndpoints m e with hp_def
-  have hp_lt : p.1.val < p.2.val := edgeEndpoints_lt m e
-  -- Inequality auxiliaries needed in both branches.
-  have hsne : (σ p.1 : Fin m) ≠ σ p.2 :=
-    σ.injective.ne (Fin.ne_of_lt hp_lt)
-  have hsne_val : (σ p.1).val ≠ (σ p.2).val :=
-    fun heq => hsne (Fin.ext heq)
-  by_cases hcase : (σ p.1).val < (σ p.2).val
-  · -- Case A: σ preserves the ordering.
-    have hep : edgeEndpoints m (liftedEdgePermFun m σ e) = (σ p.1, σ p.2) := by
-      rw [hp_def] at hcase
-      simpa [hp_def] using
-        liftedEdgePermFun_endpoints_pos m σ e (by rw [← hp_def] at hcase; exact hcase)
-    -- After applying σ⁻¹, the new endpoints are (p.1, p.2) and ordering preserved.
-    have h_inv_lt :
-        (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1).val <
-        (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2).val := by
-      rw [hep]
-      show (σ⁻¹ (σ p.1)).val < (σ⁻¹ (σ p.2)).val
-      rw [perm_inv_apply_self, perm_inv_apply_self]
-      exact hp_lt
-    have h_step :=
-      liftedEdgePermFun_endpoints_pos m σ⁻¹ (liftedEdgePermFun m σ e) h_inv_lt
-    -- We want: liftedEdgePermFun σ⁻¹ (liftedEdgePermFun σ e) = e.
-    -- Apply edgeIndex_edgeEndpoints to e: edgeIndex m p.1 p.2 hp_lt = e.
-    -- The lhs evaluates (under positive branch) to
-    --   edgeIndex m (σ⁻¹ ((edgeEndpoints m (liftedEdgePermFun m σ e)).1))
-    --              (σ⁻¹ ((edgeEndpoints m (liftedEdgePermFun m σ e)).2))
-    --              h_inv_lt
-    -- = edgeIndex m (σ⁻¹ (σ p.1)) (σ⁻¹ (σ p.2)) ...
-    -- = edgeIndex m p.1 p.2 ... = e.
-    have hlhs_eq : liftedEdgePermFun m σ⁻¹ (liftedEdgePermFun m σ e) =
-        edgeIndex m (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1)
-                    (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2) h_inv_lt := by
-      show (let q := edgeEndpoints m (liftedEdgePermFun m σ e)
-            if h' : (σ⁻¹ q.1).val < (σ⁻¹ q.2).val then
-              edgeIndex m (σ⁻¹ q.1) (σ⁻¹ q.2) h'
-            else _) = _
-      simp only [dif_pos h_inv_lt]
-    rw [hlhs_eq]
-    -- Goal: edgeIndex m (σ⁻¹ q.1) (σ⁻¹ q.2) _ = e.
-    -- We have q.1 = σ p.1 and q.2 = σ p.2 (from hep), so σ⁻¹ q.1 = p.1
-    -- and σ⁻¹ q.2 = p.2.  Use edgeIndex_congr to align with `edgeIndex_edgeEndpoints`.
-    have hq1 : σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1 =
-               (edgeEndpoints m e).1 := by
-      have : (edgeEndpoints m (liftedEdgePermFun m σ e)).1 = σ p.1 :=
-        congrArg Prod.fst hep
-      rw [this, perm_inv_apply_self]
-    have hq2 : σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2 =
-               (edgeEndpoints m e).2 := by
-      have : (edgeEndpoints m (liftedEdgePermFun m σ e)).2 = σ p.2 :=
-        congrArg Prod.snd hep
-      rw [this, perm_inv_apply_self]
-    rw [edgeIndex_congr m _ _ (edgeEndpoints m e).1 (edgeEndpoints m e).2
-        hq1 hq2 h_inv_lt (edgeEndpoints_lt m e)]
+  -- The endpoints of liftedEdgePermFun σ e are (σ p.1, σ p.2).
+  -- Applying σ⁻¹ to both gives (p.1, p.2), and edgeIndex_edgeEndpoints
+  -- recovers e.
+  have hep := edgeEndpoints_liftedEdgePermFun m σ e
+  show edgeIndex m (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1)
+                  (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2) _ = e
+  -- Use the proof-irrelevant equality: edgeIndex is determined by
+  -- its two endpoint arguments only.
+  have key : ∀ (u' v' : Fin m) (h' : v' ≠ u')
+      (hu : u' = (edgeEndpoints m e).1) (hv : v' = (edgeEndpoints m e).2),
+      edgeIndex m u' v' h' = e := by
+    intro u' v' h' hu hv
+    subst hu; subst hv
     exact edgeIndex_edgeEndpoints m e
-  · -- Case B: σ reverses the ordering.
-    have h_swap_lt : (σ p.2).val < (σ p.1).val := by omega
-    have hep : edgeEndpoints m (liftedEdgePermFun m σ e) = (σ p.2, σ p.1) :=
-      liftedEdgePermFun_endpoints_neg m σ e hcase h_swap_lt
-    -- After applying σ⁻¹, ordering reverses again — we go to else branch of σ⁻¹.
-    have h_inv_not_lt :
-        ¬ (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1).val <
-          (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2).val := by
-      rw [hep]
-      show ¬ (σ⁻¹ (σ p.2)).val < (σ⁻¹ (σ p.1)).val
-      rw [perm_inv_apply_self, perm_inv_apply_self]
-      omega
-    have h_inv_swap_lt :
-        (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2).val <
-        (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1).val := by
-      rw [hep]
-      show (σ⁻¹ (σ p.1)).val < (σ⁻¹ (σ p.2)).val
-      rw [perm_inv_apply_self, perm_inv_apply_self]
-      exact hp_lt
-    have hlhs_eq : liftedEdgePermFun m σ⁻¹ (liftedEdgePermFun m σ e) =
-        edgeIndex m (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2)
-                    (σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1)
-                    h_inv_swap_lt := by
-      show (let q := edgeEndpoints m (liftedEdgePermFun m σ e)
-            if h' : (σ⁻¹ q.1).val < (σ⁻¹ q.2).val then _
-            else edgeIndex m (σ⁻¹ q.2) (σ⁻¹ q.1) _) = _
-      simp only [dif_neg h_inv_not_lt]
-    rw [hlhs_eq]
-    -- Same strategy: q.1 = σ p.2, q.2 = σ p.1, so σ⁻¹ q.2 = p.1
-    -- and σ⁻¹ q.1 = p.2.
-    have hq1 : σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).2 =
-               (edgeEndpoints m e).1 := by
-      have : (edgeEndpoints m (liftedEdgePermFun m σ e)).2 = σ p.1 :=
-        congrArg Prod.snd hep
-      rw [this, perm_inv_apply_self]
-    have hq2 : σ⁻¹ (edgeEndpoints m (liftedEdgePermFun m σ e)).1 =
-               (edgeEndpoints m e).2 := by
-      have : (edgeEndpoints m (liftedEdgePermFun m σ e)).1 = σ p.2 :=
-        congrArg Prod.fst hep
-      rw [this, perm_inv_apply_self]
-    rw [edgeIndex_congr m _ _ (edgeEndpoints m e).1 (edgeEndpoints m e).2
-        hq1 hq2 h_inv_swap_lt (edgeEndpoints_lt m e)]
-    exact edgeIndex_edgeEndpoints m e
+  apply key
+  · -- σ⁻¹ q.1 = (edgeEndpoints m e).1, where q = edgeEndpoints (lifted σ e).
+    rw [hep]; exact perm_inv_apply_self m σ _
+  · rw [hep]; exact perm_inv_apply_self m σ _
 
 /-- `liftedEdgePerm σ` is the `Equiv.Perm (Fin (numEdges m))` induced
 by `σ : Equiv.Perm (Fin m)`.  Defined via `Equiv.ofBijective` from
@@ -695,55 +597,33 @@ noncomputable def liftedEdgePerm (m : ℕ) (σ : Equiv.Perm (Fin m)) :
     (e : Fin (numEdges m)) :
     (liftedEdgePerm m σ).symm e = liftedEdgePermFun m σ⁻¹ e := rfl
 
-/-- Endpoints of `liftedEdgePerm σ e` in the σ-order-preserving branch. -/
-theorem edgeEndpoints_liftedEdgePerm_pos (m : ℕ) (σ : Equiv.Perm (Fin m))
-    (e : Fin (numEdges m))
-    (h : (σ (edgeEndpoints m e).1).val < (σ (edgeEndpoints m e).2).val) :
+/-- Endpoints of `liftedEdgePerm σ e` are exactly `(σ u, σ w)`, where
+`(u, w) := edgeEndpoints m e`.  Directed slots preserve order — no
+canonicalisation is needed. -/
+theorem edgeEndpoints_liftedEdgePerm (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (e : Fin (numEdges m)) :
     edgeEndpoints m (liftedEdgePerm m σ e) =
       (σ (edgeEndpoints m e).1, σ (edgeEndpoints m e).2) :=
-  liftedEdgePermFun_endpoints_pos m σ e h
-
-/-- Endpoints of `liftedEdgePerm σ e` in the σ-order-reversing branch. -/
-theorem edgeEndpoints_liftedEdgePerm_neg (m : ℕ) (σ : Equiv.Perm (Fin m))
-    (e : Fin (numEdges m))
-    (h : ¬ (σ (edgeEndpoints m e).1).val < (σ (edgeEndpoints m e).2).val)
-    (h' : (σ (edgeEndpoints m e).2).val < (σ (edgeEndpoints m e).1).val) :
-    edgeEndpoints m (liftedEdgePerm m σ e) =
-      (σ (edgeEndpoints m e).2, σ (edgeEndpoints m e).1) :=
-  liftedEdgePermFun_endpoints_neg m σ e h h'
-
-/-- The endpoint *set* `{(σ u, σ w)}` equals the endpoint set of
-`liftedEdgePerm σ e` (as a 2-element subset of `Fin m`).  This is the
-canonicalisation-free characterisation. -/
-theorem edgeEndpoints_liftedEdgePerm_set (m : ℕ) (σ : Equiv.Perm (Fin m))
-    (e : Fin (numEdges m)) (v : Fin m) :
-    (v = (edgeEndpoints m (liftedEdgePerm m σ e)).1 ∨
-     v = (edgeEndpoints m (liftedEdgePerm m σ e)).2) ↔
-    (v = σ (edgeEndpoints m e).1 ∨ v = σ (edgeEndpoints m e).2) := by
-  by_cases hcase : (σ (edgeEndpoints m e).1).val <
-      (σ (edgeEndpoints m e).2).val
-  · rw [edgeEndpoints_liftedEdgePerm_pos m σ e hcase]
-  · have hne : (σ (edgeEndpoints m e).1 : Fin m) ≠ σ (edgeEndpoints m e).2 :=
-      σ.injective.ne (Fin.ne_of_lt (edgeEndpoints_lt m e))
-    have hne_val : (σ (edgeEndpoints m e).1).val ≠ (σ (edgeEndpoints m e).2).val :=
-      fun heq => hne (Fin.ext heq)
-    have h_swap_lt : (σ (edgeEndpoints m e).2).val < (σ (edgeEndpoints m e).1).val := by
-      omega
-    rw [edgeEndpoints_liftedEdgePerm_neg m σ e hcase h_swap_lt]
-    tauto
+  edgeEndpoints_liftedEdgePermFun m σ e
 
 @[simp] theorem liftedEdgePerm_one (m : ℕ) :
     liftedEdgePerm m (1 : Equiv.Perm (Fin m)) = 1 := by
   apply Equiv.ext
   intro e
   show liftedEdgePermFun m 1 e = e
-  -- For σ = 1, simp reduces `(1 : Equiv.Perm (Fin m)) x` to `x`,
-  -- so the if-branch is the `(p.1.val < p.2.val)` "true" branch and the
-  -- result is `edgeIndex m p.1 p.2 (edgeEndpoints_lt m e)`,
-  -- which round-trips to e.
-  simp only [liftedEdgePermFun, Equiv.Perm.coe_one, id_eq]
-  rw [dif_pos (edgeEndpoints_lt m e)]
-  exact edgeIndex_edgeEndpoints m e
+  -- For σ = 1, σ p.1 = p.1 and σ p.2 = p.2; the result is
+  -- `edgeIndex m p.1 p.2 _`, which round-trips to e.
+  unfold liftedEdgePermFun
+  show edgeIndex m ((1 : Equiv.Perm (Fin m)) (edgeEndpoints m e).1)
+                  ((1 : Equiv.Perm (Fin m)) (edgeEndpoints m e).2) _ = e
+  -- Use the same `key` strategy as in `liftedEdgePermFun_left_inv`.
+  have key : ∀ (u' v' : Fin m) (h' : v' ≠ u')
+      (hu : u' = (edgeEndpoints m e).1) (hv : v' = (edgeEndpoints m e).2),
+      edgeIndex m u' v' h' = e := by
+    intro u' v' h' hu hv
+    subst hu; subst hv
+    exact edgeIndex_edgeEndpoints m e
+  exact key _ _ _ rfl rfl
 
 -- ============================================================================
 -- Sub-task 2.3 — `liftAut` construction.
@@ -997,37 +877,20 @@ theorem permuteCodeword_liftAut_sentinelCodeword
   | marker e k => simp only [liftAutKindFun_marker, reduceCtorEq, decide_false]
   | sentinel => simp only [liftAutKindFun_sentinel]
 
-/-- Edge presence is preserved by the lifted permutation: the edge
-slot `liftedEdgePerm σ e` of `adj₂` is "present" iff edge slot `e` of
-`adj₁` is present, given the GI hypothesis. -/
+/-- Edge presence is preserved by the lifted permutation: the directed
+edge slot `liftedEdgePerm σ e` of `adj₂` is "present" iff edge slot
+`e` of `adj₁` is present, given the GI hypothesis. -/
 theorem edgePresent_liftedEdgePerm
     (m : ℕ) (σ : Equiv.Perm (Fin m))
     (adj₁ adj₂ : Fin m → Fin m → Bool)
     (h : ∀ i j, adj₁ i j = adj₂ (σ i) (σ j))
     (e : Fin (numEdges m)) :
     edgePresent m adj₁ e = edgePresent m adj₂ (liftedEdgePerm m σ e) := by
-  show (adj₁ (edgeEndpoints m e).1 (edgeEndpoints m e).2 ||
-        adj₁ (edgeEndpoints m e).2 (edgeEndpoints m e).1) =
-       (adj₂ (edgeEndpoints m (liftedEdgePerm m σ e)).1
-             (edgeEndpoints m (liftedEdgePerm m σ e)).2 ||
-        adj₂ (edgeEndpoints m (liftedEdgePerm m σ e)).2
-             (edgeEndpoints m (liftedEdgePerm m σ e)).1)
-  by_cases hcase : (σ (edgeEndpoints m e).1).val <
-                   (σ (edgeEndpoints m e).2).val
-  · rw [edgeEndpoints_liftedEdgePerm_pos m σ e hcase]
-    rw [h (edgeEndpoints m e).1 (edgeEndpoints m e).2,
-        h (edgeEndpoints m e).2 (edgeEndpoints m e).1]
-  · have hne : (σ (edgeEndpoints m e).1 : Fin m) ≠ σ (edgeEndpoints m e).2 :=
-      σ.injective.ne (Fin.ne_of_lt (edgeEndpoints_lt m e))
-    have hne_val : (σ (edgeEndpoints m e).1).val ≠
-                   (σ (edgeEndpoints m e).2).val :=
-      fun heq => hne (Fin.ext heq)
-    have h_swap : (σ (edgeEndpoints m e).2).val <
-                  (σ (edgeEndpoints m e).1).val := by omega
-    rw [edgeEndpoints_liftedEdgePerm_neg m σ e hcase h_swap]
-    rw [h (edgeEndpoints m e).1 (edgeEndpoints m e).2,
-        h (edgeEndpoints m e).2 (edgeEndpoints m e).1]
-    exact Bool.or_comm _ _
+  show adj₁ (edgeEndpoints m e).1 (edgeEndpoints m e).2 =
+       adj₂ (edgeEndpoints m (liftedEdgePerm m σ e)).1
+            (edgeEndpoints m (liftedEdgePerm m σ e)).2
+  rw [edgeEndpoints_liftedEdgePerm m σ e]
+  exact h (edgeEndpoints m e).1 (edgeEndpoints m e).2
 
 /-- Forward action on edge codewords. -/
 theorem permuteCodeword_liftAut_edgeCodeword
@@ -1062,8 +925,12 @@ theorem permuteCodeword_liftAut_edgeCodeword
           (decide (σ⁻¹ v = p.1) || decide (σ⁻¹ v = p.2)) =
           (decide (v = (edgeEndpoints m (liftedEdgePerm m σ e)).1) ||
            decide (v = (edgeEndpoints m (liftedEdgePerm m σ e)).2)) := by
-        -- σ⁻¹ v = p.i ↔ v = σ p.i, and the σ-image vertex set agrees
-        -- with the endpoint set of (liftedEdgePerm σ e).
+        -- σ⁻¹ v = p.i ↔ v = σ p.i; and the directed lift gives
+        -- (lifted σ e).1 = σ p.1, (lifted σ e).2 = σ p.2 (no swap).
+        have hep := edgeEndpoints_liftedEdgePerm m σ e
+        rw [hep]
+        -- Goal: (decide (σ⁻¹ v = p.1) || decide (σ⁻¹ v = p.2)) =
+        --       (decide (v = σ p.1) || decide (v = σ p.2)).
         have hb1 : (σ⁻¹ v = p.1) ↔ (v = σ p.1) := by
           constructor
           · intro heq
@@ -1082,14 +949,9 @@ theorem permuteCodeword_liftAut_edgeCodeword
           · intro heq
             subst heq
             exact perm_inv_apply_self m σ p.2
-        have hset := edgeEndpoints_liftedEdgePerm_set m σ e v
-        -- Combined iff: (σ⁻¹ v = p.1 ∨ σ⁻¹ v = p.2) ↔
-        --              (v = (lifted σ e).1 ∨ v = (lifted σ e).2).
         have hcomb :
-            (σ⁻¹ v = p.1 ∨ σ⁻¹ v = p.2) ↔
-            (v = (edgeEndpoints m (liftedEdgePerm m σ e)).1 ∨
-             v = (edgeEndpoints m (liftedEdgePerm m σ e)).2) := by
-          rw [hb1, hb2]; exact hset.symm
+            (σ⁻¹ v = p.1 ∨ σ⁻¹ v = p.2) ↔ (v = σ p.1 ∨ v = σ p.2) := by
+          rw [hb1, hb2]
         exact decide_or_iff_bool _ _ _ _ hcomb
       rw [hep', hmem]
   | incid e' =>
@@ -1129,10 +991,13 @@ theorem permuteCodeword_liftAut_edgeCodeword
 
 /-- **Forward direction of the Petrank–Roth iff.**
 
-If `σ : Equiv.Perm (Fin m)` is a graph isomorphism witness — i.e.,
-`∀ i j, adj₁ i j = adj₂ (σ i) (σ j)` — then the lifted permutation
-`liftAut σ : Equiv.Perm (Fin (dimPR m))` witnesses the permutation-
-equivalence of the encoded codes. -/
+If `σ : Equiv.Perm (Fin m)` is a directed-graph isomorphism witness —
+i.e., `∀ i j, adj₁ i j = adj₂ (σ i) (σ j)` — then the lifted
+permutation `liftAut σ : Equiv.Perm (Fin (dimPR m))` witnesses the
+permutation-equivalence of the encoded codes.
+
+**Scope.** Holds for arbitrary (possibly asymmetric) `adj₁`, `adj₂`
+under the directed-edge encoder. -/
 theorem prEncode_forward (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
     (h : ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) :
     ArePermEquivalent (prEncode m adj₁) (prEncode m adj₂) := by

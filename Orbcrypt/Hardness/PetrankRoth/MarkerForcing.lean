@@ -64,6 +64,16 @@ sub-tasks 4.1–4.10 and tracked as research scope:
 * assembly: `prEncode_iff` (Layer 5) and the headline
   `petrankRoth_isInhabitedKarpReduction` (Layer 7)
 
+## Encoder design
+
+The `prEncode` encoder (in `PetrankRoth.lean`) is direction-faithful:
+the Layer-0 enumeration uses `numEdges m = m * (m - 1)` directed
+edge slots, so each ordered pair `(u, v)` with `u ≠ v` produces a
+distinct codeword whose presence is `edgePresent m adj e =
+adj p.1 p.2` (directly asymmetric).  Layer-4 work inhabiting the
+full iff in `Orbcrypt.GIReducesToCE` therefore extends to arbitrary
+(possibly asymmetric) `adj`.
+
 ## Naming
 
 Identifiers describe content (column-weight, permutation invariance),
