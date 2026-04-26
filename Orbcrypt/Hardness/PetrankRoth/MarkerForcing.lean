@@ -525,5 +525,70 @@ theorem colWeight_prEncode_at_sentinel (m : ℕ) (adj : Fin m → Fin m → Bool
   rw [hVfilter, hEfilter, hMfilter, hSfilter]
   simp
 
+-- ============================================================================
+-- Sub-task 4.0 — Cardinality-forced surjectivity bridge.
+-- ============================================================================
+--
+-- `ArePermEquivalent C₁ C₂` provides a one-sided witness: a single
+-- permutation `σ` such that `permuteCodeword σ` maps each codeword
+-- of `C₁` *into* `C₂`.  Layer 4's marker-forcing argument (and most
+-- of the column-weight invariance reasoning) requires the *two-sided*
+-- conclusion: every codeword of `C₂` is the image of some codeword
+-- of `C₁`.  When `|C₁| = |C₂|` and `permuteCodeword σ` is injective
+-- (which it always is, being an `Equiv`-derived map), this two-sided
+-- conclusion follows from finite-cardinality arithmetic.
+
+/-- **Cardinality-forced surjectivity bridge.**
+
+If `σ : Equiv.Perm (Fin n)` maps each codeword of `C₁ : Finset (Fin n
+→ Bool)` into `C₂ : Finset (Fin n → Bool)`, and the two finsets have
+equal cardinality, then every codeword of `C₂` is the `permuteCodeword
+σ`-image of some codeword of `C₁`.
+
+This is the structural witness Layer 4's marker-forcing argument
+consumes when extracting a vertex permutation from a CE-witness
+permutation: `prEncode_card` ensures the underlying finsets have
+equal cardinality (`= codeSizePR m`), so any one-sided CE-witness
+extends to a two-sided "image equals" statement. -/
+theorem surjectivity_of_card_eq {n : ℕ}
+    (σ : Equiv.Perm (Fin n))
+    (C₁ C₂ : Finset (Fin n → Bool))
+    (hσ : ∀ c ∈ C₁, permuteCodeword σ c ∈ C₂)
+    (hcard : C₁.card = C₂.card) :
+    ∀ c' ∈ C₂, ∃ c ∈ C₁, permuteCodeword σ c = c' := by
+  classical
+  -- The image `C₁.image (permuteCodeword σ)` is a subset of `C₂` and
+  -- has cardinality equal to `C₁.card` (by injectivity of
+  -- `permuteCodeword σ`).  Combined with `C₁.card = C₂.card`, we
+  -- conclude the image equals `C₂`.
+  have himg_sub : C₁.image (permuteCodeword σ) ⊆ C₂ := by
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨c₀, hc₀, hc₀eq⟩ := hc
+    rw [← hc₀eq]
+    exact hσ _ hc₀
+  have himg_card : (C₁.image (permuteCodeword σ)).card = C₁.card :=
+    Finset.card_image_of_injective C₁ (permuteCodeword_injective σ)
+  have himg_eq : C₁.image (permuteCodeword σ) = C₂ := by
+    apply Finset.eq_of_subset_of_card_le himg_sub
+    rw [himg_card, hcard]
+  intro c' hc'
+  rw [← himg_eq, Finset.mem_image] at hc'
+  obtain ⟨c, hc, hceq⟩ := hc'
+  exact ⟨c, hc, hceq⟩
+
+/-- Specialisation of `surjectivity_of_card_eq` to the Petrank–Roth
+encoding.  `prEncode_card` automatically discharges the
+equal-cardinality hypothesis, since both `prEncode m adj₁` and
+`prEncode m adj₂` have cardinality `codeSizePR m`. -/
+theorem prEncode_surjectivity (m : ℕ)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (σ : Equiv.Perm (Fin (dimPR m)))
+    (hσ : ∀ c ∈ prEncode m adj₁, permuteCodeword σ c ∈ prEncode m adj₂) :
+    ∀ c' ∈ prEncode m adj₂,
+      ∃ c ∈ prEncode m adj₁, permuteCodeword σ c = c' := by
+  apply surjectivity_of_card_eq σ _ _ hσ
+  rw [prEncode_card, prEncode_card]
+
 end PetrankRoth
 end Orbcrypt
