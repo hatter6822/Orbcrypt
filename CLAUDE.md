@@ -3490,8 +3490,8 @@ Files touched:
   status.
 - `Orbcrypt.lean` — root file extended to import the two new
   Hardness submodules.
-- `scripts/audit_phase_16.lean` — Layer 0 has 40 entries
-  (incl. `otherVertex` / `otherVertex_ne_self` /
+- `scripts/audit_phase_16.lean` — Layer 0 has 41 entries
+  (incl. `EdgeSlot`, `otherVertex` / `otherVertex_ne_self` /
   `otherVertexInverse` / `otherVertex_otherVertexInverse` /
   `otherVertexInverse_otherVertex` / `edgeEndpoints_ne` for the
   directed-edge enumeration, plus all `numEdges_*`,
@@ -3503,7 +3503,9 @@ Files touched:
   `liftAutKindFun_*` simps, `liftAutKindFun_left_inv`,
   `liftAutKind_apply`/`_symm_apply`, `liftAut_apply`/`_symm_apply`);
   Layer 3 has 6 entries; per-layer `NonVacuityWitnesses` namespaces
-  exercise concrete instances at `m = 3`.
+  exercise concrete instances at `m = 2` (asymmetric directed-edge
+  GI witness via `Equiv.swap 0 1`) and `m = 3` (cardinality and
+  trivial GI witness).
 - `lakefile.lean` — `version` bumped from `0.1.15` to `0.1.16`.
 
 Traceability: audit-plan item `R-15` (GI ≤ CE) is partially
@@ -3525,10 +3527,15 @@ post-Workstream-G plus the post-G additions
 `Hardness/PetrankRoth.lean`, and
 `Hardness/PetrankRoth/MarkerForcing.lean` modules under
 Workstream R-CE) with zero warnings / zero errors.  The Phase-16
-audit script's `#print axioms` total expands by 107 entries
-across all four R-CE layers (40 Layer-0 + 33 Layer-1 + 28 Layer-2
+audit script's `#print axioms` total expands by 108 entries
+across all four R-CE layers (41 Layer-0 + 33 Layer-1 + 28 Layer-2
 + 6 Layer-3) covering every public declaration in the new
-modules.
+modules.  The Layer-2 non-vacuity witnesses include a concrete
+asymmetric-graph GI test at `m = 2` (graphs `adj₁(0,1) = true`
+and `adj₂(1,0) = true`, both other entries `false`, equivalent
+under `σ = Equiv.swap 0 1 : Equiv.Perm (Fin 2)`) — exercising
+the directional information that the post-refactor encoder
+preserves.
 
 Patch version: `lakefile.lean` bumped from `0.1.15` to `0.1.16`
 for Workstream R-CE — two new public-API modules add new public

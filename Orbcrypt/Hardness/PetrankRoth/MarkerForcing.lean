@@ -6,14 +6,16 @@ Layer 3 (column-weight definition + invariance under `permuteCodeword`)
 is implemented here as the foundational infrastructure for Layer 4
 (extracting the GI permutation σ from any CE-witness π).
 
-**Status (post-R-CE Option B landing).**  Layer 3 provides the
-column-weight invariance machinery; Layer 4 (full marker-forcing
-endpoint recovery → `prEncode_reverse` → headline
-`petrankRoth_isInhabitedKarpReduction`) is the multi-week residual
-work cleanly factored out as research-scope **R-15-residual-CE-
-reverse** per the audit-plan Risk Gate
+**Status.**  Layer 3 provides the column-weight invariance machinery;
+Layer 4 (full marker-forcing endpoint recovery → `prEncode_reverse`
+→ headline `petrankRoth_isInhabitedKarpReduction`) is the multi-week
+residual work cleanly factored out as research-scope
+**R-15-residual-CE-reverse** per the audit-plan Risk Gate
 (`docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` § "R-CE
-Layer 4 risk register").
+Layer 4 risk register").  Once Layer 4 lands, the iff in
+`Orbcrypt.GIReducesToCE` is provable for arbitrary (possibly
+asymmetric) `adj` thanks to the post-refactor direction-faithful
+encoder (see `PetrankRoth.lean`'s "Encoder design" section).
 
 The forward direction (Layer 2, `prEncode_forward`) is fully landed
 in `Orbcrypt/Hardness/PetrankRoth.lean`.

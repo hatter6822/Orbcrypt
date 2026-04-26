@@ -13,7 +13,6 @@ the full design and the layer-by-layer landing plan.
 import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.Image
-import Mathlib.Data.Fintype.Pi
 import Mathlib.Data.Fintype.Prod
 import Mathlib.GroupTheory.Perm.Basic
 import Orbcrypt.Hardness.PetrankRoth.BitLayout

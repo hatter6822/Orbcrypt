@@ -1,34 +1,31 @@
 /-
 Bit-layout primitives for the Petrank–Roth (1997) GI ≤ CE Karp reduction.
 
-Layer 0 (Sub-tasks 0.1 and 0.2) — foundational helpers that the
+Layer 0 (Sub-tasks 0.1 through 0.4) — foundational helpers that the
 encoder, forward direction, and reverse direction all consume. No
 Orbcrypt imports — this file depends only on Mathlib's `Fin`, `Nat`,
 `Equiv`, `Fintype`, and `Sum` APIs.
 
-See `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § O / R-15
-for the audit-plan reference.
+See `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` for
+the workstream plan and design discussion.
 -/
 
 import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Prod
-import Mathlib.Data.Fintype.Sigma
 import Mathlib.Data.Fintype.Sum
-import Mathlib.Algebra.BigOperators.Fin
-import Mathlib.Algebra.BigOperators.Intervals
 import Mathlib.Logic.Equiv.Basic
 
 /-!
-# Petrank–Roth bit-layout primitives (Sub-tasks 0.1, 0.2)
+# Petrank–Roth bit-layout primitives (Layer 0)
 
 This module fixes the coordinate layout for the Petrank–Roth (1997)
 encoder.  The encoded code lives in `(Fin (dimPR m) → Bool)` where
 `dimPR m = m + 4 * numEdges m + 1`:
 
 * `m` vertex columns (one per vertex);
-* `numEdges m = m * (m - 1) / 2` incidence columns (one per
-  unordered edge slot);
+* `numEdges m = m * (m - 1)` incidence columns (one per **directed**
+  edge slot — ordered pairs `(u, v)` with `u ≠ v`);
 * `3 * numEdges m` marker columns (three per edge slot — these are
   the "marker" columns of the Petrank–Roth construction that force
   the reverse direction);
@@ -37,17 +34,25 @@ encoder.  The encoded code lives in `(Fin (dimPR m) → Bool)` where
   `codeSize_pos` field is dischargeable on every `m`).
 
 The four families of columns are enumerated by `PRCoordKind`.
-Sub-tasks 0.3 and 0.4 (edge enumeration, `prCoord`/`prCoordKind`
-bijection) land in follow-up commits.
+Directed edge slots are packaged as `EdgeSlot m := Fin m × Fin (m -
+1)` with `otherVertex` / `otherVertexInverse` providing the
+skip-the-source bijection between `Fin (m - 1)` and the `m - 1`
+target vertices distinct from the source.
 
-## Main definitions (this commit)
+## Main definitions
 
-* `numEdges m : ℕ` — `m * (m - 1) / 2`, the count of unordered edge
+* `numEdges m : ℕ` — `m * (m - 1)`, the count of directed edge
   slots on `m` vertices.
 * `dimPR m : ℕ` — total block length of the encoded code.
 * `codeSizePR m : ℕ` — total codeword count.
 * `PRCoordKind m` — the four-constructor inductive enumerating the
   column families, with `DecidableEq` and `Fintype` instances.
+* `EdgeSlot m`, `otherVertex`, `otherVertexInverse` — directed-edge
+  slot packaging and the skip-the-source bijection.
+* `edgeEndpoints m e`, `edgeIndex m u v h` — the bijection between
+  `Fin (numEdges m)` and ordered pairs `(u, v)` with `u ≠ v`.
+* `prCoord m`, `prCoordKind m`, `prCoordEquiv m` — the bijection
+  `PRCoordKind m ≃ Fin (dimPR m)`.
 
 ## Naming
 

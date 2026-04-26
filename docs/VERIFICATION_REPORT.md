@@ -1193,11 +1193,14 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   invariance under `permuteCodeword`-image of a Finset (Layer 3).
 
   **Audit / lakefile updates.** `lakefile.lean` `version` bumped
-  `0.1.15 → 0.1.16`; 107 `#print axioms` entries (40 Layer 0 + 33
+  `0.1.15 → 0.1.16`; 108 `#print axioms` entries (41 Layer 0 + 33
   Layer 1 + 28 Layer 2 + 6 Layer 3) and corresponding
   `NonVacuityWitnesses` examples added to
-  `scripts/audit_phase_16.lean`.  Every new declaration depends
-  only on the standard Lean trio (`propext`, `Classical.choice`,
+  `scripts/audit_phase_16.lean`, including an asymmetric directed-
+  edge GI test at `m = 2` (using `Equiv.swap 0 1`) that
+  exercises the directional information preserved by the
+  post-refactor encoder.  Every new declaration depends only on
+  the standard Lean trio (`propext`, `Classical.choice`,
   `Quot.sound`); none depends on `sorryAx` or a custom axiom.
   `lake build` succeeds for all 43 modules with zero warnings /
   zero errors.

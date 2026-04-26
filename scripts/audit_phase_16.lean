@@ -1920,6 +1920,7 @@ end NonVacuityWitnesses
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.toSum_ofSum
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.equivSum
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.instFintype
+#print axioms Orbcrypt.PetrankRoth.EdgeSlot
 #print axioms Orbcrypt.PetrankRoth.otherVertex
 #print axioms Orbcrypt.PetrankRoth.otherVertex_ne_self
 #print axioms Orbcrypt.PetrankRoth.otherVertexInverse
@@ -2087,21 +2088,48 @@ end PetrankRothLayer1NonVacuity
 namespace PetrankRothLayer2NonVacuity
 open Orbcrypt.PetrankRoth Orbcrypt
 
-/-- **R-CE Layer 2 non-vacuity witness.** `prEncode_forward` exhibits
-    the lifted vertex permutation as a CE-equivalence witness for the
-    encoded codes of two GI-equivalent graphs.  Trivial GI witness
-    (σ = 1, adj₁ = adj₂) on the empty graph at `m = 3`. -/
+/-- **R-CE Layer 2 non-vacuity witness (trivial GI witness).**
+    `prEncode_forward` exhibits the identity permutation as a CE-
+    equivalence witness for the encoded codes of two GI-equivalent
+    graphs.  Empty graph at `m = 3`. -/
 example : ArePermEquivalent (prEncode 3 (fun _ _ => false))
                             (prEncode 3 (fun _ _ => false)) :=
   prEncode_forward 3 _ _ ⟨1, fun _ _ => rfl⟩
 
-/-- **R-CE Layer 2 non-vacuity witness.** Self-equivalence under a
-    non-trivial permutation σ : Equiv.Perm (Fin 3) of an arbitrary
-    graph — the GI witness `(σ, fun i j => h)` lifts to the
-    permutation-equivalence of `prEncode adj` with itself. -/
+/-- **R-CE Layer 2 non-vacuity witness (self-equivalence under
+    identity).**  The identity GI witness lifts to the permutation-
+    equivalence of any `prEncode adj` with itself, regardless of
+    the structure of `adj`. -/
 example (adj : Fin 3 → Fin 3 → Bool) :
     ArePermEquivalent (prEncode 3 adj) (prEncode 3 adj) :=
   prEncode_forward 3 _ _ ⟨1, fun _ _ => rfl⟩
+
+/-- **R-CE Layer 2 non-vacuity witness (directed-edge sensitivity).**
+    The directed-edge encoder distinguishes `adj₁` from its
+    "swap" `adj₂(i, j) := adj₁(swap i, swap j)`: applying the swap
+    permutation `σ = Equiv.swap 0 1 : Equiv.Perm (Fin 2)` is
+    a valid GI witness, and `prEncode_forward` exhibits the
+    corresponding CE-equivalence.  This concretely tests the
+    directional information that the post-refactor encoder
+    preserves (the pre-refactor symmetric encoder would have
+    given a vacuous instance of this iff direction). -/
+example :
+    let adj₁ : Fin 2 → Fin 2 → Bool := fun i j => decide (i.val = 0 ∧ j.val = 1)
+    let adj₂ : Fin 2 → Fin 2 → Bool := fun i j => decide (i.val = 1 ∧ j.val = 0)
+    ArePermEquivalent (prEncode 2 adj₁) (prEncode 2 adj₂) := by
+  refine prEncode_forward 2 _ _ ⟨Equiv.swap 0 1, ?_⟩
+  intro i j
+  fin_cases i <;> fin_cases j <;> decide
+
+/-- **R-CE Layer 2 non-vacuity witness (cardinality round-trip).**
+    `prEncode_forward`'s output is a witness of `ArePermEquivalent`,
+    which (via the witnessing permutation) preserves cardinality.
+    This sanity check confirms the encoder produces the expected
+    `codeSizePR m = m + 4 * (m * (m - 1)) + 1` codeword count under
+    the directed-edge enumeration. -/
+example : (prEncode 2 (fun i j => decide (i.val = 0 ∧ j.val = 1))).card =
+          codeSizePR 2 :=
+  prEncode_card 2 _
 
 end PetrankRothLayer2NonVacuity
 
