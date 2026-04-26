@@ -1636,5 +1636,83 @@ private lemma vertexIdempotent_decomp_lambda_off_v (m : ℕ) (v : Fin m)
     rw [this] at h_prod_w
     linarith
 
+/-- **Helper: in an idempotent decomposition `e_v = b₁ + b₂` with
+    `b₁ b₂ = 0`, the case `b₁(.id v) = 0` forces `b₁(.id w) = 0` for
+    every vertex w.** Combines the at-v case with the off-v helper. -/
+private lemma vertexIdempotent_decomp_lambda_zero_everywhere (m : ℕ) (v : Fin m)
+    (b₁ b₂ : pathAlgebraQuotient m)
+    (h_b₁_idem : IsIdempotentElem b₁) (h_b₁_b₂ : b₁ * b₂ = 0)
+    (h_sum : vertexIdempotent m v = b₁ + b₂)
+    (h_zero_at_v : b₁ (.id v) = 0)
+    (w : Fin m) :
+    b₁ (.id w) = 0 := by
+  by_cases h_wv : w = v
+  · subst h_wv; exact h_zero_at_v
+  · exact (vertexIdempotent_decomp_lambda_off_v m v b₁ b₂ h_b₁_idem h_b₁_b₂
+            h_sum w h_wv).1
+
+/-- **Phase C.4 main theorem: vertex idempotent is a primitive idempotent.**
+
+If `e_v = b₁ + b₂` with `b₁, b₂` orthogonal idempotents in the path
+algebra, then one of `b₁, b₂` must be zero.
+
+**Proof.** By the lambda-at-v helper, in any such decomposition either
+* `b₁(.id v) = 0` and `b₂(.id v) = 1` (Case A), or
+* `b₁(.id v) = 1` and `b₂(.id v) = 0` (Case B).
+
+In Case A, we show `b₁ = 0`:
+* `b₁(.id w) = 0` for every w (the at-v case is given; the off-v case
+  uses the lambda-off-v helper combined with idempotency of b₁).
+* `b₁(.edge u w) = 0` by `b₁`-idempotency: it equals
+  `b₁(.id u) · b₁(.edge u w) + b₁(.edge u w) · b₁(.id w)`, and both
+  `b₁(.id u)` and `b₁(.id w)` are 0.
+
+Case B is symmetric, swapping the roles of `b₁` and `b₂` (using the
+hypothesis `b₂ * b₁ = 0`). -/
+theorem vertexIdempotent_isPrimitive (m : ℕ) (v : Fin m) :
+    IsPrimitiveIdempotent (vertexIdempotent m v) := by
+  refine ⟨vertexIdempotent_isIdempotentElem m v, vertexIdempotent_ne_zero m v, ?_⟩
+  intros b₁ b₂ h_b₁_idem h_b₂_idem h_b₁_b₂ h_b₂_b₁ h_sum
+  rcases vertexIdempotent_decomp_lambda_at_v m v b₁ b₂ h_b₁_idem h_b₁_b₂ h_sum
+    with ⟨hb₁_zero, _⟩ | ⟨_, hb₂_zero⟩
+  · -- Case A: b₁(.id v) = 0, b₂(.id v) = 1. Show b₁ = 0.
+    left
+    -- Show b₁(c) = 0 for all c.
+    have h_b₁_id_all : ∀ w : Fin m, b₁ (.id w) = 0 :=
+      vertexIdempotent_decomp_lambda_zero_everywhere m v b₁ b₂ h_b₁_idem
+        h_b₁_b₂ h_sum hb₁_zero
+    have ⟨_, h_b₁_edge_constraint⟩ := (pathAlgebra_isIdempotentElem_iff m b₁).mp h_b₁_idem
+    funext c
+    cases c with
+    | id w => exact h_b₁_id_all w
+    | edge u w =>
+      -- b₁(.edge u w) = b₁(.id u) * b₁(.edge u w) + b₁(.edge u w) * b₁(.id w)
+      --              = 0 * b₁(.edge u w) + b₁(.edge u w) * 0 = 0.
+      have h_eq := h_b₁_edge_constraint u w
+      rw [h_b₁_id_all u, h_b₁_id_all w, zero_mul, mul_zero, zero_add] at h_eq
+      show b₁ (.edge u w) = 0
+      linarith
+  · -- Case B: b₁(.id v) = 1, b₂(.id v) = 0. Show b₂ = 0.
+    -- Note: we use h_b₂_b₁ : b₂ * b₁ = 0 instead of h_b₁_b₂ for the
+    -- decomp helper, which expects b₁ * b₂ = 0 in its first arg.
+    right
+    have h_b₂_id_all : ∀ w : Fin m, b₂ (.id w) = 0 := by
+      intro w
+      -- Apply decomp helper with roles of b₁, b₂ swapped, using h_sum
+      -- rewritten as e_v = b₂ + b₁ via add_comm.
+      have h_sum_swap : vertexIdempotent m v = b₂ + b₁ := by
+        rw [h_sum, add_comm]
+      exact vertexIdempotent_decomp_lambda_zero_everywhere m v b₂ b₁ h_b₂_idem
+        h_b₂_b₁ h_sum_swap hb₂_zero w
+    have ⟨_, h_b₂_edge_constraint⟩ := (pathAlgebra_isIdempotentElem_iff m b₂).mp h_b₂_idem
+    funext c
+    cases c with
+    | id w => exact h_b₂_id_all w
+    | edge u w =>
+      have h_eq := h_b₂_edge_constraint u w
+      rw [h_b₂_id_all u, h_b₂_id_all w, zero_mul, mul_zero, zero_add] at h_eq
+      show b₂ (.edge u w) = 0
+      linarith
+
 end GrochowQiao
 end Orbcrypt
