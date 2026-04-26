@@ -1168,19 +1168,22 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
-* **2026-04-25 (Workstream R-CE Option-B landing)** — Petrank–Roth
-  (1997) Karp reduction GI ≤ CE: forward-only landing per the
-  audit-plan Risk Gate.  Layers 0–3 are clean; Layers 4–7 (marker-
-  forcing reverse direction → `petrankRoth_isInhabitedKarpReduction`)
-  are deferred to research-scope **R-15-residual-CE-reverse**.
+* **2026-04-25 (Workstream R-CE forward direction + reverse-
+  direction infrastructure landing)** — Petrank–Roth (1997) Karp
+  reduction GI ≤ CE: forward direction (Layers 0–2) plus the
+  Layer-3.1/3.2/3.3 column-weight infrastructure and the Layer-4.0
+  cardinality-forced surjectivity bridge are clean.  The residual
+  marker-forcing reverse direction (Layers 4.1–4.10, 5, 6, 7 →
+  `petrankRoth_isInhabitedKarpReduction`) is research-scope
+  **R-15-residual-CE-reverse**.
 
   **Modules added.**
-  `Orbcrypt/Hardness/PetrankRoth.lean` (~1180 lines, 31 public
-  declarations: encoder, forward direction); `Orbcrypt/Hardness/
-  PetrankRoth/MarkerForcing.lean` (~155 lines, 6 public declarations:
-  column-weight invariance infrastructure).  `Orbcrypt/Hardness/
-  PetrankRoth/BitLayout.lean` (Layer 0) was already landed and is
-  preserved unchanged.
+  `Orbcrypt/Hardness/PetrankRoth.lean` (~1027 lines, encoder +
+  forward direction); `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`
+  (~580 lines, column-weight invariance infrastructure incl. the
+  per-family signatures + surjectivity bridges).  `Orbcrypt/
+  Hardness/PetrankRoth/BitLayout.lean` (Layer 0, ~600 lines) was
+  already landed pre-session and is preserved unchanged.
 
   **Headline theorems landed.**
   `prEncode_forward : (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j =
@@ -1190,17 +1193,24 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   code (for the `card_eq` field of strengthened `GIReducesToCE`).
   `colWeight_permuteCodeword_image : colWeight (C.image
   (permuteCodeword π)) (π i) = colWeight C i` — column-weight
-  invariance under `permuteCodeword`-image of a Finset (Layer 3).
+  invariance under `permuteCodeword`-image of a Finset (Layer 3.2).
+  `colWeight_prEncode_at_vertex` / `_at_incid` / `_at_marker` /
+  `_at_sentinel` — the four per-family column-weight signatures
+  (Layer 3.3), giving the closed-form weight at every coordinate
+  kind.  `surjectivity_of_card_eq` and the specialisation
+  `prEncode_surjectivity` (Layer 4.0) — bridge from one-sided
+  CE-witness to two-sided "image equals" statement.
 
   **Audit / lakefile updates.** `lakefile.lean` `version` bumped
-  `0.1.15 → 0.1.16`; 108 `#print axioms` entries (41 Layer 0 + 33
-  Layer 1 + 28 Layer 2 + 6 Layer 3) and corresponding
+  `0.1.15 → 0.1.16`; 114 `#print axioms` entries (41 Layer 0 + 33
+  Layer 1 + 28 Layer 2 + 12 Layer 3) and corresponding
   `NonVacuityWitnesses` examples added to
   `scripts/audit_phase_16.lean`, including an asymmetric directed-
   edge GI test at `m = 2` (using `Equiv.swap 0 1`) that
   exercises the directional information preserved by the
-  post-refactor encoder.  Every new declaration depends only on
-  the standard Lean trio (`propext`, `Classical.choice`,
+  post-refactor encoder, plus per-family column-weight signature
+  witnesses on arbitrary `adj`.  Every new declaration depends
+  only on the standard Lean trio (`propext`, `Classical.choice`,
   `Quot.sound`); none depends on `sorryAx` or a custom axiom.
   `lake build` succeeds for all 43 modules with zero warnings /
   zero errors.

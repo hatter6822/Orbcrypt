@@ -46,12 +46,23 @@ infrastructure underlying that argument.
 * `colWeight_empty`, `colWeight_singleton_self`,
   `colWeight_singleton_other`, `colWeight_union_disjoint` — basic
   algebraic identities for the `Finset.filter`-based column-weight
-  function.
+  function (Sub-task 3.1).
 * `colWeight_permuteCodeword_image` — column weights are preserved
   by `permuteCodeword`-image of a Finset, up to the underlying
-  permutation's coordinate relabelling.
+  permutation's coordinate relabelling (Sub-task 3.2).
+* `colWeight_prEncode_at_vertex`,
+  `colWeight_prEncode_at_incid`,
+  `colWeight_prEncode_at_marker`,
+  `colWeight_prEncode_at_sentinel` — the column-weight signatures of
+  the four codeword families (Sub-task 3.3).  Vertex-column weight
+  is `1 + #{present edges incident to v}`; the other three families
+  contribute weight 1 unconditionally.
+* `surjectivity_of_card_eq` and the specialisation
+  `prEncode_surjectivity` — the cardinality-forced bridge from a
+  one-sided `ArePermEquivalent` witness to a two-sided "every C₂
+  codeword has a C₁ preimage" statement (Sub-task 4.0).
 
-## Layer-4 obligations (research-scope, R-15-residual-CE-reverse)
+## Layer-4 obligations (residual research scope, R-15-residual-CE-reverse)
 
 The following Layer-4 results — extracting σ from a CE-witness π and
 discharging the reverse iff direction — are documented at
@@ -65,6 +76,15 @@ sub-tasks 4.1–4.10 and tracked as research scope:
   `prEncode_reverse_empty_graph`, `prEncode_reverse`
 * assembly: `prEncode_iff` (Layer 5) and the headline
   `petrankRoth_isInhabitedKarpReduction` (Layer 7)
+
+The Layer 3.3 column-weight signatures and the Layer 4.0
+surjectivity bridge landed in this module are the foundational
+infrastructure those sub-tasks consume.  In particular, Layer-4 work
+will use the `colWeight_prEncode_at_*` family to build the
+column-kind discriminator that classifies each `Fin (dimPR m)` index
+into one of {vertex, incid, marker, sentinel}, and
+`prEncode_surjectivity` to lift one-sided CE witnesses into two-
+sided image equalities.
 
 ## Encoder design
 

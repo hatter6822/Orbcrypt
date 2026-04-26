@@ -3443,30 +3443,54 @@ completed (2026-04-25):
   bridge iff-on-disjunctions to bool-equality of `decide`s.
 
 - **Layer 3 — Column-weight invariance infrastructure.**
-  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (~150
+  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (~580
   lines): `colWeight C i` defined as the count of codewords in
   `C` that are `true` at column `i`; basic algebraic identities
   (`colWeight_empty`, `colWeight_singleton_self/_other`,
-  `colWeight_union_disjoint`); and the headline
+  `colWeight_union_disjoint` — Sub-task 3.1); the headline
   `colWeight_permuteCodeword_image` proving column weights are
   preserved by `permuteCodeword`-image of a Finset (up to π's
-  coordinate relabelling).  This is the foundational invariance
-  result Layer 4 will consume.
+  coordinate relabelling — Sub-task 3.2); and the four
+  per-family **column-weight signatures** (Sub-task 3.3):
+  `colWeight_prEncode_at_vertex` (vertex column for v has weight
+  `1 + #{present edges incident to v}`),
+  `colWeight_prEncode_at_incid` (incidence column has weight 1),
+  `colWeight_prEncode_at_marker` (marker column has weight 1),
+  `colWeight_prEncode_at_sentinel` (sentinel column has weight
+  1).  These signatures are the foundational invariants the
+  marker-forcing reverse direction (Layer 4) consumes to classify
+  each `Fin (dimPR m)` index into one of {vertex, incid, marker,
+  sentinel}.
 
-- **Layers 4–7 — Marker-forcing reverse direction
-  (research-scope).**  The reverse direction (extracting σ from
-  any CE-witness π) and the headline
-  `petrankRoth_isInhabitedKarpReduction` are deferred per the
-  audit-plan Risk Gate (`docs/planning/AUDIT_2026-04-25_R15_KARP
-  _REDUCTIONS_PLAN.md` § "R-CE Layer 4 risk register").  The
-  Petrank–Roth marker-forcing argument requires Layers 4.1–4.10
-  (~800–1500 lines, ~7–14 days), which exceed the single-session
-  scope.  The Layer-3 column-weight infrastructure is in place
-  as the foundation; the residual research item is tracked as
-  **R-15-residual-CE-reverse** in the audit plan.  As a
-  consequence, the existing `GIReducesToCE` Prop remains
-  inhabited only via the type-level `_card_nondegeneracy_witness`
-  (no full iff witness is added by this landing).
+- **Layer 4.0 — Cardinality-forced surjectivity bridge.**
+  `surjectivity_of_card_eq` and the specialisation
+  `prEncode_surjectivity` lift a one-sided
+  `ArePermEquivalent`-witness ("σ maps each C₁ codeword *into* C₂")
+  into a two-sided "every C₂ codeword has a C₁ preimage"
+  statement, using `prEncode_card` to discharge the equal-
+  cardinality hypothesis automatically.  This is the structural
+  bridge Layer 4's marker-forcing argument consumes when
+  extracting vertex/edge permutations from a CE-witness π.
+
+- **Layers 4.1–4.10, 5, 6, 7 — Residual marker-forcing
+  reverse direction (research-scope).**  The remaining steps
+  (`extractVertexPerm` and bijectivity, `extractEdgePerm`, the
+  `extractEdgePerm = liftedEdgePerm extractVertexPerm` core,
+  marker-block freedom, adjacency recovery, empty-graph case,
+  `prEncode_reverse` assembly, the iff `prEncode_iff`, the
+  non-degeneracy bridge, and the headline
+  `petrankRoth_isInhabitedKarpReduction`) are tracked at
+  `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+  sub-tasks 4.1–4.10 / 5 / 6 / 7 as research-scope
+  **R-15-residual-CE-reverse**.  The audit-plan budget for these
+  is ~800–1500 lines / ~7–14 days of focused mathematical work,
+  much of which is genuinely intricate (the `extractEdgePerm =
+  liftedEdgePerm extractVertexPerm` identification core alone is
+  budgeted at ~300 lines).  The Layer-3.1/3.2/3.3 + Layer-4.0
+  infrastructure landed in this PR is the clean foundation those
+  steps consume; the existing `GIReducesToCE` Prop remains
+  inhabited only via the type-level
+  `_card_nondegeneracy_witness` until those steps land.
 
 Files touched:
 - `Orbcrypt/Hardness/PetrankRoth.lean` — new file (~1100 lines),
@@ -3502,10 +3526,13 @@ Files touched:
   `edgeEndpoints_liftedEdgePermFun`, `edgeEndpoints_liftedEdgePerm`,
   `liftAutKindFun_*` simps, `liftAutKindFun_left_inv`,
   `liftAutKind_apply`/`_symm_apply`, `liftAut_apply`/`_symm_apply`);
-  Layer 3 has 6 entries; per-layer `NonVacuityWitnesses` namespaces
-  exercise concrete instances at `m = 2` (asymmetric directed-edge
-  GI witness via `Equiv.swap 0 1`) and `m = 3` (cardinality and
-  trivial GI witness).
+  Layer 3 has 12 entries (Sub-task 3.1 algebraic identities + Sub-
+  task 3.2 invariance + Sub-task 3.3 four per-family signatures +
+  Sub-task 4.0 surjectivity bridges); per-layer
+  `NonVacuityWitnesses` namespaces exercise concrete instances at
+  `m = 2` (asymmetric directed-edge GI witness via `Equiv.swap 0 1`)
+  and `m = 3` (cardinality, trivial GI witness, and the four per-
+  family column-weight signatures + surjectivity bridge witness).
 - `lakefile.lean` — `version` bumped from `0.1.15` to `0.1.16`.
 
 Traceability: audit-plan item `R-15` (GI ≤ CE) is partially
@@ -3527,15 +3554,18 @@ post-Workstream-G plus the post-G additions
 `Hardness/PetrankRoth.lean`, and
 `Hardness/PetrankRoth/MarkerForcing.lean` modules under
 Workstream R-CE) with zero warnings / zero errors.  The Phase-16
-audit script's `#print axioms` total expands by 108 entries
+audit script's `#print axioms` total expands by 114 entries
 across all four R-CE layers (41 Layer-0 + 33 Layer-1 + 28 Layer-2
-+ 6 Layer-3) covering every public declaration in the new
++ 12 Layer-3) covering every public declaration in the new
 modules.  The Layer-2 non-vacuity witnesses include a concrete
 asymmetric-graph GI test at `m = 2` (graphs `adj₁(0,1) = true`
 and `adj₂(1,0) = true`, both other entries `false`, equivalent
 under `σ = Equiv.swap 0 1 : Equiv.Perm (Fin 2)`) — exercising
 the directional information that the post-refactor encoder
-preserves.
+preserves.  The Layer-3 non-vacuity witnesses include the four
+per-family column-weight signatures evaluated on arbitrary
+`adj` and the surjectivity bridge `prEncode_surjectivity` at
+the empty graph at `m = 3`.
 
 Patch version: `lakefile.lean` bumped from `0.1.15` to `0.1.16`
 for Workstream R-CE — two new public-API modules add new public
