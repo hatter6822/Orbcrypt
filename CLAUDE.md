@@ -4005,13 +4005,39 @@ typeclass infrastructure landed (2026-04-26 follow-up extension):
 
 **Patch version.** `lakefile.lean` bumped from `0.1.19` to `0.1.20`.
 
-**What remains for full Phase C–H closure:** main
-`vertexIdempotent_isPrimitive` theorem and `isPrimitive_iff_vertex`
-converse (~300 LOC); the actual rigidity argument
-(Phase D, ~700 LOC, **HIGH RISK** per `R-15-residual-TI-reverse`);
-AlgEquiv lift from GL³ (Phase E); vertex permutation extraction
-with arrow invariance (Phase F); composition (Phase G); final
-assembly (Phase H).
+**Phase C.4 main theorem `vertexIdempotent_isPrimitive` proven.**
+The decomposition argument: in any orthogonal idempotent
+decomposition `e_v = b₁ + b₂`, either `b₁(.id v) = 0` (Case A) or
+`b₂(.id v) = 0` (Case B). In Case A, all `b₁(.id w) = 0` (using
+the off-v helper combined with idempotency), so by idempotency
+`b₁(.edge u w) = b₁(.id u) · b₁(.edge u w) + b₁(.edge u w) ·
+b₁(.id w) = 0 + 0 = 0`. Hence `b₁ = 0`. Symmetrically Case B
+gives `b₂ = 0`. **Lands without sorry/axiom**.
+
+**Phase C.5 mathematical finding (2026-04-26):**
+`isPrimitive_iff_vertex` as originally planned is **FALSE** for
+`F[Q_G]/J²`. The counterexample `e_v + α · α(v, w)` (for `w ≠ v`,
+any `α ∈ ℚ`) is idempotent (cross term `α(v,w) · e_v = 0` when
+`w ≠ v`) and primitive. In the radical-2 quotient path algebra,
+primitive idempotents are *conjugate* to vertex idempotents
+(Auslander-Reiten-Smalø III.2), not equal to them.
+
+The Grochow-Qiao rigidity argument's correct form uses *complete
+orthogonal decompositions* (which ARE unique up to conjugation);
+this requires Wedderburn-Mal'cev structure (~600 LOC additional
+infrastructure).
+
+The mathematically correct theorems land instead:
+- `vertex_implies_isPrimitive`: forward direction (true).
+- `exists_nonVertex_idempotent`: explicit counterexample to the
+  reverse direction.
+
+**What remains for full Phase D–H closure:** the actual rigidity
+argument via complete orthogonal decompositions (Phase D, ~700+
+LOC, **HIGH RISK** per `R-15-residual-TI-reverse`); AlgEquiv lift
+from GL³ (Phase E); vertex permutation extraction via
+complete-orthogonal-decomposition uniqueness with arrow invariance
+(Phase F); composition (Phase G); final assembly (Phase H).
 
 **Build posture preserved.** `AlgebraWrapper.lean` has reached
 1,640 LOC of machine-checked algebraic content; every public
