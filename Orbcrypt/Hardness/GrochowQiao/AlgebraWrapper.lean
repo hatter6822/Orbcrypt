@@ -1495,5 +1495,71 @@ def IsPrimitiveIdempotent {A : Type*} [Ring A] (b : A) : Prop :=
     b₁ * b₂ = 0 → b₂ * b₁ = 0 → b = b₁ + b₂ →
     b₁ = 0 ∨ b₂ = 0
 
+/-- **Vertex idempotent is idempotent** (basic, Phase C.4 prereq). -/
+theorem vertexIdempotent_isIdempotentElem (m : ℕ) (v : Fin m) :
+    IsIdempotentElem (vertexIdempotent m v) := by
+  unfold IsIdempotentElem
+  show pathAlgebraMul m (vertexIdempotent m v) (vertexIdempotent m v) =
+       vertexIdempotent m v
+  rw [vertexIdempotent_mul_vertexIdempotent, if_pos rfl]
+
+/-- **Vertex idempotent is non-zero.** -/
+theorem vertexIdempotent_ne_zero (m : ℕ) (v : Fin m) :
+    vertexIdempotent m v ≠ 0 := by
+  intro h_eq
+  have h_at_v := congrFun h_eq (.id v)
+  rw [vertexIdempotent_apply_id, if_pos rfl] at h_at_v
+  -- h_at_v : 1 = (0 : pathAlgebraQuotient m) (.id v)
+  -- (0 : pathAlgebraQuotient m) (.id v) = 0
+  show False
+  have : (1 : ℚ) = 0 := h_at_v
+  exact one_ne_zero this
+
+/-- **Phase C.6 prerequisite: AlgEquiv preserves idempotent.** -/
+theorem AlgEquiv_preserves_isIdempotentElem
+    {A B : Type*} [Ring A] [Ring B] [Algebra ℚ A] [Algebra ℚ B]
+    (φ : A ≃ₐ[ℚ] B) {b : A} (h : IsIdempotentElem b) :
+    IsIdempotentElem (φ b) := by
+  unfold IsIdempotentElem at h ⊢
+  rw [← map_mul]
+  exact congrArg φ h
+
+/-- **Phase C.6: AlgEquiv preserves primitive idempotent.** -/
+theorem AlgEquiv_preserves_isPrimitiveIdempotent
+    {A B : Type*} [Ring A] [Ring B] [Algebra ℚ A] [Algebra ℚ B]
+    (φ : A ≃ₐ[ℚ] B) {b : A} (h : IsPrimitiveIdempotent b) :
+    IsPrimitiveIdempotent (φ b) := by
+  obtain ⟨h_idem, h_nz, h_prim⟩ := h
+  refine ⟨AlgEquiv_preserves_isIdempotentElem φ h_idem, ?_, ?_⟩
+  · -- φ b ≠ 0: by injectivity.
+    intro h_eq
+    apply h_nz
+    apply φ.injective
+    simp [h_eq]
+  · -- Decomposition: pull back through φ⁻¹.
+    intros c₁ c₂ h_c₁_idem h_c₂_idem h_c12 h_c21 h_sum
+    have h_b_decomp : b = φ.symm c₁ + φ.symm c₂ := by
+      apply φ.injective
+      simp [h_sum]
+    have h_d₁_idem : IsIdempotentElem (φ.symm c₁) :=
+      AlgEquiv_preserves_isIdempotentElem φ.symm h_c₁_idem
+    have h_d₂_idem : IsIdempotentElem (φ.symm c₂) :=
+      AlgEquiv_preserves_isIdempotentElem φ.symm h_c₂_idem
+    have h_d12 : φ.symm c₁ * φ.symm c₂ = 0 := by
+      apply φ.injective
+      simp [h_c12]
+    have h_d21 : φ.symm c₂ * φ.symm c₁ = 0 := by
+      apply φ.injective
+      simp [h_c21]
+    rcases h_prim _ _ h_d₁_idem h_d₂_idem h_d12 h_d21 h_b_decomp with h₁ | h₂
+    · left
+      have : c₁ = φ (φ.symm c₁) := (φ.apply_symm_apply c₁).symm
+      rw [this, h₁]
+      simp
+    · right
+      have : c₂ = φ (φ.symm c₂) := (φ.apply_symm_apply c₂).symm
+      rw [this, h₂]
+      simp
+
 end GrochowQiao
 end Orbcrypt
