@@ -1408,6 +1408,21 @@ Updates required at end of R-CE landing:
 
 **Total estimate: 8,000–20,000 lines across 56 sub-tasks / 6 layers / 14–22 weeks.**
 
+**Landing status (2026-04-26).** Layers T0–T3 (forward direction at the
+slot-permutation level) have landed as a partial closure of R-15 for
+the Grochow–Qiao route. Layer T0 paper synthesis (4 markdown
+documents + transient `_ApiSurvey.lean`), Layer T1 path algebra
+`F[Q_G] / J²`, Layer T2 tensor encoder with distinguished padding +
+non-degeneracy witness, Layer T3 slot-permutation lift `liftedSigma m
+σ : Equiv.Perm (Fin (dimGQ m))` + group-homomorphism laws +
+slot-shape preservation under GI. Full forward matrix-action
+verification (Layer T3.4 onwards, ~400 lines) and the Layer T4 + T5
+rigidity argument (~2,000 lines, ~80 pages on paper) remain research-
+scope; tracked as **R-15-residual-TI-forward-matrix** and
+**R-15-residual-TI-reverse** respectively. See `Orbcrypt.lean`'s
+"Workstream R-TI Snapshot" section and `CLAUDE.md`'s 2026-04-26
+change-log entry for the full status.
+
 The user has authorised the multi-month research-grade Lean
 formalization of the Grochow–Qiao reduction. This workstream is
 substantially larger and riskier than R-CE; the rigidity argument

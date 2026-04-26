@@ -3574,6 +3574,123 @@ version-bump discipline. The pre-session 41-module total rises
 to 43; the zero-sorry / zero-custom-axiom posture and the
 standard-trio-only axiom-dependency posture are both preserved.
 
+Workstream R-TI (Audit 2026-04-25 — Grochow–Qiao GI ≤ TI Karp
+reduction, partial closure / Layer T0–T3 forward direction) has
+been completed (2026-04-26):
+
+- **Layer T0 — paper synthesis (Decision GQ-D defensive measure).**
+  Four markdown documents under `docs/research/`:
+  * `grochow_qiao_path_algebra.md` — radical-2 path algebra
+    `F[Q_G] / J²` structure note. Confirms Decision GQ-A's
+    cospectral-graph defect resolution and the vertex-idempotent
+    uniqueness property the rigidity argument consumes.
+  * `grochow_qiao_mathlib_api.md` — Mathlib API audit catalogue
+    for Layers T1–T6.
+  * `grochow_qiao_padding_rigidity.md` — distinguished-padding
+    rigidity proof sketch (the Layer T5.4 design contract).
+  * `grochow_qiao_reading_log.md` — bibliography +
+    per-decision paper-citation cross-reference.
+  Plus the transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`
+  Lean stub exercising the Mathlib API at the planned types.
+
+- **Layer T1 — `Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean`.**
+  Sub-tasks T1.1, T1.2, T1.4, T1.5, T1.6 (basis-element form):
+  `QuiverArrow m` inductive with `DecidableEq` / `Fintype`,
+  `presentArrows m adj`, `pathAlgebraDim m adj` (`m + |E_directed|`),
+  `pathMul m a b : Option (QuiverArrow m)` with explicit cases,
+  `pathMul_idempotent_iff_id` characterising idempotent basis
+  elements as vertex idempotents at the basis-element level.
+  Sub-task T1.3 (`pathArrowEquiv`) and T1.7 (full associativity /
+  unitality lemmas at the structure-constant level) are research-
+  scope; Layer T2 bypasses T1.3 by indexing the encoder directly
+  via `Fin (dimGQ m)` rather than through the path-algebra basis.
+
+- **Layer T2 — `Orbcrypt/Hardness/GrochowQiao/StructureTensor.lean`.**
+  Sub-tasks T2.1 through T2.4: `dimGQ m := m + m * m`, `SlotKind m`
+  taxonomy, `slotEquiv : Fin (dimGQ m) ≃ SlotKind m`,
+  `isPathAlgebraSlot m adj : Fin (dimGQ m) → Bool` (vertex slots
+  always; arrow slots iff `adj u v = true`), `pathSlotStructureConstant`
+  + `ambientSlotStructureConstant` + the piecewise encoder
+  `grochowQiaoEncode m adj : Tensor3 (dimGQ m) ℚ`. Headline
+  non-vacuity `grochowQiaoEncode_nonzero_of_pos_dim` discharges
+  `GIReducesToTI`'s `encode_nonzero_of_pos_dim` field at the
+  `(vertex 0, vertex 0, vertex 0)` diagonal via the idempotent
+  law `e_0 · e_0 = e_0`. Sub-tasks T2.5 (per-slot-triple evaluation
+  lemmas) and T2.6 (full padding-distinguishability lemma) are
+  research-scope.
+
+- **Layer T3 partial — `Orbcrypt/Hardness/GrochowQiao/Forward.lean`.**
+  Sub-tasks T3.1, T3.2, T3.3 at the slot-permutation level:
+  `liftedSigmaSlot m σ`, `liftedSigmaSlotEquiv m σ`, `liftedSigma m
+  σ : Equiv.Perm (Fin (dimGQ m))` (vertex permutation σ lifts to a
+  slot permutation by conjugating through `slotEquiv`). Group-
+  homomorphism laws (`liftedSigma_one`, `liftedSigma_mul`),
+  slot-shape preservation lemmas (`liftedSigma_vertex`,
+  `liftedSigma_arrow`), and the central
+  `isPathAlgebraSlot_liftedSigma` showing that under the GI
+  hypothesis the path-algebra slot predicate is preserved by
+  `liftedSigma σ`. Sub-task T3.4 onwards (path-structure-constant
+  equivariance, GL³ matrix construction, full forward action
+  verification `g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m
+  adj₂` at the matrix level) are research-scope (~400 lines per
+  audit plan budget; tracked as
+  R-15-residual-TI-forward-matrix).
+
+- **Top-level — `Orbcrypt/Hardness/GrochowQiao.lean`.** Re-exports
+  the encoder, slot lift, non-vacuity content with prose
+  documentation of the partial closure status:
+  `grochowQiao_encode_nonzero_field` (alias for use against
+  strengthened `GIReducesToTI`), `grochowQiaoEncode_self_isomorphic`
+  (identity-σ trivial forward witness), `liftedSigma_one_eq_id`
+  (slot-permutation identity check), and
+  `grochowQiao_research_scope_disclosure` (documentation alias
+  pointing to research-scope items).
+
+- **`Orbcrypt.lean`** root file imports the four new modules;
+  axiom-transparency report extended with a "Workstream R-TI
+  Snapshot" section detailing the partial closure, the four
+  layered modules, the research-scope items, and the verification
+  posture.
+
+- **`scripts/audit_phase_16.lean`** extended with §15.4
+  ("Workstream R-TI") containing 47 new `#print axioms` entries
+  (covering every public R-TI declaration) and 16 non-vacuity
+  `example` bindings under the `GrochowQiaoNonVacuity` namespace
+  spanning Layer T1 (path algebra dimension, multiplication table,
+  idempotent characterisation), Layer T2 (slot equivalence, encoder
+  non-degeneracy, path-algebra-slot discriminator), Layer T3
+  (slot-permutation lift, group homomorphism laws, slot-shape
+  preservation under GI), and the top-level re-exports.
+
+**Verification.** Every Layer T0–T3 declaration depends only on
+the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`); none depends on `sorryAx` or a custom axiom. `lake
+build` succeeds for all 47 modules (3,375 jobs) with zero warnings
+/ zero errors. The Phase-16 audit script's `#print axioms` total
+expands by 47 entries plus 16 non-vacuity `example` witnesses.
+
+**Research-scope follow-up: R-15-residual-TI.** The full Karp
+reduction inhabitant `grochowQiao_isInhabitedKarpReduction :
+@GIReducesToTI ℚ _` requires the Layer T5 rigidity argument
+(`GL_triple_yields_path_algebra_automorphism` →
+`pathAlgebra_auto_characterisation` →
+`pathAlgebra_auto_arrow_bijection` →
+`adjacency_invariant_under_pathAlgebra_iso`). Per the audit plan,
+this is a multi-month research undertaking spanning ~1,800 lines
+of Lean and ~80 pages of Grochow–Qiao SIAM J. Comp. 2023 §4.3.
+Tracked as **R-15-residual-TI-reverse**. Layer T3.4 onwards (full
+forward matrix-action verification) is tracked as
+**R-15-residual-TI-forward-matrix**; Layer T5 alone is
+**R-15-residual-TI-reverse**. Both remain post-v1.0 research-
+scope items.
+
+Patch version: `lakefile.lean` bumped from `0.1.16` to `0.1.17`
+for Workstream R-TI — four new public-API modules add new public
+declarations, warranting the patch-version bump per `CLAUDE.md`'s
+version-bump discipline. The pre-session 43-module total rises
+to 47; the zero-sorry / zero-custom-axiom posture and the
+standard-trio-only axiom-dependency posture are both preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

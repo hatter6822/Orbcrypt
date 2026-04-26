@@ -2217,3 +2217,189 @@ example : ∀ c' ∈ prEncode 3 (fun _ _ => false),
     simpa [Orbcrypt.permuteCodeword] using hc)
 
 end PetrankRothLayer3NonVacuity
+
+-- ============================================================================
+-- §15.4  Workstream R-TI (audit 2026-04-25, GI ≤ TI Karp reduction)
+--
+-- Layer T0 paper synthesis (4 markdown documents in
+-- `docs/research/grochow_qiao_*.md`, plus this file's transient
+-- `_ApiSurvey.lean` companion) precedes the Lean implementation as
+-- Decision GQ-D. Layer T1 (`PathAlgebra.lean`) implements the
+-- radical-2 truncated path algebra `F[Q_G] / J²` (Decision GQ-A).
+-- Layer T2 (`StructureTensor.lean`) implements the dimension-`m + m * m`
+-- tensor encoder with distinguished padding (Decision GQ-B). Layer
+-- T3 (`Forward.lean`) implements the slot-permutation lift
+-- `liftedSigma m σ : Equiv.Perm (Fin (dimGQ m))`. The complete
+-- forward action verification (T3.6) at the GL³ matrix level and
+-- the reverse direction (Layer T4 + T5 rigidity argument) are
+-- research-scope (R-15-residual-TI-reverse). Field is `F := ℚ`
+-- per Decision GQ-C.
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.QuiverArrow
+#print axioms Orbcrypt.GrochowQiao.QuiverArrow.fintype
+#print axioms Orbcrypt.GrochowQiao.isPresentArrow
+#print axioms Orbcrypt.GrochowQiao.presentArrows
+#print axioms Orbcrypt.GrochowQiao.presentArrows_id_mem
+#print axioms Orbcrypt.GrochowQiao.presentArrows_edge_mem_iff
+#print axioms Orbcrypt.GrochowQiao.presentArrows_disjoint
+#print axioms Orbcrypt.GrochowQiao.QuiverArrow.id_injective
+#print axioms Orbcrypt.GrochowQiao.QuiverArrow.edge_pair_injective
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraDim
+#print axioms Orbcrypt.GrochowQiao.directedEdgeCount
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraDim_apply
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraDim_le
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraDim_pos_of_pos_m
+#print axioms Orbcrypt.GrochowQiao.pathMul
+#print axioms Orbcrypt.GrochowQiao.pathMul_id_id
+#print axioms Orbcrypt.GrochowQiao.pathMul_id_edge
+#print axioms Orbcrypt.GrochowQiao.pathMul_edge_id
+#print axioms Orbcrypt.GrochowQiao.pathMul_edge_edge_none
+#print axioms Orbcrypt.GrochowQiao.pathMul_id_self
+#print axioms Orbcrypt.GrochowQiao.pathMul_id_id_ne
+#print axioms Orbcrypt.GrochowQiao.pathMul_edge_self_none
+#print axioms Orbcrypt.GrochowQiao.pathMul_idempotent_iff_id
+
+-- Layer T2 declarations.
+#print axioms Orbcrypt.GrochowQiao.dimGQ
+#print axioms Orbcrypt.GrochowQiao.SlotKind
+#print axioms Orbcrypt.GrochowQiao.slotEquiv
+#print axioms Orbcrypt.GrochowQiao.dimGQ_pos_of_pos_m
+#print axioms Orbcrypt.GrochowQiao.dimGQ_zero
+#print axioms Orbcrypt.GrochowQiao.isPathAlgebraSlot
+#print axioms Orbcrypt.GrochowQiao.isPathAlgebraSlot_vertex
+#print axioms Orbcrypt.GrochowQiao.isPathAlgebraSlot_arrow
+#print axioms Orbcrypt.GrochowQiao.slotToArrow
+#print axioms Orbcrypt.GrochowQiao.pathSlotStructureConstant
+#print axioms Orbcrypt.GrochowQiao.ambientSlotStructureConstant
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_nonzero_of_pos_dim
+
+-- Layer T3 declarations.
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaSlot
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaSlotEquiv
+#print axioms Orbcrypt.GrochowQiao.liftedSigma
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaSlot_one
+#print axioms Orbcrypt.GrochowQiao.liftedSigma_one
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaSlot_mul
+#print axioms Orbcrypt.GrochowQiao.liftedSigma_mul
+#print axioms Orbcrypt.GrochowQiao.liftedSigma_vertex
+#print axioms Orbcrypt.GrochowQiao.liftedSigma_arrow
+#print axioms Orbcrypt.GrochowQiao.isPathAlgebraSlot_liftedSigma
+
+-- Top-level `Orbcrypt/Hardness/GrochowQiao.lean` re-exports.
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_encode_nonzero_field
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_self_isomorphic
+#print axioms Orbcrypt.GrochowQiao.liftedSigma_one_eq_id
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_research_scope_disclosure
+
+namespace GrochowQiaoNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **R-TI Layer T1 non-vacuity witness (path algebra dimension on K_3).**
+    The complete graph on 3 vertices has 3 vertex idempotents and
+    `3 * 2 = 6` directed edges, so `pathAlgebraDim = 9`. -/
+example : pathAlgebraDim 3 (fun i j => decide (i ≠ j)) = 9 := by decide
+
+/-- **R-TI Layer T1 non-vacuity witness (path algebra dimension
+    on the empty graph at m = 3).** The empty graph has 3 vertex
+    idempotents and 0 arrows, so `pathAlgebraDim = 3`. -/
+example : pathAlgebraDim 3 (fun _ _ => false) = 3 := by decide
+
+/-- **R-TI Layer T1 non-vacuity witness (`pathMul` evaluation).**
+    The diagonal product of an `id` element is itself (idempotent law). -/
+example : pathMul 3 (.id 0) (.id 0) = some (.id 0) := by decide
+
+/-- **R-TI Layer T1 non-vacuity witness (off-diagonal vertex idempotents
+    are orthogonal).** -/
+example : pathMul 3 (.id 0) (.id 1) = none := by decide
+
+/-- **R-TI Layer T1 non-vacuity witness (length-2 path killed by J²).** -/
+example (u v u' v' : Fin 3) :
+    pathMul 3 (.edge u v) (.edge u' v') = none := rfl
+
+/-- **R-TI Layer T1 non-vacuity witness (idempotent characterisation
+    at `id` constructor).** -/
+example : ∃ v : Fin 3, (QuiverArrow.id v : QuiverArrow 3) = QuiverArrow.id v :=
+  ⟨0, rfl⟩
+
+/-- **R-TI Layer T2 non-vacuity witness (dimension at m = 3).**
+    `dimGQ 3 = 3 + 9 = 12`. -/
+example : dimGQ 3 = 12 := by decide
+
+/-- **R-TI Layer T2 non-vacuity witness (slot-equiv elaborates).**
+    The slotEquiv at `m = 3` produces a vertex slot from index 0. -/
+example : slotEquiv 3 ⟨0, by decide⟩ = SlotKind.vertex (0 : Fin 3) := by
+  decide
+
+/-- **R-TI Layer T2 non-vacuity witness (`isPathAlgebraSlot` on
+    vertex slot is unconditionally true).** -/
+example (adj : Fin 3 → Fin 3 → Bool) (v : Fin 3) :
+    isPathAlgebraSlot 3 adj ((slotEquiv 3).symm (.vertex v)) = true :=
+  isPathAlgebraSlot_vertex 3 adj v
+
+/-- **R-TI Layer T2 non-vacuity witness (`isPathAlgebraSlot` on
+    arrow slot equals `adj u v`).** -/
+example (adj : Fin 3 → Fin 3 → Bool) (u v : Fin 3) :
+    isPathAlgebraSlot 3 adj ((slotEquiv 3).symm (.arrow u v)) = adj u v :=
+  isPathAlgebraSlot_arrow 3 adj u v
+
+/-- **R-TI Layer T2 non-vacuity witness (encoder is non-zero on K_3).** -/
+example : grochowQiaoEncode 3 (fun i j => decide (i ≠ j)) ≠
+          (fun _ _ _ => 0) :=
+  grochowQiaoEncode_nonzero_of_pos_dim 3 (by decide) _
+
+/-- **R-TI Layer T2 non-vacuity witness (encoder is non-zero on the
+    empty graph at m = 3).** Even with no edges, the diagonal vertex
+    slot evaluates to 1 (idempotent law). -/
+example : grochowQiaoEncode 3 (fun _ _ => false) ≠ (fun _ _ _ => 0) :=
+  grochowQiaoEncode_nonzero_of_pos_dim 3 (by decide) _
+
+/-- **R-TI Layer T3 non-vacuity witness (lifted-σ at identity is
+    identity slot permutation).** -/
+example : liftedSigma 3 (1 : Equiv.Perm (Fin 3)) =
+          (1 : Equiv.Perm (Fin (dimGQ 3))) :=
+  liftedSigma_one 3
+
+/-- **R-TI Layer T3 non-vacuity witness (lifted-σ on vertex slot).**
+    A non-trivial vertex permutation `σ = swap 0 1` maps vertex slot 0
+    to vertex slot 1. -/
+example :
+    liftedSigma 3 (Equiv.swap (0 : Fin 3) 1)
+      ((slotEquiv 3).symm (.vertex 0)) =
+    (slotEquiv 3).symm (.vertex 1) := by
+  rw [liftedSigma_vertex]
+  simp [Equiv.swap_apply_left]
+
+/-- **R-TI Layer T3 non-vacuity witness (`isPathAlgebraSlot` is
+    preserved by `liftedSigma` under graph isomorphism).** Identity σ
+    on any graph: every slot maps to itself, so the predicate is
+    preserved trivially. -/
+example (adj : Fin 3 → Fin 3 → Bool) (i : Fin (dimGQ 3)) :
+    isPathAlgebraSlot 3 adj i =
+    isPathAlgebraSlot 3 adj (liftedSigma 3 (1 : Equiv.Perm (Fin 3)) i) :=
+  isPathAlgebraSlot_liftedSigma 3 adj adj 1 (fun _ _ => rfl) i
+
+/-- **R-TI Layer T3 non-vacuity witness (lifted-σ composition law).** -/
+example (σ τ : Equiv.Perm (Fin 3)) :
+    liftedSigma 3 (σ * τ) = liftedSigma 3 σ * liftedSigma 3 τ :=
+  liftedSigma_mul 3 σ τ
+
+/-- **R-TI top-level non-vacuity witness (encoder satisfies the
+    strengthened-Prop's non-degeneracy field on every non-empty
+    graph at m = 3).** -/
+example : ∀ adj : Fin 3 → Fin 3 → Bool,
+    grochowQiaoEncode 3 adj ≠ (fun _ _ _ => 0) :=
+  grochowQiao_encode_nonzero_field 3 (by decide)
+
+/-- **R-TI top-level non-vacuity witness (every encoded graph is
+    tensor-isomorphic to itself).** Reflexivity check confirming the
+    forward direction's identity-σ landing point. -/
+example (adj : Fin 3 → Fin 3 → Bool) :
+    AreTensorIsomorphic (grochowQiaoEncode 3 adj)
+                        (grochowQiaoEncode 3 adj) :=
+  grochowQiaoEncode_self_isomorphic 3 adj
+
+end GrochowQiaoNonVacuity

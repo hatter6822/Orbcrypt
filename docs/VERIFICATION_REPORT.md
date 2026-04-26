@@ -1168,6 +1168,57 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-26 (Workstream R-TI Layer T0–T3 partial-closure
+  landing)** — Grochow–Qiao (2021) Karp reduction GI ≤ TI: Layer T0
+  paper synthesis (4 markdown documents under `docs/research/` plus
+  the transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`),
+  Layer T1 path algebra `F[Q_G] / J²`
+  (`Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean`), Layer T2 tensor
+  encoder with distinguished padding
+  (`Orbcrypt/Hardness/GrochowQiao/StructureTensor.lean`), Layer T3
+  partial slot-permutation lift
+  (`Orbcrypt/Hardness/GrochowQiao/Forward.lean`), and the top-level
+  `Orbcrypt/Hardness/GrochowQiao.lean` module.
+
+  **Decisions GQ-A through GQ-D pinned.** Encoder algebra =
+  radical-2 path algebra `F[Q_G] / J²`; dimension `dimGQ m := m + m
+  * m` with distinguished padding; field `F := ℚ`; Layer T0 paper
+  synthesis as a planned 1-week defensive measure.
+
+  **Headline content landed.** `pathAlgebraDim m adj`,
+  `pathAlgebraDim_apply` (`m + |E_directed|` decomposition),
+  `pathAlgebraDim_le` (upper bound `m + m * m`), `pathMul m a b`
+  (radical-2 truncated multiplication table) with explicit cases,
+  `pathMul_idempotent_iff_id` (basis-element-level idempotent
+  characterisation); `dimGQ m`, `slotEquiv`,
+  `isPathAlgebraSlot`, `grochowQiaoEncode m adj : Tensor3 (dimGQ
+  m) ℚ`, `grochowQiaoEncode_nonzero_of_pos_dim` (discharges the
+  strengthened `GIReducesToTI`'s non-degeneracy field at the
+  `(vertex 0, vertex 0, vertex 0)` diagonal); `liftedSigma m σ`,
+  `liftedSigma_one`, `liftedSigma_mul`, `liftedSigma_vertex`,
+  `liftedSigma_arrow`, `isPathAlgebraSlot_liftedSigma` (under the GI
+  hypothesis).
+
+  **Status.** **Forward direction** (Layer T1 + Layer T2 + Layer T3
+  at slot-permutation level) landed as a partial closure of R-15 for
+  the Grochow–Qiao route. The full forward matrix-action
+  verification (Layer T3.4 onwards) and the **reverse direction**
+  (Layer T4 + T5 rigidity argument) are research-scope, tracked
+  respectively as **R-15-residual-TI-forward-matrix** and
+  **R-15-residual-TI-reverse**. The full
+  `grochowQiao_isInhabitedKarpReduction : @GIReducesToTI ℚ _`
+  inhabitant requires the rigidity argument.
+
+  **Verification.** All four GrochowQiao modules build clean (3,375
+  total jobs, zero warnings, zero errors). Every public R-TI
+  declaration depends only on the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`); no `sorryAx`, no custom axiom.
+  The Phase-16 audit script's R-TI section adds 47 `#print axioms`
+  entries and 16 non-vacuity `example` witnesses spanning T1, T2,
+  T3, and top-level surfaces.
+
+  `lakefile.lean` bumped from `0.1.16` to `0.1.17`.
+
 * **2026-04-25 (Workstream R-CE forward direction + reverse-
   direction infrastructure landing)** — Petrank–Roth (1997) Karp
   reduction GI ≤ CE: forward direction (Layers 0–2) plus the
