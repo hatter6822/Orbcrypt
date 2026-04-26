@@ -1180,7 +1180,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   **Modules added.**
   `Orbcrypt/Hardness/PetrankRoth.lean` (~1027 lines, encoder +
   forward direction); `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`
-  (~580 lines, column-weight invariance infrastructure incl. the
+  (~615 lines, column-weight invariance infrastructure incl. the
   per-family signatures + surjectivity bridges).  `Orbcrypt/
   Hardness/PetrankRoth/BitLayout.lean` (Layer 0, ~600 lines) was
   already landed pre-session and is preserved unchanged.

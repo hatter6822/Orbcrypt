@@ -3443,7 +3443,7 @@ completed (2026-04-25):
   bridge iff-on-disjunctions to bool-equality of `decide`s.
 
 - **Layer 3 — Column-weight invariance infrastructure.**
-  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (~580
+  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (~615
   lines): `colWeight C i` defined as the count of codewords in
   `C` that are `true` at column `i`; basic algebraic identities
   (`colWeight_empty`, `colWeight_singleton_self/_other`,
