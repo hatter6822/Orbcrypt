@@ -2138,12 +2138,21 @@ end PetrankRothLayer2NonVacuity
 -- (`Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`)
 -- ============================================================================
 
+-- Sub-task 3.1–3.2 — column-weight definition + invariance.
 #print axioms Orbcrypt.PetrankRoth.colWeight
 #print axioms Orbcrypt.PetrankRoth.colWeight_empty
 #print axioms Orbcrypt.PetrankRoth.colWeight_singleton_self
 #print axioms Orbcrypt.PetrankRoth.colWeight_singleton_other
 #print axioms Orbcrypt.PetrankRoth.colWeight_union_disjoint
 #print axioms Orbcrypt.PetrankRoth.colWeight_permuteCodeword_image
+-- Sub-task 3.3 — column-weight signatures of the four families.
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_vertex
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_incid
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_marker
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_sentinel
+-- Sub-task 4.0 — cardinality-forced surjectivity bridge.
+#print axioms Orbcrypt.PetrankRoth.surjectivity_of_card_eq
+#print axioms Orbcrypt.PetrankRoth.prEncode_surjectivity
 
 namespace PetrankRothLayer3NonVacuity
 open Orbcrypt.PetrankRoth
@@ -2159,5 +2168,37 @@ example (m : ℕ) (adj : Fin m → Fin m → Bool) (i : Fin (dimPR m)) :
       ((1 : Equiv.Perm (Fin (dimPR m))) i)
     = colWeight (prEncode m adj) i :=
   colWeight_permuteCodeword_image (prEncode m adj) 1 i
+
+/-- **R-CE Layer 3.3 non-vacuity witness (incid column weight).**  At
+    every incidence column, the column weight is exactly 1
+    (independent of `adj` and of edge presence).  This is the
+    invariant the marker-forcing reverse direction (Layer 4) consumes
+    to identify incidence columns. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (e : Fin (numEdges m)) :
+    colWeight (prEncode m adj) (prCoord m (.incid e)) = 1 :=
+  colWeight_prEncode_at_incid m adj e
+
+/-- **R-CE Layer 3.3 non-vacuity witness (marker column weight).** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (e : Fin (numEdges m)) (k : Fin 3) :
+    colWeight (prEncode m adj) (prCoord m (.marker e k)) = 1 :=
+  colWeight_prEncode_at_marker m adj e k
+
+/-- **R-CE Layer 3.3 non-vacuity witness (sentinel column weight).** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    colWeight (prEncode m adj)
+              (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) = 1 :=
+  colWeight_prEncode_at_sentinel m adj
+
+/-- **R-CE Layer 4.0 non-vacuity witness (cardinality-forced
+    surjectivity).** `prEncode_surjectivity` exhibits the two-sided
+    "image" conclusion from any one-sided CE witness, with the
+    cardinality hypothesis discharged automatically.  Identity
+    permutation on the empty graph at `m = 3`. -/
+example : ∀ c' ∈ prEncode 3 (fun _ _ => false),
+    ∃ c ∈ prEncode 3 (fun _ _ => false),
+      Orbcrypt.permuteCodeword (1 : Equiv.Perm (Fin (dimPR 3))) c = c' :=
+  prEncode_surjectivity 3 _ _ 1 (fun c hc => by
+    simpa [Orbcrypt.permuteCodeword] using hc)
 
 end PetrankRothLayer3NonVacuity
