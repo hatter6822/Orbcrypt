@@ -612,5 +612,263 @@ theorem vertexIdempotent_mul_apply_edge (m : ℕ) (v u w : Fin m)
   rw [vertexIdempotent_mul_apply_outer_collapse]
   exact vertexIdempotent_mul_inner_edge m v u w f
 
+-- ============================================================================
+-- Layer 1.5b — `mul_vertexIdempotent_apply` (symmetric for `mul_one`).
+-- ============================================================================
+
+/-- **Helper: outer sum of `f * vertexIdempotent v` collapses to `b = .id v`.** -/
+private lemma mul_vertexIdempotent_apply_outer_collapse (m : ℕ)
+    (f : pathAlgebraQuotient m) (v : Fin m) (c : QuiverArrow m) :
+    (∑ a : QuiverArrow m, ∑ b : QuiverArrow m,
+       f a * vertexIdempotent m v b *
+       (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+    (∑ a : QuiverArrow m, f a *
+       (if pathMul m a (.id v) = some c then (1 : ℚ) else 0)) := by
+  apply Finset.sum_congr rfl
+  intros a _
+  rw [Finset.sum_eq_single (.id v)]
+  · -- b = .id v
+    rw [vertexIdempotent_apply_id, if_pos rfl, mul_one]
+  · -- b ≠ .id v
+    intros b _ hb
+    cases b with
+    | id v' =>
+      have h_ne : v ≠ v' := fun h_eq => hb (by rw [h_eq])
+      simp [vertexIdempotent_apply_id, h_ne]
+    | edge u' w' =>
+      simp [vertexIdempotent_apply_edge]
+  · intro h; exact absurd (Finset.mem_univ _) h
+
+/-- **Helper: inner sum at `c = .id z` (right-multiplication case).** -/
+private lemma mul_vertexIdempotent_inner_id (m : ℕ)
+    (f : pathAlgebraQuotient m) (v z : Fin m) :
+    (∑ a : QuiverArrow m, f a *
+       (if pathMul m a (.id v) = some (.id z) then (1 : ℚ) else 0)) =
+    (if v = z then f (.id z) else 0) := by
+  by_cases h_vz : v = z
+  · subst h_vz
+    rw [if_pos rfl]
+    rw [Finset.sum_eq_single (.id v)]
+    · simp [pathMul_id_id]
+    · intros a _ ha
+      cases a with
+      | id v' =>
+        have h_pm : pathMul m (.id v') (.id v) ≠ some (.id v) := by
+          rw [pathMul_id_id]
+          by_cases h : v' = v
+          · subst h
+            rw [if_pos rfl]
+            intro _
+            exact ha rfl
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u' w' =>
+        have h_pm : pathMul m (.edge u' w') (.id v) ≠ some (.id v) := by
+          rw [pathMul_edge_id]
+          by_cases h : w' = v
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+    · intro h; exact absurd (Finset.mem_univ _) h
+  · rw [if_neg h_vz]
+    apply Finset.sum_eq_zero
+    intros a _
+    cases a with
+    | id v' =>
+      have h_pm : pathMul m (.id v') (.id v) ≠ some (.id z) := by
+        rw [pathMul_id_id]
+        by_cases h : v' = v
+        · subst h
+          rw [if_pos rfl]
+          intro h_eq
+          have h_inj := Option.some.inj h_eq
+          injection h_inj with h_v_eq_z
+          exact h_vz h_v_eq_z
+        · rw [if_neg h]; simp
+      rw [if_neg h_pm, mul_zero]
+    | edge u' w' =>
+      have h_pm : pathMul m (.edge u' w') (.id v) ≠ some (.id z) := by
+        rw [pathMul_edge_id]
+        by_cases h : w' = v
+        · subst h; simp
+        · rw [if_neg h]; simp
+      rw [if_neg h_pm, mul_zero]
+
+/-- **Helper: inner sum at `c = .edge u w` (right-multiplication case).** -/
+private lemma mul_vertexIdempotent_inner_edge (m : ℕ)
+    (f : pathAlgebraQuotient m) (v u w : Fin m) :
+    (∑ a : QuiverArrow m, f a *
+       (if pathMul m a (.id v) = some (.edge u w) then (1 : ℚ) else 0)) =
+    (if v = w then f (.edge u w) else 0) := by
+  by_cases h_vw : v = w
+  · subst h_vw
+    rw [if_pos rfl]
+    rw [Finset.sum_eq_single (.edge u v)]
+    · simp [pathMul_edge_id]
+    · intros a _ ha
+      cases a with
+      | id v' =>
+        have h_pm : pathMul m (.id v') (.id v) ≠ some (.edge u v) := by
+          rw [pathMul_id_id]
+          by_cases h : v' = v
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u' w' =>
+        have h_pm : pathMul m (.edge u' w') (.id v) ≠ some (.edge u v) := by
+          rw [pathMul_edge_id]
+          by_cases h : w' = v
+          · subst h
+            rw [if_pos rfl]
+            intro h_eq
+            have h_inj := Option.some.inj h_eq
+            injection h_inj with h_u_eq h_w_eq
+            -- h_eq says (.edge u' v) = (.edge u v), so u' = u (and v = v).
+            -- Hence ha : .edge u' v ≠ .edge u v becomes .edge u v ≠ .edge u v.
+            apply ha
+            rw [h_u_eq]
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+    · intro h; exact absurd (Finset.mem_univ _) h
+  · rw [if_neg h_vw]
+    apply Finset.sum_eq_zero
+    intros a _
+    cases a with
+    | id v' =>
+      have h_pm : pathMul m (.id v') (.id v) ≠ some (.edge u w) := by
+        rw [pathMul_id_id]
+        by_cases h : v' = v
+        · subst h; simp
+        · rw [if_neg h]; simp
+      rw [if_neg h_pm, mul_zero]
+    | edge u' w' =>
+      have h_pm : pathMul m (.edge u' w') (.id v) ≠ some (.edge u w) := by
+        rw [pathMul_edge_id]
+        by_cases h : w' = v
+        · rw [if_pos h]
+          intro h_eq
+          have h_inj := Option.some.inj h_eq
+          injection h_inj with h_u_eq h_w_eq
+          -- h : w' = v, h_w_eq : w' = w. So v = w by transitivity.
+          exact h_vw (h.symm.trans h_w_eq)
+        · rw [if_neg h]; simp
+      rw [if_neg h_pm, mul_zero]
+
+/-- **Bilinear formula for `f * e_v` evaluated at `c = .id z`.** -/
+theorem mul_vertexIdempotent_apply_id (m : ℕ) (f : pathAlgebraQuotient m)
+    (v z : Fin m) :
+    (pathAlgebraMul m f (vertexIdempotent m v)) (.id z) =
+    (if v = z then f (.id z) else 0) := by
+  show (∑ a : QuiverArrow m, ∑ b : QuiverArrow m,
+          f a * vertexIdempotent m v b *
+          (if pathMul m a b = some (.id z) then (1 : ℚ) else 0)) = _
+  rw [mul_vertexIdempotent_apply_outer_collapse]
+  exact mul_vertexIdempotent_inner_id m f v z
+
+/-- **Bilinear formula for `f * e_v` evaluated at `c = .edge u w`.** -/
+theorem mul_vertexIdempotent_apply_edge (m : ℕ) (f : pathAlgebraQuotient m)
+    (v u w : Fin m) :
+    (pathAlgebraMul m f (vertexIdempotent m v)) (.edge u w) =
+    (if v = w then f (.edge u w) else 0) := by
+  show (∑ a : QuiverArrow m, ∑ b : QuiverArrow m,
+          f a * vertexIdempotent m v b *
+          (if pathMul m a b = some (.edge u w) then (1 : ℚ) else 0)) = _
+  rw [mul_vertexIdempotent_apply_outer_collapse]
+  exact mul_vertexIdempotent_inner_edge m f v u w
+
+-- ============================================================================
+-- Layer 1.1-1.4 — Basis-element multiplication table.
+-- ============================================================================
+
+/-- **Vertex idempotent times vertex idempotent** (Layer 1.1).
+
+`e_v * e_w = if v = w then e_v else 0`. -/
+theorem vertexIdempotent_mul_vertexIdempotent (m : ℕ) (v w : Fin m) :
+    pathAlgebraMul m (vertexIdempotent m v) (vertexIdempotent m w) =
+    if v = w then vertexIdempotent m v else 0 := by
+  funext c
+  cases c with
+  | id z =>
+    rw [vertexIdempotent_mul_apply_id]
+    -- LHS: if v = z then (vertexIdempotent w) (.id z) else 0
+    --    = if v = z then (if w = z then 1 else 0) else 0
+    -- RHS: (if v = w then vertexIdempotent v else 0) (.id z)
+    --    = if v = w then (if v = z then 1 else 0) else 0  [Pi.zero_apply]
+    rw [vertexIdempotent_apply_id]
+    split_ifs with h_vz h_wz h_vw h_vw' h_vz'
+    all_goals try (first | rfl | simp_all [Pi.zero_apply, vertexIdempotent_apply_id])
+  | edge u w' =>
+    rw [vertexIdempotent_mul_apply_edge]
+    rw [vertexIdempotent_apply_edge]
+    split_ifs with h_vu h_vw
+    all_goals try (first | rfl | simp_all [Pi.zero_apply, vertexIdempotent_apply_edge])
+
+/-- **Vertex idempotent times arrow element** (Layer 1.2).
+
+`e_v * α(u, w) = if v = u then α(u, w) else 0`. -/
+theorem vertexIdempotent_mul_arrowElement (m : ℕ) (v u w : Fin m) :
+    pathAlgebraMul m (vertexIdempotent m v) (arrowElement m u w) =
+    if v = u then arrowElement m u w else 0 := by
+  funext c
+  cases c with
+  | id z =>
+    rw [vertexIdempotent_mul_apply_id]
+    rw [arrowElement_apply_id]
+    -- (if v = z then 0 else 0) = (if v = u then arrowElement m u w else 0) (.id z)
+    --                         = (if v = u then 0 else 0) [Pi.zero_apply, arrowElement_apply_id]
+    split_ifs with h_vz h_vu
+    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_id])
+  | edge u' w' =>
+    rw [vertexIdempotent_mul_apply_edge]
+    rw [arrowElement_apply_edge]
+    split_ifs with h_vu' h_uw' h_uw'' h_vu h_uw' h_vu' h_uw''
+    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_edge])
+
+/-- **Arrow element times vertex idempotent** (Layer 1.3).
+
+`α(u, v) * e_w = if v = w then α(u, v) else 0`. -/
+theorem arrowElement_mul_vertexIdempotent (m : ℕ) (u v w : Fin m) :
+    pathAlgebraMul m (arrowElement m u v) (vertexIdempotent m w) =
+    if v = w then arrowElement m u v else 0 := by
+  funext c
+  cases c with
+  | id z =>
+    rw [mul_vertexIdempotent_apply_id]
+    rw [arrowElement_apply_id]
+    split_ifs with h_wz h_vw
+    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_id])
+  | edge u' w' =>
+    rw [mul_vertexIdempotent_apply_edge]
+    rw [arrowElement_apply_edge]
+    split_ifs with h_ww' h_uw'_match h_vw h_uw'_match
+    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_edge])
+
+/-- **Arrow element times arrow element is zero** (Layer 1.4).
+
+`α(u, v) * α(u', w') = 0` (J²-truncation kills length-2 paths). -/
+theorem arrowElement_mul_arrowElement_eq_zero (m : ℕ) (u v u' w' : Fin m) :
+    pathAlgebraMul m (arrowElement m u v) (arrowElement m u' w') = 0 := by
+  funext c
+  show (∑ a : QuiverArrow m, ∑ b : QuiverArrow m,
+          arrowElement m u v a * arrowElement m u' w' b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) = (0 : pathAlgebraQuotient m) c
+  -- Only (a, b) = (.edge u v, .edge u' w') gives a nonzero product of basis values.
+  -- But pathMul (.edge _ _) (.edge _ _) = none, so the indicator is 0.
+  rw [show (0 : pathAlgebraQuotient m) c = 0 from rfl]
+  apply Finset.sum_eq_zero
+  intros a _
+  apply Finset.sum_eq_zero
+  intros b _
+  cases a with
+  | id v_a =>
+    rw [arrowElement_apply_id]; ring
+  | edge u_a v_a =>
+    cases b with
+    | id v_b =>
+      rw [arrowElement_apply_id]; ring
+    | edge u_b v_b =>
+      rw [pathMul_edge_edge_none]
+      simp
+
 end GrochowQiao
 end Orbcrypt
