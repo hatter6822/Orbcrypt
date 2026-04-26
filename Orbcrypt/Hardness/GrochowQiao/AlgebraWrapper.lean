@@ -17,9 +17,12 @@ arrow basis elements.
 
 import Mathlib.Algebra.Algebra.Basic
 import Mathlib.Algebra.Algebra.Pi
+import Mathlib.Algebra.Ring.Idempotent
 import Mathlib.LinearAlgebra.Basis.Basic
 import Mathlib.LinearAlgebra.Basis.Defs
 import Mathlib.Algebra.BigOperators.Pi
+import Mathlib.Tactic.Linarith
+import Mathlib.Tactic.LinearCombination
 import Orbcrypt.Hardness.GrochowQiao.PathAlgebra
 
 /-!
@@ -1404,6 +1407,93 @@ theorem pathAlgebraMul_apply_edge (m : ℕ) (f g : pathAlgebraQuotient m)
       | edge u'' w'' =>
         rw [pathMul_edge_edge_none]; simp]
   ring
+
+-- ============================================================================
+-- Layer 6 / Phase C — IsIdempotentElem + IsPrimitiveIdempotent.
+-- ============================================================================
+
+/-- **`(b * b)` evaluated at vertex c.** Direct corollary of pathAlgebraMul_apply_id. -/
+theorem pathAlgebra_self_mul_apply_id (m : ℕ) (b : pathAlgebraQuotient m)
+    (z : Fin m) : (b * b) (.id z) = b (.id z) * b (.id z) :=
+  pathAlgebraMul_apply_id m b b z
+
+/-- **`(b * b)` evaluated at arrow c.** Direct corollary of pathAlgebraMul_apply_edge. -/
+theorem pathAlgebra_self_mul_apply_edge (m : ℕ) (b : pathAlgebraQuotient m)
+    (u v : Fin m) :
+    (b * b) (.edge u v) = b (.id u) * b (.edge u v) + b (.edge u v) * b (.id v) :=
+  pathAlgebraMul_apply_edge m b b u v
+
+/-- **Idempotent element characterization** (Phase C.1).
+
+`b * b = b` iff every basis-element coefficient satisfies the
+appropriate quadratic relation:
+* `b(.id v) ^ 2 = b(.id v)` for every vertex v.
+* `b(.edge u v) = b(.id u) · b(.edge u v) + b(.edge u v) · b(.id v)`
+  for every arrow position. -/
+theorem pathAlgebra_isIdempotentElem_iff (m : ℕ) (b : pathAlgebraQuotient m) :
+    IsIdempotentElem b ↔
+    (∀ v : Fin m, b (.id v) * b (.id v) = b (.id v)) ∧
+    (∀ u v : Fin m, b (.id u) * b (.edge u v) + b (.edge u v) * b (.id v) =
+      b (.edge u v)) := by
+  unfold IsIdempotentElem
+  constructor
+  · intro h_idem
+    refine ⟨?_, ?_⟩
+    · intro v
+      have h := congrFun h_idem (.id v)
+      rw [pathAlgebra_self_mul_apply_id] at h
+      exact h
+    · intros u v
+      have h := congrFun h_idem (.edge u v)
+      rw [pathAlgebra_self_mul_apply_edge] at h
+      exact h
+  · rintro ⟨h_id, h_edge⟩
+    funext c
+    cases c with
+    | id z =>
+      rw [pathAlgebra_self_mul_apply_id]
+      exact h_id z
+    | edge u v =>
+      rw [pathAlgebra_self_mul_apply_edge]
+      exact h_edge u v
+
+/-- **Coefficient consequence: vertex λ values are 0 or 1.** -/
+theorem pathAlgebra_idempotent_lambda_squared (m : ℕ) (b : pathAlgebraQuotient m)
+    (h : IsIdempotentElem b) (v : Fin m) :
+    b (.id v) = 0 ∨ b (.id v) = 1 := by
+  have ⟨h_id, _⟩ := (pathAlgebra_isIdempotentElem_iff m b).mp h
+  have h_v := h_id v
+  -- λ * λ = λ ⇒ λ * (λ - 1) = 0 ⇒ λ = 0 ∨ λ = 1.
+  have h_factored : b (.id v) * (b (.id v) - 1) = 0 := by
+    have := h_v
+    linear_combination h_v
+  rcases mul_eq_zero.mp h_factored with h_zero | h_one
+  · exact Or.inl h_zero
+  · right
+    have : b (.id v) = 1 := by linarith
+    exact this
+
+/-- **Coefficient consequence: arrow μ values satisfy a constraint.** -/
+theorem pathAlgebra_idempotent_mu_constraint (m : ℕ) (b : pathAlgebraQuotient m)
+    (h : IsIdempotentElem b) (u v : Fin m) :
+    b (.edge u v) = 0 ∨ b (.id u) + b (.id v) = 1 := by
+  have ⟨_, h_edge⟩ := (pathAlgebra_isIdempotentElem_iff m b).mp h
+  have h_uv := h_edge u v
+  -- λ_u * μ + μ * λ_v = μ ⇒ μ * (λ_u + λ_v - 1) = 0 ⇒ μ = 0 ∨ λ_u + λ_v = 1.
+  have h_factored : b (.edge u v) * (b (.id u) + b (.id v) - 1) = 0 := by
+    linear_combination h_uv
+  rcases mul_eq_zero.mp h_factored with h_zero | h_sum
+  · exact Or.inl h_zero
+  · right
+    linarith
+
+/-- **Primitive idempotent definition** (Phase C.3). -/
+def IsPrimitiveIdempotent {A : Type*} [Ring A] (b : A) : Prop :=
+  IsIdempotentElem b ∧ b ≠ 0 ∧
+  ∀ b₁ b₂ : A,
+    IsIdempotentElem b₁ → IsIdempotentElem b₂ →
+    b₁ * b₂ = 0 → b₂ * b₁ = 0 → b = b₁ + b₂ →
+    b₁ = 0 ∨ b₂ = 0
 
 end GrochowQiao
 end Orbcrypt
