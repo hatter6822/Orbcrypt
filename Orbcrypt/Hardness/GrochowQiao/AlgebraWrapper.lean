@@ -1561,5 +1561,80 @@ theorem AlgEquiv_preserves_isPrimitiveIdempotent
       rw [this, h₂]
       simp
 
+-- ============================================================================
+-- Phase C.4 — Vertex idempotent is primitive (via coefficient analysis).
+-- ============================================================================
+
+/-- **Helper: when b₁ + b₂ = e_v is an idempotent decomposition, b₁(.id v) ∈ {0,1}.** -/
+private lemma vertexIdempotent_decomp_lambda_at_v (m : ℕ) (v : Fin m)
+    (b₁ b₂ : pathAlgebraQuotient m)
+    (h_b₁_idem : IsIdempotentElem b₁) (h_b₁_b₂ : b₁ * b₂ = 0)
+    (h_sum : vertexIdempotent m v = b₁ + b₂) :
+    (b₁ (.id v) = 0 ∧ b₂ (.id v) = 1) ∨ (b₁ (.id v) = 1 ∧ b₂ (.id v) = 0) := by
+  -- λ_1 + λ_2 = 1 (from h_sum at .id v) and λ_1 * λ_2 = 0 (from h_b₁_b₂ at .id v).
+  -- And λ_1 ∈ {0, 1} from b₁ idempotent.
+  have h_sum_v : b₁ (.id v) + b₂ (.id v) = 1 := by
+    have h := congrFun h_sum (.id v)
+    rw [vertexIdempotent_apply_id, if_pos rfl] at h
+    show b₁ (.id v) + b₂ (.id v) = 1
+    show b₁ (.id v) + b₂ (.id v) = 1
+    have h_pi : (b₁ + b₂) (.id v) = b₁ (.id v) + b₂ (.id v) := rfl
+    rw [h_pi] at h
+    linarith
+  have h_prod_v : b₁ (.id v) * b₂ (.id v) = 0 := by
+    have h := congrFun h_b₁_b₂ (.id v)
+    show b₁ (.id v) * b₂ (.id v) = 0
+    have h_eq : (b₁ * b₂) (.id v) = b₁ (.id v) * b₂ (.id v) :=
+      pathAlgebraMul_apply_id m b₁ b₂ v
+    rw [h_eq] at h
+    show b₁ (.id v) * b₂ (.id v) = 0
+    exact h
+  have h_lam1 : b₁ (.id v) = 0 ∨ b₁ (.id v) = 1 :=
+    pathAlgebra_idempotent_lambda_squared m b₁ h_b₁_idem v
+  rcases h_lam1 with h_lam1_zero | h_lam1_one
+  · left
+    refine ⟨h_lam1_zero, ?_⟩
+    rw [h_lam1_zero] at h_sum_v
+    linarith
+  · right
+    refine ⟨h_lam1_one, ?_⟩
+    rw [h_lam1_one] at h_sum_v
+    linarith
+
+/-- **Helper: in an idempotent decomposition of e_v, lambda values away from v
+are 0 in both factors.** -/
+private lemma vertexIdempotent_decomp_lambda_off_v (m : ℕ) (v : Fin m)
+    (b₁ b₂ : pathAlgebraQuotient m)
+    (h_b₁_idem : IsIdempotentElem b₁) (h_b₁_b₂ : b₁ * b₂ = 0)
+    (h_sum : vertexIdempotent m v = b₁ + b₂)
+    (w : Fin m) (h_w_ne : w ≠ v) :
+    b₁ (.id w) = 0 ∧ b₂ (.id w) = 0 := by
+  -- Goal: at index .id w with w ≠ v: e_v(.id w) = 0 = b₁(.id w) + b₂(.id w).
+  -- Combined with idempotency b₁(.id w) ∈ {0, 1}, b₁ * b₂ = 0 ⇒ both must be 0.
+  have h_sum_w : b₁ (.id w) + b₂ (.id w) = 0 := by
+    have h := congrFun h_sum (.id w)
+    rw [vertexIdempotent_apply_id, if_neg (Ne.symm h_w_ne)] at h
+    have h_pi : (b₁ + b₂) (.id w) = b₁ (.id w) + b₂ (.id w) := rfl
+    rw [h_pi] at h
+    linarith
+  have h_prod_w : b₁ (.id w) * b₂ (.id w) = 0 := by
+    have h := congrFun h_b₁_b₂ (.id w)
+    have h_eq : (b₁ * b₂) (.id w) = b₁ (.id w) * b₂ (.id w) :=
+      pathAlgebraMul_apply_id m b₁ b₂ w
+    rw [h_eq] at h
+    exact h
+  have h_lam1 : b₁ (.id w) = 0 ∨ b₁ (.id w) = 1 :=
+    pathAlgebra_idempotent_lambda_squared m b₁ h_b₁_idem w
+  rcases h_lam1 with h_lam1_zero | h_lam1_one
+  · refine ⟨h_lam1_zero, ?_⟩
+    rw [h_lam1_zero] at h_sum_w
+    linarith
+  · -- h_lam1_one : b₁(.id w) = 1. Then h_sum_w gives b₂(.id w) = -1.
+    rw [h_lam1_one] at h_prod_w
+    rw [h_lam1_one] at h_sum_w
+    have : b₂ (.id w) = -1 := by linarith
+    rw [this] at h_prod_w
+    linarith
+
 end GrochowQiao
 end Orbcrypt
