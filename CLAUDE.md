@@ -3968,6 +3968,57 @@ research-scope work and is **not** completed in this extension.
 The `GrochowQiaoRigidity` Prop hypothesis remains open and tracked
 as **R-15-residual-TI-reverse**.
 
+Workstream R-TI Phase A.2 + Phase C partial — full Algebra ℚ
+typeclass infrastructure landed (2026-04-26 follow-up extension):
+
+- **Layer 0 (already landed):** `pathAlgebraMul_assoc` proven via
+  the C1 + C2 + C3 canonical-form decomposition.
+- **Layer 1 (basis-element multiplication table, ~700 LOC):**
+  `vertexIdempotent_mul_apply_id`/`_apply_edge` (key bilinear
+  formulas), `mul_vertexIdempotent_apply_id`/`_apply_edge`,
+  `vertexIdempotent_mul_vertexIdempotent`,
+  `vertexIdempotent_mul_arrowElement`,
+  `arrowElement_mul_vertexIdempotent`,
+  `arrowElement_mul_arrowElement_eq_zero`.
+- **Layer 2 (distrib + annihilation, ~150 LOC):**
+  `pathAlgebra_left_distrib`/`_right_distrib`,
+  `pathAlgebra_zero_mul`/`_mul_zero`.
+- **Layer 3 (one_mul + mul_one via bilinearity, ~150 LOC):**
+  `pathAlgebra_sum_mul`/`_mul_sum` (Finset induction),
+  `pathAlgebra_one_mul`, `pathAlgebra_mul_one`.
+- **Layer 4 (Ring instance, ~30 LOC):**
+  `pathAlgebraQuotient.instRing`.
+- **Layer 5 (Algebra ℚ + decompose, ~250 LOC):**
+  `pathAlgebra_smul_mul`/`_mul_smul`,
+  `pathAlgebraQuotient.instAlgebra`,
+  `pathAlgebra_decompose`.
+- **Phase C partial (idempotent + AlgEquiv preservation, ~400 LOC):**
+  `pathAlgebraMul_apply_id`/`_apply_edge` (output-coordinate
+  evaluation lemmas), `pathAlgebra_isIdempotentElem_iff`,
+  `pathAlgebra_idempotent_lambda_squared`,
+  `pathAlgebra_idempotent_mu_constraint`, `IsPrimitiveIdempotent`
+  (hand-rolled), `vertexIdempotent_isIdempotentElem`,
+  `vertexIdempotent_ne_zero`,
+  `AlgEquiv_preserves_isIdempotentElem`,
+  `AlgEquiv_preserves_isPrimitiveIdempotent`,
+  `vertexIdempotent_decomp_lambda_at_v`/`_off_v` (helpers).
+
+**Patch version.** `lakefile.lean` bumped from `0.1.19` to `0.1.20`.
+
+**What remains for full Phase C–H closure:** main
+`vertexIdempotent_isPrimitive` theorem and `isPrimitive_iff_vertex`
+converse (~300 LOC); the actual rigidity argument
+(Phase D, ~700 LOC, **HIGH RISK** per `R-15-residual-TI-reverse`);
+AlgEquiv lift from GL³ (Phase E); vertex permutation extraction
+with arrow invariance (Phase F); composition (Phase G); final
+assembly (Phase H).
+
+**Build posture preserved.** `AlgebraWrapper.lean` has reached
+1,640 LOC of machine-checked algebraic content; every public
+declaration depends only on the standard Lean trio (`propext`,
+`Classical.choice`, `Quot.sound`); `lake build` succeeds cleanly
+across all 3,389 jobs; zero `sorry`, zero custom axioms.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
