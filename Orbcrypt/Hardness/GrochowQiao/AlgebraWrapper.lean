@@ -1035,5 +1035,82 @@ theorem pathAlgebra_mul_one (m : ℕ) (f : pathAlgebraQuotient m) :
       rw [if_neg hv]
     · intro h; exact absurd (Finset.mem_univ _) h
 
+-- ============================================================================
+-- Layer 4 — Ring instance.
+-- ============================================================================
+
+/-- **The path algebra is a ring.**
+
+The full `Ring` typeclass instance combining all the previous
+layers' results: `pathAlgebraMul_assoc` (Layer 0),
+`pathAlgebra_one_mul`/`pathAlgebra_mul_one` (Layer 3),
+`pathAlgebra_left_distrib`/`pathAlgebra_right_distrib` (Layer 2),
+`pathAlgebra_zero_mul`/`pathAlgebra_mul_zero` (Layer 2). -/
+noncomputable instance pathAlgebraQuotient.instRing (m : ℕ) :
+    Ring (pathAlgebraQuotient m) :=
+  { pathAlgebraQuotient.addCommGroup m,
+    pathAlgebraQuotient.instMul m,
+    pathAlgebraQuotient.instOne m with
+    mul_assoc := pathAlgebraMul_assoc m
+    one_mul := pathAlgebra_one_mul m
+    mul_one := pathAlgebra_mul_one m
+    left_distrib := pathAlgebra_left_distrib m
+    right_distrib := pathAlgebra_right_distrib m
+    zero_mul := pathAlgebra_zero_mul m
+    mul_zero := pathAlgebra_mul_zero m }
+
+-- ============================================================================
+-- Layer 5 — Algebra ℚ instance + decomposition + basis.
+-- ============================================================================
+
+/-- **Smul-mul compatibility (left)** (Layer 5.1).
+
+`(r • f) * g = r • (f * g)` — the bilinear product respects scalar
+multiplication on the left factor. -/
+theorem pathAlgebra_smul_mul (m : ℕ) (r : ℚ) (f g : pathAlgebraQuotient m) :
+    pathAlgebraMul m (r • f) g = r • pathAlgebraMul m f g := by
+  funext c
+  show (∑ a, ∑ b, (r • f) a * g b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+       r * (∑ a, ∑ b, f a * g b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0))
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl; intros a _
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl; intros b _
+  show (r • f) a * g b * _ = r * (f a * g b * _)
+  rw [show (r • f) a = r * f a from rfl]
+  ring
+
+/-- **Smul-mul compatibility (right)** (Layer 5.1b). -/
+theorem pathAlgebra_mul_smul (m : ℕ) (r : ℚ) (f g : pathAlgebraQuotient m) :
+    pathAlgebraMul m f (r • g) = r • pathAlgebraMul m f g := by
+  funext c
+  show (∑ a, ∑ b, f a * (r • g) b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+       r * (∑ a, ∑ b, f a * g b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0))
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl; intros a _
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl; intros b _
+  show f a * (r • g) b * _ = r * (f a * g b * _)
+  rw [show (r • g) b = r * g b from rfl]
+  ring
+
+/-- **Algebra ℚ instance** (Layer 5.2).
+
+The path algebra is a ℚ-algebra: scalar multiplication is compatible
+with both factors of the multiplication. -/
+noncomputable instance pathAlgebraQuotient.instAlgebra (m : ℕ) :
+    Algebra ℚ (pathAlgebraQuotient m) :=
+  Algebra.ofModule
+    (fun r f g => by
+      show pathAlgebraMul m (r • f) g = r • pathAlgebraMul m f g
+      exact pathAlgebra_smul_mul m r f g)
+    (fun r f g => by
+      show pathAlgebraMul m f (r • g) = r • pathAlgebraMul m f g
+      exact pathAlgebra_mul_smul m r f g)
+
 end GrochowQiao
 end Orbcrypt
