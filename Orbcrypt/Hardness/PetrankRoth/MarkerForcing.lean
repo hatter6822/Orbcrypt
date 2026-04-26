@@ -166,5 +166,364 @@ theorem colWeight_permuteCodeword_image {n : ℕ}
     have : π⁻¹ (π i) = i := π.symm_apply_apply i
     rw [this]; exact h
 
+-- ============================================================================
+-- Sub-task 3.3 — Column-weight signatures of the four codeword families.
+-- ============================================================================
+--
+-- For the directed-edge encoder, each column kind has a characteristic
+-- column-weight signature, computed as the sum of contributions from
+-- the four codeword families.  These signatures form the basis for the
+-- column-kind discriminator (Sub-task 3.4) used by the marker-forcing
+-- reverse direction (Layer 4).
+
+/-- Column weight of `prEncode m adj` at a vertex column.
+
+The vertex column for `v : Fin m` is true in:
+* The `vertexCodeword m v` (always, weight 1).
+* Each `edgeCodeword m adj e` where `edgePresent m adj e = true` and
+  `v ∈ {(edgeEndpoints m e).1, (edgeEndpoints m e).2}`.
+
+Marker codewords and the sentinel codeword are always false at vertex
+columns.  The closed-form expression decomposes into the constant
+contribution (1, from the vertex codeword) plus the count of
+present-edge incidences. -/
+theorem colWeight_prEncode_at_vertex (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (v : Fin m) :
+    colWeight (prEncode m adj) (prCoord m (.vertex v)) =
+    1 + ((Finset.univ : Finset (Fin (numEdges m))).filter
+          (fun e => edgePresent m adj e ∧
+                    (v = (edgeEndpoints m e).1 ∨
+                     v = (edgeEndpoints m e).2))).card := by
+  classical
+  -- Decompose `prEncode m adj` into its four components.
+  unfold colWeight prEncode
+  -- The four families.
+  set V : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (vertexCodeword m) with hV
+  set E : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (edgeCodeword m adj) with hE
+  set M : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (Function.uncurry (markerCodeword m)) with hM
+  set S : Finset (Fin (dimPR m) → Bool) := {sentinelCodeword m} with hS
+  -- Filter distributes over union.
+  show ((((V ∪ E) ∪ M) ∪ S).filter
+        (fun c => c (prCoord m (.vertex v)) = true)).card = _
+  rw [Finset.filter_union, Finset.filter_union, Finset.filter_union]
+  -- Each family contributes:
+  -- V: vertexCodeword v evaluates to true at vertex v's column iff
+  --    the codeword's "v" matches our column's "v".  So the filtered
+  --    image is {vertexCodeword m v}, with cardinality 1.
+  have hVfilter :
+      (V.filter (fun c => c (prCoord m (.vertex v)) = true)) =
+      ({vertexCodeword m v} : Finset (Fin (dimPR m) → Bool)) := by
+    ext c
+    rw [hV, Finset.mem_filter, Finset.mem_image, Finset.mem_singleton]
+    constructor
+    · rintro ⟨⟨v', _, hv'⟩, htrue⟩
+      -- c = vertexCodeword m v', and c at vertex column v is true.
+      subst hv'
+      -- vertexCodeword m v' (prCoord m (.vertex v)) = decide (v = v') = true.
+      rw [vertexCodeword_at_vertex] at htrue
+      have := of_decide_eq_true htrue
+      subst this
+      rfl
+    · intro h
+      subst h
+      refine ⟨⟨v, Finset.mem_univ _, rfl⟩, ?_⟩
+      rw [vertexCodeword_at_vertex]
+      simp
+  -- E: edgeCodeword adj e evaluates to true at vertex v's column iff
+  --    edgePresent adj e AND v is one of the endpoints of e.
+  have hEfilter :
+      (E.filter (fun c => c (prCoord m (.vertex v)) = true)).card =
+      ((Finset.univ : Finset (Fin (numEdges m))).filter
+          (fun e => edgePresent m adj e ∧
+                    (v = (edgeEndpoints m e).1 ∨
+                     v = (edgeEndpoints m e).2))).card := by
+    rw [hE, Finset.filter_image]
+    rw [Finset.card_image_of_injective _ (edgeCodeword_injective m adj)]
+    congr 1
+    ext e
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+    rw [edgeCodeword_at_vertex]
+    -- Goal: (edgePresent && (decide v=p.1 || decide v=p.2)) = true
+    --        ↔ edgePresent ∧ (v = p.1 ∨ v = p.2).
+    constructor
+    · intro h
+      cases hp : edgePresent m adj e with
+      | true =>
+          refine ⟨rfl, ?_⟩
+          rw [hp] at h
+          simp only [Bool.true_and] at h
+          rcases (Bool.or_eq_true _ _).mp h with hl | hr
+          · exact Or.inl (of_decide_eq_true hl)
+          · exact Or.inr (of_decide_eq_true hr)
+      | false =>
+          rw [hp] at h
+          simp only [Bool.false_and] at h
+          exact absurd h (by decide)
+    · rintro ⟨hpres, hvp⟩
+      rw [hpres]
+      simp only [Bool.true_and]
+      rcases hvp with hl | hr
+      · rw [decide_eq_true hl]; rfl
+      · rw [decide_eq_true hr]; simp
+  -- M: marker codewords are always false at vertex columns.
+  have hMfilter :
+      (M.filter (fun c => c (prCoord m (.vertex v)) = true)) = ∅ := by
+    rw [hM]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨⟨e, k⟩, _, hek⟩ := hc
+    simp only [Function.uncurry] at hek
+    subst hek
+    rw [markerCodeword_at_vertex]
+    decide
+  -- S: sentinel codeword is always false at vertex columns.
+  have hSfilter :
+      (S.filter (fun c => c (prCoord m (.vertex v)) = true)) = ∅ := by
+    rw [hS]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_singleton] at hc
+    subst hc
+    rw [sentinelCodeword_at_vertex]
+    decide
+  -- Combine: total count = 1 (V) + (E count) + 0 (M) + 0 (S).
+  -- We rewrite the union step by step using disjointness.
+  rw [hMfilter, hSfilter, Finset.union_empty, Finset.union_empty]
+  -- Goal: ((V filter) ∪ (E filter)).card = 1 + (E count).
+  have hVE : Disjoint
+      (V.filter (fun c => c (prCoord m (.vertex v)) = true))
+      (E.filter (fun c => c (prCoord m (.vertex v)) = true)) := by
+    apply Finset.disjoint_filter_filter
+    rw [hV, hE, Finset.disjoint_left]
+    rintro c hcV hcE
+    rw [Finset.mem_image] at hcV hcE
+    obtain ⟨v', _, hv'⟩ := hcV
+    obtain ⟨e, _, he⟩ := hcE
+    exact vertexCodeword_ne_edgeCodeword m adj v' e (hv'.trans he.symm)
+  rw [Finset.card_union_of_disjoint hVE, hVfilter, Finset.card_singleton, hEfilter]
+
+/-- Column weight of `prEncode m adj` at an incidence column.
+
+The incidence column for edge slot `e` is true in only one codeword
+of `prEncode m adj`: the edge codeword for `e` (regardless of whether
+the edge is present or absent — the incidence column is always set).
+Vertex, marker, and sentinel codewords are all false at incidence
+columns. -/
+theorem colWeight_prEncode_at_incid (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (e : Fin (numEdges m)) :
+    colWeight (prEncode m adj) (prCoord m (.incid e)) = 1 := by
+  classical
+  unfold colWeight prEncode
+  set V : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (vertexCodeword m) with hV
+  set E : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (edgeCodeword m adj) with hE
+  set M : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (Function.uncurry (markerCodeword m)) with hM
+  set S : Finset (Fin (dimPR m) → Bool) := {sentinelCodeword m} with hS
+  show ((((V ∪ E) ∪ M) ∪ S).filter
+        (fun c => c (prCoord m (.incid e)) = true)).card = _
+  rw [Finset.filter_union, Finset.filter_union, Finset.filter_union]
+  -- V: vertex codewords are always false at incidence columns.
+  have hVfilter :
+      (V.filter (fun c => c (prCoord m (.incid e)) = true)) = ∅ := by
+    rw [hV]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨v, _, hv⟩ := hc
+    subst hv
+    rw [vertexCodeword_at_incid]
+    decide
+  -- E: edge codeword for slot e' is true at incid e iff e' = e.
+  -- The image is exactly {edgeCodeword m adj e}.
+  have hEfilter :
+      (E.filter (fun c => c (prCoord m (.incid e)) = true)) =
+      ({edgeCodeword m adj e} : Finset (Fin (dimPR m) → Bool)) := by
+    ext c
+    rw [hE, Finset.mem_filter, Finset.mem_image, Finset.mem_singleton]
+    constructor
+    · rintro ⟨⟨e', _, he'⟩, htrue⟩
+      subst he'
+      rw [edgeCodeword_at_incid] at htrue
+      have := of_decide_eq_true htrue
+      subst this
+      rfl
+    · intro h
+      subst h
+      refine ⟨⟨e, Finset.mem_univ _, rfl⟩, ?_⟩
+      rw [edgeCodeword_at_incid]
+      simp
+  -- M: marker codewords are always false at incidence columns.
+  have hMfilter :
+      (M.filter (fun c => c (prCoord m (.incid e)) = true)) = ∅ := by
+    rw [hM]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨⟨e', k⟩, _, hek⟩ := hc
+    simp only [Function.uncurry] at hek
+    subst hek
+    rw [markerCodeword_at_incid]
+    decide
+  -- S: sentinel codeword is false at incidence columns.
+  have hSfilter :
+      (S.filter (fun c => c (prCoord m (.incid e)) = true)) = ∅ := by
+    rw [hS]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_singleton] at hc
+    subst hc
+    rw [sentinelCodeword_at_incid]
+    decide
+  rw [hVfilter, hEfilter, hMfilter, hSfilter]
+  simp
+
+/-- Column weight of `prEncode m adj` at a marker column.
+
+The marker column for `(e, k)` is true in only one codeword of
+`prEncode m adj`: the marker codeword for `(e, k)`.  All other
+codewords are false at marker columns. -/
+theorem colWeight_prEncode_at_marker (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (e : Fin (numEdges m)) (k : Fin 3) :
+    colWeight (prEncode m adj) (prCoord m (.marker e k)) = 1 := by
+  classical
+  unfold colWeight prEncode
+  set V : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (vertexCodeword m) with hV
+  set E : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (edgeCodeword m adj) with hE
+  set M : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (Function.uncurry (markerCodeword m)) with hM
+  set S : Finset (Fin (dimPR m) → Bool) := {sentinelCodeword m} with hS
+  show ((((V ∪ E) ∪ M) ∪ S).filter
+        (fun c => c (prCoord m (.marker e k)) = true)).card = _
+  rw [Finset.filter_union, Finset.filter_union, Finset.filter_union]
+  have hVfilter :
+      (V.filter (fun c => c (prCoord m (.marker e k)) = true)) = ∅ := by
+    rw [hV]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨v, _, hv⟩ := hc
+    subst hv
+    rw [vertexCodeword_at_marker]
+    decide
+  have hEfilter :
+      (E.filter (fun c => c (prCoord m (.marker e k)) = true)) = ∅ := by
+    rw [hE]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨e', _, he'⟩ := hc
+    subst he'
+    rw [edgeCodeword_at_marker]
+    decide
+  have hMfilter :
+      (M.filter (fun c => c (prCoord m (.marker e k)) = true)) =
+      ({markerCodeword m e k} : Finset (Fin (dimPR m) → Bool)) := by
+    ext c
+    rw [hM, Finset.mem_filter, Finset.mem_image, Finset.mem_singleton]
+    constructor
+    · rintro ⟨⟨⟨e', k'⟩, _, hek'⟩, htrue⟩
+      simp only [Function.uncurry] at hek'
+      subst hek'
+      rw [markerCodeword_at_marker] at htrue
+      have h := of_decide_eq_true htrue
+      obtain ⟨he, hk⟩ := h
+      subst he; subst hk
+      rfl
+    · intro h
+      subst h
+      refine ⟨⟨(e, k), Finset.mem_univ _, ?_⟩, ?_⟩
+      · simp [Function.uncurry]
+      · rw [markerCodeword_at_marker]; simp
+  have hSfilter :
+      (S.filter (fun c => c (prCoord m (.marker e k)) = true)) = ∅ := by
+    rw [hS]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_singleton] at hc
+    subst hc
+    rw [sentinelCodeword_at_marker]
+    decide
+  rw [hVfilter, hEfilter, hMfilter, hSfilter]
+  simp
+
+/-- Column weight of `prEncode m adj` at the sentinel column.
+
+The sentinel column is true in only one codeword of `prEncode m adj`:
+the sentinel codeword.  All other codewords (vertex, edge, marker)
+are false at the sentinel column. -/
+theorem colWeight_prEncode_at_sentinel (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    colWeight (prEncode m adj)
+              (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) = 1 := by
+  classical
+  unfold colWeight prEncode
+  set V : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (vertexCodeword m) with hV
+  set E : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (edgeCodeword m adj) with hE
+  set M : Finset (Fin (dimPR m) → Bool) :=
+    Finset.univ.image (Function.uncurry (markerCodeword m)) with hM
+  set S : Finset (Fin (dimPR m) → Bool) := {sentinelCodeword m} with hS
+  show ((((V ∪ E) ∪ M) ∪ S).filter
+        (fun c => c (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) =
+                  true)).card = _
+  rw [Finset.filter_union, Finset.filter_union, Finset.filter_union]
+  have hVfilter :
+      (V.filter (fun c => c (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) =
+                          true)) = ∅ := by
+    rw [hV]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨v, _, hv⟩ := hc
+    subst hv
+    rw [vertexCodeword_at_sentinel]
+    decide
+  have hEfilter :
+      (E.filter (fun c => c (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) =
+                          true)) = ∅ := by
+    rw [hE]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨e, _, he⟩ := hc
+    subst he
+    rw [edgeCodeword_at_sentinel]
+    decide
+  have hMfilter :
+      (M.filter (fun c => c (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) =
+                          true)) = ∅ := by
+    rw [hM]
+    apply Finset.filter_eq_empty_iff.mpr
+    intro c hc
+    rw [Finset.mem_image] at hc
+    obtain ⟨⟨e, k⟩, _, hek⟩ := hc
+    simp only [Function.uncurry] at hek
+    subst hek
+    rw [markerCodeword_at_sentinel]
+    decide
+  have hSfilter :
+      (S.filter (fun c => c (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) =
+                          true)) =
+      ({sentinelCodeword m} : Finset (Fin (dimPR m) → Bool)) := by
+    rw [hS]
+    apply Finset.ext
+    intro c
+    simp only [Finset.mem_filter, Finset.mem_singleton]
+    constructor
+    · intro ⟨h1, _⟩; exact h1
+    · intro h; subst h
+      refine ⟨rfl, ?_⟩
+      rw [sentinelCodeword_at_sentinel]
+  rw [hVfilter, hEfilter, hMfilter, hSfilter]
+  simp
+
 end PetrankRoth
 end Orbcrypt
