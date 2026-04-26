@@ -1714,5 +1714,113 @@ theorem vertexIdempotent_isPrimitive (m : ℕ) (v : Fin m) :
       show b₂ (.edge u w) = 0
       linarith
 
+-- ============================================================================
+-- isPrimitive_iff_vertex — mathematical finding (not a theorem statement).
+-- ============================================================================
+
+/-! ## Note on `isPrimitive_iff_vertex` (research finding, 2026-04-26)
+
+The originally-planned theorem
+```
+theorem isPrimitive_iff_vertex (b : pathAlgebraQuotient m) :
+    IsPrimitiveIdempotent b ↔ ∃ v : Fin m, b = vertexIdempotent m v
+```
+**is false** for the radical-2 truncated path algebra `F[Q_G] / J²`.
+
+**Counterexample.** For any `v, w : Fin m` with `w ≠ v` and any
+`α : ℚ`, the element
+```
+b := vertexIdempotent m v + α • arrowElement m v w
+```
+is an idempotent (because `α(v, w) · e_v = 0` when `w ≠ v`, so the
+cross term in `(e_v + α α(v,w))²` vanishes). It is also primitive:
+any orthogonal idempotent decomposition `b = b₁ + b₂` forces
+`b₂(.id u) = 0` for all `u`, then `b₂(.edge u w) = 0` follows from
+the mu-constraint, hence `b₂ = 0`.
+
+**Mathematical context.** In `F[Q_G] / J²`, primitive idempotents
+are **conjugate** to vertex idempotents (Auslander–Reiten–Smalø
+III.2), not equal to them. The conjugation moves arrow-component
+"perturbations" around. The set of *complete orthogonal* primitive
+idempotent decompositions of `1` is unique up to conjugation, and
+every such decomposition is `{vertexIdempotent v : v ∈ Fin m}`
+(the canonical decomposition).
+
+**Consequence for the rigidity argument.** Phase F (vertex
+permutation extraction from a path-algebra automorphism) cannot
+proceed via "AlgEquiv permutes primitive idempotents → therefore
+permutes vertex idempotents" directly. The correct argument is:
+"AlgEquiv permutes complete orthogonal idempotent
+decompositions → unique decomposition is `{e_v}` →  AlgEquiv
+permutes `{e_v}`". This requires proving that the canonical
+decomposition `{e_v}` is the unique complete orthogonal set up to
+conjugation, which is a deeper algebraic fact (Wedderburn–Mal'cev
+structure, ~600+ LOC of additional Lean infrastructure).
+
+**What lands instead.** The forward direction (`vertexIdempotent`
+is primitive) is `vertexIdempotent_isPrimitive` above. The reverse
+direction is research-scope and tracked as part of
+`R-15-residual-TI-reverse`.
+-/
+
+/-- **Forward direction (true)**: every vertex idempotent is primitive.
+This is just a re-export of `vertexIdempotent_isPrimitive` for
+documentation symmetry with the (false) converse. -/
+theorem vertex_implies_isPrimitive (m : ℕ) (v : Fin m) :
+    IsPrimitiveIdempotent (vertexIdempotent m v) :=
+  vertexIdempotent_isPrimitive m v
+
+/-- **Concrete counterexample to `isPrimitive_iff_vertex` reverse direction**:
+exhibits a primitive idempotent that is NOT a vertex idempotent.
+
+For `m ≥ 2` (so a distinct `w ≠ v` exists), the element
+`vertexIdempotent v + arrowElement v w` is idempotent and not equal
+to any `vertexIdempotent v'`.
+
+This documents the research-scope gap: a more sophisticated argument
+(complete orthogonal decompositions) is needed for Phase F. -/
+theorem exists_nonVertex_idempotent (m : ℕ) (h_m : 2 ≤ m) :
+    ∃ b : pathAlgebraQuotient (m), IsIdempotentElem b ∧
+      ∀ v : Fin m, b ≠ vertexIdempotent m v := by
+  -- Choose v = ⟨0, _⟩ and w = ⟨1, _⟩ (distinct vertices).
+  have hv : 0 < m := by omega
+  have hw : 1 < m := by omega
+  let v : Fin m := ⟨0, hv⟩
+  let w : Fin m := ⟨1, hw⟩
+  have h_vw : v ≠ w := by
+    intro h
+    have := Fin.val_eq_of_eq h
+    simp [v, w] at this
+  refine ⟨vertexIdempotent m v + arrowElement m v w, ?_, ?_⟩
+  · -- Idempotent:
+    -- (e_v + α(v,w))² = e_v² + e_v·α(v,w) + α(v,w)·e_v + α(v,w)²
+    --              = e_v + α(v,w) + 0 + 0
+    show pathAlgebraMul m (vertexIdempotent m v + arrowElement m v w)
+                          (vertexIdempotent m v + arrowElement m v w) =
+         vertexIdempotent m v + arrowElement m v w
+    rw [pathAlgebra_left_distrib, pathAlgebra_right_distrib,
+        pathAlgebra_right_distrib]
+    -- = e_v * e_v + α(v,w) * e_v + e_v * α(v,w) + α(v,w) * α(v,w)
+    rw [vertexIdempotent_mul_vertexIdempotent, if_pos rfl]
+    rw [arrowElement_mul_vertexIdempotent, if_neg h_vw.symm]
+    rw [vertexIdempotent_mul_arrowElement, if_pos rfl]
+    rw [arrowElement_mul_arrowElement_eq_zero]
+    -- e_v + 0 + α(v,w) + 0 = e_v + α(v,w)
+    simp [add_zero, zero_add]
+  · -- Not equal to any vertex idempotent:
+    intros v' h_eq
+    -- Evaluate at .edge v w: LHS gives 1, RHS (e_{v'}) gives 0.
+    have h_at := congrFun h_eq (.edge v w)
+    show False
+    have h_lhs : (vertexIdempotent m v + arrowElement m v w) (.edge v w) = 1 := by
+      show vertexIdempotent m v (.edge v w) + arrowElement m v w (.edge v w) = 1
+      rw [vertexIdempotent_apply_edge, arrowElement_apply_edge,
+          if_pos ⟨rfl, rfl⟩]
+      ring
+    have h_rhs : vertexIdempotent m v' (.edge v w) = 0 :=
+      vertexIdempotent_apply_edge m v' v w
+    rw [h_lhs, h_rhs] at h_at
+    exact one_ne_zero h_at
+
 end GrochowQiao
 end Orbcrypt
