@@ -870,5 +870,170 @@ theorem arrowElement_mul_arrowElement_eq_zero (m : ℕ) (u v u' w' : Fin m) :
       rw [pathMul_edge_edge_none]
       simp
 
+-- ============================================================================
+-- Layer 2 — Distributivity + Annihilation.
+-- ============================================================================
+
+/-- **Left distributivity** (Layer 2.1).
+
+`f * (g + h) = f * g + f * h`. Direct from bilinearity of the
+inner expression `f a · (g b + h b) · indicator`. -/
+theorem pathAlgebra_left_distrib (m : ℕ) (f g h : pathAlgebraQuotient m) :
+    pathAlgebraMul m f (g + h) = pathAlgebraMul m f g + pathAlgebraMul m f h := by
+  funext c
+  show (∑ a, ∑ b, f a * (g + h) b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+       (∑ a, ∑ b, f a * g b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) +
+       (∑ a, ∑ b, f a * h b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0))
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intros a _
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intros b _
+  show f a * (g b + h b) * _ = f a * g b * _ + f a * h b * _
+  ring
+
+/-- **Right distributivity** (Layer 2.2).
+
+`(f + g) * h = f * h + g * h`. -/
+theorem pathAlgebra_right_distrib (m : ℕ) (f g h : pathAlgebraQuotient m) :
+    pathAlgebraMul m (f + g) h = pathAlgebraMul m f h + pathAlgebraMul m g h := by
+  funext c
+  show (∑ a, ∑ b, (f + g) a * h b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+       (∑ a, ∑ b, f a * h b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) +
+       (∑ a, ∑ b, g a * h b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0))
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intros a _
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intros b _
+  show (f a + g a) * h b * _ = f a * h b * _ + g a * h b * _
+  ring
+
+/-- **Zero left annihilation** (Layer 2.3).
+
+`0 * f = 0`. -/
+theorem pathAlgebra_zero_mul (m : ℕ) (f : pathAlgebraQuotient m) :
+    pathAlgebraMul m 0 f = 0 := by
+  funext c
+  show (∑ a, ∑ b, (0 : pathAlgebraQuotient m) a * f b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+       (0 : pathAlgebraQuotient m) c
+  rw [show (0 : pathAlgebraQuotient m) c = (0 : ℚ) from rfl]
+  apply Finset.sum_eq_zero
+  intros a _
+  apply Finset.sum_eq_zero
+  intros b _
+  show (0 : pathAlgebraQuotient m) a * f b * _ = 0
+  rw [show (0 : pathAlgebraQuotient m) a = (0 : ℚ) from rfl]
+  ring
+
+/-- **Zero right annihilation** (Layer 2.4).
+
+`f * 0 = 0`. -/
+theorem pathAlgebra_mul_zero (m : ℕ) (f : pathAlgebraQuotient m) :
+    pathAlgebraMul m f 0 = 0 := by
+  funext c
+  show (∑ a, ∑ b, f a * (0 : pathAlgebraQuotient m) b *
+          (if pathMul m a b = some c then (1 : ℚ) else 0)) =
+       (0 : pathAlgebraQuotient m) c
+  rw [show (0 : pathAlgebraQuotient m) c = (0 : ℚ) from rfl]
+  apply Finset.sum_eq_zero
+  intros a _
+  apply Finset.sum_eq_zero
+  intros b _
+  show f a * (0 : pathAlgebraQuotient m) b * _ = 0
+  rw [show (0 : pathAlgebraQuotient m) b = (0 : ℚ) from rfl]
+  ring
+
+-- ============================================================================
+-- Layer 3 — `one_mul` + `mul_one` via bilinearity.
+-- ============================================================================
+
+/-- **Helper: pathAlgebraMul distributes over Finset sums on the left.** -/
+private lemma pathAlgebra_sum_mul {ι : Type*} (m : ℕ) (s : Finset ι)
+    (g : ι → pathAlgebraQuotient m) (f : pathAlgebraQuotient m) :
+    pathAlgebraMul m (∑ i ∈ s, g i) f = ∑ i ∈ s, pathAlgebraMul m (g i) f := by
+  classical
+  induction s using Finset.induction_on with
+  | empty =>
+    rw [Finset.sum_empty, Finset.sum_empty]
+    exact pathAlgebra_zero_mul m f
+  | @insert i s' i_not_mem ih =>
+    rw [Finset.sum_insert i_not_mem, Finset.sum_insert i_not_mem]
+    rw [pathAlgebra_right_distrib, ih]
+
+/-- **Helper: pathAlgebraMul distributes over Finset sums on the right.** -/
+private lemma pathAlgebra_mul_sum {ι : Type*} (m : ℕ) (f : pathAlgebraQuotient m)
+    (s : Finset ι) (g : ι → pathAlgebraQuotient m) :
+    pathAlgebraMul m f (∑ i ∈ s, g i) = ∑ i ∈ s, pathAlgebraMul m f (g i) := by
+  classical
+  induction s using Finset.induction_on with
+  | empty =>
+    rw [Finset.sum_empty, Finset.sum_empty]
+    exact pathAlgebra_mul_zero m f
+  | @insert i s' i_not_mem ih =>
+    rw [Finset.sum_insert i_not_mem, Finset.sum_insert i_not_mem]
+    rw [pathAlgebra_left_distrib, ih]
+
+/-- **`1 * f = f` in the path algebra** (Layer 3.1). -/
+theorem pathAlgebra_one_mul (m : ℕ) (f : pathAlgebraQuotient m) :
+    pathAlgebraMul m (pathAlgebraOne m) f = f := by
+  -- Step 1: 1 = ∑_v e_v, distribute: (∑_v e_v) * f = ∑_v (e_v * f).
+  show pathAlgebraMul m (∑ v : Fin m, vertexIdempotent m v) f = f
+  rw [pathAlgebra_sum_mul]
+  -- Step 2: per-c evaluation via L1.5.
+  funext c
+  rw [sum_pathAlg_apply]
+  cases c with
+  | id z =>
+    -- ∑_v (e_v * f) (.id z) = ∑_v (if v = z then f(.id z) else 0) = f(.id z)
+    simp_rw [vertexIdempotent_mul_apply_id]
+    rw [Finset.sum_eq_single z]
+    · rw [if_pos rfl]
+    · intros v _ hv
+      rw [if_neg hv]
+    · intro h; exact absurd (Finset.mem_univ _) h
+  | edge u w =>
+    simp_rw [vertexIdempotent_mul_apply_edge]
+    rw [Finset.sum_eq_single u]
+    · rw [if_pos rfl]
+    · intros v _ hv
+      rw [if_neg hv]
+    · intro h; exact absurd (Finset.mem_univ _) h
+
+/-- **`f * 1 = f` in the path algebra** (Layer 3.2). -/
+theorem pathAlgebra_mul_one (m : ℕ) (f : pathAlgebraQuotient m) :
+    pathAlgebraMul m f (pathAlgebraOne m) = f := by
+  show pathAlgebraMul m f (∑ v : Fin m, vertexIdempotent m v) = f
+  rw [pathAlgebra_mul_sum]
+  funext c
+  rw [sum_pathAlg_apply]
+  cases c with
+  | id z =>
+    -- ∑_v (f * e_v) (.id z) = ∑_v (if v = z then f(.id z) else 0) = f(.id z)
+    simp_rw [mul_vertexIdempotent_apply_id]
+    rw [Finset.sum_eq_single z]
+    · rw [if_pos rfl]
+    · intros v _ hv
+      rw [if_neg hv]
+    · intro h; exact absurd (Finset.mem_univ _) h
+  | edge u w =>
+    -- For c = .edge u w: f * e_v at .edge u w = (if v = w then f(.edge u w) else 0).
+    -- Sum over v: only v = w contributes f(.edge u w).
+    simp_rw [mul_vertexIdempotent_apply_edge]
+    rw [Finset.sum_eq_single w]
+    · rw [if_pos rfl]
+    · intros v _ hv
+      rw [if_neg hv]
+    · intro h; exact absurd (Finset.mem_univ _) h
+
 end GrochowQiao
 end Orbcrypt
