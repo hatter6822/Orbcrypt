@@ -1112,5 +1112,80 @@ noncomputable instance pathAlgebraQuotient.instAlgebra (m : ℕ) :
       show pathAlgebraMul m f (r • g) = r • pathAlgebraMul m f g
       exact pathAlgebra_mul_smul m r f g)
 
+/-- **Decomposition into vertex + arrow basis components** (Layer 5.3).
+
+Every element of the path algebra splits canonically into a sum of
+vertex-idempotent components and arrow-element components:
+```
+f = (∑_v f(.id v) • e_v) + (∑_{(u,v)} f(.edge u v) • α(u, v))
+```
+-/
+theorem pathAlgebra_decompose (m : ℕ) (f : pathAlgebraQuotient m) :
+    f = (∑ v : Fin m, f (.id v) • vertexIdempotent m v) +
+        (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) := by
+  funext c
+  show f c =
+    ((∑ v : Fin m, f (.id v) • vertexIdempotent m v) +
+     (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2)) c
+  rw [show ((∑ v : Fin m, f (.id v) • vertexIdempotent m v) +
+            (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2)) c
+        = (∑ v : Fin m, f (.id v) • vertexIdempotent m v) c +
+          (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) c from rfl]
+  rw [sum_pathAlg_apply]
+  -- Second sum is over Fin m × Fin m; need a different sum_apply.
+  show f c = (∑ v : Fin m, (f (.id v) • vertexIdempotent m v) c) +
+             (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) c
+  cases c with
+  | id z =>
+    -- ∑_v f(.id v) • e_v at .id z = ∑_v f(.id v) * (e_v)(.id z) = f(.id z)
+    have h_arrow_sum_zero :
+        (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.id z) = 0 := by
+      show (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.id z) = 0
+      rw [show (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.id z) =
+              ∑ p : Fin m × Fin m, (f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.id z) from
+            Finset.sum_apply _ _ _]
+      apply Finset.sum_eq_zero
+      intros p _
+      show f (.edge p.1 p.2) * arrowElement m p.1 p.2 (.id z) = 0
+      rw [arrowElement_apply_id]
+      ring
+    rw [h_arrow_sum_zero, add_zero]
+    rw [Finset.sum_eq_single z]
+    · show f (.id z) = (f (.id z) • vertexIdempotent m z) (.id z)
+      show f (.id z) = f (.id z) * vertexIdempotent m z (.id z)
+      rw [vertexIdempotent_apply_id, if_pos rfl, mul_one]
+    · intros v _ hv
+      show (f (.id v) • vertexIdempotent m v) (.id z) = 0
+      show f (.id v) * vertexIdempotent m v (.id z) = 0
+      rw [vertexIdempotent_apply_id, if_neg hv]
+      ring
+    · intro h; exact absurd (Finset.mem_univ _) h
+  | edge u w =>
+    have h_vertex_sum_zero :
+        (∑ v : Fin m, (f (.id v) • vertexIdempotent m v) (.edge u w)) = 0 := by
+      apply Finset.sum_eq_zero
+      intros v _
+      show f (.id v) * vertexIdempotent m v (.edge u w) = 0
+      rw [vertexIdempotent_apply_edge]
+      ring
+    rw [h_vertex_sum_zero, zero_add]
+    show f (.edge u w) =
+      (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.edge u w)
+    rw [show (∑ p : Fin m × Fin m, f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.edge u w) =
+            ∑ p : Fin m × Fin m, (f (.edge p.1 p.2) • arrowElement m p.1 p.2) (.edge u w) from
+          Finset.sum_apply _ _ _]
+    rw [Finset.sum_eq_single (u, w)]
+    · show f (.edge u w) = f (.edge u w) * arrowElement m u w (.edge u w)
+      rw [arrowElement_apply_edge, if_pos ⟨rfl, rfl⟩, mul_one]
+    · rintro ⟨u', w'⟩ _ hp
+      show f (.edge u' w') * arrowElement m u' w' (.edge u w) = 0
+      rw [arrowElement_apply_edge]
+      by_cases h : u' = u ∧ w' = w
+      · obtain ⟨h_u, h_w⟩ := h
+        subst h_u; subst h_w
+        exact absurd rfl hp
+      · rw [if_neg h]; ring
+    · intro h; exact absurd (Finset.mem_univ _) h
+
 end GrochowQiao
 end Orbcrypt
