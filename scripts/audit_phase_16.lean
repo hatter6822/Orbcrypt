@@ -1904,23 +1904,40 @@ end NonVacuityWitnesses
 #print axioms Orbcrypt.PetrankRoth.numEdges
 #print axioms Orbcrypt.PetrankRoth.dimPR
 #print axioms Orbcrypt.PetrankRoth.codeSizePR
+#print axioms Orbcrypt.PetrankRoth.numEdges_zero
+#print axioms Orbcrypt.PetrankRoth.numEdges_one
+#print axioms Orbcrypt.PetrankRoth.numEdges_two
+#print axioms Orbcrypt.PetrankRoth.numEdges_three
+#print axioms Orbcrypt.PetrankRoth.numEdges_four
 #print axioms Orbcrypt.PetrankRoth.numEdges_le
 #print axioms Orbcrypt.PetrankRoth.dimPR_pos
 #print axioms Orbcrypt.PetrankRoth.codeSizePR_pos
 #print axioms Orbcrypt.PetrankRoth.dimPR_eq_codeSizePR
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.toSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.ofSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.ofSum_toSum
+#print axioms Orbcrypt.PetrankRoth.PRCoordKind.toSum_ofSum
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.equivSum
 #print axioms Orbcrypt.PetrankRoth.PRCoordKind.instFintype
-#print axioms Orbcrypt.PetrankRoth.EdgeSlot.toPair
-#print axioms Orbcrypt.PetrankRoth.sum_fin_val_eq_numEdges
+#print axioms Orbcrypt.PetrankRoth.EdgeSlot
+#print axioms Orbcrypt.PetrankRoth.otherVertex
+#print axioms Orbcrypt.PetrankRoth.otherVertex_ne_self
+#print axioms Orbcrypt.PetrankRoth.otherVertexInverse
+#print axioms Orbcrypt.PetrankRoth.otherVertex_otherVertexInverse
+#print axioms Orbcrypt.PetrankRoth.otherVertexInverse_otherVertex
 #print axioms Orbcrypt.PetrankRoth.edgeSlot_card
 #print axioms Orbcrypt.PetrankRoth.edgeSlotEquiv
 #print axioms Orbcrypt.PetrankRoth.edgeEndpoints
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_ne
 #print axioms Orbcrypt.PetrankRoth.edgeIndex
-#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_lt
 #print axioms Orbcrypt.PetrankRoth.edgeEndpoints_edgeIndex
 #print axioms Orbcrypt.PetrankRoth.edgeIndex_edgeEndpoints
 #print axioms Orbcrypt.PetrankRoth.prCoord
+#print axioms Orbcrypt.PetrankRoth.prCoord_vertex_val
+#print axioms Orbcrypt.PetrankRoth.prCoord_incid_val
+#print axioms Orbcrypt.PetrankRoth.prCoord_marker_val
+#print axioms Orbcrypt.PetrankRoth.prCoord_sentinel_val
 #print axioms Orbcrypt.PetrankRoth.prCoordKind
 #print axioms Orbcrypt.PetrankRoth.prCoord_prCoordKind
 #print axioms Orbcrypt.PetrankRoth.prCoordKind_prCoord
@@ -1931,21 +1948,24 @@ open Orbcrypt.PetrankRoth
 
 /-- **R-CE Layer 0 non-vacuity witness.** `numEdges`, `dimPR`,
     `codeSizePR` evaluate to the expected closed-form values at small
-    `m`, and `codeSizePR_pos` discharges the strengthened
+    `m` (under the directed-edge enumeration `numEdges m = m * (m -
+    1)`), and `codeSizePR_pos` discharges the strengthened
     `GIReducesToCE` Prop's `codeSize_pos` field at `m = 0`. -/
-example : numEdges 4 = 6 ∧ dimPR 3 = 16 ∧ codeSizePR 3 = 16 ∧
+example : numEdges 4 = 12 ∧ dimPR 3 = 28 ∧ codeSizePR 3 = 28 ∧
           (0 < codeSizePR 0) :=
   ⟨rfl, rfl, rfl, codeSizePR_pos 0⟩
 
 /-- **R-CE Layer 0 non-vacuity witness.** `prCoord` evaluates to
     distinct columns for distinct constructor families, exhibiting
     the four-family partition structure that downstream layers
-    consume. -/
+    consume.  At `m = 3` (with `numEdges 3 = 6` directed slots) the
+    incidence range is `[3, 9)`, the marker range is `[9, 27)`, and
+    the sentinel is at column `27`. -/
 example :
     (prCoord 3 (.vertex ⟨0, by decide⟩)).val = 0 ∧
     (prCoord 3 (.incid ⟨0, by decide⟩)).val = 3 ∧
-    (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 6 ∧
-    (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 15 :=
+    (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 9 ∧
+    (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 27 :=
   ⟨rfl, rfl, rfl, rfl⟩
 
 /-- **R-CE Layer 0 non-vacuity witness.** `prCoordEquiv` round-trips
@@ -1967,3 +1987,233 @@ example :
   edgeEndpoints_edgeIndex 3 _ _ _
 
 end PetrankRothLayer0NonVacuity
+
+-- ============================================================================
+-- R-CE Layer 1 — Petrank–Roth encoder + cardinality
+-- (`Orbcrypt/Hardness/PetrankRoth.lean`)
+-- ============================================================================
+
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword
+#print axioms Orbcrypt.PetrankRoth.edgePresent
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword
+#print axioms Orbcrypt.PetrankRoth.markerCodeword
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword
+-- Codeword evaluation simp lemmas (Layer 1.2):
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_at_sentinel
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_at_sentinel
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_at_sentinel
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_vertex
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_incid
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_marker
+#print axioms Orbcrypt.PetrankRoth.sentinelCodeword_at_sentinel
+-- Within-family injectivity (Layer 1.3):
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_injective
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_injective
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_injective
+-- Cross-family disjointness (Layer 1.4):
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_edgeCodeword
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_markerCodeword
+#print axioms Orbcrypt.PetrankRoth.vertexCodeword_ne_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_ne_markerCodeword
+#print axioms Orbcrypt.PetrankRoth.edgeCodeword_ne_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.markerCodeword_ne_sentinelCodeword
+-- Encoder + cardinality (Layers 1.5–1.6):
+#print axioms Orbcrypt.PetrankRoth.prEncode
+#print axioms Orbcrypt.PetrankRoth.prEncode_card
+#print axioms Orbcrypt.PetrankRoth.mem_prEncode
+
+namespace PetrankRothLayer1NonVacuity
+open Orbcrypt.PetrankRoth
+
+/-- **R-CE Layer 1 non-vacuity witness.** `prEncode_card` discharges
+    the `(encode m adj).card = codeSize m` non-degeneracy field of the
+    strengthened `GIReducesToCE` Prop at concrete small graphs. -/
+example : (prEncode 3 (fun _ _ => false)).card = codeSizePR 3 :=
+  prEncode_card 3 _
+
+example : (prEncode 3 (fun i j => decide (i.val + j.val = 1))).card =
+          codeSizePR 3 :=
+  prEncode_card 3 _
+
+end PetrankRothLayer1NonVacuity
+
+-- ============================================================================
+-- R-CE Layer 2 — Petrank–Roth forward direction (liftAut + prEncode_forward)
+-- (`Orbcrypt/Hardness/PetrankRoth.lean`)
+-- ============================================================================
+
+-- Edge permutation (Layer 2.1–2.2):
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePermFun
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePermFun_left_inv
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_apply
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_symm_apply
+#print axioms Orbcrypt.PetrankRoth.liftedEdgePerm_one
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePermFun
+#print axioms Orbcrypt.PetrankRoth.edgeEndpoints_liftedEdgePerm
+-- liftAut construction (Layer 2.3):
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_vertex
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_incid
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_marker
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_sentinel
+#print axioms Orbcrypt.PetrankRoth.liftAutKindFun_left_inv
+#print axioms Orbcrypt.PetrankRoth.liftAutKind
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_apply
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_symm_apply
+#print axioms Orbcrypt.PetrankRoth.liftAut
+#print axioms Orbcrypt.PetrankRoth.liftAut_apply
+#print axioms Orbcrypt.PetrankRoth.liftAut_symm_apply
+-- Group-homomorphism lemmas (Layer 2.4):
+#print axioms Orbcrypt.PetrankRoth.liftAutKind_one
+#print axioms Orbcrypt.PetrankRoth.liftAut_one
+-- Forward action lemmas (Layer 2.5–2.8):
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_vertexCodeword
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_markerCodeword
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_sentinelCodeword
+#print axioms Orbcrypt.PetrankRoth.edgePresent_liftedEdgePerm
+#print axioms Orbcrypt.PetrankRoth.permuteCodeword_liftAut_edgeCodeword
+-- Forward direction assembly (Layer 2.9):
+#print axioms Orbcrypt.PetrankRoth.prEncode_forward
+
+namespace PetrankRothLayer2NonVacuity
+open Orbcrypt.PetrankRoth Orbcrypt
+
+/-- **R-CE Layer 2 non-vacuity witness (trivial GI witness).**
+    `prEncode_forward` exhibits the identity permutation as a CE-
+    equivalence witness for the encoded codes of two GI-equivalent
+    graphs.  Empty graph at `m = 3`. -/
+example : ArePermEquivalent (prEncode 3 (fun _ _ => false))
+                            (prEncode 3 (fun _ _ => false)) :=
+  prEncode_forward 3 _ _ ⟨1, fun _ _ => rfl⟩
+
+/-- **R-CE Layer 2 non-vacuity witness (self-equivalence under
+    identity).**  The identity GI witness lifts to the permutation-
+    equivalence of any `prEncode adj` with itself, regardless of
+    the structure of `adj`. -/
+example (adj : Fin 3 → Fin 3 → Bool) :
+    ArePermEquivalent (prEncode 3 adj) (prEncode 3 adj) :=
+  prEncode_forward 3 _ _ ⟨1, fun _ _ => rfl⟩
+
+/-- **R-CE Layer 2 non-vacuity witness (directed-edge sensitivity).**
+    The directed-edge encoder distinguishes `adj₁` from its
+    "swap" `adj₂(i, j) := adj₁(swap i, swap j)`: applying the swap
+    permutation `σ = Equiv.swap 0 1 : Equiv.Perm (Fin 2)` is
+    a valid GI witness, and `prEncode_forward` exhibits the
+    corresponding CE-equivalence.  This concretely tests the
+    directional information that the post-refactor encoder
+    preserves (the pre-refactor symmetric encoder would have
+    given a vacuous instance of this iff direction). -/
+example :
+    let adj₁ : Fin 2 → Fin 2 → Bool := fun i j => decide (i.val = 0 ∧ j.val = 1)
+    let adj₂ : Fin 2 → Fin 2 → Bool := fun i j => decide (i.val = 1 ∧ j.val = 0)
+    ArePermEquivalent (prEncode 2 adj₁) (prEncode 2 adj₂) := by
+  refine prEncode_forward 2 _ _ ⟨Equiv.swap 0 1, ?_⟩
+  intro i j
+  fin_cases i <;> fin_cases j <;> decide
+
+/-- **R-CE Layer 2 non-vacuity witness (cardinality round-trip).**
+    `prEncode_forward`'s output is a witness of `ArePermEquivalent`,
+    which (via the witnessing permutation) preserves cardinality.
+    This sanity check confirms the encoder produces the expected
+    `codeSizePR m = m + 4 * (m * (m - 1)) + 1` codeword count under
+    the directed-edge enumeration. -/
+example : (prEncode 2 (fun i j => decide (i.val = 0 ∧ j.val = 1))).card =
+          codeSizePR 2 :=
+  prEncode_card 2 _
+
+end PetrankRothLayer2NonVacuity
+
+-- ============================================================================
+-- R-CE Layer 3 — Column-weight invariant infrastructure
+-- (`Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`)
+-- ============================================================================
+
+-- Sub-task 3.1–3.2 — column-weight definition + invariance.
+#print axioms Orbcrypt.PetrankRoth.colWeight
+#print axioms Orbcrypt.PetrankRoth.colWeight_empty
+#print axioms Orbcrypt.PetrankRoth.colWeight_singleton_self
+#print axioms Orbcrypt.PetrankRoth.colWeight_singleton_other
+#print axioms Orbcrypt.PetrankRoth.colWeight_union_disjoint
+#print axioms Orbcrypt.PetrankRoth.colWeight_permuteCodeword_image
+-- Sub-task 3.3 — column-weight signatures of the four families.
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_vertex
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_incid
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_marker
+#print axioms Orbcrypt.PetrankRoth.colWeight_prEncode_at_sentinel
+-- Sub-task 4.0 — cardinality-forced surjectivity bridge.
+#print axioms Orbcrypt.PetrankRoth.surjectivity_of_card_eq
+#print axioms Orbcrypt.PetrankRoth.prEncode_surjectivity
+
+namespace PetrankRothLayer3NonVacuity
+open Orbcrypt.PetrankRoth
+
+/-- **R-CE Layer 3 non-vacuity witness.** `colWeight` evaluates as
+    expected at a concrete singleton; the disjoint-union identity
+    holds vacuously at empty unions; the
+    `colWeight_permuteCodeword_image` invariance holds at the identity
+    permutation. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (i : Fin (dimPR m)) :
+    colWeight ((prEncode m adj).image
+        (permuteCodeword (1 : Equiv.Perm (Fin (dimPR m)))))
+      ((1 : Equiv.Perm (Fin (dimPR m))) i)
+    = colWeight (prEncode m adj) i :=
+  colWeight_permuteCodeword_image (prEncode m adj) 1 i
+
+/-- **R-CE Layer 3.3 non-vacuity witness (vertex column weight).**
+    At every vertex column, the column weight equals
+    `1 + #{present edges incident to v}`.  The constant `1`
+    comes from the vertex codeword itself; the variable count
+    captures the per-graph edge incidence structure.  This is
+    the per-vertex signature the marker-forcing reverse direction
+    (Layer 4) consumes to extract the vertex permutation. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (v : Fin m) :
+    colWeight (prEncode m adj) (prCoord m (.vertex v)) =
+    1 + ((Finset.univ : Finset (Fin (numEdges m))).filter
+          (fun e => edgePresent m adj e ∧
+                    (v = (edgeEndpoints m e).1 ∨
+                     v = (edgeEndpoints m e).2))).card :=
+  colWeight_prEncode_at_vertex m adj v
+
+/-- **R-CE Layer 3.3 non-vacuity witness (incid column weight).**  At
+    every incidence column, the column weight is exactly 1
+    (independent of `adj` and of edge presence).  This is the
+    invariant the marker-forcing reverse direction (Layer 4) consumes
+    to identify incidence columns. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (e : Fin (numEdges m)) :
+    colWeight (prEncode m adj) (prCoord m (.incid e)) = 1 :=
+  colWeight_prEncode_at_incid m adj e
+
+/-- **R-CE Layer 3.3 non-vacuity witness (marker column weight).** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (e : Fin (numEdges m)) (k : Fin 3) :
+    colWeight (prEncode m adj) (prCoord m (.marker e k)) = 1 :=
+  colWeight_prEncode_at_marker m adj e k
+
+/-- **R-CE Layer 3.3 non-vacuity witness (sentinel column weight).** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    colWeight (prEncode m adj)
+              (prCoord m (PRCoordKind.sentinel : PRCoordKind m)) = 1 :=
+  colWeight_prEncode_at_sentinel m adj
+
+/-- **R-CE Layer 4.0 non-vacuity witness (cardinality-forced
+    surjectivity).** `prEncode_surjectivity` exhibits the two-sided
+    "image" conclusion from any one-sided CE witness, with the
+    cardinality hypothesis discharged automatically.  Identity
+    permutation on the empty graph at `m = 3`. -/
+example : ∀ c' ∈ prEncode 3 (fun _ _ => false),
+    ∃ c ∈ prEncode 3 (fun _ _ => false),
+      Orbcrypt.permuteCodeword (1 : Equiv.Perm (Fin (dimPR 3))) c = c' :=
+  prEncode_surjectivity 3 _ _ 1 (fun c hc => by
+    simpa [Orbcrypt.permuteCodeword] using hc)
+
+end PetrankRothLayer3NonVacuity

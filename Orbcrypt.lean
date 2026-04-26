@@ -43,6 +43,8 @@ import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
 import Orbcrypt.Hardness.Reductions
 import Orbcrypt.Hardness.PetrankRoth.BitLayout
+import Orbcrypt.Hardness.PetrankRoth
+import Orbcrypt.Hardness.PetrankRoth.MarkerForcing
 
 import Orbcrypt.PublicKey.ObliviousSampling
 import Orbcrypt.PublicKey.KEMAgreement

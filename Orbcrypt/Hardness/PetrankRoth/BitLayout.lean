@@ -1,34 +1,31 @@
 /-
 Bit-layout primitives for the Petrank–Roth (1997) GI ≤ CE Karp reduction.
 
-Layer 0 (Sub-tasks 0.1 and 0.2) — foundational helpers that the
+Layer 0 (Sub-tasks 0.1 through 0.4) — foundational helpers that the
 encoder, forward direction, and reverse direction all consume. No
 Orbcrypt imports — this file depends only on Mathlib's `Fin`, `Nat`,
 `Equiv`, `Fintype`, and `Sum` APIs.
 
-See `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § O / R-15
-for the audit-plan reference.
+See `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` for
+the workstream plan and design discussion.
 -/
 
 import Mathlib.Data.Fin.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Prod
-import Mathlib.Data.Fintype.Sigma
 import Mathlib.Data.Fintype.Sum
-import Mathlib.Algebra.BigOperators.Fin
-import Mathlib.Algebra.BigOperators.Intervals
 import Mathlib.Logic.Equiv.Basic
 
 /-!
-# Petrank–Roth bit-layout primitives (Sub-tasks 0.1, 0.2)
+# Petrank–Roth bit-layout primitives (Layer 0)
 
 This module fixes the coordinate layout for the Petrank–Roth (1997)
 encoder.  The encoded code lives in `(Fin (dimPR m) → Bool)` where
 `dimPR m = m + 4 * numEdges m + 1`:
 
 * `m` vertex columns (one per vertex);
-* `numEdges m = m * (m - 1) / 2` incidence columns (one per
-  unordered edge slot);
+* `numEdges m = m * (m - 1)` incidence columns (one per **directed**
+  edge slot — ordered pairs `(u, v)` with `u ≠ v`);
 * `3 * numEdges m` marker columns (three per edge slot — these are
   the "marker" columns of the Petrank–Roth construction that force
   the reverse direction);
@@ -37,17 +34,25 @@ encoder.  The encoded code lives in `(Fin (dimPR m) → Bool)` where
   `codeSize_pos` field is dischargeable on every `m`).
 
 The four families of columns are enumerated by `PRCoordKind`.
-Sub-tasks 0.3 and 0.4 (edge enumeration, `prCoord`/`prCoordKind`
-bijection) land in follow-up commits.
+Directed edge slots are packaged as `EdgeSlot m := Fin m × Fin (m -
+1)` with `otherVertex` / `otherVertexInverse` providing the
+skip-the-source bijection between `Fin (m - 1)` and the `m - 1`
+target vertices distinct from the source.
 
-## Main definitions (this commit)
+## Main definitions
 
-* `numEdges m : ℕ` — `m * (m - 1) / 2`, the count of unordered edge
+* `numEdges m : ℕ` — `m * (m - 1)`, the count of directed edge
   slots on `m` vertices.
 * `dimPR m : ℕ` — total block length of the encoded code.
 * `codeSizePR m : ℕ` — total codeword count.
 * `PRCoordKind m` — the four-constructor inductive enumerating the
   column families, with `DecidableEq` and `Fintype` instances.
+* `EdgeSlot m`, `otherVertex`, `otherVertexInverse` — directed-edge
+  slot packaging and the skip-the-source bijection.
+* `edgeEndpoints m e`, `edgeIndex m u v h` — the bijection between
+  `Fin (numEdges m)` and ordered pairs `(u, v)` with `u ≠ v`.
+* `prCoord m`, `prCoordKind m`, `prCoordEquiv m` — the bijection
+  `PRCoordKind m ≃ Fin (dimPR m)`.
 
 ## Naming
 
@@ -65,8 +70,15 @@ universe u
 -- Sub-task 0.1 — Dimension and edge-count primitives.
 -- ============================================================================
 
-/-- Number of unordered edge slots on `m` vertices, i.e. `C(m, 2)`. -/
-def numEdges (m : ℕ) : ℕ := m * (m - 1) / 2
+/-- Number of **directed** edge slots on `m` vertices: ordered pairs
+`(u, v)` with `u ≠ v`, count `m * (m - 1)`.
+
+Using directed edge slots (rather than unordered pairs `m * (m - 1) /
+2`) lets the encoder distinguish `adj p.1 p.2` from `adj p.2 p.1`,
+which is necessary for the Karp-reduction iff to hold over arbitrary
+adjacency matrices in `GIReducesToCE`.  Symmetric (undirected)
+adjacencies are a special case where this distinction collapses. -/
+def numEdges (m : ℕ) : ℕ := m * (m - 1)
 
 /-- Block length of the Petrank–Roth encoded code on `m`-vertex graphs:
 `m` vertex columns + `4 * numEdges m` incidence + marker columns +
@@ -80,17 +92,15 @@ def codeSizePR (m : ℕ) : ℕ := m + 4 * numEdges m + 1
 
 @[simp] theorem numEdges_zero : numEdges 0 = 0 := rfl
 @[simp] theorem numEdges_one : numEdges 1 = 0 := rfl
-@[simp] theorem numEdges_two : numEdges 2 = 1 := rfl
-@[simp] theorem numEdges_three : numEdges 3 = 3 := rfl
-@[simp] theorem numEdges_four : numEdges 4 = 6 := rfl
+@[simp] theorem numEdges_two : numEdges 2 = 2 := rfl
+@[simp] theorem numEdges_three : numEdges 3 = 6 := rfl
+@[simp] theorem numEdges_four : numEdges 4 = 12 := rfl
 
-/-- `numEdges m ≤ m * m`: the unordered-pair count is bounded by the
-ordered-pair count. -/
+/-- `numEdges m ≤ m * m`: the directed-edge count is bounded by the
+ordered-pair count (excludes self-loops). -/
 theorem numEdges_le (m : ℕ) : numEdges m ≤ m * m := by
   unfold numEdges
-  calc m * (m - 1) / 2
-      ≤ m * (m - 1) := Nat.div_le_self _ _
-    _ ≤ m * m := Nat.mul_le_mul_left m (Nat.sub_le m 1)
+  exact Nat.mul_le_mul_left m (Nat.sub_le m 1)
 
 /-- `dimPR m` is always positive (the sentinel column gives `≥ 1`). -/
 theorem dimPR_pos (m : ℕ) : 0 < dimPR m := by
@@ -178,78 +188,176 @@ instance instFintype (m : ℕ) : Fintype (PRCoordKind m) :=
 end PRCoordKind
 
 -- ============================================================================
--- Sub-task 0.3 — `edgeEndpoints` enumeration with canonicalisation.
+-- Sub-task 0.3 — `edgeEndpoints` enumeration (directed, no canonicalisation).
 -- ============================================================================
 --
--- Strategy: enumerate the unordered pairs `(u, v)` with `u.val < v.val`
--- by walking the Sigma type `Σ v : Fin m, Fin v.val` (each `v : Fin m`
--- contributes `v.val` lower endpoints).  The total cardinality of this
--- Sigma type is `numEdges m`, giving the required `Equiv` directly via
--- `Fintype.equivFinOfCardEq`.
+-- Strategy: enumerate the directed pairs `(u, v) : Fin m × Fin m` with
+-- `u ≠ v` by packaging them as `Fin m × Fin (m - 1)` — for each source
+-- vertex `u : Fin m`, the second component `k : Fin (m - 1)` ranges
+-- over the `m - 1` vertices distinct from `u`.  Decoding `k` to a
+-- target vertex `v ≠ u` is done by `otherVertex`, which "skips" `u`:
+-- if `k.val < u.val` then `v.val = k.val`, else `v.val = k.val + 1`.
 
-/-- The Sigma packaging of ordered pairs `(u, v) : Fin m × Fin m` with
-`u.val < v.val`.  Each `v : Fin m` contributes the `v.val` lower
-endpoints `u : Fin v.val`. -/
-abbrev EdgeSlot (m : ℕ) : Type := Σ v : Fin m, Fin v.val
+/-- The product packaging of directed edge slots: pairs `(u, k)` where
+`u : Fin m` is the source vertex and `k : Fin (m - 1)` indexes the
+`m - 1` other vertices. -/
+abbrev EdgeSlot (m : ℕ) : Type := Fin m × Fin (m - 1)
 
-namespace EdgeSlot
+/-- Decode the second component `k : Fin (m - 1)` of an edge slot
+sourced at `u : Fin m` into its target vertex `v : Fin m` with `v ≠ u`.
 
-/-- Decode an `EdgeSlot m` into its ordered pair `(u, v) : Fin m × Fin m`
-with `u.val < v.val`. -/
-def toPair {m : ℕ} (s : EdgeSlot m) : Fin m × Fin m :=
-  (⟨s.snd.val, lt_of_lt_of_le s.snd.isLt (Nat.le_of_lt s.fst.isLt)⟩, s.fst)
+Implementation: insert `u` into the gap by mapping `k.val` to `k.val`
+when `k.val < u.val` and to `k.val + 1` otherwise.  The result is
+exactly the `k.val`-th element of `(Fin m).erase u`. -/
+def otherVertex (m : ℕ) (u : Fin m) (k : Fin (m - 1)) : Fin m :=
+  if h : k.val < u.val then
+    ⟨k.val, lt_of_lt_of_le h (Nat.le_of_lt u.isLt)⟩
+  else
+    ⟨k.val + 1, by
+      have hk := k.isLt
+      have hu := u.isLt
+      omega⟩
 
-theorem toPair_lt {m : ℕ} (s : EdgeSlot m) :
-    (toPair s).1.val < (toPair s).2.val := s.snd.isLt
+theorem otherVertex_ne_self (m : ℕ) (u : Fin m) (k : Fin (m - 1)) :
+    otherVertex m u k ≠ u := by
+  intro heq
+  have h := Fin.val_eq_of_eq heq
+  by_cases hlt : k.val < u.val
+  · -- otherVertex returns ⟨k.val, _⟩, so .val = k.val < u.val,
+    -- but heq says .val = u.val, contradiction.
+    have h1 : (otherVertex m u k).val = k.val := by
+      unfold otherVertex; rw [dif_pos hlt]
+    rw [h1] at h
+    exact absurd h (Nat.ne_of_lt hlt)
+  · -- otherVertex returns ⟨k.val + 1, _⟩, so .val = k.val + 1.
+    -- But heq says .val = u.val and ¬ k.val < u.val (so u.val ≤ k.val),
+    -- giving k.val + 1 = u.val ≤ k.val, contradiction.
+    have h1 : (otherVertex m u k).val = k.val + 1 := by
+      unfold otherVertex; rw [dif_neg hlt]
+    rw [h1] at h
+    omega
 
-end EdgeSlot
+/-- Encoder of the second component `k : Fin (m - 1)` from a target
+vertex `v : Fin m` distinct from the source `u : Fin m`. -/
+def otherVertexInverse (m : ℕ) (u v : Fin m) (h : v ≠ u) : Fin (m - 1) :=
+  if hlt : v.val < u.val then
+    ⟨v.val, by have := u.isLt; omega⟩
+  else
+    ⟨v.val - 1, by
+      have hv := v.isLt
+      have hne : v.val ≠ u.val := fun heq => h (Fin.ext heq)
+      have hge : u.val ≤ v.val := Nat.le_of_not_lt hlt
+      have hgt : u.val < v.val := lt_of_le_of_ne hge (Ne.symm hne)
+      have : 1 ≤ v.val := lt_of_le_of_lt (Nat.zero_le _) hgt
+      omega⟩
 
-/-- `Σ v : Fin m, v.val` evaluates to `m * (m - 1) / 2 = numEdges m`. -/
-theorem sum_fin_val_eq_numEdges (m : ℕ) :
-    (∑ v : Fin m, v.val) = numEdges m := by
-  rw [Fin.sum_univ_eq_sum_range (fun i => i)]
-  exact Finset.sum_range_id m
+theorem otherVertex_otherVertexInverse (m : ℕ) (u v : Fin m) (h : v ≠ u) :
+    otherVertex m u (otherVertexInverse m u v h) = v := by
+  apply Fin.ext
+  by_cases hlt : v.val < u.val
+  · -- otherVertexInverse returns ⟨v.val, _⟩, whose .val < u.val,
+    -- so otherVertex returns ⟨v.val, _⟩.
+    have h1 : (otherVertexInverse m u v h).val = v.val := by
+      unfold otherVertexInverse; rw [dif_pos hlt]
+    have h2 : (otherVertexInverse m u v h).val < u.val := h1 ▸ hlt
+    show (otherVertex m u (otherVertexInverse m u v h)).val = v.val
+    unfold otherVertex
+    rw [dif_pos h2]
+    exact h1
+  · -- otherVertexInverse returns ⟨v.val - 1, _⟩, whose .val ≥ u.val
+    -- (because u.val < v.val gives u.val ≤ v.val - 1).
+    have hne : v.val ≠ u.val := fun heq => h (Fin.ext heq)
+    have hge : u.val ≤ v.val := Nat.le_of_not_lt hlt
+    have hgt : u.val < v.val := lt_of_le_of_ne hge (Ne.symm hne)
+    have h1 : (otherVertexInverse m u v h).val = v.val - 1 := by
+      unfold otherVertexInverse; rw [dif_neg hlt]
+    have h2 : ¬ (otherVertexInverse m u v h).val < u.val := by rw [h1]; omega
+    show (otherVertex m u (otherVertexInverse m u v h)).val = v.val
+    unfold otherVertex
+    rw [dif_neg h2]
+    show (otherVertexInverse m u v h).val + 1 = v.val
+    rw [h1]; omega
 
-/-- Cardinality identity: `Σ v : Fin m, Fin v.val` has cardinality
-`numEdges m`. -/
+theorem otherVertexInverse_otherVertex (m : ℕ) (u : Fin m) (k : Fin (m - 1)) :
+    otherVertexInverse m u (otherVertex m u k) (otherVertex_ne_self m u k) = k := by
+  apply Fin.ext
+  by_cases hlt : k.val < u.val
+  · -- otherVertex returns ⟨k.val, _⟩, whose .val is < u.val,
+    -- so otherVertexInverse returns ⟨k.val, _⟩ in the lt branch.
+    have h1 : (otherVertex m u k).val = k.val := by
+      unfold otherVertex; rw [dif_pos hlt]
+    have h2 : (otherVertex m u k).val < u.val := h1 ▸ hlt
+    show (otherVertexInverse m u (otherVertex m u k) _).val = k.val
+    unfold otherVertexInverse
+    rw [dif_pos h2]
+    exact h1
+  · -- otherVertex returns ⟨k.val + 1, _⟩, whose .val is ≥ u.val,
+    -- so otherVertexInverse goes to the else branch and returns
+    -- ⟨(k.val + 1) - 1, _⟩, whose .val = k.val.
+    have h1 : (otherVertex m u k).val = k.val + 1 := by
+      unfold otherVertex; rw [dif_neg hlt]
+    have h2 : ¬ (otherVertex m u k).val < u.val := by rw [h1]; omega
+    show (otherVertexInverse m u (otherVertex m u k) _).val = k.val
+    unfold otherVertexInverse
+    rw [dif_neg h2]
+    show (otherVertex m u k).val - 1 = k.val
+    rw [h1]; omega
+
+/-- Cardinality identity: `EdgeSlot m = Fin m × Fin (m - 1)` has
+cardinality `numEdges m = m * (m - 1)`. -/
 theorem edgeSlot_card (m : ℕ) : Fintype.card (EdgeSlot m) = numEdges m := by
-  classical
-  rw [Fintype.card_sigma]
-  simp only [Fintype.card_fin]
-  exact sum_fin_val_eq_numEdges m
+  unfold numEdges EdgeSlot
+  rw [Fintype.card_prod, Fintype.card_fin, Fintype.card_fin]
 
 /-- Canonical equivalence between `Fin (numEdges m)` and the
-ordered-edge-pair Sigma type `EdgeSlot m`. -/
+directed-edge-pair product type `EdgeSlot m`. -/
 noncomputable def edgeSlotEquiv (m : ℕ) : Fin (numEdges m) ≃ EdgeSlot m :=
   (Fintype.equivFinOfCardEq (edgeSlot_card m)).symm
 
-/-- Decode an edge index to its endpoint pair `(u, v)` with
-`u.val < v.val`. -/
+/-- Decode an edge index to its directed endpoint pair `(u, v)` with
+`u ≠ v`. -/
 noncomputable def edgeEndpoints (m : ℕ) (e : Fin (numEdges m)) :
     Fin m × Fin m :=
-  EdgeSlot.toPair (edgeSlotEquiv m e)
+  let s := edgeSlotEquiv m e
+  (s.1, otherVertex m s.1 s.2)
 
-theorem edgeEndpoints_lt (m : ℕ) (e : Fin (numEdges m)) :
-    (edgeEndpoints m e).1.val < (edgeEndpoints m e).2.val :=
-  EdgeSlot.toPair_lt _
+/-- Endpoints of any edge slot are distinct (no self-loops). -/
+theorem edgeEndpoints_ne (m : ℕ) (e : Fin (numEdges m)) :
+    (edgeEndpoints m e).2 ≠ (edgeEndpoints m e).1 := by
+  unfold edgeEndpoints
+  exact otherVertex_ne_self m _ _
 
-/-- Encode an ordered pair `(u, v)` with `u.val < v.val` as the
-corresponding edge index. -/
-noncomputable def edgeIndex (m : ℕ) (u v : Fin m) (h : u.val < v.val) :
+/-- Encode a directed pair `(u, v)` with `v ≠ u` as the corresponding
+edge index. -/
+noncomputable def edgeIndex (m : ℕ) (u v : Fin m) (h : v ≠ u) :
     Fin (numEdges m) :=
-  (edgeSlotEquiv m).symm ⟨v, ⟨u.val, h⟩⟩
+  (edgeSlotEquiv m).symm (u, otherVertexInverse m u v h)
 
-theorem edgeEndpoints_edgeIndex (m : ℕ) (u v : Fin m) (h : u.val < v.val) :
+theorem edgeEndpoints_edgeIndex (m : ℕ) (u v : Fin m) (h : v ≠ u) :
     edgeEndpoints m (edgeIndex m u v h) = (u, v) := by
-  unfold edgeEndpoints edgeIndex EdgeSlot.toPair
+  unfold edgeEndpoints edgeIndex
   rw [Equiv.apply_symm_apply]
+  exact Prod.ext rfl (otherVertex_otherVertexInverse m u v h)
 
 theorem edgeIndex_edgeEndpoints (m : ℕ) (e : Fin (numEdges m)) :
     edgeIndex m (edgeEndpoints m e).1 (edgeEndpoints m e).2
-      (edgeEndpoints_lt m e) = e := by
-  unfold edgeEndpoints edgeIndex EdgeSlot.toPair
+      (edgeEndpoints_ne m e) = e := by
   apply (edgeSlotEquiv m).injective
+  show edgeSlotEquiv m (edgeIndex m (edgeEndpoints m e).1 (edgeEndpoints m e).2
+      (edgeEndpoints_ne m e)) = edgeSlotEquiv m e
+  -- The endpoints decompose as `(s.1, otherVertex m s.1 s.2)` where
+  -- `s := edgeSlotEquiv m e`.
+  show edgeSlotEquiv m ((edgeSlotEquiv m).symm
+      ((edgeSlotEquiv m e).1,
+       otherVertexInverse m (edgeSlotEquiv m e).1
+         (otherVertex m (edgeSlotEquiv m e).1 (edgeSlotEquiv m e).2)
+         _)) = edgeSlotEquiv m e
   rw [Equiv.apply_symm_apply]
+  -- Now goal: ((edgeSlotEquiv m e).1, otherVertexInverse … (otherVertex …) _) = edgeSlotEquiv m e.
+  -- Use Prod.ext with the otherVertexInverse_otherVertex round-trip on the second component.
+  apply Prod.ext
+  · rfl
+  · exact otherVertexInverse_otherVertex m _ _
 
 -- ============================================================================
 -- Sub-task 0.4 — `prCoord` / `prCoordKind` bijection.
@@ -421,14 +529,14 @@ def prCoordEquiv (m : ℕ) : PRCoordKind m ≃ Fin (dimPR m) where
 -- (`scripts/audit_phase_16.lean`) is updated separately to replay
 -- the underlying `#print axioms` checks.
 
--- Edge counts at small `m` (closed-form evaluation):
-example : numEdges 3 = 3 := rfl
-example : numEdges 4 = 6 := rfl
-example : numEdges 5 = 10 := rfl
+-- Edge counts at small `m` (closed-form evaluation, directed pairs):
+example : numEdges 3 = 6 := rfl
+example : numEdges 4 = 12 := rfl
+example : numEdges 5 = 20 := rfl
 
 -- Block-length and codeword-count agreement:
-example : dimPR 3 = 16 := rfl                    -- 3 + 4*3 + 1 = 16
-example : codeSizePR 3 = 16 := rfl
+example : dimPR 3 = 28 := rfl                    -- 3 + 4*6 + 1 = 28
+example : codeSizePR 3 = 28 := rfl
 example : dimPR 0 = 1 := rfl                     -- sentinel-only at m = 0
 example : dimPR 1 = 2 := rfl                     -- 1 vertex + sentinel at m = 1
 
@@ -446,14 +554,15 @@ example : (PRCoordKind.incid (m := 3) ⟨0, by decide⟩) ≠
 example : (PRCoordKind.marker (m := 3) ⟨0, by decide⟩ ⟨0, by decide⟩) ≠
           (PRCoordKind.sentinel) := by decide
 
--- `prCoord` evaluates to the expected raw column index at small `m`:
+-- `prCoord` evaluates to the expected raw column index at small `m`
+-- (note: `numEdges 3 = 6` with directed slots).
 example : (prCoord 3 (.vertex ⟨0, by decide⟩)).val = 0 := rfl
 example : (prCoord 3 (.vertex ⟨2, by decide⟩)).val = 2 := rfl
 example : (prCoord 3 (.incid ⟨0, by decide⟩)).val = 3 := rfl
-example : (prCoord 3 (.incid ⟨2, by decide⟩)).val = 5 := rfl
-example : (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 6 := rfl
-example : (prCoord 3 (.marker ⟨2, by decide⟩ ⟨2, by decide⟩)).val = 14 := rfl
-example : (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 15 := rfl
+example : (prCoord 3 (.incid ⟨5, by decide⟩)).val = 8 := rfl
+example : (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)).val = 9 := rfl
+example : (prCoord 3 (.marker ⟨5, by decide⟩ ⟨2, by decide⟩)).val = 26 := rfl
+example : (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)).val = 27 := rfl
 
 -- The four families occupy the four expected coordinate ranges,
 -- so distinct families produce distinct columns:
@@ -468,12 +577,20 @@ example : (prCoord 3 (.marker ⟨0, by decide⟩ ⟨0, by decide⟩)) ≠
 example : prCoordKind 3 (prCoord 3 (PRCoordKind.sentinel : PRCoordKind 3)) =
           PRCoordKind.sentinel := prCoordKind_prCoord 3 _
 
--- `edgeEndpoints` / `edgeIndex` round-trip on a concrete edge.  The
--- explicit edge is `(0, 1)` in `Fin 3`; the index is exhibited via
--- `edgeIndex 3 0 1 (by decide)`.
+-- `edgeEndpoints` / `edgeIndex` round-trip on a concrete directed
+-- edge.  The explicit edge is `(0, 1)` in `Fin 3` (i.e. the edge from
+-- vertex 0 to vertex 1).
 example : (edgeEndpoints 3 (edgeIndex 3 ⟨0, by decide⟩ ⟨1, by decide⟩
             (by decide))) = (⟨0, by decide⟩, ⟨1, by decide⟩) :=
   edgeEndpoints_edgeIndex 3 _ _ _
+
+-- `otherVertex` correctness on small examples: skip-the-source layout.
+example : otherVertex 3 ⟨0, by decide⟩ ⟨0, by decide⟩ = ⟨1, by decide⟩ := rfl
+example : otherVertex 3 ⟨0, by decide⟩ ⟨1, by decide⟩ = ⟨2, by decide⟩ := rfl
+example : otherVertex 3 ⟨1, by decide⟩ ⟨0, by decide⟩ = ⟨0, by decide⟩ := rfl
+example : otherVertex 3 ⟨1, by decide⟩ ⟨1, by decide⟩ = ⟨2, by decide⟩ := rfl
+example : otherVertex 3 ⟨2, by decide⟩ ⟨0, by decide⟩ = ⟨0, by decide⟩ := rfl
+example : otherVertex 3 ⟨2, by decide⟩ ⟨1, by decide⟩ = ⟨1, by decide⟩ := rfl
 
 end PetrankRoth
 end Orbcrypt

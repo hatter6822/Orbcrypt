@@ -101,6 +101,41 @@ this plan for the full delta breakdown.
 
 **Total estimate: 3,000–5,000 lines across 38 sub-tasks / 8 layers / 4–6 weeks.**
 
+**Landing status (as of 2026-04-25): forward direction + reverse-
+direction infrastructure.**
+Landed:
+* Layer 0 — `Orbcrypt/Hardness/PetrankRoth/BitLayout.lean` (directed-
+  edge enumeration, `numEdges m = m * (m - 1)`, `PRCoordKind`,
+  `prCoord` / `prCoordKind` bijection).
+* Layers 1–2 — `Orbcrypt/Hardness/PetrankRoth.lean` (encoder,
+  `prEncode_card`, forward direction `prEncode_forward`).
+* Layer 3.1 / 3.2 — `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`
+  (`colWeight` definition, basic algebra,
+  `colWeight_permuteCodeword_image` invariance).
+* Layer 3.3 — same module, four per-family signatures
+  (`colWeight_prEncode_at_vertex` / `_at_incid` / `_at_marker` /
+  `_at_sentinel`).
+* Layer 4.0 — same module (`surjectivity_of_card_eq` and
+  `prEncode_surjectivity` cardinality-forced bridges).
+
+Residual research-scope **R-15-residual-CE-reverse**:
+* Layer 3.4 — column-kind discriminator (depends on graph non-
+  degeneracy assumptions to disambiguate weight-1 columns).
+* Layer 3.5 — `permuteCodeword_preserves_colKind`.
+* Layers 4.1–4.10 — `extractVertexPerm`, `extractEdgePerm`, the
+  `extractEdgePerm = liftedEdgePerm extractVertexPerm` core,
+  marker-block freedom, `adj_recovery_from_edgeCodeword`,
+  empty-graph case, `prEncode_reverse` assembly.
+* Layer 5 — `prEncode_iff` assembly.
+* Layer 6 — non-degeneracy bridge (re-exports for `GIReducesToCE`).
+* Layer 7 — headline `petrankRoth_isInhabitedKarpReduction`.
+
+The full inhabitant of `GIReducesToCE` (which requires both iff
+directions plus the reverse direction's marker-forcing argument)
+therefore remains research-scope; the type-level
+`GIReducesToCE_card_nondegeneracy_witness` in
+`Orbcrypt/Hardness/CodeEquivalence.lean` is unchanged.
+
 ## R-CE module organisation
 
 | File | Purpose | Target lines |

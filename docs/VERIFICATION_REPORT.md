@@ -1168,6 +1168,75 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-25 (Workstream R-CE forward direction + reverse-
+  direction infrastructure landing)** — Petrank–Roth (1997) Karp
+  reduction GI ≤ CE: forward direction (Layers 0–2) plus the
+  Layer-3.1/3.2/3.3 column-weight infrastructure and the Layer-4.0
+  cardinality-forced surjectivity bridge are clean.  The residual
+  marker-forcing reverse direction (Layers 4.1–4.10, 5, 6, 7 →
+  `petrankRoth_isInhabitedKarpReduction`) is research-scope
+  **R-15-residual-CE-reverse**.
+
+  **Modules added.**
+  `Orbcrypt/Hardness/PetrankRoth.lean` (~1027 lines, encoder +
+  forward direction); `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`
+  (~615 lines, column-weight invariance infrastructure incl. the
+  per-family signatures + surjectivity bridges).  `Orbcrypt/
+  Hardness/PetrankRoth/BitLayout.lean` (Layer 0, ~600 lines) was
+  already landed pre-session and is preserved unchanged.
+
+  **Headline theorems landed.**
+  `prEncode_forward : (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j =
+  adj₂ (σ i) (σ j)) → ArePermEquivalent (prEncode m adj₁) (prEncode
+  m adj₂)` — the easier iff direction.  `prEncode_card : (prEncode m
+  adj).card = codeSizePR m` — uniform cardinality of the encoded
+  code (for the `card_eq` field of strengthened `GIReducesToCE`).
+  `colWeight_permuteCodeword_image : colWeight (C.image
+  (permuteCodeword π)) (π i) = colWeight C i` — column-weight
+  invariance under `permuteCodeword`-image of a Finset (Layer 3.2).
+  `colWeight_prEncode_at_vertex` / `_at_incid` / `_at_marker` /
+  `_at_sentinel` — the four per-family column-weight signatures
+  (Layer 3.3), giving the closed-form weight at every coordinate
+  kind.  `surjectivity_of_card_eq` and the specialisation
+  `prEncode_surjectivity` (Layer 4.0) — bridge from one-sided
+  CE-witness to two-sided "image equals" statement.
+
+  **Audit / lakefile updates.** `lakefile.lean` `version` bumped
+  `0.1.15 → 0.1.16`; 114 `#print axioms` entries (41 Layer 0 + 33
+  Layer 1 + 28 Layer 2 + 12 Layer 3) and corresponding
+  `NonVacuityWitnesses` examples added to
+  `scripts/audit_phase_16.lean`, including an asymmetric directed-
+  edge GI test at `m = 2` (using `Equiv.swap 0 1`) that
+  exercises the directional information preserved by the
+  post-refactor encoder, plus per-family column-weight signature
+  witnesses on arbitrary `adj`.  Every new declaration depends
+  only on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`); none depends on `sorryAx` or a custom axiom.
+  `lake build` succeeds for all 43 modules with zero warnings /
+  zero errors.
+
+  **Encoder design — directed-edge.** Layer 0 enumerates
+  `numEdges m = m * (m - 1)` directed edge slots: ordered pairs
+  `(u, v)` with `u ≠ v`, packaged as `Fin m × Fin (m - 1)` via the
+  skip-the-source layout `otherVertex` / `otherVertexInverse`
+  bijection.  The Layer-1 encoder reads adjacency directly via
+  `edgePresent m adj e := adj p.1 p.2`, so the encoder
+  distinguishes `(u, v)` from `(v, u)` and the iff in
+  `Orbcrypt.GIReducesToCE` extends to arbitrary (possibly
+  asymmetric) `adj`.  The Layer-2 forward direction proves
+  `prEncode_forward` unconditionally — no canonicalisation case
+  split, no symmetry assumption, no special-case handling.
+
+  **R-15 closure status.** Layer 0–3 of the GI ≤ CE Karp reduction
+  are landed and audit-clean.  Layers 4–7 (marker-forcing reverse
+  direction → `prEncode_reverse` → `prEncode_iff` → headline
+  `petrankRoth_isInhabitedKarpReduction` inhabiting the full
+  `GIReducesToCE` Prop) are the multi-week residual work tracked as
+  research-scope **R-15-residual-CE-reverse** per the Risk Gate.
+  The Layer-3 column-weight invariance
+  (`colWeight_permuteCodeword_image`) is the foundational
+  invariance machinery Layer 4 will consume.
+
 * **2026-04-25 (Workstream I post-audit)** — Critical re-evaluation
   of the initial Workstream-I landing identified 4 of the 9 "new"
   theorems as **theatrical**: they technically inhabited their

@@ -3383,6 +3383,197 @@ not a field); the zero-sorry / zero-custom-axiom posture is
 preserved; the standard-trio-only axiom-dependency posture is
 preserved.
 
+Workstream R-CE (Audit 2026-04-25 — Petrank–Roth GI ≤ CE Karp
+reduction, R-15-CE / Option B forward-only landing) has been
+completed (2026-04-25):
+
+- **Layer 0 — Bit-layout primitives.**
+  `Orbcrypt/Hardness/PetrankRoth/BitLayout.lean`.  Block length
+  `dimPR m = m + 4 * numEdges m + 1` decomposed as `m` vertex
+  columns + `numEdges m` incidence columns + `3 * numEdges m`
+  marker columns + 1 sentinel.  `PRCoordKind` inductive over the
+  four families with `DecidableEq`, `Fintype` (via `equivSum`),
+  and a bijection `prCoordEquiv : PRCoordKind m ≃ Fin (dimPR m)`
+  via `prCoord` / `prCoordKind`.  `numEdges m = m * (m - 1)`
+  enumerates **directed edge slots** — ordered pairs `(u, v)` with
+  `u ≠ v` — packaged via `EdgeSlot m := Fin m × Fin (m - 1)`,
+  with the second component `k : Fin (m - 1)` decoded to a target
+  vertex `v ≠ u` by `otherVertex` (skip-the-source layout).
+  Round-trip lemmas `otherVertex_otherVertexInverse` and
+  `otherVertexInverse_otherVertex` make `edgeEndpoints` /
+  `edgeIndex` a bijection that preserves directional information.
+
+- **Layer 1 — Encoder + cardinality.**
+  `Orbcrypt/Hardness/PetrankRoth.lean` (~600 lines): the four
+  codeword families
+  (`vertexCodeword`, `edgeCodeword`, `markerCodeword`,
+  `sentinelCodeword`), within-family injectivity
+  (`vertexCodeword_injective`, `edgeCodeword_injective`,
+  `markerCodeword_injective`), pairwise cross-family disjointness
+  (`*_ne_*`), the encoder `prEncode m adj`, the membership shape
+  `mem_prEncode`, and the cardinality identity `prEncode_card :
+  (prEncode m adj).card = codeSizePR m`.  The `edgePresent` /
+  `edgeCodeword` formulation reads adjacency directly via
+  `edgePresent m adj e := adj p.1 p.2` on the directed slot
+  `(p.1, p.2) := edgeEndpoints m e` — direction-faithful, so the
+  encoder distinguishes `(u, v)` from `(v, u)` and the iff in
+  `Orbcrypt.GIReducesToCE` extends to arbitrary (possibly
+  asymmetric) `adj`.
+
+- **Layer 2 — Forward direction.**
+  `Orbcrypt/Hardness/PetrankRoth.lean` (cont., ~600 lines):
+  the vertex-permutation-induced **directed** edge permutation
+  `liftedEdgePerm m σ : Equiv.Perm (Fin (numEdges m))` mapping
+  directed slot `(u, v)` to `(σ u, σ v)` without canonicalisation
+  (the round-trip `liftedEdgePermFun_left_inv` is a one-line
+  consequence of `edgeEndpoints_edgeIndex` and
+  `perm_inv_apply_self`); the dimension-level lift
+  `liftAut m σ : Equiv.Perm (Fin (dimPR m))` via conjugation with
+  `prCoordEquiv`; the four action lemmas
+  (`permuteCodeword_liftAut_vertexCodeword`,
+  `permuteCodeword_liftAut_edgeCodeword`,
+  `permuteCodeword_liftAut_markerCodeword`,
+  `permuteCodeword_liftAut_sentinelCodeword`); the asymmetric
+  edge-presence transfer `edgePresent_liftedEdgePerm` (a one-line
+  consequence of `edgeEndpoints_liftedEdgePerm` and the GI
+  hypothesis); and the headline `prEncode_forward : (∃ σ, ∀ i j,
+  adj₁ i j = adj₂ (σ i) (σ j)) → ArePermEquivalent (prEncode m
+  adj₁) (prEncode m adj₂)`.  Auxiliary helpers
+  `decide_or_to_bool`, `decide_or_iff_bool` (private) cleanly
+  bridge iff-on-disjunctions to bool-equality of `decide`s.
+
+- **Layer 3 — Column-weight invariance infrastructure.**
+  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (~615
+  lines): `colWeight C i` defined as the count of codewords in
+  `C` that are `true` at column `i`; basic algebraic identities
+  (`colWeight_empty`, `colWeight_singleton_self/_other`,
+  `colWeight_union_disjoint` — Sub-task 3.1); the headline
+  `colWeight_permuteCodeword_image` proving column weights are
+  preserved by `permuteCodeword`-image of a Finset (up to π's
+  coordinate relabelling — Sub-task 3.2); and the four
+  per-family **column-weight signatures** (Sub-task 3.3):
+  `colWeight_prEncode_at_vertex` (vertex column for v has weight
+  `1 + #{present edges incident to v}`),
+  `colWeight_prEncode_at_incid` (incidence column has weight 1),
+  `colWeight_prEncode_at_marker` (marker column has weight 1),
+  `colWeight_prEncode_at_sentinel` (sentinel column has weight
+  1).  These signatures are the foundational invariants the
+  marker-forcing reverse direction (Layer 4) consumes to classify
+  each `Fin (dimPR m)` index into one of {vertex, incid, marker,
+  sentinel}.
+
+- **Layer 4.0 — Cardinality-forced surjectivity bridge.**
+  `surjectivity_of_card_eq` and the specialisation
+  `prEncode_surjectivity` lift a one-sided
+  `ArePermEquivalent`-witness ("σ maps each C₁ codeword *into* C₂")
+  into a two-sided "every C₂ codeword has a C₁ preimage"
+  statement, using `prEncode_card` to discharge the equal-
+  cardinality hypothesis automatically.  This is the structural
+  bridge Layer 4's marker-forcing argument consumes when
+  extracting vertex/edge permutations from a CE-witness π.
+
+- **Layers 4.1–4.10, 5, 6, 7 — Residual marker-forcing
+  reverse direction (research-scope).**  The remaining steps
+  (`extractVertexPerm` and bijectivity, `extractEdgePerm`, the
+  `extractEdgePerm = liftedEdgePerm extractVertexPerm` core,
+  marker-block freedom, adjacency recovery, empty-graph case,
+  `prEncode_reverse` assembly, the iff `prEncode_iff`, the
+  non-degeneracy bridge, and the headline
+  `petrankRoth_isInhabitedKarpReduction`) are tracked at
+  `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+  sub-tasks 4.1–4.10 / 5 / 6 / 7 as research-scope
+  **R-15-residual-CE-reverse**.  The audit-plan budget for these
+  is ~800–1500 lines / ~7–14 days of focused mathematical work,
+  much of which is genuinely intricate (the `extractEdgePerm =
+  liftedEdgePerm extractVertexPerm` identification core alone is
+  budgeted at ~300 lines).  The Layer-3.1/3.2/3.3 + Layer-4.0
+  infrastructure landed in this PR is the clean foundation those
+  steps consume; the existing `GIReducesToCE` Prop remains
+  inhabited only via the type-level
+  `_card_nondegeneracy_witness` until those steps land.
+
+Files touched:
+- `Orbcrypt/Hardness/PetrankRoth.lean` — new file (~1100 lines),
+  Layers 1–2 with the `prEncode_forward` headline (asymmetric
+  `edgePresent` + asymmetric `liftedEdgePerm`, no canonicalisation).
+- `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` — new file
+  (~150 lines), Layer 3 column-weight infrastructure.
+- `Orbcrypt/Hardness/PetrankRoth/BitLayout.lean` — refactored from
+  the pre-session unordered-edge enumeration (`numEdges m = m * (m
+  - 1) / 2`, `EdgeSlot m = Σ v, Fin v.val`, `edgeEndpoints`
+  returning `(u, v)` with `u.val < v.val`) to the **directed-edge**
+  enumeration (`numEdges m = m * (m - 1)`, `EdgeSlot m = Fin m ×
+  Fin (m - 1)`, `edgeEndpoints` returning `(u, v)` with `u ≠ v`,
+  no order constraint).  Adds the `otherVertex` / `otherVertexInverse`
+  bijection between `Fin (m - 1)` and the `m - 1` "other vertices",
+  and round-trip lemmas making `edgeEndpoints` / `edgeIndex` a
+  bijection on directed pairs.  This refactor makes the iff in
+  `Orbcrypt.GIReducesToCE` provable for arbitrary asymmetric `adj`.
+- `Orbcrypt/Hardness/CodeEquivalence.lean` — `GIReducesToCE`
+  documentation extended with the Workstream-R-CE landing
+  status.
+- `Orbcrypt.lean` — root file extended to import the two new
+  Hardness submodules.
+- `scripts/audit_phase_16.lean` — Layer 0 has 41 entries
+  (incl. `EdgeSlot`, `otherVertex` / `otherVertex_ne_self` /
+  `otherVertexInverse` / `otherVertex_otherVertexInverse` /
+  `otherVertexInverse_otherVertex` / `edgeEndpoints_ne` for the
+  directed-edge enumeration, plus all `numEdges_*`,
+  `prCoord_*_val`, and `PRCoordKind.toSum` /  `ofSum` /
+  `ofSum_toSum` / `toSum_ofSum` entries); Layer 1 has 33 entries
+  (incl. all `*_at_*` simp evaluation lemmas); Layer 2 has 28
+  entries (incl. `liftedEdgePerm_apply` / `_symm_apply`,
+  `edgeEndpoints_liftedEdgePermFun`, `edgeEndpoints_liftedEdgePerm`,
+  `liftAutKindFun_*` simps, `liftAutKindFun_left_inv`,
+  `liftAutKind_apply`/`_symm_apply`, `liftAut_apply`/`_symm_apply`);
+  Layer 3 has 12 entries (Sub-task 3.1 algebraic identities + Sub-
+  task 3.2 invariance + Sub-task 3.3 four per-family signatures +
+  Sub-task 4.0 surjectivity bridges); per-layer
+  `NonVacuityWitnesses` namespaces exercise concrete instances at
+  `m = 2` (asymmetric directed-edge GI witness via `Equiv.swap 0 1`)
+  and `m = 3` (cardinality, trivial GI witness, and the four per-
+  family column-weight signatures + surjectivity bridge witness).
+- `lakefile.lean` — `version` bumped from `0.1.15` to `0.1.16`.
+
+Traceability: audit-plan item `R-15` (GI ≤ CE) is partially
+closed — the forward direction lands as `prEncode_forward`; the
+reverse direction is deferred to research-scope
+**R-15-residual-CE-reverse** per the Risk Gate. No Layer 4–7
+declarations are introduced; the existing `GIReducesToCE` Prop's
+`_card_nondegeneracy_witness` remains the only structural
+inhabitant.
+
+Verification: every Layer 0, 1, 2, 3 declaration depends only on
+the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`); none depends on `sorryAx` or a custom axiom.
+`lake build` succeeds for all 43 modules (40 pre-session
+post-Workstream-G plus the post-G additions
+`Probability/UniversalHash.lean` and
+`GroupAction/CanonicalLexMin.lean`, plus the three
+`Hardness/PetrankRoth/BitLayout.lean`,
+`Hardness/PetrankRoth.lean`, and
+`Hardness/PetrankRoth/MarkerForcing.lean` modules under
+Workstream R-CE) with zero warnings / zero errors.  The Phase-16
+audit script's `#print axioms` total expands by 114 entries
+across all four R-CE layers (41 Layer-0 + 33 Layer-1 + 28 Layer-2
++ 12 Layer-3) covering every public declaration in the new
+modules.  The Layer-2 non-vacuity witnesses include a concrete
+asymmetric-graph GI test at `m = 2` (graphs `adj₁(0,1) = true`
+and `adj₂(1,0) = true`, both other entries `false`, equivalent
+under `σ = Equiv.swap 0 1 : Equiv.Perm (Fin 2)`) — exercising
+the directional information that the post-refactor encoder
+preserves.  The Layer-3 non-vacuity witnesses include the four
+per-family column-weight signatures evaluated on arbitrary
+`adj` and the surjectivity bridge `prEncode_surjectivity` at
+the empty graph at `m = 3`.
+
+Patch version: `lakefile.lean` bumped from `0.1.15` to `0.1.16`
+for Workstream R-CE — two new public-API modules add new public
+declarations, warranting the patch-version bump per `CLAUDE.md`'s
+version-bump discipline. The pre-session 41-module total rises
+to 43; the zero-sorry / zero-custom-axiom posture and the
+standard-trio-only axiom-dependency posture are both preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
