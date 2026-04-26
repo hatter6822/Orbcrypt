@@ -16,6 +16,7 @@ Layer T6" for the work-unit decomposition.
 import Orbcrypt.Hardness.GrochowQiao.PathAlgebra
 import Orbcrypt.Hardness.GrochowQiao.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao.Forward
+import Orbcrypt.Hardness.GrochowQiao.PermMatrix
 import Orbcrypt.Hardness.GrochowQiao.Reverse
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
@@ -167,6 +168,25 @@ def GrochowQiaoForwardObligation : Prop :=
     (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) →
     AreTensorIsomorphic
       (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂)
+
+/-- **Layer T3.6 discharge of `GrochowQiaoForwardObligation`** (post-
+2026-04-26 R-TI extension).
+
+Closes the forward GL³ matrix-action obligation unconditionally
+using the permutation-matrix tensor-action collapse infrastructure
+in `Orbcrypt/Hardness/GrochowQiao/PermMatrix.lean`.
+
+**Proof.** Given the GI hypothesis `σ : adj₁ ≅ adj₂`, the GL³ triple
+`(liftedSigmaGL m σ⁻¹, liftedSigmaGL m σ⁻¹, liftedSigmaGL m σ⁻¹)`
+implements the encoder isomorphism — verified by
+`grochowQiaoEncode_gl_isomorphic` (PermMatrix.lean B.8).
+
+This closes one of the two research-scope Props introduced by the
+post-2026-04-26 partial-closure landing. -/
+theorem grochowQiao_forwardObligation : GrochowQiaoForwardObligation := by
+  intro m adj₁ adj₂ ⟨σ, h⟩
+  exact ⟨(liftedSigmaGL m σ⁻¹, liftedSigmaGL m σ⁻¹, liftedSigmaGL m σ⁻¹),
+    grochowQiaoEncode_gl_isomorphic m adj₁ adj₂ σ h⟩
 
 /-- **The forward direction's encoder-equality lemma.**
 

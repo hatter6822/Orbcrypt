@@ -494,5 +494,82 @@ theorem pathMul_quiverMap (m : ℕ) (σ : Equiv.Perm (Fin m))
           -- pathMul (edge _ _) (edge _ _) = none unconditionally.
           simp only [quiverMap_edge, pathMul_edge_edge_none, Option.map_none]
 
+-- ============================================================================
+-- T1.7 — Path multiplication associativity (`pathMul_assoc`).
+-- ============================================================================
+
+/-- **Path-multiplication associativity** at the basis-element level.
+
+For any three quiver basis elements `a, b, c`, the two bracketings
+of the triple product agree as `Option (QuiverArrow m)`:
+```
+(a · b) · c = a · (b · c)
+```
+where `·` is `pathMul m` and `(_ · _) · _` uses `Option.bind` to
+short-circuit when the first product is `none`.
+
+**Proof strategy.** Three nested `cases QuiverArrow` produce 8 cases
+(2 × 2 × 2 for `id` / `edge` on each position). All cases involving
+two consecutive `edge` constructors collapse to `none = none`
+unconditionally (length-≥-2 paths are killed by the J²-truncation).
+The remaining cases (at most one `edge` in any consecutive pair)
+unfold the `pathMul` table, reduce to `if-then-else` chains over
+`Fin m` equalities, and close by `split_ifs` + `rfl`.
+
+This lemma underlies the path-algebra multiplication's associativity
+at the structure-constant level (see `pathStructureConstant_associative`
+in `AlgebraWrapper.lean`). -/
+theorem pathMul_assoc (m : ℕ) (a b c : QuiverArrow m) :
+    Option.bind (pathMul m a b) (fun ab => pathMul m ab c) =
+    Option.bind (pathMul m b c) (fun bc => pathMul m a bc) := by
+  cases a with
+  | id u =>
+    cases b with
+    | id v =>
+      cases c with
+      | id w =>
+        -- (id, id, id): both sides reduce to "if u=v=w then some (id u) else none"
+        simp only [pathMul_id_id, Option.bind]
+        split_ifs <;> simp_all
+      | edge w₁ w₂ =>
+        -- (id, id, edge): need u=v=w₁ for non-none
+        simp only [pathMul_id_id, pathMul_id_edge, Option.bind]
+        split_ifs <;> simp_all
+    | edge v₁ v₂ =>
+      cases c with
+      | id w =>
+        -- (id, edge, id)
+        simp only [pathMul_id_edge, pathMul_edge_id, Option.bind]
+        split_ifs <;> simp_all
+      | edge w₁ w₂ =>
+        -- (id, edge, edge): RHS bc = pathMul (edge v₁ v₂) (edge w₁ w₂) = none.
+        -- LHS ab = pathMul (id u) (edge v₁ v₂) = some (edge v₁ v₂) if u=v₁
+        -- then pathMul ab c = pathMul (edge v₁ v₂) (edge w₁ w₂) = none.
+        simp only [pathMul_id_edge, pathMul_edge_edge_none, Option.bind]
+        split_ifs <;> rfl
+  | edge u₁ u₂ =>
+    cases b with
+    | id v =>
+      cases c with
+      | id w =>
+        -- (edge, id, id)
+        simp only [pathMul_edge_id, pathMul_id_id, Option.bind]
+        split_ifs <;> simp_all
+      | edge w₁ w₂ =>
+        -- (edge, id, edge)
+        simp only [pathMul_edge_id, pathMul_id_edge, Option.bind]
+        split_ifs <;> simp_all
+    | edge v₁ v₂ =>
+      cases c with
+      | id w =>
+        -- (edge, edge, id): LHS ab = pathMul (edge u₁ u₂) (edge v₁ v₂) = none.
+        -- RHS bc = pathMul (edge v₁ v₂) (id w) = some (edge v₁ v₂) if v₂=w.
+        -- Then pathMul a bc = pathMul (edge u₁ u₂) (edge v₁ v₂) = none.
+        simp only [pathMul_edge_edge_none, pathMul_edge_id, Option.bind]
+        split_ifs <;> rfl
+      | edge w₁ w₂ =>
+        -- (edge, edge, edge): both sides none
+        simp only [pathMul_edge_edge_none, Option.bind]
+
 end GrochowQiao
 end Orbcrypt

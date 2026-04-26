@@ -46,8 +46,10 @@ import Orbcrypt.Hardness.PetrankRoth.BitLayout
 import Orbcrypt.Hardness.PetrankRoth
 import Orbcrypt.Hardness.PetrankRoth.MarkerForcing
 import Orbcrypt.Hardness.GrochowQiao.PathAlgebra
+import Orbcrypt.Hardness.GrochowQiao.AlgebraWrapper
 import Orbcrypt.Hardness.GrochowQiao.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao.Forward
+import Orbcrypt.Hardness.GrochowQiao.PermMatrix
 import Orbcrypt.Hardness.GrochowQiao.Reverse
 import Orbcrypt.Hardness.GrochowQiao
 
