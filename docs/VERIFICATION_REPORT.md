@@ -1168,6 +1168,67 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-26 (Workstream R-TI Layers T2.5–T6 + stretch partial-
+  closure extension)** — Extension landing on top of the same-day
+  Layer T0–T3 landing. Adds the encoder evaluation + padding-
+  distinguishability lemmas (T2.5, T2.6), σ-action on quiver arrows
+  + multiplicative equivariance (`quiverMap`, `pathMul_quiverMap`),
+  slot-level path-structure-constant equivariance (T3.4),
+  encoder-equality form of the forward direction (T3.7), the
+  rigidity-Prop skeleton + edge-case reverse directions (T4 + T5),
+  conditional iff + conditional Karp-reduction inhabitant (T6), and
+  stretch-goal Props T5.6 (asymmetric GL³) and T5.8 (char-0
+  generalisation).
+
+  **New module.** `Orbcrypt/Hardness/GrochowQiao/Reverse.lean` (the
+  fifth file under `GrochowQiao/`). Captures the rigidity argument
+  as the `GrochowQiaoRigidity` Prop (universal quantification on
+  `(m, adj₁, adj₂)`, so a discharge is a uniform argument across
+  all graph pairs), proves the unconditional `m = 0` and `m = 1`
+  edge cases (`grochowQiaoEncode_reverse_zero`,
+  `grochowQiaoEncode_reverse_one`), and threads the rigidity Prop
+  through `grochowQiaoEncode_reverse_under_rigidity` (Layer T5.4
+  conditional reverse).
+
+  **Top-level module extended.** `Orbcrypt/Hardness/GrochowQiao.lean`
+  gains:
+  - `GrochowQiaoForwardObligation` Prop (the GL³ matrix-action
+    upgrade of the encoder-equality form of T3.7).
+  - `grochowQiaoEncode_iff` — Karp-reduction iff conditional on
+    both research-scope Props.
+  - `grochowQiao_isInhabitedKarpReduction_under_obligations` —
+    consumer-facing complete `@GIReducesToTI ℚ _` inhabitant under
+    both Props.
+  - `grochowQiao_partial_closure_status` — final non-vacuity
+    disclosure.
+
+  **Stretch-goal Props.** `GrochowQiaoAsymmetricRigidity` (T5.6)
+  with the `_iff_symmetric` reduction lemma; `GrochowQiaoCharZeroRigidity`
+  (T5.8) with the `_at_rat` instance lemma.
+
+  **Audit script extensions.** 32 new `#print axioms` entries + 14
+  new non-vacuity `example` bindings; total non-vacuity examples
+  rises from 16 to 30. Every new declaration depends only on the
+  standard Lean trio.
+
+  **Verification.** Full project builds clean (3,376 jobs, zero
+  warnings, zero errors). Phase-16 audit script exits 0.
+
+  `lakefile.lean` bumped from `0.1.17` to `0.1.18`.
+
+  **Honest scope disclosure.** The audit plan budgets Layers T4 +
+  T5 + T5-stretch + T6 at 3,300–7,300 lines / 5–10 weeks of dedicated
+  mathematical research work. The post-extension landing delivers
+  the *complete consumer-facing Karp-reduction interface* (forward
+  equivariance, edge-case reverse directions, conditional iff,
+  conditional inhabitant, stretch-goal Props) under two `Prop`-typed
+  obligations capturing the genuinely difficult parts:
+  `GrochowQiaoRigidity` (research-scope **R-15-residual-TI-reverse**)
+  and `GrochowQiaoForwardObligation` (research-scope
+  **R-15-residual-TI-forward-matrix**). Discharging both Props would
+  yield an unconditional `@GIReducesToTI ℚ _` inhabitant via
+  `grochowQiao_isInhabitedKarpReduction_under_obligations`.
+
 * **2026-04-26 (Workstream R-TI Layer T0–T3 partial-closure
   landing)** — Grochow–Qiao (2021) Karp reduction GI ≤ TI: Layer T0
   paper synthesis (4 markdown documents under `docs/research/` plus

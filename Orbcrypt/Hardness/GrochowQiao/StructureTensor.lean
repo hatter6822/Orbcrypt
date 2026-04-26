@@ -360,5 +360,163 @@ theorem grochowQiaoEncode_nonzero_of_pos_dim (m : ℕ) (h_m : 1 ≤ m)
   · -- Discharge the if-condition: all three slots are path-algebra.
     refine ⟨?_, ?_, ?_⟩ <;> exact isPathAlgebraSlot_vertex m adj v
 
+-- ============================================================================
+-- Sub-task T2.5 — Encoder evaluation lemmas.
+-- ============================================================================
+
+/-- **Encoder evaluation at the path-algebra branch.**
+
+When all three slot indices are path-algebra slots, the encoder
+returns the path-algebra structure constant. -/
+@[simp] theorem grochowQiaoEncode_path
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (i j k : Fin (dimGQ m))
+    (hi : isPathAlgebraSlot m adj i = true)
+    (hj : isPathAlgebraSlot m adj j = true)
+    (hk : isPathAlgebraSlot m adj k = true) :
+    grochowQiaoEncode m adj i j k =
+    pathSlotStructureConstant m i j k := by
+  unfold grochowQiaoEncode
+  rw [if_pos]
+  exact ⟨hi, hj, hk⟩
+
+/-- **Encoder evaluation at the padding branch (first slot is padding).**
+
+If the first slot is *not* a path-algebra slot, the encoder returns
+the ambient-matrix structure constant. -/
+@[simp] theorem grochowQiaoEncode_padding_left
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (i j k : Fin (dimGQ m))
+    (hi : isPathAlgebraSlot m adj i = false) :
+    grochowQiaoEncode m adj i j k =
+    ambientSlotStructureConstant m i j k := by
+  unfold grochowQiaoEncode
+  rw [if_neg]
+  rintro ⟨hi', _, _⟩
+  exact Bool.noConfusion (hi'.symm.trans hi)
+
+/-- **Encoder evaluation at the padding branch (second slot is padding).** -/
+@[simp] theorem grochowQiaoEncode_padding_mid
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (i j k : Fin (dimGQ m))
+    (hj : isPathAlgebraSlot m adj j = false) :
+    grochowQiaoEncode m adj i j k =
+    ambientSlotStructureConstant m i j k := by
+  unfold grochowQiaoEncode
+  rw [if_neg]
+  rintro ⟨_, hj', _⟩
+  exact Bool.noConfusion (hj'.symm.trans hj)
+
+/-- **Encoder evaluation at the padding branch (third slot is padding).** -/
+@[simp] theorem grochowQiaoEncode_padding_right
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (i j k : Fin (dimGQ m))
+    (hk : isPathAlgebraSlot m adj k = false) :
+    grochowQiaoEncode m adj i j k =
+    ambientSlotStructureConstant m i j k := by
+  unfold grochowQiaoEncode
+  rw [if_neg]
+  rintro ⟨_, _, hk'⟩
+  exact Bool.noConfusion (hk'.symm.trans hk)
+
+/-- **Encoder evaluation at the diagonal vertex slot.**
+
+At the triple-diagonal `(vertex v, vertex v, vertex v)`, the
+encoder returns `1` (the idempotent law `e_v · e_v = e_v` in the
+path algebra). -/
+theorem grochowQiaoEncode_diagonal_vertex
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (v : Fin m) :
+    grochowQiaoEncode m adj
+      ((slotEquiv m).symm (.vertex v))
+      ((slotEquiv m).symm (.vertex v))
+      ((slotEquiv m).symm (.vertex v)) = 1 := by
+  rw [grochowQiaoEncode_path m adj _ _ _
+        (isPathAlgebraSlot_vertex m adj v)
+        (isPathAlgebraSlot_vertex m adj v)
+        (isPathAlgebraSlot_vertex m adj v)]
+  unfold pathSlotStructureConstant
+  simp only [Equiv.apply_symm_apply, slotToArrow]
+  rw [pathMul_id_self]
+  simp
+
+-- ============================================================================
+-- Sub-task T2.6 — Padding-distinguishability lemma.
+-- ============================================================================
+
+/-- **Padding-distinguishability lemma (Layer T2.6).**
+
+If the encoder is non-zero at a slot triple `(i, j, k)`, then either:
+
+* **All three slots are path-algebra slots** (the encoder returned
+  the path-algebra structure constant, which can be non-zero); or
+* **All three slots are padding slots** (the encoder returned the
+  ambient-matrix structure constant, which can be non-zero on the
+  triple-diagonal).
+
+There is no "mixed" non-zero entry where some slots are path-algebra
+and others are padding. This is the consumer-facing lemma the Layer
+T4.1 partition-preservation argument inverts: any GL³ preserving the
+encoder's non-zero pattern *must* preserve the path-algebra-vs-padding
+partition.
+
+**Why.** The encoder is defined piecewise:
+* If all three slots are path-algebra → `pathSlotStructureConstant`.
+* Otherwise → `ambientSlotStructureConstant`.
+
+So a non-zero entry must come from one of these two cases. The
+"otherwise" case includes "any of the three slots is padding"; we
+strengthen it here to "all three slots are padding" using the fact
+that the ambient-matrix structure constant is `0` whenever the three
+slot indices are not all equal (and equal slot indices either all
+share the path-algebra-slot kind or all share the padding-slot kind,
+since `isPathAlgebraSlot` is a function of the slot, not of the
+triple).
+
+Specifically: in the "otherwise" branch, the ambient constant is
+`if i = j ∧ j = k then 1 else 0` — non-zero only at triples
+`i = j = k`. At such a triple, all three slots have the same
+`isPathAlgebraSlot` value (since they are the same slot), and we
+fell into the "otherwise" branch precisely because that value is
+`false`. So all three are padding slots. ∎ -/
+theorem grochowQiaoEncode_padding_distinguishable
+    (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (i j k : Fin (dimGQ m))
+    (h_nonzero : grochowQiaoEncode m adj i j k ≠ 0) :
+    (isPathAlgebraSlot m adj i = true ∧
+     isPathAlgebraSlot m adj j = true ∧
+     isPathAlgebraSlot m adj k = true) ∨
+    (isPathAlgebraSlot m adj i = false ∧
+     isPathAlgebraSlot m adj j = false ∧
+     isPathAlgebraSlot m adj k = false) := by
+  -- Case-split on the if-then-else in the encoder definition.
+  by_cases h_path : isPathAlgebraSlot m adj i = true ∧
+                    isPathAlgebraSlot m adj j = true ∧
+                    isPathAlgebraSlot m adj k = true
+  · exact Or.inl h_path
+  · -- The "otherwise" branch fired; the encoder returned the ambient
+    -- constant, which is non-zero only when i = j = k. We then derive
+    -- "all three are padding" from "i = j = k" + "not all three are
+    -- path-algebra".
+    right
+    -- Extract the ambient-structure-constant value from the encoder.
+    have h_amb : grochowQiaoEncode m adj i j k =
+                 ambientSlotStructureConstant m i j k := by
+      unfold grochowQiaoEncode; rw [if_neg h_path]
+    rw [h_amb] at h_nonzero
+    -- The ambient constant is non-zero only when i = j ∧ j = k.
+    by_cases h_eq : i = j ∧ j = k
+    · obtain ⟨hij, hjk⟩ := h_eq
+      subst hij; subst hjk
+      -- Now i = j = k, so isPathAlgebraSlot at all three is the same.
+      -- We're in the "not all path-algebra" branch, so isPathAlgebraSlot i = false.
+      have h_not_all : ¬ (isPathAlgebraSlot m adj i = true ∧
+                          isPathAlgebraSlot m adj i = true ∧
+                          isPathAlgebraSlot m adj i = true) := h_path
+      have h_false : isPathAlgebraSlot m adj i = false := by
+        cases h_b : isPathAlgebraSlot m adj i with
+        | true => exact absurd ⟨h_b, h_b, h_b⟩ h_not_all
+        | false => rfl
+      exact ⟨h_false, h_false, h_false⟩
+    · -- i ≠ j ∨ j ≠ k: the ambient constant is 0, contradicting h_nonzero.
+      unfold ambientSlotStructureConstant at h_nonzero
+      rw [if_neg h_eq] at h_nonzero
+      exact absurd rfl h_nonzero
+
 end GrochowQiao
 end Orbcrypt

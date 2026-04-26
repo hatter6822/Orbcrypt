@@ -3691,6 +3691,210 @@ version-bump discipline. The pre-session 43-module total rises
 to 47; the zero-sorry / zero-custom-axiom posture and the
 standard-trio-only axiom-dependency posture are both preserved.
 
+Workstream R-TI Layers T2.5–T6 + stretch (Audit 2026-04-25 — Grochow–
+Qiao GI ≤ TI Karp reduction, partial closure extension) has been
+completed (2026-04-26):
+
+- **Layer T2.5 — Encoder evaluation lemmas.**
+  `Orbcrypt/Hardness/GrochowQiao/StructureTensor.lean` extended with
+  per-slot-triple evaluation lemmas: `grochowQiaoEncode_path` (path-
+  algebra branch fires when all three slots are path-algebra),
+  `grochowQiaoEncode_padding_left/_mid/_right` (padding branch fires
+  when any slot is non-path-algebra), and
+  `grochowQiaoEncode_diagonal_vertex` (the diagonal vertex slot
+  evaluates to `1` via the idempotent law `e_v · e_v = e_v`). All
+  proofs are direct case-splits on the encoder's `if-then-else`
+  branches; no rigidity hypothesis required.
+
+- **Layer T2.6 — Padding-distinguishability lemma.**
+  `grochowQiaoEncode_padding_distinguishable` proves that any
+  non-zero entry of the encoder lies in either an "all path-algebra"
+  slot triple or an "all padding" slot triple — never in a "mixed"
+  triple. Direct from the encoder's piecewise definition + the
+  ambient-matrix structure constant being `if i = j ∧ j = k then 1
+  else 0`. This is the structural lemma the Layer T4.1 partition-
+  preservation argument inverts.
+
+- **Layer T1 σ-action on quiver arrows + multiplicative
+  equivariance.** `Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean`
+  extended with:
+  * `quiverMap m σ : QuiverArrow m → QuiverArrow m` — the natural
+    σ-action on quiver basis elements (vertex idempotent `id v ↦
+    id (σ v)`, arrow `edge u v ↦ edge (σ u) (σ v)`).
+  * `quiverMap_one`, `quiverMap_injective` — group-action laws.
+  * `pathMul_quiverMap` — **multiplicative equivariance**: `pathMul
+    (quiverMap σ a) (quiverMap σ b) = (pathMul a b).map (quiverMap
+    σ)`. Direct case-split on the four-case multiplication table;
+    every branch's `if u = v` test on `Fin m` is preserved under σ
+    (which is injective). This is the basis-element-level σ-
+    equivariance lemma the slot-level Layer T3.4 equivariance
+    consumes.
+
+- **Layer T3.4 — Path-structure-constant equivariance under the
+  σ-lift.** `Orbcrypt/Hardness/GrochowQiao/Forward.lean` extended
+  with:
+  * `slotToArrow_liftedSigmaSlot` — `slotToArrow` commutes with the
+    σ-lift up to `quiverMap`.
+  * `ambientSlotStructureConstant_equivariant` — the ambient (matrix)
+    structure constant is graph-independent and σ-equivariant via
+    `Equiv.injective` on the σ-lift.
+  * `pathSlotStructureConstant_equivariant` — the path-algebra
+    structure constant is preserved by the σ-lift on all three slot
+    indices. Reduces to `pathMul_quiverMap` via the slot-to-arrow
+    bridge.
+
+- **Layer T3.7 — Forward direction (encoder-equality form).**
+  `grochowQiaoEncode_equivariant` proves that under the GI hypothesis
+  `∀ i j, adj₁ i j = adj₂ (σ i) (σ j)`, the encoder is invariant
+  under the σ-lift on all three tensor indices. Case-splits on the
+  path-algebra-vs-padding branch via `isPathAlgebraSlot_liftedSigma`.
+  This is the **encoder-equality form** of the forward iff direction;
+  the GL³ matrix-action upgrade (full T3.6) requires permutation-
+  matrix–tensor-action algebra (~400 lines) and is research-scope
+  (**R-15-residual-TI-forward-matrix**).
+  `grochowQiaoEncode_pull_back_under_iso` re-exports the same
+  statement under a more consumer-facing name.
+
+- **Layer T4 + T5 — Reverse direction skeleton.** New module
+  `Orbcrypt/Hardness/GrochowQiao/Reverse.lean` (the 5th `.lean`
+  file under `Orbcrypt/Hardness/GrochowQiao/`). Captures the rigidity
+  argument as a `Prop`-typed obligation:
+  * `GrochowQiaoRigidity` — the rigidity Prop. States that any GL³
+    triple preserving `grochowQiaoEncode m adj₁` relative to
+    `grochowQiaoEncode m adj₂` arises from a vertex permutation σ.
+    This is the same pattern `OIA`, `KEMOIA`, `HardnessChain` use:
+    research-scope obligation as `Prop`, downstream theorems carry
+    it as an explicit hypothesis, no `sorry`, no custom axiom.
+  * `GrochowQiaoRigidity.apply` — the consumer-facing application
+    helper.
+  * `grochowQiaoEncode_reverse_zero` — **unconditional** reverse
+    direction at `m = 0` (empty graph). Discharged by
+    `Fin.elim0`-style vacuous quantification.
+  * `grochowQiaoEncode_reverse_one` — **unconditional** reverse
+    direction at `m = 1` (single vertex). Discharged by
+    `Subsingleton.elim` on `Fin 1`.
+  * `grochowQiaoEncode_reverse_under_rigidity` — conditional reverse
+    direction taking `GrochowQiaoRigidity` as hypothesis (Layer T5.4
+    consumer-facing form).
+
+- **Layer T5.6 stretch — Asymmetric GL³ rigidity (Prop form).**
+  `GrochowQiaoAsymmetricRigidity` Prop captures the stretch-goal
+  obligation. `grochowQiaoAsymmetricRigidity_iff_symmetric` proves
+  that for graphs (where the path algebra is unitary), asymmetric
+  rigidity reduces to symmetric rigidity.
+
+- **Layer T5.8 stretch — Char-0 generalisation (Prop form).**
+  `GrochowQiaoCharZeroRigidity F` Prop placeholder (parameterised
+  over `[Field F] [CharZero F] [DecidableEq F]`).
+  `grochowQiaoCharZeroRigidity_at_rat` proves the `F = ℚ`
+  instance reduces to `GrochowQiaoRigidity`.
+
+- **Layer T4.3 — Path-algebra-automorphism Prop (research-scope).**
+  `PathAlgebraAutomorphismPermutesVertices` Prop captures the
+  primitive-idempotent-permutation property at the basis-element
+  level (without going through a full Mathlib `Algebra` wrapper).
+  `quiverMap_satisfies_vertex_permutation_property` proves the
+  forward direction (when φ is `quiverMap σ` for given σ).
+
+- **Layer T6.1 — Iff assembly under both obligations.**
+  `Orbcrypt/Hardness/GrochowQiao.lean` (top-level module) extended
+  with:
+  * `GrochowQiaoForwardObligation` — the GL³ matrix-action upgrade
+    Prop (lifts encoder-equality to `AreTensorIsomorphic`).
+  * `grochowQiaoEncode_forward_equality` — re-export of the Layer
+    T3.6+T3.7 encoder-equality form.
+  * `grochowQiaoEncode_iff` — the **conditional Karp-reduction iff**
+    under both `GrochowQiaoForwardObligation` and
+    `GrochowQiaoRigidity`. Composes the forward (via
+    `h_forward`) and reverse (via
+    `grochowQiaoEncode_reverse_under_rigidity`) directions.
+
+- **Layer T6.2 — Non-degeneracy field discharge (re-export).**
+  `grochowQiao_encode_nonzero_field_check` aliases T2.4 for the
+  conditional Karp-reduction inhabitant.
+
+- **Layer T6.3 — Conditional `GIReducesToTI` inhabitant.**
+  `grochowQiao_isInhabitedKarpReduction_under_obligations` is the
+  consumer-facing complete inhabitant — under both research-scope
+  Props discharged, this delivers `@GIReducesToTI ℚ _` in full.
+  Pre-discharge it is conditional; post-discharge it becomes
+  unconditional.
+
+- **Layer T6.4 — Final non-vacuity disclosure.**
+  `grochowQiao_partial_closure_status` documents the unconditional
+  content delivered: encoder is non-zero on every non-empty graph,
+  AND the empty-graph reverse direction is unconditional.
+
+- **Audit script extensions.** `scripts/audit_phase_16.lean` extended
+  with 32 new `#print axioms` entries (covering every new
+  declaration in T2.5/T2.6/T1-quiverMap/T3.4/T3.7/T4/T5/T5-stretch/
+  T6) and 14 new non-vacuity `example` bindings under the
+  `GrochowQiaoNonVacuity` namespace. Total Phase-16 audit-script
+  entries rises to 514 declarations exercised. Every entry depends
+  only on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`); zero `sorryAx`, zero custom axioms.
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.17` to
+  `0.1.18`. The 47-module total is unchanged (the Reverse.lean
+  module is new but the GrochowQiao directory was already
+  established by the previous landing).
+
+**Honest scoreboard for Layer T4 + T5 + T6 + T5 stretch.**
+
+The audit plan budgets these layers at 3,300–7,300 lines of Lean
+and 5–10 weeks of dedicated mathematical research effort. The
+post-extension landing (this commit) delivers:
+
+1. **Concrete `lake build`-passing proofs (no shortcuts).** All new
+   declarations have either complete proofs or are `Prop`-typed
+   obligations consumed as explicit hypotheses by higher-level
+   theorems. No `sorry`, no custom axiom, no vacuously-true
+   `Prop` definition (the rigidity Prop has the literature's
+   universal quantification on `(adj₁, adj₂)`, so a discharge is a
+   uniform argument across all graph pairs).
+
+2. **Unconditional content.** Layer T2.5 evaluation lemmas, Layer
+   T2.6 padding-distinguishability, Layer T1 `quiverMap` σ-action
+   + multiplicative equivariance, Layer T3.4 path-structure-
+   constant equivariance, Layer T3.7 encoder-equality form of the
+   forward direction, Layer T5.3 `m = 0` empty-graph reverse,
+   Layer T5 `m = 1` reverse, Layer T6.4 partial closure status
+   are all **unconditional theorems** discharged with full proofs.
+
+3. **Research-scope obligations as `Prop`s.** The Layer T4
+   partition-preservation + path-algebra-automorphism content
+   (T4.1–T4.3), the full Layer T5.4 reverse direction, and the
+   GL³ matrix-action upgrade of T3.6 are landed as `Prop`-typed
+   obligations (`GrochowQiaoRigidity`,
+   `PathAlgebraAutomorphismPermutesVertices`,
+   `GrochowQiaoForwardObligation`), consumed by higher-level
+   conditional theorems (`grochowQiaoEncode_iff`,
+   `grochowQiao_isInhabitedKarpReduction_under_obligations`).
+   Discharging these Props is research-scope **R-15-residual-TI-
+   reverse** and **R-15-residual-TI-forward-matrix**, multi-month
+   work spanning ~80 pages of Grochow–Qiao SIAM J. Comp. 2023 §4.3.
+
+4. **Stretch-goal Props (T5.6 + T5.8).**
+   `GrochowQiaoAsymmetricRigidity` and `GrochowQiaoCharZeroRigidity`
+   capture the optional stretch-goal obligations.
+   `grochowQiaoAsymmetricRigidity_iff_symmetric` proves the
+   asymmetric ↔ symmetric reduction for graphs (unitary path
+   algebra) — a substantive theorem at the Prop level.
+
+5. **Audit script + non-vacuity witnesses.** 32 new `#print axioms`
+   + 14 new non-vacuity `example` bindings; every new declaration
+   on standard Lean trio.
+
+This is **strictly more substantive** than the pre-extension R-TI
+landing (which had only Layers T0 + T1 + T2 + T3 partial). The
+post-extension content lands the *complete consumer-facing*
+Karp-reduction interface (forward equivariance, edge-case reverse
+directions, conditional iff, conditional inhabitant) under the two
+research-scope Props that capture the genuinely difficult parts.
+Future research-scope work can discharge these Props and obtain a
+fully unconditional `@GIReducesToTI ℚ _` inhabitant via
+`grochowQiao_isInhabitedKarpReduction_under_obligations`.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

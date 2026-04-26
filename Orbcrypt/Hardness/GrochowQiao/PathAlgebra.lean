@@ -21,6 +21,7 @@ import Mathlib.Data.Finset.Basic
 import Mathlib.Data.Finset.Image
 import Mathlib.Data.Finset.Card
 import Mathlib.Logic.Equiv.Basic
+import Mathlib.GroupTheory.Perm.Basic
 
 /-!
 # Grochow–Qiao path algebra `F[Q_G] / J²` (Layer T1)
@@ -379,6 +380,119 @@ theorem pathMul_idempotent_iff_id (m : ℕ) (a : QuiverArrow m) :
     constructor
     · intro h; cases h
     · rintro ⟨_, h⟩; cases h
+
+-- ============================================================================
+-- σ-action on quiver arrows + path-multiplication equivariance.
+-- ============================================================================
+
+/-- The natural σ-action on `QuiverArrow m`: a vertex permutation
+σ ∈ Equiv.Perm (Fin m) acts on basis elements by permuting the
+endpoints. Vertex idempotents `e_v` map to `e_(σ v)`; arrows
+`α(u, v)` map to `α(σ u, σ v)`. -/
+def quiverMap (m : ℕ) (σ : Equiv.Perm (Fin m)) :
+    QuiverArrow m → QuiverArrow m
+  | .id v => .id (σ v)
+  | .edge u v => .edge (σ u) (σ v)
+
+@[simp] theorem quiverMap_id (m : ℕ) (σ : Equiv.Perm (Fin m)) (v : Fin m) :
+    quiverMap m σ (.id v) = .id (σ v) := rfl
+
+@[simp] theorem quiverMap_edge (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (u v : Fin m) :
+    quiverMap m σ (.edge u v) = .edge (σ u) (σ v) := rfl
+
+/-- The identity permutation acts as the identity on `QuiverArrow m`. -/
+@[simp] theorem quiverMap_one (m : ℕ) :
+    quiverMap m (1 : Equiv.Perm (Fin m)) = id := by
+  funext a
+  cases a with
+  | id v => show QuiverArrow.id ((1 : Equiv.Perm (Fin m)) v) = .id v; rfl
+  | edge u v =>
+      show QuiverArrow.edge ((1 : Equiv.Perm (Fin m)) u)
+                            ((1 : Equiv.Perm (Fin m)) v) = .edge u v
+      rfl
+
+/-- The σ-action on `QuiverArrow m` is injective (since σ is). -/
+theorem quiverMap_injective (m : ℕ) (σ : Equiv.Perm (Fin m)) :
+    Function.Injective (quiverMap m σ) := by
+  intro a b h
+  cases a with
+  | id va =>
+      cases b with
+      | id vb =>
+          simp only [quiverMap_id] at h
+          injection h with h1
+          exact congrArg _ (σ.injective h1)
+      | edge ub vb =>
+          -- `quiverMap σ (id va) = id (σ va)` vs `quiverMap σ (edge ub vb)
+          -- = edge (σ ub) (σ vb)`; constructors disagree.
+          simp only [quiverMap_id, quiverMap_edge] at h
+          cases h
+  | edge ua va =>
+      cases b with
+      | id vb =>
+          simp only [quiverMap_id, quiverMap_edge] at h
+          cases h
+      | edge ub vb =>
+          simp only [quiverMap_edge] at h
+          injection h with h1 h2
+          have h3 : ua = ub := σ.injective h1
+          have h4 : va = vb := σ.injective h2
+          subst h3; subst h4
+          rfl
+
+/-- **Path-multiplication is σ-equivariant.**
+
+Multiplication in the radical-2 truncated path algebra commutes with
+the σ-action: `(σ • a) · (σ • b) = σ • (a · b)`. The four-case
+`pathMul` table is preserved because every case's `if u = v` test on
+`Fin m` is preserved under σ (which is injective). The arrow-arrow
+case is uniform (always `none`).
+
+This is the **basis-element-level σ-equivariance** that the
+slot-level equivariance lemma `pathSlotStructureConstant_equivariant`
+in Layer T3.4 consumes. -/
+theorem pathMul_quiverMap (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (a b : QuiverArrow m) :
+    pathMul m (quiverMap m σ a) (quiverMap m σ b) =
+    (pathMul m a b).map (quiverMap m σ) := by
+  cases a with
+  | id u =>
+      cases b with
+      | id v =>
+          -- pathMul (id u) (id v) = if u = v then some (id u) else none.
+          -- After σ-action: pathMul (id (σ u)) (id (σ v)) = if σ u = σ v
+          -- then some (id (σ u)) else none. Both branches match via σ
+          -- injectivity.
+          simp only [quiverMap_id, pathMul_id_id]
+          by_cases h : u = v
+          · subst h; simp
+          · have h' : σ u ≠ σ v := fun heq => h (σ.injective heq)
+            rw [if_neg h, if_neg h']
+            rfl
+      | edge va vb =>
+          -- pathMul (id u) (edge va vb) = if u = va then some (edge va vb) else none.
+          -- After σ-action: pathMul (id (σ u)) (edge (σ va) (σ vb)) =
+          -- if σ u = σ va then some (edge (σ va) (σ vb)) else none.
+          simp only [quiverMap_id, quiverMap_edge, pathMul_id_edge]
+          by_cases h : u = va
+          · subst h; simp
+          · have h' : σ u ≠ σ va := fun heq => h (σ.injective heq)
+            rw [if_neg h, if_neg h']
+            rfl
+  | edge ua va =>
+      cases b with
+      | id w =>
+          -- pathMul (edge ua va) (id w) = if va = w then some (edge ua va) else none.
+          simp only [quiverMap_id, quiverMap_edge, pathMul_edge_id]
+          by_cases h : va = w
+          · subst h; simp
+          · have h' : σ va ≠ σ w := fun heq => h (σ.injective heq)
+            rw [if_neg h, if_neg h']
+            rfl
+      | edge ub vb =>
+          -- pathMul (edge _ _) (edge _ _) = none unconditionally.
+          simp only [quiverMap_edge, pathMul_edge_edge_none, Option.map_none]
 
 end GrochowQiao
 end Orbcrypt

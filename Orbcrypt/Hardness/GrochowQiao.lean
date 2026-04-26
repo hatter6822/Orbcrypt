@@ -16,6 +16,7 @@ Layer T6" for the work-unit decomposition.
 import Orbcrypt.Hardness.GrochowQiao.PathAlgebra
 import Orbcrypt.Hardness.GrochowQiao.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao.Forward
+import Orbcrypt.Hardness.GrochowQiao.Reverse
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
 
@@ -139,6 +140,148 @@ theorem grochowQiao_research_scope_disclosure :
     ∀ m, 1 ≤ m → ∀ adj : Fin m → Fin m → Bool,
       grochowQiaoEncode m adj ≠ (fun _ _ _ => 0) :=
   grochowQiaoEncode_nonzero_of_pos_dim
+
+-- ============================================================================
+-- Layer T6.1 — Iff assembly (conditional on the rigidity hypothesis).
+-- ============================================================================
+
+/-- **Iff assembly under the rigidity hypothesis (Layer T6.1).**
+
+Composes the *encoder-equivariance* form of the forward direction
+(Layer T3.7) with the conditional reverse direction (Layer T5.4
+via `grochowQiaoEncode_reverse_under_rigidity`). The result is the
+Karp-reduction iff at the encoder-equality level, conditional on
+`GrochowQiaoRigidity`.
+
+**Forward direction status.** This iff uses an *encoder-equality*
+formulation of the forward direction (`grochowQiaoEncode_equivariant`),
+which captures the same content as `AreTensorIsomorphic` but at the
+slot level. The full GL³ matrix-action upgrade (T3.6) is research-
+scope. For the Karp-reduction iff, we lift the encoder-equivariance
+form to `AreTensorIsomorphic` via the σ-lifted permutation matrix
+(stated in Prop form here as a forward-direction obligation;
+discharge would be ~400 lines of permutation-matrix-tensor-action
+algebra, audit plan T3.6 budget). -/
+def GrochowQiaoForwardObligation : Prop :=
+  ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
+    (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) →
+    AreTensorIsomorphic
+      (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂)
+
+/-- **The forward direction's encoder-equality lemma.**
+
+Re-exports `grochowQiaoEncode_equivariant` (Layer T3.6+T3.7
+encoder-equality form) for use by downstream consumers — the slot-
+level statement that the encoder is invariant under the σ-lift on
+all three tensor indices, given the GI hypothesis. -/
+theorem grochowQiaoEncode_forward_equality :
+    ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+      (σ : Equiv.Perm (Fin m)),
+      (∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) →
+      ∀ i j k, grochowQiaoEncode m adj₁ i j k =
+               grochowQiaoEncode m adj₂
+                 (liftedSigma m σ i)
+                 (liftedSigma m σ j)
+                 (liftedSigma m σ k) :=
+  fun m adj₁ adj₂ σ h => grochowQiaoEncode_equivariant m adj₁ adj₂ σ h
+
+/-- **Iff assembly conditional on `GrochowQiaoForwardObligation` and
+`GrochowQiaoRigidity`** (T6.1 — research-scope conditional form).
+
+The full Karp-reduction iff `(∃ σ, ...) ↔ AreTensorIsomorphic
+T_{adj₁} T_{adj₂}` holds under both:
+
+* `GrochowQiaoForwardObligation` — discharges the forward direction
+  (lifts the encoder-equality to a GL³ matrix action via the
+  σ-lifted permutation matrix; ~400 lines, audit plan T3.6).
+* `GrochowQiaoRigidity` — discharges the reverse direction (the
+  multi-month rigidity argument; audit plan T4 + T5).
+
+Both Props are research-scope **R-15-residual-TI-***. -/
+theorem grochowQiaoEncode_iff
+    (h_forward : GrochowQiaoForwardObligation)
+    (h_rigidity : GrochowQiaoRigidity)
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool) :
+    (∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) ↔
+    AreTensorIsomorphic
+      (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂) := by
+  constructor
+  · exact h_forward m adj₁ adj₂
+  · intro h_iso
+    exact h_rigidity m adj₁ adj₂ h_iso
+
+-- ============================================================================
+-- Layer T6.2 — Non-degeneracy field discharge (already done in T2.4).
+-- ============================================================================
+
+/-- **Non-degeneracy field discharge** (Layer T6.2, re-export of T2.4).
+
+The strengthened `GIReducesToTI` Prop's `encode_nonzero_of_pos_dim`
+field is discharged unconditionally by `grochowQiaoEncode`. This
+re-export aliases T2.4's `grochowQiaoEncode_nonzero_of_pos_dim` for
+use in the conditional Karp-reduction inhabitant below. -/
+theorem grochowQiao_encode_nonzero_field_check :
+    ∀ m, 1 ≤ m → ∀ adj, grochowQiaoEncode m adj ≠ (fun _ _ _ => 0) :=
+  grochowQiaoEncode_nonzero_of_pos_dim
+
+-- ============================================================================
+-- Layer T6.3 — Conditional `GIReducesToTI` inhabitant.
+-- ============================================================================
+
+/-- **Conditional `GIReducesToTI` inhabitant (Layer T6.3).**
+
+A complete inhabitant of `GIReducesToTI` over ℚ, conditional on
+`GrochowQiaoForwardObligation` and `GrochowQiaoRigidity`. This is
+the consumer-facing Karp-reduction theorem: any discharge of the
+two Props yields a fully-fledged `GIReducesToTI` inhabitant via the
+Grochow–Qiao path-algebra encoder.
+
+Pre-discharge of either Prop, the inhabitant is conditional;
+post-discharge of *both* Props (research-scope **R-15-residual-TI-
+forward-matrix** for `GrochowQiaoForwardObligation`, **R-15-residual-
+TI-reverse** for `GrochowQiaoRigidity`), the inhabitant becomes
+unconditional. The user can then prove `@GIReducesToTI ℚ _` by
+invoking this theorem at the discharged Props. -/
+theorem grochowQiao_isInhabitedKarpReduction_under_obligations
+    (h_forward : GrochowQiaoForwardObligation)
+    (h_rigidity : GrochowQiaoRigidity) :
+    @GIReducesToTI ℚ _ :=
+  ⟨dimGQ,
+   grochowQiaoEncode,
+   grochowQiaoEncode_nonzero_of_pos_dim,
+   grochowQiaoEncode_iff h_forward h_rigidity⟩
+
+-- ============================================================================
+-- Layer T6.4 — Final non-vacuity disclosure.
+-- ============================================================================
+
+/-- **Final non-vacuity disclosure (Layer T6.4).**
+
+Documents the post-T6 status of the Grochow–Qiao reduction:
+
+* The **encoder** (`grochowQiaoEncode`), **forward direction at the
+  encoder-equality level** (`grochowQiaoEncode_forward_equality`),
+  **edge-case reverse directions** (`grochowQiaoEncode_reverse_zero`,
+  `grochowQiaoEncode_reverse_one`), and **non-degeneracy**
+  (`grochowQiaoEncode_nonzero_of_pos_dim`) are landed unconditionally.
+* The **GL³ matrix-action upgrade of the forward direction**
+  (`GrochowQiaoForwardObligation`) and the **rigidity argument**
+  (`GrochowQiaoRigidity`) are landed as `Prop`-typed obligations
+  with consumer-facing conditional theorems
+  (`grochowQiaoEncode_iff`,
+  `grochowQiao_isInhabitedKarpReduction_under_obligations`).
+
+The full Karp-reduction inhabitant becomes unconditional once both
+Props are discharged (research-scope follow-ups). -/
+theorem grochowQiao_partial_closure_status :
+    -- Encoder produces non-zero tensors for all non-empty graphs.
+    (∀ m, 1 ≤ m → ∀ adj, grochowQiaoEncode m adj ≠ (fun _ _ _ => 0)) ∧
+    -- Empty-graph reverse direction is unconditional.
+    (∀ adj₁ adj₂ : Fin 0 → Fin 0 → Bool,
+      AreTensorIsomorphic (grochowQiaoEncode 0 adj₁) (grochowQiaoEncode 0 adj₂) →
+      ∃ σ : Equiv.Perm (Fin 0), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) :=
+  ⟨grochowQiaoEncode_nonzero_of_pos_dim,
+   grochowQiaoEncode_reverse_zero⟩
 
 end GrochowQiao
 end Orbcrypt

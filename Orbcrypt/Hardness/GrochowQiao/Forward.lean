@@ -215,5 +215,217 @@ theorem isPathAlgebraSlot_liftedSigma (m : ℕ)
           isPathAlgebraSlot_arrow]
       exact h u v
 
+-- ============================================================================
+-- Sub-task T3.4 — Path-algebra structure-constant equivariance.
+-- ============================================================================
+
+/-- **Slot-structure-constant equivariance under the σ-lift.**
+
+Under the GI hypothesis `∀ i j, adj₁ i j = adj₂ (σ i) (σ j)`, the
+*ambient* slot structure constant is preserved by the σ-lift on all
+three indices. Direct since `ambientSlotStructureConstant` is
+`if i = j ∧ j = k then 1 else 0` — a graph-independent function of
+the index triple — and the σ-lift is an `Equiv` so it preserves
+equality of indices. -/
+theorem ambientSlotStructureConstant_equivariant
+    (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (i j k : Fin (dimGQ m)) :
+    ambientSlotStructureConstant m
+      (liftedSigma m σ i) (liftedSigma m σ j) (liftedSigma m σ k) =
+    ambientSlotStructureConstant m i j k := by
+  unfold ambientSlotStructureConstant
+  -- The σ-lift is an `Equiv`, so `liftedSigma m σ i = liftedSigma m σ j`
+  -- iff `i = j` (by injectivity).
+  congr 1
+  refine propext ⟨fun h => ?_, fun h => ?_⟩
+  · obtain ⟨hij, hjk⟩ := h
+    refine ⟨(liftedSigma m σ).injective hij,
+            (liftedSigma m σ).injective hjk⟩
+  · obtain ⟨hij, hjk⟩ := h
+    exact ⟨congrArg _ hij, congrArg _ hjk⟩
+
+/-- **`slotToArrow` commutes with the σ-lift up to `quiverMap`.**
+
+Applying `liftedSigmaSlot σ` to a slot kind and then projecting to
+a `QuiverArrow` via `slotToArrow` gives the same result as projecting
+first and then applying `quiverMap σ` on the path-algebra basis. -/
+theorem slotToArrow_liftedSigmaSlot (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (s : SlotKind m) :
+    slotToArrow m (liftedSigmaSlot m σ s) =
+    quiverMap m σ (slotToArrow m s) := by
+  cases s with
+  | vertex v => rfl
+  | arrow u v => rfl
+
+/-- **Path-structure-constant equivariance under the σ-lift.**
+
+Under the σ-lift on all three slot indices, the path-algebra
+structure constant is preserved. The proof reduces to:
+
+1. `slotToArrow (slotEquiv (liftedSigma σ x)) = quiverMap σ (slotToArrow
+   (slotEquiv x))` (via `slotToArrow_liftedSigmaSlot`).
+2. `pathMul (quiverMap σ a) (quiverMap σ b) = (pathMul a b).map
+   (quiverMap σ)` (the basis-element-level σ-equivariance,
+   `pathMul_quiverMap`).
+3. The "if d = c" decision in `pathSlotStructureConstant`'s output
+   is preserved by `quiverMap σ` since `quiverMap σ` is injective.
+
+This is the **slot-level σ-equivariance** lemma the forward
+direction's encoder-equivariance proof consumes. The proof is
+algebraic and does not require the GL³ matrix-action machinery. -/
+theorem pathSlotStructureConstant_equivariant
+    (m : ℕ) (σ : Equiv.Perm (Fin m))
+    (i j k : Fin (dimGQ m)) :
+    pathSlotStructureConstant m
+      (liftedSigma m σ i) (liftedSigma m σ j) (liftedSigma m σ k) =
+    pathSlotStructureConstant m i j k := by
+  -- Set up the basis-element-level abbreviations.
+  set a := slotToArrow m (slotEquiv m i) with ha_def
+  set b := slotToArrow m (slotEquiv m j) with hb_def
+  set c := slotToArrow m (slotEquiv m k) with hc_def
+  -- Compute slotToArrow on each lifted index.
+  have h_a : slotToArrow m (slotEquiv m (liftedSigma m σ i)) = quiverMap m σ a := by
+    show slotToArrow m (slotEquiv m ((slotEquiv m).symm
+          (liftedSigmaSlotEquiv m σ (slotEquiv m i)))) = _
+    rw [Equiv.apply_symm_apply]
+    exact slotToArrow_liftedSigmaSlot m σ (slotEquiv m i)
+  have h_b : slotToArrow m (slotEquiv m (liftedSigma m σ j)) = quiverMap m σ b := by
+    show slotToArrow m (slotEquiv m ((slotEquiv m).symm
+          (liftedSigmaSlotEquiv m σ (slotEquiv m j)))) = _
+    rw [Equiv.apply_symm_apply]
+    exact slotToArrow_liftedSigmaSlot m σ (slotEquiv m j)
+  have h_c : slotToArrow m (slotEquiv m (liftedSigma m σ k)) = quiverMap m σ c := by
+    show slotToArrow m (slotEquiv m ((slotEquiv m).symm
+          (liftedSigmaSlotEquiv m σ (slotEquiv m k)))) = _
+    rw [Equiv.apply_symm_apply]
+    exact slotToArrow_liftedSigmaSlot m σ (slotEquiv m k)
+  -- Unfold pathSlotStructureConstant on both sides.
+  show (match pathMul m
+             (slotToArrow m (slotEquiv m (liftedSigma m σ i)))
+             (slotToArrow m (slotEquiv m (liftedSigma m σ j))) with
+        | some d => if d = slotToArrow m (slotEquiv m (liftedSigma m σ k))
+                    then (1 : ℚ) else 0
+        | none => 0) =
+       (match pathMul m a b with
+        | some d => if d = c then (1 : ℚ) else 0
+        | none => 0)
+  rw [h_a, h_b, h_c]
+  -- Now LHS uses pathMul (quiverMap σ a) (quiverMap σ b) =
+  -- (pathMul a b).map (quiverMap σ).
+  rw [pathMul_quiverMap m σ a b]
+  -- Case-split on the pathMul output.
+  cases h_pm : pathMul m a b with
+  | none => simp
+  | some d =>
+      simp only [Option.map_some]
+      by_cases h_eq : d = c
+      · rw [if_pos h_eq, if_pos]
+        rw [h_eq]
+      · rw [if_neg h_eq, if_neg]
+        intro h_eq'
+        exact h_eq (quiverMap_injective m σ h_eq')
+
+-- ============================================================================
+-- Sub-task T3.6 + T3.7 — Forward direction of the iff (encoder equivariance).
+-- ============================================================================
+
+/-- **Encoder equivariance under the σ-lift (T3.6 in encoder-equality form).**
+
+Under the GI hypothesis `∀ i j, adj₁ i j = adj₂ (σ i) (σ j)`, the
+encoder is equivariant under the σ-lift on all three tensor indices:
+
+```
+grochowQiaoEncode m adj₁ (i, j, k) =
+grochowQiaoEncode m adj₂ (liftedSigma σ i, liftedSigma σ j, liftedSigma σ k)
+```
+
+This is the encoder-level equivariance statement of the forward
+direction. The full Layer T3.6 also restates this as a GL³ matrix
+action `(P_σ, P_σ, P_σ) • T_{adj₁} = T_{adj₂}` after constructing
+the permutation matrix `P_σ` from `liftedSigma σ`; the
+matrix-action restatement is research-scope (audit plan T3.6
+~400-line budget) since it requires the GL³ `tensorContract`
+unfolding.
+
+**Why this version is sufficient for the iff direction.**
+`AreTensorIsomorphic` over `Tensor3` is the existence of a GL³
+triple. We can construct the GL³ triple from `liftedSigma σ` via
+the permutation-matrix lift; the matrix-action computation reduces
+to this encoder-equality statement. -/
+theorem grochowQiaoEncode_equivariant
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (σ : Equiv.Perm (Fin m))
+    (h : ∀ i j, adj₁ i j = adj₂ (σ i) (σ j))
+    (i j k : Fin (dimGQ m)) :
+    grochowQiaoEncode m adj₁ i j k =
+    grochowQiaoEncode m adj₂
+      (liftedSigma m σ i) (liftedSigma m σ j) (liftedSigma m σ k) := by
+  -- Case-split on the path-algebra-vs-padding branch of the encoder.
+  -- The slot-shape preservation (`isPathAlgebraSlot_liftedSigma`)
+  -- ensures both sides land in the same branch.
+  by_cases h_path : isPathAlgebraSlot m adj₁ i = true ∧
+                    isPathAlgebraSlot m adj₁ j = true ∧
+                    isPathAlgebraSlot m adj₁ k = true
+  · -- All three slots are path-algebra under adj₁; by isPathAlgebraSlot_liftedSigma,
+    -- their σ-lifted images are path-algebra under adj₂.
+    obtain ⟨hi, hj, hk⟩ := h_path
+    have hi' : isPathAlgebraSlot m adj₂ (liftedSigma m σ i) = true := by
+      rw [← isPathAlgebraSlot_liftedSigma m adj₁ adj₂ σ h]; exact hi
+    have hj' : isPathAlgebraSlot m adj₂ (liftedSigma m σ j) = true := by
+      rw [← isPathAlgebraSlot_liftedSigma m adj₁ adj₂ σ h]; exact hj
+    have hk' : isPathAlgebraSlot m adj₂ (liftedSigma m σ k) = true := by
+      rw [← isPathAlgebraSlot_liftedSigma m adj₁ adj₂ σ h]; exact hk
+    rw [grochowQiaoEncode_path m adj₁ i j k hi hj hk]
+    rw [grochowQiaoEncode_path m adj₂ _ _ _ hi' hj' hk']
+    -- Now both sides are pathSlotStructureConstant; equivariance from T3.4.
+    rw [pathSlotStructureConstant_equivariant m σ i j k]
+  · -- Some slot is padding under adj₁; by isPathAlgebraSlot_liftedSigma,
+    -- the corresponding slot is padding under adj₂. Both encoders return
+    -- the ambient constant, which is graph-independent and σ-equivariant
+    -- by `ambientSlotStructureConstant_equivariant`.
+    -- Case-split on each of the three booleans to find a padding slot.
+    rcases h_b_i : isPathAlgebraSlot m adj₁ i with _ | _
+    · -- i is padding.
+      have hi'_b : isPathAlgebraSlot m adj₂ (liftedSigma m σ i) = false := by
+        rw [← isPathAlgebraSlot_liftedSigma m adj₁ adj₂ σ h]; exact h_b_i
+      rw [grochowQiaoEncode_padding_left m adj₁ i j k h_b_i]
+      rw [grochowQiaoEncode_padding_left m adj₂ _ _ _ hi'_b]
+      exact (ambientSlotStructureConstant_equivariant m σ i j k).symm
+    · rcases h_b_j : isPathAlgebraSlot m adj₁ j with _ | _
+      · -- j is padding (and i is path-algebra).
+        have hj'_b : isPathAlgebraSlot m adj₂ (liftedSigma m σ j) = false := by
+          rw [← isPathAlgebraSlot_liftedSigma m adj₁ adj₂ σ h]; exact h_b_j
+        rw [grochowQiaoEncode_padding_mid m adj₁ i j k h_b_j]
+        rw [grochowQiaoEncode_padding_mid m adj₂ _ _ _ hj'_b]
+        exact (ambientSlotStructureConstant_equivariant m σ i j k).symm
+      · rcases h_b_k : isPathAlgebraSlot m adj₁ k with _ | _
+        · -- k is padding (and i, j are path-algebra).
+          have hk'_b : isPathAlgebraSlot m adj₂ (liftedSigma m σ k) = false := by
+            rw [← isPathAlgebraSlot_liftedSigma m adj₁ adj₂ σ h]; exact h_b_k
+          rw [grochowQiaoEncode_padding_right m adj₁ i j k h_b_k]
+          rw [grochowQiaoEncode_padding_right m adj₂ _ _ _ hk'_b]
+          exact (ambientSlotStructureConstant_equivariant m σ i j k).symm
+        · -- All three are path-algebra; contradicts h_path.
+          exact absurd ⟨h_b_i, h_b_j, h_b_k⟩ h_path
+
+/-- **Encoder equivariance restated as encoder equality (Layer T3.7
+forward iff direction at the encoder-equality level).**
+
+Under the GI hypothesis, applying `liftedSigma σ⁻¹` to all three
+tensor indices of `grochowQiaoEncode m adj₂` produces
+`grochowQiaoEncode m adj₁`. This is the encoder-equality form of
+the GL³ tensor isomorphism `(P_σ, P_σ, P_σ) • T_{adj₁} =
+T_{adj₂}`. -/
+theorem grochowQiaoEncode_pull_back_under_iso
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (σ : Equiv.Perm (Fin m))
+    (h : ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)) :
+    ∀ i j k, grochowQiaoEncode m adj₁ i j k =
+             grochowQiaoEncode m adj₂
+               (liftedSigma m σ i)
+               (liftedSigma m σ j)
+               (liftedSigma m σ k) :=
+  grochowQiaoEncode_equivariant m adj₁ adj₂ σ h
+
 end GrochowQiao
 end Orbcrypt
