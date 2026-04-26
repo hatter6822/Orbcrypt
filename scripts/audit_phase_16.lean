@@ -2169,6 +2169,21 @@ example (m : ℕ) (adj : Fin m → Fin m → Bool) (i : Fin (dimPR m)) :
     = colWeight (prEncode m adj) i :=
   colWeight_permuteCodeword_image (prEncode m adj) 1 i
 
+/-- **R-CE Layer 3.3 non-vacuity witness (vertex column weight).**
+    At every vertex column, the column weight equals
+    `1 + #{present edges incident to v}`.  The constant `1`
+    comes from the vertex codeword itself; the variable count
+    captures the per-graph edge incidence structure.  This is
+    the per-vertex signature the marker-forcing reverse direction
+    (Layer 4) consumes to extract the vertex permutation. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (v : Fin m) :
+    colWeight (prEncode m adj) (prCoord m (.vertex v)) =
+    1 + ((Finset.univ : Finset (Fin (numEdges m))).filter
+          (fun e => edgePresent m adj e ∧
+                    (v = (edgeEndpoints m e).1 ∨
+                     v = (edgeEndpoints m e).2))).card :=
+  colWeight_prEncode_at_vertex m adj v
+
 /-- **R-CE Layer 3.3 non-vacuity witness (incid column weight).**  At
     every incidence column, the column weight is exactly 1
     (independent of `adj` and of edge presence).  This is the
