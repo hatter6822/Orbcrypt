@@ -1187,5 +1187,223 @@ theorem pathAlgebra_decompose (m : ℕ) (f : pathAlgebraQuotient m) :
       · rw [if_neg h]; ring
     · intro h; exact absurd (Finset.mem_univ _) h
 
+-- ============================================================================
+-- Layer 6 / Phase C — Idempotent + primitive idempotent theory.
+-- ============================================================================
+
+/-- **Multiplication evaluated at a vertex output index.**
+
+`(f * g)(.id z) = f(.id z) · g(.id z)`.
+
+The only `(a, b)` pair contributing is `(a, b) = (.id z, .id z)`,
+because `pathMul a b = some (.id z)` requires `a, b` to be vertex
+idempotents `id z` (vertex slot has only `pathMul (.id z) (.id z)`
+producing `some (.id z)`). -/
+theorem pathAlgebraMul_apply_id (m : ℕ) (f g : pathAlgebraQuotient m)
+    (z : Fin m) :
+    pathAlgebraMul m f g (.id z) = f (.id z) * g (.id z) := by
+  show (∑ a, ∑ b, f a * g b *
+          (if pathMul m a b = some (.id z) then (1 : ℚ) else 0)) =
+       f (.id z) * g (.id z)
+  -- Only (a, b) = (.id z, .id z) contributes. Others give pathMul ≠ some (.id z).
+  rw [Finset.sum_eq_single (.id z)]
+  · -- a = .id z
+    rw [Finset.sum_eq_single (.id z)]
+    · simp [pathMul_id_id]
+    · intros b _ hb
+      cases b with
+      | id w' =>
+        have h_pm : pathMul m (.id z) (.id w') ≠ some (.id z) := by
+          rw [pathMul_id_id]
+          by_cases h : z = w'
+          · subst h
+            rw [if_pos rfl]
+            intro _
+            exact hb rfl
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u' w' =>
+        have h_pm : pathMul m (.id z) (.edge u' w') ≠ some (.id z) := by
+          rw [pathMul_id_edge]
+          by_cases h : z = u'
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+    · intro h; exact absurd (Finset.mem_univ _) h
+  · intros a _ ha
+    apply Finset.sum_eq_zero
+    intros b _
+    cases a with
+    | id v' =>
+      have h_ne : v' ≠ z := fun h_eq => ha (by rw [h_eq])
+      cases b with
+      | id w' =>
+        have h_pm : pathMul m (.id v') (.id w') ≠ some (.id z) := by
+          rw [pathMul_id_id]
+          by_cases h : v' = w'
+          · subst h
+            rw [if_pos rfl]
+            intro h_eq
+            have h_inj := Option.some.inj h_eq
+            injection h_inj with h_eq2
+            exact h_ne h_eq2
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u' w' =>
+        have h_pm : pathMul m (.id v') (.edge u' w') ≠ some (.id z) := by
+          rw [pathMul_id_edge]
+          by_cases h : v' = u'
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+    | edge u' v' =>
+      cases b with
+      | id w' =>
+        have h_pm : pathMul m (.edge u' v') (.id w') ≠ some (.id z) := by
+          rw [pathMul_edge_id]
+          by_cases h : v' = w'
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u'' w'' =>
+        rw [pathMul_edge_edge_none]; simp
+  · intro h; exact absurd (Finset.mem_univ _) h
+
+/-- **Multiplication evaluated at an arrow output index.**
+
+`(f * g)(.edge u v) = f(.id u) · g(.edge u v) + f(.edge u v) · g(.id v)`.
+
+Only two `(a, b)` pairs contribute:
+* `(a, b) = (.id u, .edge u v)`: `pathMul (.id u) (.edge u v) =
+  some (.edge u v)`. Contributes `f(.id u) · g(.edge u v)`.
+* `(a, b) = (.edge u v, .id v)`: `pathMul (.edge u v) (.id v) =
+  some (.edge u v)`. Contributes `f(.edge u v) · g(.id v)`.
+
+All other pairs either give `none` or wrong arrow result. -/
+theorem pathAlgebraMul_apply_edge (m : ℕ) (f g : pathAlgebraQuotient m)
+    (u v : Fin m) :
+    pathAlgebraMul m f g (.edge u v) =
+    f (.id u) * g (.edge u v) + f (.edge u v) * g (.id v) := by
+  show (∑ a, ∑ b, f a * g b *
+          (if pathMul m a b = some (.edge u v) then (1 : ℚ) else 0)) =
+       f (.id u) * g (.edge u v) + f (.edge u v) * g (.id v)
+  -- Split outer sum into two cases: a = .id u (contributes b = .edge u v),
+  -- a = .edge u v (contributes b = .id v), all other a's contribute 0.
+  -- Use Finset.sum_eq_add_of_subset_of_eq_subsumes... actually let's directly
+  -- compute by extracting two terms.
+  -- Approach: show sum = inner_term_at(.id u) + inner_term_at(.edge u v),
+  -- and show all other outer terms are zero.
+  -- Direct strategy: split the outer sum into a = .id u, a = .edge u v, others.
+  -- Use Finset.add_sum_erase twice.
+  classical
+  have h_id_in : (.id u : QuiverArrow m) ∈ Finset.univ := Finset.mem_univ _
+  have h_id_ne_edge : (.id u : QuiverArrow m) ≠ .edge u v := by
+    intro h; cases h
+  have h_edge_in_erase :
+      (.edge u v : QuiverArrow m) ∈ Finset.univ.erase (.id u) := by
+    rw [Finset.mem_erase]
+    exact ⟨fun h => h_id_ne_edge h.symm, Finset.mem_univ _⟩
+  rw [← Finset.add_sum_erase _ _ h_id_in]
+  rw [← Finset.add_sum_erase _ _ h_edge_in_erase]
+  -- Now: (∑b at .id u) + ((∑b at .edge u v) + (∑a in (univ.erase .id u).erase .edge u v, ∑b ...))
+  rw [show (∑ b, f (.id u) * g b *
+            (if pathMul m (.id u) b = some (.edge u v) then (1:ℚ) else 0)) =
+          f (.id u) * g (.edge u v) from by
+    rw [Finset.sum_eq_single (.edge u v)]
+    · simp [pathMul_id_edge]
+    · intros b _ hb
+      cases b with
+      | id w' =>
+        have h_pm : pathMul m (.id u) (.id w') ≠ some (.edge u v) := by
+          rw [pathMul_id_id]; by_cases h : u = w'
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u'' w'' =>
+        have h_pm : pathMul m (.id u) (.edge u'' w'') ≠ some (.edge u v) := by
+          rw [pathMul_id_edge]; by_cases h : u = u''
+          · subst h
+            rw [if_pos rfl]
+            intro h_eq
+            have h_inj := Option.some.inj h_eq
+            injection h_inj with h_u_eq h_w_eq
+            exact hb (by rw [h_w_eq])
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+    · intro h; exact absurd (Finset.mem_univ _) h]
+  rw [show (∑ b, f (.edge u v) * g b *
+            (if pathMul m (.edge u v) b = some (.edge u v) then (1:ℚ) else 0)) =
+          f (.edge u v) * g (.id v) from by
+    rw [Finset.sum_eq_single (.id v)]
+    · simp [pathMul_edge_id]
+    · intros b _ hb
+      cases b with
+      | id w' =>
+        have h_pm : pathMul m (.edge u v) (.id w') ≠ some (.edge u v) := by
+          rw [pathMul_edge_id]; by_cases h : v = w'
+          · subst h
+            rw [if_pos rfl]
+            intro _
+            exact hb rfl
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u'' w'' =>
+        rw [pathMul_edge_edge_none]; simp
+    · intro h; exact absurd (Finset.mem_univ _) h]
+  -- Now sum over the rest must be zero.
+  rw [show (∑ a ∈ (Finset.univ.erase (.id u)).erase (.edge u v), ∑ b, f a * g b *
+            (if pathMul m a b = some (.edge u v) then (1:ℚ) else 0)) = 0 from by
+    apply Finset.sum_eq_zero
+    intros a ha
+    have ha_id : a ≠ .id u := by
+      rw [Finset.mem_erase] at ha
+      exact (Finset.mem_erase.mp ha.2).1
+    have ha_edge : a ≠ .edge u v := by
+      rw [Finset.mem_erase] at ha
+      exact ha.1
+    apply Finset.sum_eq_zero
+    intros b _
+    cases a with
+    | id v' =>
+      have h_v_ne_u : v' ≠ u := fun h_eq => ha_id (by rw [h_eq])
+      cases b with
+      | id w' =>
+        have h_pm : pathMul m (.id v') (.id w') ≠ some (.edge u v) := by
+          rw [pathMul_id_id]; by_cases h : v' = w'
+          · subst h; simp
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u'' w'' =>
+        have h_pm : pathMul m (.id v') (.edge u'' w'') ≠ some (.edge u v) := by
+          rw [pathMul_id_edge]; by_cases h : v' = u''
+          · subst h
+            rw [if_pos rfl]
+            intro h_eq
+            have h_inj := Option.some.inj h_eq
+            injection h_inj with h_uu h_ww
+            exact h_v_ne_u h_uu
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+    | edge u' w' =>
+      have h_ne_uv : ¬ (u' = u ∧ w' = v) := fun h => by
+        obtain ⟨h_u, h_w⟩ := h
+        subst h_u; subst h_w
+        exact ha_edge rfl
+      cases b with
+      | id w'' =>
+        have h_pm : pathMul m (.edge u' w') (.id w'') ≠ some (.edge u v) := by
+          rw [pathMul_edge_id]; by_cases h : w' = w''
+          · subst h
+            rw [if_pos rfl]
+            intro h_eq
+            have h_inj := Option.some.inj h_eq
+            injection h_inj with h_u_eq h_w_eq
+            exact h_ne_uv ⟨h_u_eq, h_w_eq⟩
+          · rw [if_neg h]; simp
+        rw [if_neg h_pm, mul_zero]
+      | edge u'' w'' =>
+        rw [pathMul_edge_edge_none]; simp]
+  ring
+
 end GrochowQiao
 end Orbcrypt
