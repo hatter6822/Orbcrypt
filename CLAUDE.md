@@ -4649,6 +4649,100 @@ from 54 to **55** (`BlockDecomp.lean` is the new module). The
 zero-sorry / zero-custom-axiom posture and the standard-trio-only
 axiom-dependency posture are all preserved.
 
+Workstream R-TI rigidity discharge — Stage 4 (Audit 2026-04-27 —
+σ-induced AlgEquiv lift + Wedderburn–Mal'cev σ-extraction, T-API-7
++ T-API-8) has been completed:
+
+- **Two new modules.**
+  * `Orbcrypt/Hardness/GrochowQiao/AlgEquivLift.lean` (~360 LOC,
+    NEW) — T-API-7: σ-induced AlgEquiv on `pathAlgebraQuotient m`
+    via the σ-pullback action.
+  * `Orbcrypt/Hardness/GrochowQiao/WMSigmaExtraction.lean` (~120
+    LOC, NEW) — T-API-8: composition with existing
+    `algEquiv_extractVertexPerm` to provide the round-trip σ →
+    AlgEquiv → σ' bridge.
+- **T-API-7 public surface (≈ 17 declarations).**
+  * `quiverPermFun m σ : pathAlgebraQuotient m → pathAlgebraQuotient m`
+    — the σ-pullback action, `(σ • f) c := f (quiverMap m σ⁻¹ c)`.
+  * `quiverPermFun_apply` — definitional unfold lemma.
+  * `quiverPermFun_one` — identity-permutation case.
+  * Linearity: `quiverPermFun_add`, `quiverPermFun_smul`,
+    `quiverPermFun_zero`.
+  * Basis-element actions (`@[simp]`): `quiverPermFun_apply_vertexIdempotent`
+    (`σ • e_v = e_{σ v}`), `quiverPermFun_apply_arrowElement`
+    (`σ • α(u, v) = α(σ u, σ v)`).
+  * Round-trip identities: `quiverPermFun_round_trip` (`σ⁻¹ ∘ σ =
+    id`), `quiverPermFun_round_trip'` (symmetric).
+  * **Multiplicativity** (the central technical lemma):
+    `quiverPermFun_preserves_mul` — the σ-action preserves
+    multiplication. Proved via change of variables (Equiv.sum_comp
+    twice) reducing to basis-level `pathMul_quiverMap`.
+  * Unit preservation: `quiverPermFun_preserves_one` — the σ-action
+    preserves `1 = ∑_v vertexIdempotent v`.
+  * **AlgEquiv packaging**: `quiverPermAlgEquiv m σ` — the full
+    `pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m`. Built
+    via the constructed function/inverse and the linearity +
+    multiplicativity + unit-preservation theorems.
+  * `quiverPermAlgEquiv_apply` (`@[simp]`),
+    `quiverPermAlgEquiv_apply_vertexIdempotent` (`@[simp]`),
+    `quiverPermAlgEquiv_apply_arrowElement` (`@[simp]`),
+    `quiverPermAlgEquiv_one` — round-trip identity AlgEquiv.
+- **T-API-8 public surface (≈ 3 declarations).**
+  * `gl3_to_vertexPerm m φ` — wrapper for
+    `algEquiv_extractVertexPerm`. Given any AlgEquiv on the path
+    algebra, extract σ + j satisfying the WM conjugation identity.
+  * `quiverPermAlgEquiv_extractVertexPerm_witness` — the σ-induced
+    AlgEquiv is in WM normal form with `j = 0`. The trivial
+    radical witness exhibits the σ' = σ identification.
+  * `extracted_perm_at_identity` — the identity AlgEquiv extracts
+    the identity vertex permutation (with `j = 0`).
+- **Mathematical content.**
+  * **σ-pullback action**: For `f : QuiverArrow m → ℚ`, the σ-action
+    is `(σ • f) c := f (quiverMap m σ⁻¹ c)` — the natural pull-back
+    that turns vertex permutations into linear endomorphisms of the
+    path algebra. This is multiplicative because of basis-level
+    σ-equivariance: `pathMul (qMap σ a) (qMap σ b) = (pathMul a b).map
+    (qMap σ)`. The change of variables `(a, b) → (qMap σ a', qMap σ b')`
+    in the multiplication formula transforms the σ-action's product
+    into the product of σ-actions, with the indicator
+    `[pathMul a b = some c]` matching `[pathMul a' b' = some (qMap σ⁻¹ c)]`
+    via `pathMul_quiverMap`.
+  * **WM round-trip**: The existing `algEquiv_extractVertexPerm`
+    (Phase F starter, post-2026-04-26) extracts σ' + j from any
+    AlgEquiv. Applied to `quiverPermAlgEquiv m σ`, the trivial
+    witness `(σ' = σ, j = 0)` exhibits the round-trip identity
+    `(1 + 0) * e_{σ v} * (1 - 0) = quiverPermAlgEquiv σ (e_v) =
+    e_{σ v}`. WM's σ-extraction is unique up to the radical, so the
+    σ'-component agrees with the original σ.
+- **Audit script.** `scripts/audit_phase_16.lean` extended with
+  ~20 new `#print axioms` entries plus 5 non-vacuity `example`s
+  exercising `quiverPermAlgEquiv` on `Equiv.swap (0 : Fin 2) 1`
+  (vertex-idempotent action and arrow-element action),
+  identity-AlgEquiv reduction, the WM round-trip on σ-induced
+  AlgEquivs, and the identity AlgEquiv WM extraction.
+- **Verification.** Full `lake build` succeeds with **3,402 jobs**
+  (up from 3,400 — two new modules). Phase 16 audit script
+  exercises **755 declarations** (up from 735 — 20 new entries),
+  all on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`). Zero `sorry`, zero custom axioms.
+- **Cryptographic role.** Stage 4 lands the **σ-construction half**
+  of the rigidity argument. The opposite direction (extracting σ
+  from a GL³ tensor isomorphism) remains conditional on the Stage 3
+  research-scope `Prop` `GL3PreservesPartitionCardinalities`. Once
+  that Prop is discharged (research-scope **R-15-residual-TI-
+  reverse**), Stages 3 + 4 + 5 compose into the full rigidity
+  argument.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 4 lands two
+new modules and is structurally additive (no API-breaking changes
+to existing code; uses only the existing `quiverMap` /
+`pathMul_quiverMap` infrastructure from `PathAlgebra.lean` and
+`algEquiv_extractVertexPerm` from `WedderburnMalcev.lean`). The
+module count rises from 55 to **57** (`AlgEquivLift.lean` and
+`WMSigmaExtraction.lean` are the new modules). The zero-sorry /
+zero-custom-axiom posture and the standard-trio-only axiom-
+dependency posture are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

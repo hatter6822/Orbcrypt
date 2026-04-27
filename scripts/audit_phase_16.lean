@@ -3034,3 +3034,93 @@ example (h_gl3 : GL3PreservesPartitionCardinalities)
   partition_preserving_perm_under_GL3 h_gl3 m adj₁ adj₂ g h_iso
 
 end BlockDecompNonVacuity
+
+-- ============================================================================
+-- ## §15.12 Workstream R-TI Stage 4 T-API-7 (σ-induced AlgEquiv lift).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_apply
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_one
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_add
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_smul
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_zero
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_apply_vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_apply_arrowElement
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_round_trip
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_round_trip'
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_preserves_mul
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_preserves_one
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_apply
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_apply_vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_apply_arrowElement
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_one
+
+namespace AlgEquivLiftNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 4 T-API-7 non-vacuity witness (vertex-idempotent action under σ).**
+For σ = swap 0 1 in `Equiv.Perm (Fin 2)`, the σ-induced AlgEquiv sends
+`vertexIdempotent 0` to `vertexIdempotent 1`. -/
+example :
+    (quiverPermAlgEquiv 2 (Equiv.swap (0 : Fin 2) 1)) (vertexIdempotent 2 0) =
+      vertexIdempotent 2 1 := by
+  rw [quiverPermAlgEquiv_apply_vertexIdempotent]
+  simp
+
+/-- **Stage 4 T-API-7 non-vacuity witness (arrow-element action under σ).**
+For σ = swap 0 1, the σ-induced AlgEquiv sends `arrowElement 0 1` to
+`arrowElement 1 0`. -/
+example :
+    (quiverPermAlgEquiv 2 (Equiv.swap (0 : Fin 2) 1)) (arrowElement 2 0 1) =
+      arrowElement 2 1 0 := by
+  rw [quiverPermAlgEquiv_apply_arrowElement]
+  simp
+
+/-- **Stage 4 T-API-7 non-vacuity witness (identity descent).**
+The identity vertex permutation gives the identity AlgEquiv. -/
+example (m : ℕ) :
+    quiverPermAlgEquiv m 1 = AlgEquiv.refl :=
+  quiverPermAlgEquiv_one m
+
+end AlgEquivLiftNonVacuity
+
+-- ============================================================================
+-- ## §15.13 Workstream R-TI Stage 4 T-API-8 (Wedderburn-Mal'cev σ-extraction).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.gl3_to_vertexPerm
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_extractVertexPerm_witness
+#print axioms Orbcrypt.GrochowQiao.extracted_perm_at_identity
+
+namespace WMSigmaExtractionNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 4 T-API-8 non-vacuity witness (round-trip on σ-induced AlgEquiv).**
+The σ-induced AlgEquiv is in WM normal form with j = 0; the WM
+σ-extraction recovers the original σ. -/
+example (m : ℕ) (σ : Equiv.Perm (Fin m)) :
+    ∃ (j : pathAlgebraQuotient m),
+      j ∈ pathAlgebraRadical m ∧
+      ∀ v : Fin m,
+        (1 + j) * vertexIdempotent m (σ v) * (1 - j) =
+          quiverPermAlgEquiv m σ (vertexIdempotent m v) :=
+  quiverPermAlgEquiv_extractVertexPerm_witness m σ
+
+/-- **Stage 4 T-API-8 non-vacuity witness (identity AlgEquiv extraction).** -/
+example (m : ℕ) :
+    ∃ (j : pathAlgebraQuotient m),
+      j ∈ pathAlgebraRadical m ∧
+      ∀ v : Fin m,
+        (1 + j) * vertexIdempotent m ((1 : Equiv.Perm (Fin m)) v) * (1 - j) =
+          (AlgEquiv.refl :
+            pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m)
+            (vertexIdempotent m v) :=
+  extracted_perm_at_identity m
+
+end WMSigmaExtractionNonVacuity
