@@ -219,17 +219,32 @@ After all six phases land:
 
 ---
 
-## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27)**
+## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27, audited)**
 
 **Status.** Landed in `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean`
-(1000 LOC).  All three layers are unconditional; every public declaration
-depends only on the standard Lean trio (`propext`, `Classical.choice`,
-`Quot.sound`).  Full `lake build` succeeds (3405 jobs, zero warnings).
-Phase 16 audit script's `#print axioms` total rises from 770 to 788
-(18 new entries: 8 helper, 6 Layer 1.1, 3 Layer 1.2, 2 Layer 1.3) plus
-5 non-vacuity `example` bindings under
-`§ 15.16 EncoderSlabEvalNonVacuity`.  `lakefile.lean` bumped from
-`0.1.21` to `0.1.22` for the new public-API module.
+(945 LOC after the post-landing audit pass).  All three layers are
+unconditional; every public declaration depends only on the standard
+Lean trio (`propext`, `Classical.choice`, `Quot.sound`).  Full
+`lake build` succeeds (3405 jobs, zero warnings, zero errors).  Phase
+16 audit script's `#print axioms` total rises from 770 to 788 (18 new
+entries: 8 helper, 6 Layer 1.1, 3 Layer 1.2, 2 Layer 1.3) plus 13
+non-vacuity `example` bindings under
+`§ 15.16 EncoderSlabEvalNonVacuity`, covering every public Phase-1
+theorem at `m ∈ {1, 2}` with a non-trivial path-multiplication pattern.
+`lakefile.lean` bumped from `0.1.21` to `0.1.22` for the new public-API
+module.
+
+**Post-landing audit pass (2026-04-27).** Removed two dead-code
+private helpers (`encoder_second_factor_zero_when_pathMul_mismatch`
+and `encoder_third_factor_zero_when_pathMul_mismatch`, -55 LOC) that
+were defined during development but never invoked.  Closed the test
+coverage gap by adding 8 non-vacuity examples for the previously
+uncovered Phase-1 theorems (Layer 1.1.2 / 1.1.3 / 1.1.5 / 1.1.6,
+Layer 1.2.1 / 1.2.2, `slotOfArrow_pathMul_isPathAlgebra`, Layer 1.3
+vertex-slot).  Replaced the degenerate `m=1` associativity test with
+a non-trivial `m=2` test pattern `(.vertex 0) · (.arrow 0 1) ·
+(.vertex 1) = (.arrow 0 1)` that exercises the full
+LHS/RHS-collapse-and-pathMul_assoc bridge.
 
 **Goal.** Establish per-slot evaluation lemmas for the
 encoder, derived from the actual code's structure-tensor

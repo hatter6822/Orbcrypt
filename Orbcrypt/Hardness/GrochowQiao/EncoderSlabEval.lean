@@ -467,29 +467,6 @@ private theorem encoder_factor_zero_when_pathMul_mismatch
     · rintro ⟨h_pad_i, _, _⟩
       exact Bool.noConfusion (h_pad_i.symm.trans hi)
 
--- Symmetric helper for T(a, k, l) — the second factor in the LHS.
-private theorem encoder_second_factor_zero_when_pathMul_mismatch
-    (m : ℕ) (adj : Fin m → Fin m → Bool)
-    (a k l : Fin (dimGQ m))
-    (hk : isPathAlgebraSlot m adj k = true)
-    (hl : isPathAlgebraSlot m adj l = true)
-    (h_no_match : pathMul m (slotToArrow m (slotEquiv m a))
-                             (slotToArrow m (slotEquiv m k)) ≠
-                  some (slotToArrow m (slotEquiv m l))) :
-    grochowQiaoEncode m adj a k l = 0 := by
-  by_cases h_a : isPathAlgebraSlot m adj a = true
-  · exact encoder_zero_at_remaining_path_triples m adj a k l h_a hk hl h_no_match
-  · have h_a_false : isPathAlgebraSlot m adj a = false := by
-      cases h : isPathAlgebraSlot m adj a with
-      | true => exact absurd h h_a
-      | false => rfl
-    apply encoder_zero_at_mixed_triples m adj a k l
-    refine ⟨?_, ?_⟩
-    · rintro ⟨h_path_a, _, _⟩
-      exact Bool.noConfusion (h_a_false.symm.trans h_path_a)
-    · rintro ⟨_, h_pad_k, _⟩
-      exact Bool.noConfusion (h_pad_k.symm.trans hk)
-
 -- ============================================================================
 -- Layer 1.2.0 helper — Encoder factor evaluation at the unique slot a*.
 --
@@ -644,38 +621,6 @@ theorem encoder_associativity_lhs_eq_pathMul_chain
       rw [h_T_zero, zero_mul]
     · intro h_not_mem
       exact absurd (Finset.mem_univ a_star) h_not_mem
-
--- ============================================================================
--- Layer 1.2.0 helper — Encoder factor T(i, a, l) is zero off the unique a*.
---
--- This is the third helper, mirroring the first two for the RHS sum
--- `∑ a, T(j, k, a) · T(i, a, l)`.  T(i, a, l) is zero unless `a` is
--- path-algebra and `pathMul slot_i slot_a = some slot_l`.  Off these
--- conditions the encoder is zero by either the path-algebra or mixed
--- branch.
--- ============================================================================
-
-private theorem encoder_third_factor_zero_when_pathMul_mismatch
-    (m : ℕ) (adj : Fin m → Fin m → Bool)
-    (i a l : Fin (dimGQ m))
-    (hi : isPathAlgebraSlot m adj i = true)
-    (hl : isPathAlgebraSlot m adj l = true)
-    (h_no_match : pathMul m (slotToArrow m (slotEquiv m i))
-                             (slotToArrow m (slotEquiv m a)) ≠
-                  some (slotToArrow m (slotEquiv m l))) :
-    grochowQiaoEncode m adj i a l = 0 := by
-  by_cases h_a : isPathAlgebraSlot m adj a = true
-  · exact encoder_zero_at_remaining_path_triples m adj i a l hi h_a hl h_no_match
-  · have h_a_false : isPathAlgebraSlot m adj a = false := by
-      cases h : isPathAlgebraSlot m adj a with
-      | true => exact absurd h h_a
-      | false => rfl
-    apply encoder_zero_at_mixed_triples m adj i a l
-    refine ⟨?_, ?_⟩
-    · rintro ⟨_, h_path_a, _⟩
-      exact Bool.noConfusion (h_a_false.symm.trans h_path_a)
-    · rintro ⟨h_pad_i, _, _⟩
-      exact Bool.noConfusion (h_pad_i.symm.trans hi)
 
 -- ============================================================================
 -- Layer 1.2.2 — Closed form for the RHS of associativity.

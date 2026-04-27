@@ -5033,20 +5033,56 @@ structural foundation, EncoderSlabEval) has been completed:
     vertex slot is at least `1` (the idempotent contribution).
 
 - **Two private helpers** (`encoder_factor_zero_when_pathMul_mismatch`,
-  `encoder_second_factor_zero_when_pathMul_mismatch`,
-  `encoder_third_factor_zero_when_pathMul_mismatch`,
   `encoder_factor_eq_one_at_pathMul_match`) — reusable building
   blocks combining `encoder_zero_at_remaining_path_triples` and
-  `encoder_zero_at_mixed_triples` for the LHS, RHS, and Layer 1.3
-  proofs.
+  `encoder_zero_at_mixed_triples` for the LHS / RHS proofs.
 
 - **Audit script.** `scripts/audit_phase_16.lean` extended with 18
-  new `#print axioms` entries plus 5 non-vacuity `example` bindings
-  under the `EncoderSlabEvalNonVacuity` namespace at `m ∈ {1, 2}`.
+  new `#print axioms` entries plus 13 non-vacuity `example` bindings
+  under the `EncoderSlabEvalNonVacuity` namespace at `m ∈ {1, 2}`,
+  covering every public Layer 1.1 / 1.2 / 1.3 theorem:
+  * Layer 1.1.1 (vertex-vertex-vertex = 1) at m=1
+  * Layer 1.1.2 (vertex-arrow-arrow = 1) at m=2
+  * Layer 1.1.3 (arrow-vertex-arrow = 1) at m=2
+  * Layer 1.1.4 (padding diagonal = 2) at m=2
+  * Layer 1.1.5 (encoder zero at non-matching path triple) at m=2
+  * Layer 1.1.6 (encoder zero at mixed triple) at m=2
+  * Layer 1.2.0 helper round-trip
+  * `slotOfArrow_pathMul_isPathAlgebra` at m=2
+  * Layer 1.2.1 (LHS closed form) at m=2 with non-trivial path
+  * Layer 1.2.2 (RHS closed form) at m=2 with non-trivial path
+  * Layer 1.2.4 (full associativity) at m=2 with non-trivial path
+  * Layer 1.3 present-arrow double-sum = 1 at m=2
+  * Layer 1.3 vertex-slot idempotent contribution = 1 at m=2
   Total declarations exercised: 788 (up from 770). Every new
   declaration depends only on the standard Lean trio (`propext`,
   `Classical.choice`, `Quot.sound`); zero `sorryAx`, zero custom
   axioms.
+
+- **Post-landing audit pass (2026-04-27).** Deep audit of the
+  initial Phase 1 landing surfaced two issues, both fixed in the
+  audit pass:
+  1. **Dead-code helpers removed.** Two private helpers
+     `encoder_second_factor_zero_when_pathMul_mismatch` and
+     `encoder_third_factor_zero_when_pathMul_mismatch` were
+     defined during development but never used in the file or
+     elsewhere. Per `CLAUDE.md`'s "If you are certain that
+     something is unused, you can delete it completely" rule,
+     they were removed (-55 LOC).
+  2. **Test coverage gap closed.** The initial landing had 5
+     non-vacuity examples; 8 of 19 public theorems lacked
+     coverage (the action lemmas, zero classifications, closed
+     forms, vertex-slot path pairing). 8 new examples were
+     added at `m=2` with a non-trivial path multiplication
+     pattern `(.vertex 0) · (.arrow 0 1) · (.vertex 1) =
+     (.arrow 0 1)`. The previously degenerate `m=1` associativity
+     test was replaced with the non-trivial `m=2` form that
+     exercises the full LHS/RHS-collapse-and-pathMul_assoc
+     bridge. The new tests confirm Layers 1.1 and 1.3 are
+     non-vacuously inhabited on concrete instances and verify
+     Layer 1.2's closed-form lemmas evaluate correctly.
+
+  Module size after audit: 945 LOC (down from 1000).
 
 - **`Orbcrypt.lean`** root file extended with a new import
   `Orbcrypt.Hardness.GrochowQiao.EncoderSlabEval`.
