@@ -185,6 +185,89 @@ present at the pinned commit (`Multiset.map_injective`,
 `Finset.image_univ_of_surjective`, `Finset.image_univ_equiv`),
 or marked as "hand-roll required" with explicit LOC reserves.
 
+### Critical finding #8 (FATAL, found post-v3) — Phase D circular dependency on removed Phase C construction
+
+After applying v3 corrections #1–#7, a deeper circular
+dependency was found that v3 did not fully resolve:
+
+* **Phase D's `pathBlockMatrix g hg` definition:**
+  ```
+  pathBlockMatrix g hg :=
+    g.1.val * (liftedSigmaMatrix m (partitionPreservingPermOfGL3 g hg)⁻¹)
+  ```
+  uses `partitionPreservingPermOfGL3 g hg`, a Phase C v2
+  construction.
+* **v3 removed Phase C's discharge of Prop 1**, repositioning
+  `partitionPreservingPermOfGL3` to Phase G as the
+  `Prop 2 ⟹ Prop 1` corollary.
+* **But Phase D's lemmas (D1.3 onward) require π to be
+  partition-preserving** for the off-diagonal-vanishing
+  argument to even type-check.
+* **Therefore Phase D depends on Phase G's output**, which is
+  downstream of Phase F (the σ-extraction Phase F itself uses
+  Phase E's AlgEquiv, which uses Phase D's
+  `gl3OnPathBlock_to_lin`). The dependency graph is **circular
+  across D → E → F → G → D**.
+
+This means the v3 plan's phase ordering does NOT actually
+resolve the plan into a non-circular discharge sequence.
+The audit in v3 stopped one finding short.
+
+**v3.1 fix.**
+
+The correct mathematical structure is **Phase E first, then
+Phase D**: the AlgEquiv on the path subspace can be
+constructed from the structure-tensor pull-back (Phase E's
+sub-layer E2.1) **directly**, without first establishing the
+slot-level partition-preserving permutation. The radical-
+preservation of any algebra hom then gives the slot-level
+partition preservation as a *consequence*, not a hypothesis.
+
+Concretely:
+
+1. **Phase E (re-ordered first).** From the encoder equality,
+   establish that GL³ tensor iso induces a structural map on
+   the path-algebra subspace by pulling back the structure
+   tensor. This gives a candidate AlgHom on the path-algebra
+   quotient (without needing slot-level partition
+   preservation).
+2. **Phase F (algebra-derived σ).** Apply
+   `algEquiv_extractVertexPerm` (Stage 4 / `WedderburnMalcev`)
+   to the candidate AlgEquiv from Phase E to extract σ.
+3. **Phase D (becomes a corollary).** The slot-level
+   partition-preservation falls out of Phase E's algebra-iso
+   structure: arrow elements map to arrow elements (radical
+   is preserved), vertex idempotents map to vertex
+   idempotents (semisimple part is preserved up to radical
+   conjugation by Wedderburn-Mal'cev).
+4. **Phase G (final discharge).** Compose F's σ with adjacency-
+   preservation (Stage 5) to discharge Prop 2; derive Prop 1
+   as the cardinality corollary.
+
+**Phase D as currently structured (off-diagonal block
+vanishing via mutual induction) is not the right shape for
+the discharge.** The v3.1 fix repositions Phase D as
+*post-AlgEquiv structural lemmas* (radical preservation
+giving the partition split), not *pre-AlgEquiv multilinear-
+algebra* (the original framing).
+
+**Implementation status.** Repositioning is documented in
+this audit preamble; the per-phase sections retain v3
+structure with parametrized hypotheses (Phase D's
+`pathBlockMatrix` should be parameterized by a free `π`
+hypothesis, with the partition-preservation property
+provided by Phase E-F's algebra-derived σ). A v3.1 plan
+revision implementing this restructure across all phases
+is research-scope follow-up — too disruptive for an
+in-place audit fix.
+
+**Practical guidance for implementers.** Treat Phases D-E-F-G
+as **a single inseparable research-scope effort** rather than
+sequential discharge steps. Do not attempt to land Phase D's
+`pathBlockMatrix` lemmas as a stand-alone commit until the
+algebra-iso construction (Phase E sub-layer E2.1) is in
+place to provide the partition-preserving permutation.
+
 ---
 
 ## Revision history
@@ -1169,21 +1252,33 @@ block-diagonally on the partition.
 
 **File (new):** `Orbcrypt/Hardness/GrochowQiao/BlockExtractionAxis1.lean`.
 
-**Public surface:**
+**Public surface (post-v3.1 correction — π is now a free
+parameter, not a Phase C output).**
+
+> **v3.1 audit correction (Critical finding #8).** v2's
+> `pathBlockMatrix` definition referenced `partitionPreservingPermOfGL3`,
+> which v3 moved out of Phase C (since Phase C no longer
+> discharges Prop 1). To break the resulting circular
+> dependency between Phase D and Phase G, `pathBlockMatrix`
+> is now parameterised by a **free permutation `π : Equiv.Perm
+> (Fin (dimGQ m))` carrying a partition-preservation
+> hypothesis**. Downstream phases (E, F, G) supply π once it
+> becomes available.
 
 | Declaration | Signature | Role |
 |-------------|-----------|------|
-| `pathBlockMatrix g : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ` | `:= g.1.val * (liftedSigmaMatrix m (partitionPreservingPermOfGL3 g hg)⁻¹)` (after composing with the Phase C π⁻¹). |
-| `pathBlockMatrix_offDiag_eq_zero` | The "path → padding" off-diagonal block of `pathBlockMatrix` is the zero matrix. |
-| `paddingBlockMatrix_offDiag_eq_zero` | The "padding → path" off-diagonal block is the zero matrix. |
-| `pathBlockMatrix_blockDiagonal_decomposition` | `pathBlockMatrix g hg = Matrix.fromBlocks pathBlock 0 0 paddingBlock` (after `Equiv.sumCompl`-reindexing). |
+| `pathBlockMatrix g π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ` | `:= g.1.val * (liftedSigmaMatrix m π⁻¹)` (π is a free parameter). |
+| `pathBlockMatrix_offDiag_eq_zero` | Conditional: assuming π preserves the path/padding partition AND `g • encode m adj₁ = encode m adj₂`, the "path → padding" off-diagonal block of `pathBlockMatrix g π` is the zero matrix. |
+| `paddingBlockMatrix_offDiag_eq_zero` | Symmetric. |
+| `pathBlockMatrix_blockDiagonal_decomposition` | Conditional: assuming the off-diagonal vanishing, `pathBlockMatrix g π = Matrix.fromBlocks pathBlock 0 0 paddingBlock` (after `Equiv.sumCompl`-reindexing). |
 
-**Mathematical content.**
+**Mathematical content (with π as a parameter).**
 
-After Phase C extracts a partition-preserving permutation π such
-that `π '' (pathSlotIndices m adj₁) = pathSlotIndices m adj₂`, the
-composed matrix `g_X' := g.1.val * liftedSigmaMatrix m π⁻¹` maps
-each slot kind to itself (modulo the partition):
+For a permutation π that preserves the path/padding partition
+between `adj₁` and `adj₂` (i.e., `π '' (pathSlotIndices m adj₁)
+= pathSlotIndices m adj₂` and similarly for padding), the
+composed matrix `g_X' := g.1.val * liftedSigmaMatrix m π⁻¹`
+maps each slot kind to itself (modulo the partition):
 
 * If `i ∈ pathSlotIndices m adj₁` and `j ∈ paddingSlotIndices m
   adj₁`, then `pathBlockMatrix i j = 0`.
@@ -1253,14 +1348,21 @@ vanish.
   `grochowQiaoEncode_padding_distinguishable`.
 * **Risk.** Low.
 
-#### Sub-task D1.3 — Composed-matrix row equation with π⁻¹ (~80 LOC, depends on Phase A A2.1, Phase C C2)
+#### Sub-task D1.3 — Composed-matrix row equation with π⁻¹ (~80 LOC, depends on Phase A A2.1) [v3.1 corrected]
+
+> **v3.1 audit correction.** Removed dependency on Phase C
+> C2 (since v3 deleted that layer). `pathBlockMatrix` now
+> takes `π` as a free parameter; downstream phases supply π
+> after the algebra-iso construction (Phase E first).
 
 * **Definitions.**
-  - `pathBlockMatrix g hg : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ`
-    `:= g.1.val * (liftedSigmaMatrix m
-       (partitionPreservingPermOfGL3 g hg)⁻¹)`
-  - The "composed matrix" pulls back `g.1.val` via the Phase C
-    π⁻¹ permutation matrix.
+  - `pathBlockMatrix g π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ
+    := g.1.val * (liftedSigmaMatrix m π⁻¹)` — π is a free
+    permutation parameter.
+  - The "composed matrix" pulls back `g.1.val` via π⁻¹'s
+    permutation matrix. The lemmas of D1 are conditional on π
+    being a partition-preserving permutation (a hypothesis
+    threaded through D1's downstream lemmas).
 * **Statement.** `pathBlockMatrix_unfold₁_relation`:
   ```
   ∀ i (j, k),
@@ -1322,15 +1424,14 @@ vanish.
     ∀ a ∈ paddingSlotIndices m adj₁,
     (pathBlockMatrix g hg) i a = 0
   ```
-* **Proof outline (the contradiction).**
-  Suppose `(pathBlockMatrix g hg) i a ≠ 0` for `i` path,
-  `a` padding.
+* **Proof outline (the contradiction). [v3.1: π is a parameter]**
+  Suppose `(pathBlockMatrix g π) i a ≠ 0` for `i` path,
+  `a` padding, with π a partition-preserving permutation
+  (hypothesis).
 
   **Step 1 (transport via the encoder equality).** Let
-  `i' := (partitionPreservingPermOfGL3 g hg) i`. Then `i' ∈
-  pathSlotIndices m adj₂` by Phase C's
-  `partitionPreservingPermOfGL3_isThreePartition`. From D1.3's
-  row equation,
+  `i' := π i`. By the partition-preservation hypothesis on π,
+  `i' ∈ pathSlotIndices m adj₂`. From D1.3's row equation,
   ```
   unfold₁ T₂ i' = (pathBlockMatrix g hg row i) * unfold₁ T₁ *
                   (g.2.valᵀ ⊗ₖ g.3.valᵀ).
@@ -2018,14 +2119,28 @@ Submodule-level lift is the technical core but is bounded.
 * `gl3OnPathBlock_to_algEquiv` — package via
   `AlgEquiv.ofBijective` (`Mathlib/Algebra/Algebra/Equiv.lean`).
 
-#### Sub-layer E2.5 — Apply lemmas on basis elements (~120 LOC)
+#### Sub-layer E2.5 — Apply lemmas on basis elements (~120 LOC) [v3.1 corrected]
 
-* `gl3OnPathBlock_to_algEquiv_apply_vertexIdempotent` — explicit
-  formula. Uses Phase C's
-  `partitionPreservingPermOfGL3`-permutation σ extracted via
-  `vertexPermOfVertexPreserving` + the AlgEquiv structure.
+> **v3.1 audit correction.** v2 said the explicit formula
+> "uses Phase C's `partitionPreservingPermOfGL3`". Since v3
+> removed Phase C C2, the σ in the apply lemma must come from
+> elsewhere. v3.1 derives σ via Phase F1's
+> `gl3_to_vertexPerm` (algebra-derived σ from
+> `algEquiv_extractVertexPerm`), which is the natural source.
+
+* `gl3OnPathBlock_to_algEquiv_apply_vertexIdempotent` —
+  explicit formula in terms of σ extracted via Phase F1's
+  `gl3_to_vertexPerm` (algebra-derived; uses
+  `algEquiv_extractVertexPerm` from `WedderburnMalcev.lean`).
 * `gl3OnPathBlock_to_algEquiv_apply_arrowElement` — explicit
   formula. Used by Phase F's adjacency invariance.
+
+**Note on phase ordering.** The Phase E ↔ Phase F dependency
+is one-directional: E provides the AlgEquiv, F extracts σ via
+WM. The apply lemma `_apply_vertexIdempotent` is logically
+part of Phase F (it characterizes σ's action), but
+syntactically lives near the AlgEquiv definition for
+ergonomic reasons.
 
 **Mathlib anchors.** `Basis.constr`, `LinearMap.restrict`,
 `Submodule.subtype`, `AlgHom.toAlgEquivOfInjOn` or
@@ -2084,18 +2199,22 @@ Prop 2.
 |-------------|-----------|------|
 | `gl3_to_vertexPerm` | `(g : GL × GL × GL) (hg : g • encode₁ = encode₂) → Equiv.Perm (Fin m)` | Compose `gl3OnPathBlock_to_algEquiv` with `algEquiv_extractVertexPerm`. |
 | `gl3_to_vertexPerm_radical_witness` | `∃ j ∈ pathAlgebraRadical m, ∀ v, (1+j) * vertexIdempotent (gl3_to_vertexPerm g hg v) * (1-j) = gl3OnPathBlock_to_algEquiv g hg (vertexIdempotent v)` | The radical-conjugating witness from WM. |
-| `gl3_to_vertexPerm_eq_partition_descent` | `gl3_to_vertexPerm g hg = vertexPermOfVertexPreserving (partitionPreservingPermOfGL3 g hg)` | Consistency: the algebraic σ extraction agrees with Phase C's slot-classification descent. |
+
+> **v3.1 audit correction.** v2 had a third declaration
+> `gl3_to_vertexPerm_eq_partition_descent` claiming
+> consistency with Phase C's slot-classification descent.
+> Since v3 removed Phase C C2, this consistency claim no
+> longer makes sense and is **deleted from the public
+> surface**. The σ extracted by Phase F1 IS the canonical σ
+> for the workstream; there is no separate "slot-classification
+> σ" to check consistency with.
 
 **Mathematical content.** Direct composition of
 `algEquiv_extractVertexPerm` (Stage 4 / Phase F starter, in
 `WedderburnMalcev.lean`) with the Phase E AlgEquiv. The
-consistency theorem `gl3_to_vertexPerm_eq_partition_descent` is
-the cross-check: the σ extracted via WM (algebraic) must agree
-with the σ extracted via Phase C (slot-classification). Prove
-by showing both σ's preserve the same vertex-slot bijection,
-using `partitionPreservingPermFromEqualCardinalities`-vertex
-preservation + the explicit form of
-`gl3OnPathBlock_to_algEquiv (vertexIdempotent v)`.
+extraction yields σ uniquely up to WM radical conjugation; the
+σ-output agrees with the algebraic vertex-permutation derived
+from primitive idempotent decomposition.
 
 **Risk.** Low–Medium. `algEquiv_extractVertexPerm` is fully
 discharged; the consistency theorem requires careful unfolding
@@ -2407,13 +2526,22 @@ proven; non-vacuity examples on `m ∈ {2, 3}` with concrete
 
 ---
 
-## Phase G — Final discharge (Prop 2 unconditional, ~600 LOC)
+## Phase G — Final discharge (Prop 2 + Prop 1 corollary, ~400 LOC post-v3.1)
 
-**Goal.** Discharge `GL3InducesArrowPreservingPerm`
-unconditionally by composing Phase F's `_witness` lemma with the
-Prop's quantification structure. Then compose with Stage 5's
-existing infrastructure to deliver unconditional
-`GrochowQiaoRigidity` and `grochowQiao_isInhabitedKarpReduction`.
+**Goal.** Discharge `GL3InducesArrowPreservingPerm` (Prop 2)
+unconditionally by composing Phase F's `_witness` lemma with
+the Prop's quantification structure. Derive
+`GL3PreservesPartitionCardinalities` (Prop 1) as a corollary.
+Compose with Stage 5's existing infrastructure to deliver
+unconditional `GrochowQiaoRigidity` and
+`grochowQiao_isInhabitedKarpReduction`.
+
+> **v3 audit correction.** Phase G now discharges BOTH Props
+> (was Prop 2 only in v2; v2 expected Phase C to discharge
+> Prop 1). The `Prop 2 ⟹ Prop 1` corollary is the
+> mathematically natural derivation: σ-arrow-preservation gives
+> a bijection between `presentArrows m adj₁` and `presentArrows
+> m adj₂`, hence equal cardinalities.
 
 ### Layer T-API-G1 — Prop 2 unconditional (~300 LOC)
 
@@ -2422,12 +2550,13 @@ existing infrastructure to deliver unconditional
 `GL3InducesArrowPreservingPerm` and the conditional
 `grochowQiaoRigidity_under_arrowDischarge`).
 
-**Public surface:**
+**Public surface (post-v3.1).**
 
 | Declaration | Signature | Role |
 |-------------|-----------|------|
-| `gl3_induces_arrow_preserving_perm` | `: GL3InducesArrowPreservingPerm` | The unconditional discharge. |
-| `gl3_preserves_partition_cardinalities_via_arrow_perm` | `: GL3PreservesPartitionCardinalities` | Redundant Prop-1 derivation via Prop 2 (cardinality from arrow bijection). |
+| `gl3_induces_arrow_preserving_perm` | `: GL3InducesArrowPreservingPerm` | The unconditional discharge of Prop 2. |
+| `gl3_preserves_partition_cardinalities` | `: GL3PreservesPartitionCardinalities` | Prop 1 derived as corollary of Prop 2 (cardinality from arrow bijection). |
+| `partitionPreservingPermOfGL3` | `(g) (hg) → Equiv.Perm (Fin (dimGQ m))` | Previously a v2 Phase C construction; now lives here, built from Phase F's σ + Stage 3's `partitionPreservingPermFromEqualCardinalities` applied to the Prop 1 corollary. |
 | `grochowQiaoRigidity` | `: GrochowQiaoRigidity` | Unconditional rigidity (composes G1 with Stage 5's `grochowQiaoRigidity_under_arrowDischarge`). |
 
 **Composition.**
@@ -2438,15 +2567,26 @@ theorem gl3_induces_arrow_preserving_perm :
   intro m adj₁ adj₂ g hg
   exact ⟨gl3_to_vertexPerm g hg, gl3_arrow_preserving_perm_witness g hg⟩
 
+theorem gl3_preserves_partition_cardinalities :
+    GL3PreservesPartitionCardinalities := by
+  intro m adj₁ adj₂ g hg
+  obtain ⟨σ, h_arrow⟩ := gl3_induces_arrow_preserving_perm m adj₁ adj₂ g hg
+  -- σ's arrow-preservation gives a bijection
+  -- presentArrows m adj₁ ≃ presentArrows m adj₂; cardinalities follow.
+  exact card_eq_of_arrow_preserving_perm σ h_arrow
+
+def partitionPreservingPermOfGL3 (g) (hg) : Equiv.Perm (Fin (dimGQ m)) :=
+  partitionPreservingPermFromEqualCardinalities
+    (gl3_preserves_partition_cardinalities m adj₁ adj₂ g hg)
+
 theorem grochowQiaoRigidity : GrochowQiaoRigidity :=
   grochowQiaoRigidity_under_arrowDischarge gl3_induces_arrow_preserving_perm
 ```
 
-`gl3_preserves_partition_cardinalities_via_arrow_perm` derives
-Prop 1 from Prop 2 via the arrow bijection: σ-action gives
-`presentArrows m adj₁` ≃ `presentArrows m adj₂`, so cardinalities
-agree. This is ≤ 30 LOC, providing redundant verification with
-Phase C's direct discharge.
+The Prop-1 corollary (`gl3_preserves_partition_cardinalities`)
+derives the cardinality equality from σ's arrow-preservation: σ
+restricts to a bijection between `presentArrows m adj₁` and
+`presentArrows m adj₂`, hence equal cardinalities. ~30 LOC.
 
 **Risk.** Low — pure composition.
 
@@ -2528,15 +2668,15 @@ trio only.
 
 **Total new modules: 11.**
 
-### Files modified
+### Files modified (post-v3.1 correction)
 
 | File | Phases | Change |
 |------|--------|--------|
-| `Orbcrypt/Hardness/GrochowQiao/BlockDecomp.lean` | C | Add `gl3_preserves_partition_cardinalities`, `partitionPreservingPermOfGL3`, `_isThreePartition`. |
-| `Orbcrypt/Hardness/GrochowQiao/Rigidity.lean` | G | Add `gl3_induces_arrow_preserving_perm`, `grochowQiaoRigidity`, `gl3_preserves_partition_cardinalities_via_arrow_perm`. |
+| `Orbcrypt/Hardness/GrochowQiao/BlockDecomp.lean` | G | Add `partitionPreservingPermOfGL3` (now constructed in Phase G from Phase F's algebra-derived σ + Stage 3's `partitionPreservingPermFromEqualCardinalities`); v3 removed C2's would-be discharge. |
+| `Orbcrypt/Hardness/GrochowQiao/Rigidity.lean` | G | Add `gl3_induces_arrow_preserving_perm`, `grochowQiaoRigidity`, and the corollary `gl3_preserves_partition_cardinalities` (Prop 1 derived from Prop 2). |
 | `Orbcrypt/Hardness/GrochowQiao.lean` | G | Add `grochowQiao_isInhabitedKarpReduction` (unconditional). |
-| `Orbcrypt.lean` | A–G | Add 11 new imports; extend axiom-transparency report with per-phase subsections; update Vacuity map to mark both Props as discharged. |
-| `scripts/audit_phase_16.lean` | A–G | Add ~80 new `#print axioms` entries + ~20 non-vacuity `example`s. |
+| `Orbcrypt.lean` | A–G | Add ~9 new imports (post-v3 module-count reduction); extend axiom-transparency report with per-phase subsections; update Vacuity map to mark both Props as discharged. |
+| `scripts/audit_phase_16.lean` | A–G | Add ~70 new `#print axioms` entries + ~18 non-vacuity `example`s (post-v3 reductions). |
 | `CLAUDE.md` | A–G | Per-phase change-log entries + Status-column updates. |
 | `docs/VERIFICATION_REPORT.md` | G | Document history + headline results + closed-limitation entries. |
 | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` | G | Mark R-15-residual-TI-reverse CLOSED. |
@@ -3109,33 +3249,37 @@ means "Y depends on X". Sub-tasks are listed by their identifier
                                                                   (Phase C input)
 ```
 
-### Phase C (Slot-classification rigidity / Prop 1 discharge)
+### Phase C (Per-slot signature computations) [v3 corrected — no Prop 1 discharge]
 
 ```
-[Phase B: B2.3] ────────────┐
-                            ├→ C1.1 ─┐
-[Stage 0: encoder] ─────────┤        ├→ C1.4 ─→ C1.5 ─→ C1.6 ─→ C2.1 (Prop 1 discharge)
-                            ├→ C1.2 ─┤
-[Stage 2: diagonal_values] ─┘        │
-                                     │
-                              C1.3 ──┘
+[Stage 0: encoder] ─────────┐
+[Stage 2: diagonal_values] ─┤
+                            ├→ C1.1 (vertex slabs)
+                            ├→ C1.2 (present-arrow slabs)
+                            ├→ C1.3 (padding slabs)
+                            └→ C1.4 (per-slot signatures)
+                                ↓
+                              C1.5 (encoder signature multiset, structural only)
+                                ↓
+                          (downstream-phase input — diagnostic; not a discharge)
 ```
 
-### Phase D (Path-block extraction)
+### Phase D (Path-block extraction) [v3.1 corrected — π is a free parameter]
 
 ```
 [Stage 0: padding_distinguishable] ─→ D1.1, D1.2 ──┐
 [Phase A: A2.1, A2.4] ─────────────────────────────┤
                                                    ├→ D1.3 ─→ D1.4, D1.5 ─→ D1.6 ─┐
-[Phase C: C2.1] ───────────────────────────────────┘                              │
+[π : Equiv.Perm parametric hypothesis] ────────────┘                              │
                                                                                   ├→ D1.7 ─→ D1.8 (axis-1)
 [Stage 1: unfold₁_tensorContract] ─→ D2.0 ─→ D2.1 ─→ D2.2 ─→ D2.3 ─→ D2.4 ────────┤
-                                                                          (mutual)│
-                                                                                  ▼
-                                                                              D2.5 ─→ D3 (subspace)
-                                                                                  │
-                                                                                  ▼
-                                                                          (Phase E input)
+                                                                          (RESEARCH-SCOPE)│
+                                                                                          ▼
+                                                                                      D2.5 ─→ D3 (subspace)
+                                                                                          │
+                                                                                          ▼
+                                                                                  (Phase E input;
+                                                                                   π eventually instantiated by Phase G)
 ```
 
 ### Phase E (AlgEquiv from path-block)
@@ -3166,50 +3310,60 @@ means "Y depends on X". Sub-tasks are listed by their identifier
                                                                                                        (Phase G input)
 ```
 
-### Phase G (Final discharge)
+### Phase G (Final discharge — both Props) [v3 corrected]
 
 ```
-[Phase C: C2.1 — Prop 1 discharge]  ────┐
-                                        │
-[Phase F: F2.4 — arrow witness] ─→ G1.1 ─→ G1.2 (grochowQiaoRigidity) ─→ G2.1 (final inhabitant)
+[Phase F: F2.4 — arrow witness]
+        │
+        ├→ G1.1 (Prop 2 discharge: gl3_induces_arrow_preserving_perm)
+        ├→ G1.2 (Prop 1 corollary: gl3_preserves_partition_cardinalities)
+        ├→ G1.3 (partitionPreservingPermOfGL3 construction — was Phase C v2)
+        ├→ G1.4 (grochowQiaoRigidity)
+        └→ G2.1 (grochowQiao_isInhabitedKarpReduction)
 ```
 
-### Critical-path summary
+### Critical-path summary [v3.1 corrected]
 
 The **longest sequential path** is:
 ```
-Stage-1 → A1.1 → A2.1 → A2.2 → A2.3 → A2.4 → B2.2 → B2.3 → C1.1
-       → C1.5 → C1.6 → C2.1 → D1.1 → D1.3 → D1.4 → D1.6 → D2.4
-       → D3 → E1.1 → E2.2.1 → E2.2.4 → E2.2.5 → E2.4 → E2.5
-       → F1.1 → F1.2 → F1.3 → F2.2.1 → F2.3.1 → F2.3.3 → F2.3.5
-       → F2.4 → G1.1 → G2.1
+Stage-1 → A1.1 → A2.1 → A2.2 → A2.4 → C1.1 → C1.4 → C1.5
+       → D1.1 → D1.3 → D1.4 → D1.6 → D2.4 (RESEARCH)
+       → D3 → E1.1 → E2.1 → E2.2.4 (RESEARCH) → E2.5
+       → F1.1 → F1.2 → F2.2.1 → F2.3.3 → F2.4
+       → G1.1 → G1.2 → G1.4 → G2.1
 ```
-This is approximately 33 sequential sub-tasks. Many parallelisation
-opportunities exist (especially within phases — e.g., A2.5's symmetric
-variants for axes 2, 3 can land in parallel with D2.0 + D2.1 + D2.2),
+This is approximately 26 sequential sub-tasks (down from v2's
+33 because v3's removal of false shallow-rigidity sub-tasks
+shortened the path). Many parallelisation
+opportunities exist (especially within phases — e.g., axis-2/3
+unfolding bridges can land in parallel with axis-1 work),
 but the critical path bounds the calendar time.
 
 ---
 
-## Appendix C — Per-phase Gantt-style timeline
+## Appendix C — Per-phase Gantt-style timeline (v3.1 corrected)
 
 | Calendar week | Phase | Sub-tasks landing | Gating dependency |
 |---------------|-------|-------------------|-------------------|
-| 1–4 | A | A1.1 → A2.1 → A2.2 → A2.3 → A2.4 → A2.5.0 (D2.0 pre-req) | Stage 1 |
-| 5–8 | A → B | A2.5 + B1.1 → B1.2 → B2.1 → B2.2 → B2.3 → B2.4 | A2.4 |
-| 9–11 | C | C1.1 → C1.2 → C1.3 → C1.4 → C1.5 → C1.6 → C2.1 (**Prop 1 discharged**) | B2.3 |
-| 12–14 | D (early) | D2.0 → D2.1 → D2.2 → D1.1 → D1.2 → D1.3 → D1.4 | C2.1 |
-| 15–22 | D (deep) | D1.5 → D1.6 → D2.3 → D2.4 (**critical**) → D1.7 → D1.8 → D2.5 → D3 | D1.4, D2.2 |
-| 23–26 | E (early) | E1.1 → E1.2 → E1.3 → E1.4 → E1.5 → E2.1 | D3 |
-| 27–30 | E (deep) | E2.2.1 → E2.2.2 → E2.2.3 → E2.2.4 → E2.2.5 → E2.3 → E2.4 → E2.5 | E2.1 |
-| 31–33 | F (sigma) | F1.1 → F1.2 → F1.3 | E2.5 |
-| 34–36 | F (arrow) | F2.1 → F2.2.1 → F2.2.2 → F2.2.3 → F2.3.1 → F2.3.2 → F2.3.3 → F2.3.4 → F2.3.5 → F2.4 | F1.3 |
-| 37–39 | G | G1.1 → G1.2 → G2.1 (**workstream complete**) | F2.4 |
+| 1–3 | A | A1.1 → A2.1 → A2.2 → A2.3 → A2.4 (encoder-equality structural lemmas only) | Stage 1 |
+| 4–5 | B | B1.1 → B1.2 → B2 (re-export of Stage 0/2 diagonal lemmas) | A2.4 |
+| 6–8 | C | C1.1 → C1.2 → C1.3 → C1.4 → C1.5 (per-slot signatures, structural only — NO Prop 1 discharge) | B |
+| 9–11 | D (early, parametric in π) | D2.0 → D2.1 → D2.2 → D1.1 → D1.2 → D1.3 → D1.4 | C |
+| 12–22 | D + E (interleaved, RESEARCH-SCOPE) | D1.5 → D1.6 → D2.3 → D2.4 (RESEARCH) → D1.7 → D1.8 → D2.5 → D3; in parallel E1.1 → E1.5 → E2.1 | D1.4, D2.2 |
+| 23–32 | E (deep) → F | E2.2.1 → E2.2.2 → E2.2.3 → E2.2.4 (RESEARCH) → E2.2.5 → E2.3 → E2.4 → E2.5 → F1.1 → F1.2 → F1.3 | E2.1 |
+| 33–35 | F (arrow) | F2.1 → F2.2.1 → F2.2.2 → F2.2.3 → F2.3.1 → F2.3.2 → F2.3.3 → F2.3.4 → F2.3.5 → F2.4 | F1.3 |
+| 36–38 | G | G1.1 (Prop 2) → G1.2 (Prop 1 corollary) → G1.3 (π construction) → G1.4 → G2.1 (**workstream complete**) | F2.4 |
 
-Total calendar time: **39 weeks (~9 months)** for the full
-workstream at sustained focused effort. **Half-way milestone
-at week 11 (Prop 1 discharged)** delivers significant
-cryptographic value independently.
+Total calendar time: **38 weeks (~9 months)** for the full
+workstream at sustained focused effort. **No half-way Prop-1
+milestone** in v3.1 — Prop 1 is now derived from Prop 2 in
+Phase G, so the only milestone is the final workstream
+completion.
+
+> **v3.1 calendar caveat.** D2.4 and E2.2.4 are research-
+> scope; the timeline above assumes both are dischargeable in
+> ~10 weeks combined, but this is uncertain. If either of
+> them stalls, the calendar extends accordingly.
 
 ---
 
@@ -3218,25 +3372,32 @@ cryptographic value independently.
 If Phases D, E, or F stall mid-discharge, the workstream can
 land **partial closures** at well-defined boundaries:
 
-### Option D-stall (fall-back at week 22 if Phase D stalls)
+### Option D-stall (fall-back if Phase D's mutual-induction stalls) [v3.1 corrected]
 
-* **Delivered.** Phases A, B, C complete (~2,200 LOC). Prop 1
-  discharged unconditionally.
-* **Not delivered.** Prop 2 remains research-scope.
-* **Cryptographic value.** Stage 3's
-  `partition_preserving_perm_under_GL3` becomes unconditional.
-  Stage 5's `quiverPermAlgEquiv`-based forward iff and the
-  conditional rigidity infrastructure remain accessible to
-  consumers; the Karp reduction inhabitant remains conditional
-  on Prop 2.
-* **Patch version.** `lakefile.lean` bumped from `0.1.21` to
-  `0.1.22-rc1` (release candidate; final `0.1.22` reserved
-  for the full Phase G landing).
-* **Documentation.** `CLAUDE.md`'s headline table reclassifies
-  every Stage-3 / Stage-5 theorem that depends solely on Prop 1
-  from **Conditional** to **Standalone**. Theorems depending
-  on Prop 2 retain **Conditional** with an explicit "tracked
-  as Phase D-G research-scope follow-up" note.
+> **v3.1 audit correction.** v2's Option D-stall claimed that
+> stalling at Phase D would still deliver "Prop 1 discharged
+> unconditionally" because Phase C was supposed to discharge
+> it. Since v3 removed Phase C's Prop-1 discharge (the slab-
+> rank multiset framework was false), **stalling at Phase D
+> means BOTH Props remain research-scope**. There is no
+> partial Prop-1 discharge available.
+
+* **Delivered.** Phases A, B, C complete (~1,200 LOC, post-v3
+  reductions). Encoder-equality structural infrastructure
+  (slab definitions, signature computations) is publicly
+  usable. **No Prop discharge.**
+* **Not delivered.** Both Prop 1 and Prop 2 remain research-
+  scope.
+* **Cryptographic value.** The structural infrastructure
+  (`slab₁`, joint-signature computations, encoder-equality
+  consequences) is publicly useful for future Lean
+  formalizations of related multilinear-algebra problems, but
+  does NOT discharge the R-15-residual-TI-reverse milestone.
+* **Patch version.** `lakefile.lean` not bumped (no headline
+  Prop discharged).
+* **Documentation.** `CLAUDE.md`'s headline table classifications
+  are unchanged — Stage 3 / Stage 5 theorems remain
+  **Conditional** on both Props.
 
 ### Option E-stall (fall-back at week 30 if Phase E stalls)
 
@@ -3280,17 +3441,17 @@ organised into per-phase namespaces inside the audit script.
 
 | Phase | Audit-script section | New `#print axioms` entries | New `example` witnesses |
 |-------|---------------------|-----------------------------|-------------------------|
-| A | `§ R-TI-Phase-A` | ~20 (slab definitions, multisets, smul lemmas) | 4 (identity-case + non-trivial g) |
-| B | `§ R-TI-Phase-B` | ~15 (joint signature, multiset, smul) | 3 |
-| C | `§ R-TI-Phase-C` | ~12 (per-slot signatures, count agreement) | 3 (Prop 1 discharge witness) |
-| D | `§ R-TI-Phase-D` | ~25 (off-diagonal vanishing, block decomposition) | 4 |
+| A | `§ R-TI-Phase-A` | ~10 (slab definitions, encoder-equality consequence — post-v3 reductions) | 3 |
+| B | `§ R-TI-Phase-B` | ~5 (diagonal classification re-exports — post-v3 reductions) | 2 |
+| C | `§ R-TI-Phase-C` | ~12 (per-slot signatures; NO Prop 1 discharge — post-v3) | 3 (per-slot non-vacuity) |
+| D | `§ R-TI-Phase-D` | ~20 (off-diagonal vanishing, block decomposition; conditional on π parameter) | 4 |
 | E | `§ R-TI-Phase-E` | ~20 (subspace identification, AlgEquiv) | 4 |
 | F | `§ R-TI-Phase-F` | ~15 (sigma extraction, arrow scalar) | 3 |
-| G | `§ R-TI-Phase-G` | ~6 (final discharges, Karp reduction) | 3 (final non-vacuity) |
-| **Total** | | **~113** | **~24** |
+| G | `§ R-TI-Phase-G` | ~10 (final Prop discharges, π construction, Karp reduction) | 3 (final non-vacuity) |
+| **Total** | | **~92** | **~22** |
 
 Total audit-script growth: from current 770 declarations to
-~880 (post-Phase-G).
+~862 (post-Phase-G; v3 reductions in Phases A, B, C).
 
 Each entry is parsed by the CI's de-wrapping Perl regex; per
 CLAUDE.md the standard-trio constraint is enforced
