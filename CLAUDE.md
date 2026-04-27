@@ -4426,6 +4426,122 @@ from 50 to **51** (RankInvariance.lean is the new module). The
 zero-sorry / zero-custom-axiom posture and the standard-trio-only
 axiom-dependency posture are all preserved.
 
+Workstream R-TI rigidity discharge — Stage 2 (Audit 2026-04-27 —
+slot signature classification + bijection extraction + vertex
+permutation descent) has been completed:
+
+- **Three new modules.**
+  * `Orbcrypt/Hardness/GrochowQiao/SlotSignature.lean` (~370 LOC,
+    NEW) — T-API-3: slot index Finsets, membership lemmas,
+    cardinality + disjointness + partition theorems, encoder
+    diagonal-value classification.
+  * `Orbcrypt/Hardness/GrochowQiao/SlotBijection.lean` (~230 LOC,
+    NEW) — T-API-5: partition-preserving permutation predicates,
+    bijection extraction, cardinality preservation.
+  * `Orbcrypt/Hardness/GrochowQiao/VertexPermDescent.lean` (~190
+    LOC, NEW) — T-API-6: vertex permutation descent from a
+    vertex-slot-preserving slot permutation.
+- **One new lemma added to `StructureTensor.lean`:**
+  `grochowQiaoEncode_diagonal_present_arrow` — the encoder
+  evaluated at a present-arrow slot's triple-diagonal returns `0`
+  (since `pathMul (.edge u v) (.edge u v) = none` from `J² = 0`).
+  Completes the post-Stage-0 distinguishability triple
+  `(vertex = 1, present-arrow = 0, padding = 2)`.
+- **T-API-3 public surface (≈ 22 declarations).**
+  * Boolean predicates: `isVertexSlot`, `isPresentArrowSlot`,
+    `isPaddingSlot`.
+  * Slot-index Finsets: `vertexSlotIndices m`,
+    `presentArrowSlotIndices m adj`, `paddingSlotIndices m adj`,
+    `pathSlotIndices m adj`.
+  * Membership iff lemmas: `mem_vertexSlotIndices_iff`,
+    `mem_presentArrowSlotIndices_iff`, `mem_paddingSlotIndices_iff`,
+    `mem_pathSlotIndices_iff` (the last is `@[simp]`).
+  * Disjointness lemmas: pairwise disjointness of vertex /
+    present-arrow / padding Finsets.
+  * Partition theorems: `vertex_present_padding_partition`
+    (universe partition), `pathSlotIndices_eq_vertex_union_presentArrow`
+    (path-algebra slots = vertex ∪ present-arrow).
+  * Cardinality lemmas: `vertexSlotIndices_card = m`,
+    `pathSlotIndices_card_empty m = m` (on the empty graph).
+  * Diagonal-value theorems: `grochowQiaoEncode_diagonal_at_vertexSlot`
+    (= 1), `_at_presentArrowSlot` (= 0), `_at_paddingSlot` (= 2);
+    `encoder_diagonal_values_pairwise_distinct`.
+- **T-API-5 public surface (≈ 16 declarations).**
+  * Partition-preserving Props: `IsPartitionPreserving`,
+    `IsVertexSlotPreserving`, `IsPresentArrowSlotPreserving`,
+    `IsPaddingSlotPreserving`, `IsThreePartitionPreserving`.
+  * Identity witness: `isThreePartitionPreserving_one`.
+  * Inverse closure: `IsVertexSlotPreserving.inv`,
+    `IsPresentArrowSlotPreserving.inv`,
+    `IsPaddingSlotPreserving.inv`,
+    `IsThreePartitionPreserving.inv`.
+  * Bijection extraction: `vertexSlot_bijOn_of_vertexPreserving`,
+    `presentArrowSlot_bijOn_of_presentArrowPreserving`,
+    `paddingSlot_bijOn_of_paddingPreserving`.
+  * Cardinality preservation:
+    `presentArrowSlot_card_eq_of_presentArrowPreserving`,
+    `paddingSlot_card_eq_of_paddingPreserving`,
+    `present_arrow_count_eq_of_threePartitionPreserving`.
+- **T-API-6 public surface (≈ 7 declarations).**
+  * `vertexImage m π h v : Fin m` — extract vertex on the
+    π-image side via `Exists.choose`.
+  * `vertexImage_spec` — characteristic identity:
+    `slotEquiv (π (slotEquiv.symm (.vertex v))) = .vertex
+    (vertexImage m π h v)`.
+  * `vertexImage_inv`, `vertexImage_inv'` — round-trip identities
+    via π and π⁻¹.
+  * `vertexPermOfVertexPreserving m π h : Equiv.Perm (Fin m)` —
+    the descended permutation, packaged as an `Equiv` so inverse
+    and composition laws are immediate.
+  * `vertexPermOfVertexPreserving_apply` (`@[simp]`),
+    `vertexPermOfVertexPreserving_one` — round-trip with the
+    identity slot permutation.
+- **Mathematical content.**
+  * **Slot classification post-Stage-0** is fully diagonal-value-
+    determined: vertex = 1, present-arrow = 0, padding = 2 are
+    pairwise distinct, so the encoder's diagonal value at any
+    slot literally identifies its kind. This closes the isolated-
+    vertex degeneracy that motivated Stage 0.
+  * **Partition-preserving permutations** are predicates Stage 3
+    (T-API-4) will discharge for GL³-acting tensor isomorphisms.
+    The Stage 2 setup defines these predicates structurally,
+    proves the inverse closure (so `Equiv.Perm` membership is
+    well-defined), and extracts the slot-class bijections that
+    Stage 3 consumes for the multiset-counting argument.
+  * **Vertex permutation descent** is the structural step that
+    bridges slot-level rigidity content (Stage 3) to the
+    vertex-level conclusion of `GrochowQiaoRigidity`. Given a
+    vertex-slot-preserving π, the descent produces an honest
+    `Equiv.Perm (Fin m)` σ that is the uniquely determined vertex
+    permutation by which π acts on vertex slots.
+- **Audit script.** `scripts/audit_phase_16.lean` extended with
+  ~46 new `#print axioms` entries plus 6 non-vacuity `example`s
+  exercising vertex-slot-card = m at m = 3, path-slot-card on
+  empty graph at m = 3, diagonal-value distinguishability,
+  three-partition-preserving identity, present-arrow card
+  preservation, and the identity descent.
+- **Verification.** Full `lake build` succeeds with **3,399
+  jobs** (up from 3,396). Phase 16 audit script exercises **708
+  declarations** (up from 662 — 46 new entries), all on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+  Zero `sorry`, zero custom axioms.
+- **Cryptographic role.** Stage 2 sets up the **predicates,
+  Finset partitions, and structural extraction lemmas** that
+  Stage 3 (T-API-4 block decomposition) consumes to produce a
+  partition-preserving slot permutation from a GL³ tensor
+  isomorphism. Once Stage 3 lands, Stage 2's
+  `vertexPermOfVertexPreserving` is the descent step that
+  produces the σ : `Equiv.Perm (Fin m)` consumed by Stage 5
+  (T-API-9 + T-API-10) for the final adjacency-invariance
+  argument.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 2 is
+structural setup with no API-breaking surface change. The
+module count rises from 51 to **54** (three new modules
+under `Orbcrypt/Hardness/GrochowQiao/`). The zero-sorry /
+zero-custom-axiom posture and the standard-trio-only axiom-
+dependency posture are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

@@ -2848,3 +2848,122 @@ example : IsUnit ((1 : Matrix (Fin 2) (Fin 2) ℚ) ⊗ₖ (1 : Matrix (Fin 2) (F
   kronecker_isUnit_det 1 1 (by simp) (by simp)
 
 end RankInvarianceNonVacuity
+
+-- ============================================================================
+-- ## §15.8 Workstream R-TI Stage 2 T-API-3 (slot signature classification).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.isVertexSlot
+#print axioms Orbcrypt.GrochowQiao.isPresentArrowSlot
+#print axioms Orbcrypt.GrochowQiao.isPaddingSlot
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlotIndices
+#print axioms Orbcrypt.GrochowQiao.paddingSlotIndices
+#print axioms Orbcrypt.GrochowQiao.pathSlotIndices
+#print axioms Orbcrypt.GrochowQiao.mem_vertexSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.mem_presentArrowSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.mem_paddingSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.mem_pathSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_disjoint_presentArrowSlotIndices
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_disjoint_paddingSlotIndices
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlotIndices_disjoint_paddingSlotIndices
+#print axioms Orbcrypt.GrochowQiao.vertex_present_padding_partition
+#print axioms Orbcrypt.GrochowQiao.pathSlotIndices_eq_vertex_union_presentArrow
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_card
+#print axioms Orbcrypt.GrochowQiao.pathSlotIndices_card_empty
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_at_vertexSlot
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_at_presentArrowSlot
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_at_paddingSlot
+#print axioms Orbcrypt.GrochowQiao.encoder_diagonal_values_pairwise_distinct
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_present_arrow
+
+namespace SlotSignatureNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 2 T-API-3 non-vacuity witness (vertex slot Finset cardinality at m=3).**
+There are exactly 3 vertex slots in `Fin (dimGQ 3)`. -/
+example : (vertexSlotIndices 3).card = 3 :=
+  vertexSlotIndices_card 3
+
+/-- **Stage 2 T-API-3 non-vacuity witness (path-slot card on empty graph).**
+On the empty graph at m=3, only vertex slots are path-algebra; the count is 3. -/
+example : (pathSlotIndices 3 (fun _ _ => false)).card = 3 :=
+  pathSlotIndices_card_empty 3
+
+/-- **Stage 2 T-API-3 non-vacuity witness (diagonal value distinguishability).**
+The three slot-kind diagonal values are pairwise distinct. -/
+example : ((1 : ℚ) ≠ 0) ∧ ((1 : ℚ) ≠ 2) ∧ ((0 : ℚ) ≠ 2) :=
+  encoder_diagonal_values_pairwise_distinct
+
+end SlotSignatureNonVacuity
+
+-- ============================================================================
+-- ## §15.9 Workstream R-TI Stage 2 T-API-5 (slot bijection).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.IsPartitionPreserving
+#print axioms Orbcrypt.GrochowQiao.IsVertexSlotPreserving
+#print axioms Orbcrypt.GrochowQiao.IsPresentArrowSlotPreserving
+#print axioms Orbcrypt.GrochowQiao.IsPaddingSlotPreserving
+#print axioms Orbcrypt.GrochowQiao.IsThreePartitionPreserving
+#print axioms Orbcrypt.GrochowQiao.isThreePartitionPreserving_one
+#print axioms Orbcrypt.GrochowQiao.IsVertexSlotPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.IsPresentArrowSlotPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.IsPaddingSlotPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.IsThreePartitionPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.vertexSlot_bijOn_of_vertexPreserving
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlot_bijOn_of_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.paddingSlot_bijOn_of_paddingPreserving
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlot_card_eq_of_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.paddingSlot_card_eq_of_paddingPreserving
+#print axioms Orbcrypt.GrochowQiao.present_arrow_count_eq_of_threePartitionPreserving
+
+namespace SlotBijectionNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 2 T-API-5 non-vacuity witness (identity is three-partition-preserving).**
+The identity slot permutation trivially preserves all three slot-kind classes. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    IsThreePartitionPreserving m adj adj 1 :=
+  isThreePartitionPreserving_one m adj
+
+/-- **Stage 2 T-API-5 non-vacuity witness (cardinality preservation).**
+Under the identity permutation, present-arrow slots have the same count
+in both adjacencies (vacuously: same adjacency). -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (presentArrowSlotIndices m adj).card =
+      (presentArrowSlotIndices m adj).card :=
+  presentArrowSlot_card_eq_of_presentArrowPreserving m adj adj 1
+    (isThreePartitionPreserving_one m adj).presentArrow
+
+end SlotBijectionNonVacuity
+
+-- ============================================================================
+-- ## §15.10 Workstream R-TI Stage 2 T-API-6 (vertex permutation descent).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.vertexImage
+#print axioms Orbcrypt.GrochowQiao.vertexImage_spec
+#print axioms Orbcrypt.GrochowQiao.vertexImage_inv
+#print axioms Orbcrypt.GrochowQiao.vertexImage_inv'
+#print axioms Orbcrypt.GrochowQiao.vertexPermOfVertexPreserving
+#print axioms Orbcrypt.GrochowQiao.vertexPermOfVertexPreserving_apply
+#print axioms Orbcrypt.GrochowQiao.vertexPermOfVertexPreserving_one
+
+namespace VertexPermDescentNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 2 T-API-6 non-vacuity witness (identity descent).**
+The identity slot permutation descends to the identity vertex permutation. -/
+example (m : ℕ)
+    (h : IsVertexSlotPreserving m (1 : Equiv.Perm (Fin (dimGQ m)))) :
+    vertexPermOfVertexPreserving m 1 h = 1 :=
+  vertexPermOfVertexPreserving_one m h
+
+end VertexPermDescentNonVacuity

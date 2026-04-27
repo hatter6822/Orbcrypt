@@ -497,6 +497,42 @@ theorem grochowQiaoEncode_diagonal_padding
   unfold ambientSlotStructureConstant
   simp
 
+/-- **Encoder evaluation at the diagonal of a present-arrow slot** (Stage 0,
+distinguished-padding distinguishability — completes the three-slot-kind
+diagonal-value characterization).
+
+At the triple-diagonal `(α, α, α)` for any present-arrow slot `α` (i.e.,
+an arrow slot `(u, v)` with `adj u v = true`), the encoder returns `0`.
+
+*Why.* The slot is a path-algebra slot (since `adj u v = true`), so the
+encoder takes the path-algebra branch.  The path-algebra structure
+constant at `(α, α, α)` evaluates `pathMul (.edge u v) (.edge u v)`,
+which is `none` because the radical-2 path algebra `F[Q_G] / J²` has
+`J² = 0` (length-2 paths vanish).
+
+This completes the post-Stage-0 distinguishability property: the
+three slot-kind diagonal values are pairwise distinct — vertex slots
+give `1`, present-arrow slots give `0`, padding slots give `2`. -/
+theorem grochowQiaoEncode_diagonal_present_arrow
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (u v : Fin m)
+    (h_present : adj u v = true) :
+    grochowQiaoEncode m adj
+      ((slotEquiv m).symm (.arrow u v))
+      ((slotEquiv m).symm (.arrow u v))
+      ((slotEquiv m).symm (.arrow u v)) = 0 := by
+  -- The arrow slot `(u, v)` with `adj u v = true` is a path-algebra slot.
+  have h_path : isPathAlgebraSlot m adj
+      ((slotEquiv m).symm (.arrow u v)) = true := by
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    exact h_present
+  -- Take the path-algebra branch.
+  rw [grochowQiaoEncode_path m adj _ _ _ h_path h_path h_path]
+  -- The path-algebra structure constant evaluates `pathMul (.edge u v)
+  -- (.edge u v)`, which is `none` from `J² = 0`.
+  unfold pathSlotStructureConstant
+  simp only [Equiv.apply_symm_apply, slotToArrow, pathMul]
+
 -- ============================================================================
 -- Sub-task T2.6 — Padding-distinguishability lemma.
 -- ============================================================================
