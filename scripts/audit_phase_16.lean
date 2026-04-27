@@ -2808,3 +2808,43 @@ example (A B C : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
   unfold₁_tensorContract A B C T
 
 end TensorUnfoldNonVacuity
+
+-- ============================================================================
+-- ## §15.7 Workstream R-TI Stage 1 T-API-2 (GL³ rank invariance).
+-- ============================================================================
+
+#print axioms Orbcrypt.Tensor3.kronecker_isUnit_det
+#print axioms Orbcrypt.Tensor3.unfoldRank₁
+#print axioms Orbcrypt.Tensor3.unfoldRank₂
+#print axioms Orbcrypt.Tensor3.unfoldRank₃
+#print axioms Orbcrypt.Tensor3.tensorRank
+#print axioms Orbcrypt.Tensor3.unfoldRank₁_smul
+#print axioms Orbcrypt.Tensor3.unfoldRank₁_areTensorIsomorphic
+
+namespace RankInvarianceNonVacuity
+
+open Orbcrypt
+open Orbcrypt.Tensor3
+open scoped Matrix
+open scoped Kronecker
+
+/-- **T-API-2 non-vacuity witness (axis-1 rank invariance under identity GL³).**
+The identity element of GL³ acts trivially on any tensor, so the rank
+is trivially preserved.  Confirms `unfoldRank₁_smul` is well-typed. -/
+example (T : Tensor3 2 ℚ) :
+    unfoldRank₁ ((1 : GL (Fin 2) ℚ × GL (Fin 2) ℚ × GL (Fin 2) ℚ) • T) =
+      unfoldRank₁ T :=
+  unfoldRank₁_smul (n := 2) 1 T
+
+/-- **T-API-2 non-vacuity witness (rank tuple at concrete tensor).**
+On a hand-rolled `Tensor3 1 ℚ`, the rank tuple is well-defined. -/
+example (T : Tensor3 1 ℚ) : tensorRank T = (unfoldRank₁ T, unfoldRank₂ T, unfoldRank₃ T) :=
+  rfl
+
+/-- **T-API-2 non-vacuity witness (Kronecker preserves invertibility).**
+The Kronecker product of the identity matrices is itself a unit (in fact
+the identity), confirming `kronecker_isUnit_det` discharges on units. -/
+example : IsUnit ((1 : Matrix (Fin 2) (Fin 2) ℚ) ⊗ₖ (1 : Matrix (Fin 2) (Fin 2) ℚ)).det :=
+  kronecker_isUnit_det 1 1 (by simp) (by simp)
+
+end RankInvarianceNonVacuity

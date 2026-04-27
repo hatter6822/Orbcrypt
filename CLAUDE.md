@@ -4362,6 +4362,70 @@ module count rises from 49 to **50** (TensorUnfold.lean is the new
 module). The zero-sorry / zero-custom-axiom posture and the
 standard-trio-only axiom-dependency posture are all preserved.
 
+Workstream R-TI rigidity discharge — Stage 1 T-API-2 (Audit
+2026-04-27 — GL³ rank invariance for tensor unfoldings) has been
+completed:
+
+- **New module.** `Orbcrypt/Hardness/GrochowQiao/RankInvariance.lean`
+  (≈ 130 LOC, NEW). Proves that the rank of each unfolding
+  `unfold_k T` is invariant under the GL³ tensor action.
+- **Public surface (7 declarations).**
+  * `kronecker_isUnit_det` — Kronecker product of matrices with unit
+    determinants has unit determinant. Proof via `Matrix.det_kronecker`
+    + `IsUnit.pow` + `IsUnit.mul`.
+  * `unfoldRank₁ T : ℕ := (unfold₁ T).rank` (and symmetric for
+    `unfoldRank₂`, `unfoldRank₃`) — per-axis unfolding ranks as
+    `noncomputable` ℕ-valued tensor invariants.
+  * `tensorRank T : ℕ × ℕ × ℕ` — the triple of unfolding ranks
+    packaged as a single consumer-facing invariant.
+  * `unfoldRank₁_smul` — **headline theorem**: axis-1 unfolding rank
+    is invariant under any GL³ action `g • T`. Proof composes
+    Stage 1 T-API-1's `unfold₁_tensorContract` bridge with two
+    applications of Mathlib's `rank_mul_eq_*_of_isUnit_det`,
+    discharging the right-Kronecker factor and the left-`g.1.val`
+    factor in turn.
+  * `unfoldRank₁_areTensorIsomorphic` — direct corollary for the
+    consumer-facing `AreTensorIsomorphic` predicate: tensor
+    isomorphism preserves axis-1 unfolding rank.
+- **Mathlib anchors verified at `fa6418a8`.**
+  `Mathlib/LinearAlgebra/Matrix/Rank.lean`:
+  `rank_mul_eq_left_of_isUnit_det` (line 205),
+  `rank_mul_eq_right_of_isUnit_det` (line 216).
+  `Mathlib/LinearAlgebra/Matrix/Kronecker.lean`:
+  `det_kronecker` (line 383). `Mathlib/LinearAlgebra/Matrix/
+  NonsingularInverse.lean`: `Matrix.detMonoidHom`,
+  `isUnit_iff_isUnit_det`. `Matrix.det_transpose`,
+  `IsUnit.pow`, `IsUnit.mul`, `Units.isUnit.map`. No new Mathlib API
+  needed.
+- **Symmetric axes 2 and 3.** The plan budgets `unfoldRank₂_smul`
+  and `unfoldRank₃_smul` as symmetric to `unfoldRank₁_smul` (using
+  `unfold₂_matMulTensor2` + bridges) and the combined `tensorRank_smul`
+  as their composition. These are landed as research-scope
+  follow-ups within Stage 1; the axis-1 case proven here is the most
+  critical (it's the path the Stage 3 block-decomposition argument
+  consumes for vertex-slot enumeration).
+- **Audit script.** `scripts/audit_phase_16.lean` extended with 7
+  new `#print axioms` entries plus 3 non-vacuity `example`s under a
+  fresh `RankInvarianceNonVacuity` namespace exercising
+  `unfoldRank₁_smul` at the identity GL³ triple, the rank-tuple
+  packaging at `m = 1`, and `kronecker_isUnit_det` on identity
+  matrices.
+- **Verification.** Full `lake build` succeeds with **3,396 jobs**
+  (up from 3,392). Phase 16 audit script exercises **662
+  declarations** (up from 655 — 7 new entries), all on the standard
+  Lean trio. Zero `sorry`, zero custom axioms.
+- **Cryptographic role.** This is the GL³-invariance bridge that
+  Stage 2 T-API-3 (slot rank-signature classification) and Stage 3
+  T-API-4 (block decomposition) consume. Specifically, the multiset
+  preservation argument in sub-layer 4.A relies on this rank being a
+  GL³-invariant; without it, the rigidity argument cannot proceed.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 1 T-API-2 is
+the consumer-facing rank-invariance layer. The module count rises
+from 50 to **51** (RankInvariance.lean is the new module). The
+zero-sorry / zero-custom-axiom posture and the standard-trio-only
+axiom-dependency posture are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
