@@ -4294,6 +4294,74 @@ the standard-trio-only axiom-dependency posture are all preserved.
 The full version bump (`0.1.21 → 0.1.22`) is reserved for the
 final Stage 5 landing of `grochowQiaoRigidity`.
 
+Workstream R-TI rigidity discharge — Stage 1 T-API-1 (Audit
+2026-04-27 — Tensor3 unfoldings as matrices) has been completed:
+
+- **New module.** `Orbcrypt/Hardness/GrochowQiao/TensorUnfold.lean`
+  (≈ 250 LOC, NEW). Bridges `Tensor3 n F` (`Fin n → Fin n → Fin n
+  → F`) to matrices over `Fin n × (Fin n × Fin n)` via three
+  unfoldings, one per tensor axis.
+- **Public surface (15 declarations).**
+  * Definitions: `Tensor3.unfold₁`, `unfold₂`, `unfold₃` (each
+    `Tensor3 n F → Matrix (Fin n) (Fin n × Fin n) F`, fixing one
+    axis as the row index and pairing the other two as a
+    lexicographic column index).
+  * Apply lemmas (`@[simp]`): `unfold₁_apply`, `unfold₂_apply`,
+    `unfold₃_apply` — definitional unfolding to the underlying
+    tensor entry.
+  * Injectivity: `unfold₁_inj`, `unfold₂_inj`, `unfold₃_inj` —
+    distinct tensors give distinct unfoldings.
+  * Single-axis bridges: `unfold₁_matMulTensor1`,
+    `unfold₂_matMulTensor2`, `unfold₃_matMulTensor3` — axis-`k`
+    contraction `matMulTensor_k M T` corresponds to **left matrix
+    multiplication** `M * unfold_k T` on the axis-`k` unfolding.
+  * Cross-axis Kronecker bridges:
+    `unfold₁_matMulTensor2 : unfold₁ (matMulTensor2 B T) = unfold₁
+    T * (Bᵀ ⊗ₖ 1)` and `unfold₁_matMulTensor3 : unfold₁ (matMulTensor3
+    C T) = unfold₁ T * (1 ⊗ₖ Cᵀ)`. Axis-2 / axis-3 actions on the
+    axis-1 unfolding are right matrix multiplication by Kronecker
+    products.
+  * **Combined GL³-action bridge:** `unfold₁_tensorContract :
+    unfold₁ (tensorContract A B C T) = A * unfold₁ T * (Bᵀ ⊗ₖ Cᵀ)`.
+    Composes the three single-axis bridges via
+    `Matrix.mul_kronecker_mul` to combine the two right Kronecker
+    factors into a single one. This is the consumer-facing bridge
+    that Stage 1 T-API-2's rank-invariance proof consumes.
+- **Mathlib anchors verified at `fa6418a8`.**
+  `Mathlib/LinearAlgebra/Matrix/Kronecker.lean`:
+  `kroneckerMap_apply` (line 60), `kronecker_apply` (line 264),
+  `mul_kronecker_mul` (line 363), `kroneckerMap_one_one` (line 140).
+  `Mathlib/Data/Matrix/Diagonal.lean`: `Matrix.one_apply`. Standard
+  `Finset.sum_eq_single`, `Fintype.sum_prod_type`, `Finset.sum_comm`,
+  `Finset.sum_congr`. No new Mathlib API needed.
+- **Audit script.** `scripts/audit_phase_16.lean` extended with 15
+  new `#print axioms` entries (one per public declaration) plus 4
+  new non-vacuity `example`s under a fresh `TensorUnfoldNonVacuity`
+  namespace exercising the apply lemma, the single-axis bridge for
+  axis-1, the Kronecker bridge for axis-2, and the combined
+  GL³-action bridge — all on a hand-rolled `Tensor3 2 ℚ`.
+- **Verification.** Full `lake build` succeeds with **3,392 jobs**
+  (up from 3,391 — one new module). Phase 16 audit script exercises
+  **655 declarations** (up from 640 — 15 new `#print axioms`
+  entries), all on the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`). Zero `sorry`, zero custom
+  axioms.
+- **Cryptographic role.** This is reusable Mathlib-quality
+  infrastructure independent of the Grochow–Qiao encoder. The
+  unfolding bridge lets us cast the GL³ tensor action
+  `tensorContract A B C T` into matrix products with Kronecker
+  products, which Stage 1 T-API-2 uses to prove rank invariance via
+  Mathlib's `rank_mul_eq_*_of_isUnit_det` lemmas. Future Orbcrypt
+  modules needing 3-tensor unfoldings (e.g., a Mathlib-style
+  generalization to symmetric / antisymmetric tensors) can import
+  this module directly.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 1 T-API-1 is
+the foundation layer with no API-breaking surface change. The
+module count rises from 49 to **50** (TensorUnfold.lean is the new
+module). The zero-sorry / zero-custom-axiom posture and the
+standard-trio-only axiom-dependency posture are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

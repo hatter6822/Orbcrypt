@@ -2751,3 +2751,60 @@ example :
   algEquiv_extractVertexPerm 1 AlgEquiv.refl
 
 end WedderburnMalcevNonVacuity
+
+-- ============================================================================
+-- ## §15.6 Workstream R-TI Stage 1 T-API-1 (Tensor3 unfoldings).
+-- ============================================================================
+
+#print axioms Orbcrypt.Tensor3.unfold₁
+#print axioms Orbcrypt.Tensor3.unfold₂
+#print axioms Orbcrypt.Tensor3.unfold₃
+#print axioms Orbcrypt.Tensor3.unfold₁_apply
+#print axioms Orbcrypt.Tensor3.unfold₂_apply
+#print axioms Orbcrypt.Tensor3.unfold₃_apply
+#print axioms Orbcrypt.Tensor3.unfold₁_inj
+#print axioms Orbcrypt.Tensor3.unfold₂_inj
+#print axioms Orbcrypt.Tensor3.unfold₃_inj
+#print axioms Orbcrypt.Tensor3.unfold₁_matMulTensor1
+#print axioms Orbcrypt.Tensor3.unfold₂_matMulTensor2
+#print axioms Orbcrypt.Tensor3.unfold₃_matMulTensor3
+#print axioms Orbcrypt.Tensor3.unfold₁_matMulTensor2
+#print axioms Orbcrypt.Tensor3.unfold₁_matMulTensor3
+#print axioms Orbcrypt.Tensor3.unfold₁_tensorContract
+
+namespace TensorUnfoldNonVacuity
+
+open Orbcrypt
+open Orbcrypt.Tensor3
+open scoped Matrix
+open scoped Kronecker
+
+/-- **T-API-1 non-vacuity witness (axis-1 unfolding apply at concrete index).**
+On a hand-rolled `Tensor3 2 ℚ`, the axis-1 unfolding evaluates by
+definition to the underlying tensor entry. -/
+example (T : Tensor3 2 ℚ) (i j k : Fin 2) :
+    unfold₁ T i (j, k) = T i j k := rfl
+
+/-- **T-API-1 non-vacuity witness (single-axis bridge for axis-1).**
+The axis-1 contraction `matMulTensor1 A T` corresponds to left matrix
+multiplication on the axis-1 unfolding. -/
+example (A : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
+    unfold₁ (matMulTensor1 A T) = A * unfold₁ T :=
+  unfold₁_matMulTensor1 A T
+
+/-- **T-API-1 non-vacuity witness (Kronecker bridge for axis-2 acting on
+    `unfold₁`).** The axis-2 contraction is right matrix multiplication
+by `Bᵀ ⊗ₖ 1`. -/
+example (B : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
+    unfold₁ (matMulTensor2 B T) =
+      unfold₁ T * (Bᵀ ⊗ₖ (1 : Matrix (Fin 2) (Fin 2) ℚ)) :=
+  unfold₁_matMulTensor2 B T
+
+/-- **T-API-1 non-vacuity witness (combined GL³-action bridge).** The full
+`tensorContract A B C T` corresponds, on the axis-1 unfolding, to the
+matrix product `A * unfold₁ T * (Bᵀ ⊗ₖ Cᵀ)`. -/
+example (A B C : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
+    unfold₁ (tensorContract A B C T) = A * unfold₁ T * (Bᵀ ⊗ₖ Cᵀ) :=
+  unfold₁_tensorContract A B C T
+
+end TensorUnfoldNonVacuity

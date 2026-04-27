@@ -52,6 +52,7 @@ import Orbcrypt.Hardness.GrochowQiao.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao.Forward
 import Orbcrypt.Hardness.GrochowQiao.PermMatrix
 import Orbcrypt.Hardness.GrochowQiao.Reverse
+import Orbcrypt.Hardness.GrochowQiao.TensorUnfold
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling
