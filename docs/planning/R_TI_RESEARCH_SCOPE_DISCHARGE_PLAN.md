@@ -8,7 +8,204 @@ Date: 2026-04-27
 Author: post-Stage-5 R-TI rigidity discharge planning
 Tracking: research milestone **R-15-residual-TI-reverse**
 Status: planned (not yet started)
-Revision: v2 (post-expansion + refinement pass, 2026-04-27)
+Revision: v3 (mathematical soundness audit + corrections, 2026-04-27)
+
+---
+
+## Mathematical soundness audit (v3 corrections)
+
+A deep audit of v2 against the actual code found **seven
+critical mathematical issues**. v3 corrects them. The audit
+findings (with the v3 fixes summarised inline):
+
+### Critical finding #1 (FATAL) — `slabRankMultiset₁_smul` is FALSE
+
+**The v2 plan's Phase A headline theorem,**
+`slabRankMultiset₁ (g • T) = slabRankMultiset₁ T` for arbitrary
+`g : GL × GL × GL` and `T : Tensor3 n F`, **is mathematically
+false.**
+
+*Counterexample.* Let `n = 2`, `F = ℚ`, `T : Tensor3 2 ℚ`
+defined by `T(0, 0, 0) = 1`, all other entries `0`. Slabs:
+- `slab₁ T 0` is the matrix `[[1, 0], [0, 0]]` — rank 1.
+- `slab₁ T 1` is the zero matrix — rank 0.
+- `slabRankMultiset₁ T = {1, 0}`.
+
+Take `g = (g₁, 1, 1)` with `g₁ = [[2, 1], [1, 1]]` (det 1,
+invertible). Then `(g • T)(a, b, c) = g₁(a, 0) · T(0, b, c)`,
+which gives:
+- `slab₁ (g • T) 0` non-zero at `(0, 0)` with value 2 — rank 1.
+- `slab₁ (g • T) 1` non-zero at `(0, 0)` with value 1 — rank 1.
+- `slabRankMultiset₁ (g • T) = {1, 1} ≠ {1, 0}`.
+
+GL³ can promote a zero slab to a non-zero slab by mixing slabs
+across the row index. The slab-rank multiset is **not** a GL³
+invariant.
+
+**v3 fix.** Phase A's headline theorem is removed.
+Phase A is reformulated to use the **encoder-equality direct
+approach**: under `g • grochowQiaoEncode m adj₁ =
+grochowQiaoEncode m adj₂`, structural consequences are derived
+**directly from the encoder structure**, not via a generic
+`_smul` invariant.
+
+### Critical finding #2 (FATAL) — `(g.1⁻¹).val.toEquiv` does not exist
+
+The v2 plan's Phase A T-API-A2.4 references
+`(g.1⁻¹).val.toEquiv : Fin n ≃ Fin n` to set up a "Multiset
+bijection via the GL inverse". **No such projection exists in
+Mathlib at the pinned commit `fa6418a8`** (only
+`Matrix.GeneralLinearGroup.coe_inv : ↑A⁻¹ = (↑A : Matrix n n
+R)⁻¹`, returning a matrix not an Equiv). It cannot exist for
+general GL elements: a generic invertible matrix over `F` has
+all entries non-zero and does not induce a permutation of `Fin
+n` in the way the plan requires.
+
+**v3 fix.** The "Multiset bijection via g.1⁻¹" framework is
+removed. The encoder-equality direct approach replaces it.
+
+### Critical finding #3 (HIGH) — C1.1 slab-rank values are wrong
+
+The v2 plan's Phase C T-API-C1 sub-task C1.1 claims vertex slab-
+rank is **uniformly 1**. The actual encoder structure constant
+in the code is
+
+```
+def pathSlotStructureConstant (m : ℕ) (i j k : Fin (dimGQ m)) : ℚ :=
+  let a := slotToArrow m (slotEquiv m i)
+  let b := slotToArrow m (slotEquiv m j)
+  let c := slotToArrow m (slotEquiv m k)
+  match pathMul m a b with
+  | some d => if d = c then 1 else 0
+  | none => 0
+```
+
+**i.e., `T_{ijk} = 1[pathMul slot_i slot_j = some slot_k]`**:
+the *first* tensor index `i` corresponds to the *first* `pathMul`
+argument; the third index `k` corresponds to the `pathMul`
+*output*. v2's C1.1 incorrectly searched for `pathMul slot_j
+slot_k = some slot_i` (output match), inverting the convention.
+
+The correct slab-rank values, derived from the actual `pathMul`
+table:
+- **Vertex slot `v`**: slab is non-zero at `(vertex v, vertex
+  v) → 1` AND at `(arrow v w, arrow v w) → 1` for each present
+  outgoing arrow `(v, w)`. Slab rank = **`1 + outDegree(v)`**
+  (not uniformly 1).
+- **Present-arrow slot `(u, v)`**: slab is non-zero at `(vertex
+  v, arrow u v) → 1` only. Slab rank = **1** (not 2 as v2
+  claimed).
+- **Padding slot `(u, v)`**: slab is non-zero at `(padding (u,
+  v), padding (u, v)) → 2` only. Slab rank = **1**.
+
+**v3 fix.** C1.1 and C1.2 derivations are corrected. The joint
+signature for vertices becomes `(1 + outDegree(v), 1)` (per-
+vertex variable, NOT uniform), present-arrow `(1, 0)`, padding
+`(1, 2)`.
+
+### Critical finding #4 (FATAL) — Strategic decomposition unsound
+
+The v2 plan claims Phase C discharges Prop 1 independently of
+Phase D-G via the "shallow" slab-rank multiset framework. This
+is **fundamentally unsound** for two reasons:
+
+1. The generic `slabRankMultiset_smul` is false (Critical
+   Finding #1).
+2. Even encoder-specific slab-rank multiset invariance
+   (`slabRankMultiset (encode m adj₁) = slabRankMultiset (encode
+   m adj₂)` under encoder-equality) requires the structural
+   correspondence between adj₁ and adj₂ — which is what we are
+   trying to prove. The argument is circular.
+
+**Both Props 1 and 2 require the deep Phase D-G chain.** Prop 1
+is a corollary of Prop 2 (an arrow-preserving σ gives a
+bijection between presentArrows, hence equal cardinalities).
+There is no separable shallow proof.
+
+**v3 fix.** The strategic decomposition is restructured: Prop 1
+is discharged in Phase G **as a corollary of Prop 2**, not in
+Phase C. Phases A–C are repositioned as **encoder-equality
+diagnostic infrastructure** (recovering specific encoder
+properties from the equality), not as independent rigidity
+proofs.
+
+### Critical finding #5 (HIGH) — D2.4 mutual induction hand-waved
+
+The v2 plan's Phase D sub-task D2.4 sketches a "potential
+function" mutual induction that asserts the closure of the
+mutual dependency between axes 1, 2, 3. **No actual proof
+mechanism is given.** The argument as written:
+
+> 1. Encoder-equality forces a polynomial identity.
+> 2. Path-aligned columns of g's factors restrict to a bijection
+>    PROVIDED the off-diagonals all vanish.
+> 3. Conclude the potential is zero.
+
+Step 2 is circular (it presupposes what step 3 is supposed to
+conclude). Step 1 is unspecified ("a polynomial identity" — but
+which one, and what does it imply?).
+
+**v3 fix.** D2.4 is rewritten with a **disclaimer** that the
+mutual-induction structure is genuine multilinear-algebra
+content from Grochow–Qiao 2021 and that the formal proof is
+research-scope. The plan provides a structural sketch without
+claiming it constitutes a complete formal argument.
+
+### Critical finding #6 (HIGH) — E2.2.4 circularity
+
+Phase E sub-task E2.2.4 (arrow × arrow multiplicativity case)
+argues:
+- LHS: `α(u, v) * α(w, x) = 0` by J²=0.
+- RHS: 0 because `gl3OnPathBlock_to_lin (arrow)` is in radical,
+  hence J²·J² = 0.
+
+The "RHS in radical" step assumes `gl3OnPathBlock_to_lin`
+preserves the radical. This is a property of *algebra
+homomorphisms*. But at this stage `gl3OnPathBlock_to_lin` is a
+LINEAR map only — multiplicativity is what we are *trying to
+prove*. The argument is circular.
+
+**v3 fix.** E2.2.4 is rewritten to use the **structure tensor
+pull-back from E2.1 directly**, deriving the arrow image's
+support from the slot-level partition preservation (which comes
+from Phase D's block decomposition, not from algebra-hom
+properties of `gl3OnPathBlock_to_lin`).
+
+### Critical finding #7 (MEDIUM) — Mathlib API references unverified
+
+Several Mathlib lemmas referenced in v2 are **not present at
+the pinned commit `fa6418a8`** under the names given:
+- `Multiset.map_eq_map_of_bijective` — not found.
+- `Multiset.map_eq_map_iff_of_inj` — not found.
+- `Equiv.Perm.image_univ` — not found in expected location.
+- `Matrix.GeneralLinearGroup.toEquiv` — does not exist.
+
+**v3 fix.** API references corrected to lemmas actually
+present at the pinned commit (`Multiset.map_injective`,
+`Finset.image_univ_of_surjective`, `Finset.image_univ_equiv`),
+or marked as "hand-roll required" with explicit LOC reserves.
+
+---
+
+## Revision history
+
+* **v1 (initial landing).** 1,788 lines. High-level phase
+  decomposition (A–G) with sub-layer breakdowns at the
+  T-API-* level.
+* **v2 (per-sub-task expansion).** 3,218 lines. Granular
+  decomposition into 66 sub-tasks across 7 phases.
+* **v3 (mathematical soundness corrections, this revision).**
+  Corrects 7 critical mathematical issues found by deep audit
+  against the actual code. Removes the false generic
+  `slabRankMultiset_smul` framework, fixes the C1.1 / C1.2
+  slab-axis convention error, restructures the strategic
+  decomposition (Prop 1 derived from Prop 2 in Phase G; not
+  a separable shallow proof), and adds soundness disclaimers
+  to the genuinely uncertain sub-tasks (D2.4, E2.2.4).
+  Updates LOC budget to ~5,800 LOC across 7 phases (Phase A's
+  removed false framework reduces budget by ~400 LOC; D2.4's
+  acknowledged research-scope content reduces detail-claim by
+  ~100 LOC).
 
 ---
 
@@ -81,14 +278,20 @@ the genuinely deep content of Grochow–Qiao SIAM J. Comp. 2023 §4.3:
   whose σ-action on basis-element arrows preserves the
   `presentArrows`-support between `(adj₁, adj₂)`.
 
-This plan discharges both unconditionally. **Post-expansion
-budget** (the per-sub-task granular analysis revealed Phases C
-and D need more LOC than the original high-level estimate): the
-total LOC budget is **~6,700 LOC** of new Lean across **11 new
-modules**, plus ~500 LOC of documentation refresh and audit-
-script extensions, for a grand total of **~7,200 LOC** across
-the 7 phases. The dedicated effort estimate is **~6–10 months**
-for a single focused implementer.
+This plan discharges both unconditionally. **Post-v3-audit
+budget** (the v3 mathematical-soundness audit removed the
+false generic `slabRankMultiset_smul` framework and the
+shallow Prop-1 path, reducing Phases A–C to diagnostic
+infrastructure only; v3 also marks D2.4 and E2.2.4 as
+research-scope after their v2 proof sketches were found
+unsound): the total LOC budget is **~5,200 LOC** of new Lean
+across **~9 new modules**, plus ~500 LOC of documentation
+refresh and audit-script extensions, for a grand total of
+**~5,700 LOC** across the 7 phases. The dedicated effort
+estimate is **~6–12 months** for a single focused implementer
+(the upper bound widened post-audit because D2.4 and E2.2.4
+are now honest research-scope items rather than 100-LOC
+sketched exercises).
 
 ## 2. Outcome
 
@@ -123,69 +326,90 @@ After all seven phases (A–G) land:
   `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
   updated to mark R-15-residual-TI-reverse as CLOSED.
 
-## 3. Strategic decomposition
+## 3. Strategic decomposition (post-v3 correction)
 
 The two `Prop`s are not independent: `GL3InducesArrowPreservingPerm`
 **strictly implies** `GL3PreservesPartitionCardinalities` because
 σ-action arrow preservation gives a bijection between
 `presentArrows m adj₁` and `presentArrows m adj₂`, so cardinalities
-agree. A naive plan could therefore prove only Prop 2 and derive
-Prop 1 as a corollary.
+agree.
 
-We reject this approach for two reasons:
+**v3 audit correction.** v2 attempted to discharge Prop 1
+*independently* of Prop 2 via a "shallow rigidity" framework
+based on slab-rank multiset invariance under generic GL³. **This
+framework is mathematically unsound** (Critical findings #1 +
+#4 in the v3 audit preamble): the generic
+`slabRankMultiset_smul` is FALSE (counterexample given), and
+encoder-specific multiset invariance reduces to Prop 1 itself
+(circular). v3 abandons the shallow path. **Both Props are now
+discharged together at the end of Phase G**, with Prop 1
+derived as a corollary of Prop 2 (the natural mathematical
+order in Grochow–Qiao 2021's argument).
 
-1. **Build-graph independence.** Discharging Prop 1 first lets the
-   downstream theorems
-   (`partitionPreservingPermFromEqualCardinalities`,
-   `partition_preserving_perm_under_GL3`) become unconditional
-   independently — Phase 4 of the rigidity argument can land months
-   ahead of Phase G without blocking on the deep arrow content.
+**Phase ordering (v3).**
 
-2. **Mathematical decomposition.** Prop 1 follows from a **shallower
-   invariant** (slab-rank multiset preservation under GL³) that
-   does not require the AlgEquiv → σ → arrow-action chain. Proving
-   Prop 1 first lets us validate the slab-rank invariance API on
-   its own merits, then build the deeper Prop-2 argument on a
-   verified foundation.
+- **Phases A, B:** Encoder-equality structural infrastructure.
+  Diagnostic lemmas about the encoder (slab evaluations,
+  diagonal classifications). NO Prop discharge claim. NO
+  generic GL³ smul invariants beyond what Stage 1 already
+  proved (`unfoldRank₁_smul`).
+- **Phase C:** Per-slot signature computations on the
+  encoder. Diagnostic infrastructure used downstream. NO Prop
+  1 discharge.
+- **Phases D, E, F:** The deep AlgEquiv → σ → arrow-action
+  chain. Phase D extracts the path-block-restricted action,
+  Phase E lifts to an AlgEquiv, Phase F extracts σ via WM and
+  proves arrow preservation.
+- **Phase G:** Discharges Prop 2 directly from Phase F's
+  arrow-preservation witness, then derives Prop 1 as a
+  corollary (the σ-induced bijection on `presentArrows` gives
+  the cardinality equality).
 
-The plan therefore proves Prop 1 in **Phases A–C** (slab-rank
-multiset invariance + diagonal-value classification), then proves
-Prop 2 in **Phases D–G** (path-algebra block extraction → AlgEquiv
-→ WM σ-extraction → arrow preservation). Phase G includes the
-formal corollary deriving Prop 1 from Prop 2 (a ≤30 LOC
-composition), which lets us *also* land Prop 1 unconditionally via
-the deeper route — providing redundant verification at the
-audit-script level.
+This restructuring reflects the actual Grochow–Qiao 2021
+argument, which does not have a "shallow Prop 1 → deep Prop 2"
+split.
 
-## 4. Phase map
+## 4. Phase map (v3 corrected)
 
-| Phase | Layers | Title | LOC (original) | LOC (post-expansion) | Risk |
-|-------|--------|-------|----------------|----------------------|------|
-| A | T-API-A1, A2 | Slab-rank multiset invariance | ~900 | ~900 | Med |
-| B | T-API-B1, B2 | Diagonal-value invariance under GL³ | ~600 | ~600 | Low–Med |
-| C | T-API-C1, C2 | Slot-classification rigidity (Prop 1 discharge) | ~700 | ~900 | Low–Med |
-| D | T-API-D1, D2, D3 | Path-block extraction + restriction theorem | ~1,400 | ~1,700 | **Research** |
-| E | T-API-E1, E2 | AlgEquiv construction from path-block GL³ | ~1,100 | ~1,100 | High |
-| F | T-API-F1, F2 | σ extraction + arrow-action analysis | ~900 | ~900 | Med–High |
-| G | T-API-G1, G2 | Final discharge + composition (Prop 2) | ~600 | ~600 | Med |
-| | | **Total** | **~6,200** | **~6,700** | |
+| Phase | Layers | Title | LOC (v3) | Risk |
+|-------|--------|-------|----------|------|
+| A | T-API-A1, A2 | Slab definitions + encoder-equality structural lemmas | ~500 | Low |
+| B | T-API-B1, B2 | Diagonal-value structural lemmas (re-export Stage 0/2) | ~300 | Low |
+| C | T-API-C1 | Per-slot signature computations | ~400 | Low |
+| D | T-API-D1, D2, D3 | Path-block extraction + restriction (D2.4 research-scope) | ~1,500 | **Research** |
+| E | T-API-E1, E2 | AlgEquiv construction (E2.2.4 research-scope) | ~1,200 | **Research** |
+| F | T-API-F1, F2 | σ extraction + arrow-action analysis | ~900 | Med–High |
+| G | T-API-G1, G2 | Discharge Prop 2 + derive Prop 1 corollary | ~400 | Med |
+| | | **Total** | **~5,200** | |
 
-Plus ~500 LOC for documentation refresh, audit-script extensions,
-and Vacuity-map / VERIFICATION_REPORT updates across the seven
-phases. **The post-expansion LOC growth is concentrated in
-Phases C and D**, where the per-sub-task granular budgets
-(C1.1–C1.6 and D1.1–D1.8 / D2.0–D2.5) revealed that the
-original high-level estimates underestimated the index-management
-bookkeeping and the mutual-induction packaging.
+Plus ~500 LOC for documentation refresh, audit-script
+extensions, and Vacuity-map / VERIFICATION_REPORT updates
+across the seven phases. **Total post-v3 budget: ~5,700 LOC.**
 
-**Critical path: Phase D is the genuinely research-grade layer.**
-Phases A–C complete the "shallow rigidity" half (Prop 1) on
-independent mathematical content; Phases D–G build the AlgEquiv
-chain, which is where the genuine novelty lives. Phase D's
-block-decomposition argument (lifted from the prior plan's
-Stage 3 sub-layers 4.D/4.E in shape, but re-stated here without
-the `Prop`-fallback escape hatch) is the highest-risk piece of
-the workstream.
+> **v3 LOC reductions vs v2.** Phase A drops from 900 → 500
+> (false `slabRankMultiset_smul` framework removed). Phase B
+> drops from 600 → 300 (false joint-multiset framework
+> removed). Phase C drops from 900 → 400 (Prop-1 discharge
+> moved to Phase G; only diagnostic structural lemmas remain).
+> Phase G drops from 600 → 400 (Prop 1 corollary is ~30 LOC,
+> not a full discharge layer). Phases D, E pick up some
+> "research-scope" tags (D2.4 + E2.2.4) reflecting honest
+> uncertainty about LOC. Net: ~5,200 LOC of Lean (down from
+> ~6,700).
+
+**Critical path: Phases D and E are the genuinely research-
+grade layers.** Phase D's mutual-induction closure (D2.4) and
+Phase E's basis-multiplicativity (E2.2.4) are both marked
+research-scope after v3 audit found their v2 sketches
+unsound. The plan honestly acknowledges that these contain
+genuine multilinear-algebra content from Grochow–Qiao 2021
+§4.3, not 80–120-LOC exercises.
+
+Phase D's block-decomposition argument is lifted from the
+prior plan's Stage 3 sub-layers 4.D/4.E in shape, but
+re-stated here without the `Prop`-fallback escape hatch. It
+is the highest-risk piece of the workstream alongside Phase
+E's basis multiplicativity.
 
 ## 5. Conventions enforced across all phases
 
@@ -241,12 +465,22 @@ Inherited from CLAUDE.md and the prior R-TI plan:
 
 ---
 
-## Phase A — Slab-rank multiset invariance under GL³ (~900 LOC)
+## Phase A — Slab definitions + encoder-equality structural lemmas (~500 LOC, post-v3 correction)
 
-**Goal.** Prove that the multiset of axis-1 unfolding-slab ranks
-of a 3-tensor is invariant under the GL³ tensor action. This is
-the **shallow rigidity invariant** that drives Phase C's
-discharge of Prop 1.
+> **v3 audit correction.** The original Phase A claimed a generic
+> `slabRankMultiset₁_smul` invariance under arbitrary GL³ — this
+> is mathematically FALSE (see "Critical finding #1" above). v3
+> repositions Phase A as **encoder-equality diagnostic
+> infrastructure** that derives consequences from the encoder
+> equality directly, without claiming a generic GL³ invariant.
+> The slab definitions and rank-computation API remain useful;
+> the false `_smul` headline is removed.
+
+**Goal.** Land the slab definitions and per-slot rank
+computations needed by downstream phases. Establish what
+follows directly from `g • encode m adj₁ = encode m adj₂`
+without invoking generic invariants. (The deep rigidity
+content lives in Phases D–G; Phase A is preparation.)
 
 ### Layer T-API-A1 — Slab definitions + slab-rank API (~400 LOC)
 
@@ -282,239 +516,160 @@ fire by `rfl`; `#print axioms slabRank₁` standard trio only.
 
 **Consumer.** Layer T-API-A2.
 
-### Layer T-API-A2 — Slab-rank multiset invariance under GL³ (~500 LOC)
+### Layer T-API-A2 — Slab transformation under GL × GL × GL (~250 LOC, post-v3 correction)
 
-**File (new):** `Orbcrypt/Hardness/GrochowQiao/SlabRankInvariance.lean`.
+> **v3 audit correction.** The v2 plan claimed
+> `slabRankMultiset₁_smul` (multiset of slab ranks is preserved
+> under generic GL³). **This is false** — see "Critical finding
+> #1" above for the explicit counterexample. The corrected layer
+> below establishes only what is actually true: the relationship
+> between `slab₁ (g • T) i` and `slab₁ T a` as a *linear
+> combination*, plus the (also-true) **per-row-image** rank
+> bound. The false multiset-invariance headline is removed.
 
-**Public surface:**
+**File (new):** `Orbcrypt/Hardness/GrochowQiao/SlabTransform.lean`.
+
+**Public surface (corrected):**
 
 | Declaration | Signature | Role |
 |-------------|-----------|------|
-| `Tensor3.slabRankMultiset₁ T : Multiset ℕ := (Finset.univ : Finset (Fin n)).val.map (slabRank₁ T)` | Multiset of axis-1 slab ranks. |
-| `slabRankMultiset₂`, `slabRankMultiset₃` | symmetric | |
-| `slabRankMultiset₁_smul` | `∀ g : GL n F × GL n F × GL n F, slabRankMultiset₁ (g • T) = slabRankMultiset₁ T` | The multiset is GL³-invariant. |
-| `slabRankMultiset₂_smul`, `slabRankMultiset₃_smul` | symmetric | |
-| `slabRankMultiset_areTensorIsomorphic` | `AreTensorIsomorphic T₁ T₂ → slabRankMultiset₁ T₁ = slabRankMultiset₁ T₂` | Direct corollary. |
+| `unfold₁_smul_row_eq` | `(unfold₁ (g • T)) i = (g.1.val * (unfold₁ T)) i * (g.2.valᵀ ⊗ₖ g.3.valᵀ)` | Row-equation lemma: row `i` of `unfold₁ (g • T)` is a linear combination of all rows of `unfold₁ T`, then right-multiplied by Kronecker. |
+| `slab₁_smul_eq_linear_combination` | `slab₁ (g • T) i = ∑_a (g.1.val i a) • (g.2.val * slab₁ T a * g.3.valᵀ)` | The slab-level form: each slab of `g • T` is a linear combination of double-conjugated slabs of `T`. |
+| `unfoldRank₁_preserved_under_smul` | `(unfold₁ (g • T)).rank = (unfold₁ T).rank` | (Already in `RankInvariance.lean` from Stage 1; re-exported for completeness.) |
 
-**Mathematical content for `slabRankMultiset₁_smul`.**
+**Mathematical content (corrected, no false claims).**
 
-Let `g = (g₁, g₂, g₃) : GL n F × GL n F × GL n F`. From
-`unfold₁_tensorContract`,
+Let `g = (g.1, g.2, g.3) : GL n F × GL n F × GL n F`. From
+Stage 1's `unfold₁_tensorContract`,
 ```
-unfold₁ (g • T) = g₁.val * unfold₁ T * (g₂.valᵀ ⊗ₖ g₃.valᵀ)
+unfold₁ (g • T) = g.1.val * unfold₁ T * (g.2.valᵀ ⊗ₖ g.3.valᵀ)
 ```
 
-Each *row* of `unfold₁ (g • T)` is therefore a linear combination
-of rows of `unfold₁ T * (g₂.valᵀ ⊗ₖ g₃.valᵀ)`, weighted by the
-entries of the corresponding row of `g₁.val`. Specifically:
+Each row of `unfold₁ (g • T)` is therefore a linear combination
+of all rows of `unfold₁ T * (g.2.valᵀ ⊗ₖ g.3.valᵀ)`, weighted by
+the entries of the corresponding row of `g.1.val`:
 ```
-unfold₁ (g • T) i = ∑_a g₁.val i a • (unfold₁ T a * (g₂.valᵀ ⊗ₖ g₃.valᵀ))
-```
-where `unfold₁ T a` is the `a`-th row, viewed as a row matrix.
-
-The slab `slab₁ (g • T) i` (a `Matrix (Fin n) (Fin n) F`) is
-therefore the linear combination of `slab₁ T a * (g₂.valᵀ ⊗ₖ
-g₃.valᵀ)`-style 2-tensor expressions, with coefficients from
-`g₁.val i`. After identifying via the unfolding-row equivalence
-(layer A1), the slab rank
-```
-slabRank₁ (g • T) i = (∑_a g₁.val i a • slab₁ T a · ...).rank
+unfold₁ (g • T) i (j, k) = ∑_a (g.1.val i a) ·
+  (unfold₁ T * (g.2.valᵀ ⊗ₖ g.3.valᵀ)) a (j, k)
 ```
 
-Direct slab-by-slab GL³-invariance fails because `g₁` mixes slabs.
-However:
+Reshape the row-vector form back to a slab matrix: by the
+Kronecker reshape identity (Stage 1's
+`unfold₁_matMulTensor{2,3}` plus `mul_kronecker_mul`),
+```
+slab₁ (g • T) i = ∑_a (g.1.val i a) • (g.2.val * slab₁ T a * g.3.valᵀ)
+```
 
-* The map `a ↦ slab₁ (g • T) (g₁⁻¹.val a)` is a row-equivalence
-  bijection (because `g₁` is invertible). Applied to the multiset,
-  it shows
-  ```
-  slabRankMultiset₁ (g • T)
-    = (Finset.univ).val.map (fun i => slabRank₁ (g • T) i)
-    = (Finset.univ).val.map (fun a => slabRank₁ (g • T) (g₁⁻¹.val a))   -- relabel
-    = (Finset.univ).val.map (fun a => slabRank₁ T a)                    -- (*)
-    = slabRankMultiset₁ T
-  ```
-  where `(*)` is the per-slab rank identity that needs proof.
+This is the **honest statement**: each slab of `g • T` is a
+*linear combination* of all slabs of `T`, double-conjugated by
+`g.2` and `g.3`. **There is no per-slot rank identity** — slab
+ranks may change because `g.1`'s row mixes slabs of different
+ranks.
 
-* **Per-slab rank identity** (the technical core):
-  `slabRank₁ (g • T) (g₁⁻¹.val a) = slabRank₁ T a`. This holds
-  because the `a`-th row of `g₁ * unfold₁ T` is
-  `(g₁.val (g₁⁻¹.val a) , unfold₁ T -)`, where the inner product
-  collapses (via `g₁ * g₁⁻¹ = 1`) to exactly `unfold₁ T a` —
-  modulo an invertible right multiplication by the Kronecker
-  factor `(g₂.valᵀ ⊗ₖ g₃.valᵀ)`. **Right multiplication by an
-  invertible matrix preserves rank** (T-API-2 / RankInvariance.lean
-  toolkit, post-Stage-1).
+**What IS GL³-invariant.** The total unfolding rank
+`(unfold₁ T).rank` is preserved (Stage 1's `unfoldRank₁_smul`,
+proven via `rank_mul_eq_*_of_isUnit_det`). This corresponds to
+the **dimension of the slab span**, not the multiset of slab
+ranks. The slab-span dimension is a coarser invariant.
 
-**Detailed sub-task breakdown.**
+**What is NOT preserved (counterexample).** See Critical Finding
+#1 in the audit preamble. The slab-rank multiset can change
+under GL³.
 
-The argument decomposes into **5 named sub-tasks** with explicit
-LOC budgets, Mathlib anchors, and dependencies. Each sub-task
-lands as its own commit so reviewers can audit incrementally.
+**Detailed sub-task breakdown (corrected).**
 
 #### Sub-task A2.1 — Row-equation lemma (~40 LOC, 0 deps)
 
-* **Statement.** `unfold₁_smul_row_eq`:
-  ```
-  ∀ (g : GL n F × GL n F × GL n F) (T : Tensor3 n F) (i : Fin n),
-    (unfold₁ (g • T)) i = (g.1.val * (unfold₁ T)) i *
-                          (g.2.valᵀ ⊗ₖ g.3.valᵀ)
-  ```
-  (where the right-hand side reads as a row vector;
-  `Matrix.row_apply` reshapes implicitly.)
+* **Statement.** `unfold₁_smul_row_eq` (as stated above).
 * **Proof.** Direct from Stage 1's `unfold₁_tensorContract`
   + `Matrix.mul_apply` row-extraction. ≤ 5-line tactic body.
 * **Mathlib anchors.** `unfold₁_tensorContract` (Stage 1 /
-  TensorUnfold.lean), `Matrix.mul_apply`.
+  `TensorUnfold.lean`), `Matrix.mul_apply`.
 * **Risk.** Low.
-* **Verification gate.** `#print axioms unfold₁_smul_row_eq`
-  standard trio only.
 
-#### Sub-task A2.2 — Slab transformation under GL × GL × GL (~120 LOC, depends on A2.1)
+#### Sub-task A2.2 — Slab-level linear combination form (~120 LOC, depends on A2.1)
 
-* **Statement.** `slab_smul_eq_double_conjugation`:
-  ```
-  ∀ (g : GL n F × GL n F × GL n F) (T : Tensor3 n F) (a : Fin n),
-    slab₁ (g • T) ((g.1⁻¹).val.toMatrix a) =
-      g.2.val * slab₁ T a * g.3.valᵀ
-  ```
-  *(In words: at the row-index `(g.1⁻¹) a`, the slab of `g • T`
-  equals the slab of `T` at index `a`, conjugated by `g.2` on
-  the left and `g.3.valᵀ` on the right.)*
-* **Proof outline.**
-  1. By A2.1 expanded at `i = (g.1⁻¹).val a₀`:
-     `(unfold₁ (g • T)) ((g.1⁻¹).val a₀) (j, k) =
-        ∑_a (g.1.val * 1) ((g.1⁻¹).val a₀, a) * (unfold₁ T a) ⋅
-        Kronecker action`.
-     The factor `(g.1.val * g.1⁻¹.val) (a₀, a) = δ_{a₀, a}`
-     collapses the sum to a single term.
-  2. The right-multiplication by `(g.2.valᵀ ⊗ₖ g.3.valᵀ)` on
-     the row reshapes via the unfolding bridge to
-     `g.2.val * slab₁ T a * g.3.valᵀ`. Standard Kronecker
-     identity:
-     `(unfold₁ T a * (Bᵀ ⊗ₖ Cᵀ)) (j, k) = (B * slab₁ T a * Cᵀ) j k`.
-* **Sub-lemmas (each ≤ 60 LOC):**
-  - `gl_inv_mul_id`: `(g.1.val * (g.1⁻¹).val) = 1`. Mathlib
-    one-liner via `Matrix.GeneralLinearGroup.coe_inv` +
-    `Units.mul_inv`.
-  - `unfold₁_at_inverse_collapse`: the δ-substitution.
-  - `slab_kronecker_reshape`: `(unfold₁ T a * (Bᵀ ⊗ₖ Cᵀ))`
-    reshaped as a slab equals `B * slab₁ T a * Cᵀ`. Pure
-    Kronecker arithmetic via `Matrix.kronecker_apply`.
-* **Mathlib anchors.** `Matrix.GeneralLinearGroup.coe_inv`,
-  `Matrix.one_apply`, `Matrix.kronecker_apply`,
-  `Matrix.mul_apply`, `Finset.sum_eq_single` (3-arg form).
-* **Risk.** Medium. The δ-collapse + Kronecker reshape is the
-  technical core. ≤ 30-line tactic body per sub-lemma.
-* **Verification gate.** Both directions of the slab
-  transformation evaluate via `decide` on `n = 2` identity GL³.
-
-#### Sub-task A2.3 — Slab rank under double conjugation (~100 LOC, depends on A2.2)
-
-* **Statement.** `slabRank₁_smul_eq_at_inv_index`:
-  ```
-  ∀ (g : GL n F × GL n F × GL n F) (T : Tensor3 n F) (a : Fin n),
-    slabRank₁ (g • T) ((g.1⁻¹).val a) = slabRank₁ T a
-  ```
-* **Proof.** Apply A2.2 to express the LHS slab as
-  `g.2.val * slab₁ T a * g.3.valᵀ`. Take rank of both sides:
-  - Left multiplication by `g.2.val` (invertible determinant):
-    `Matrix.rank_mul_eq_right_of_isUnit_det`.
-  - Right multiplication by `g.3.valᵀ` (invertible: transpose
-    of a unit determinant matrix is also a unit):
-    `Matrix.rank_mul_eq_left_of_isUnit_det` +
-    `Matrix.det_transpose`.
-  Conclude the LHS rank equals the rank of `slab₁ T a`.
-* **Sub-lemmas (each ≤ 40 LOC):**
-  - `transpose_isUnit_det`: `IsUnit g.val.det → IsUnit
-    (g.val.transpose.det)`. Direct from
-    `Matrix.det_transpose`.
-  - The two rank-invariance applications.
-* **Mathlib anchors.** `Matrix.rank_mul_eq_left_of_isUnit_det`
-  (Rank.lean:205), `Matrix.rank_mul_eq_right_of_isUnit_det`
-  (Rank.lean:216), `Matrix.det_transpose`.
-* **Risk.** Low. Pure Mathlib composition.
-* **Verification gate.** Identity-case (`g = 1`) collapses to
-  `slabRank₁ T a = slabRank₁ T a`, exhibited as a non-vacuity
-  example.
-
-#### Sub-task A2.4 — Multiset bijection via `g.1⁻¹` (~140 LOC, depends on A2.3)
-
-* **Statement.** `slabRankMultiset₁_smul`:
-  ```
-  ∀ (g : GL n F × GL n F × GL n F) (T : Tensor3 n F),
-    slabRankMultiset₁ (g • T) = slabRankMultiset₁ T
-  ```
-* **Proof outline.**
-  1. By definition,
-     `slabRankMultiset₁ (g • T) = (Finset.univ.val).map
-                                    (fun i => slabRank₁ (g • T) i)`.
-  2. **Relabel via the bijection `(g.1⁻¹).val.toEquiv`:**
-     - `(g.1⁻¹).val.toEquiv : Fin n ≃ Fin n` is the GL element's
-       induced permutation on the row index (Mathlib
-       `Matrix.GeneralLinearGroup`).
-     - `Finset.univ.val.map f = Finset.univ.val.map (f ∘ σ)` for
-       any bijection `σ : Fin n ≃ Fin n` — this is
-       `Multiset.map_eq_map_iff_of_inj` applied to a Finset's
-       `.val` (after pre-composition with σ as a bijection).
-  3. After relabelling, the map's argument is
-     `fun a => slabRank₁ (g • T) ((g.1⁻¹).val a)`.
-  4. By A2.3, this equals `fun a => slabRank₁ T a`, which is the
-     definition of `slabRankMultiset₁ T`.
+* **Statement.** `slab₁_smul_eq_linear_combination` (as stated
+  above).
+* **Proof.** From A2.1's row equation, reshape via the unfold-
+  to-slab identification + Kronecker arithmetic. The key
+  Kronecker identity:
+  `(unfold₁ T a * (Bᵀ ⊗ₖ Cᵀ)) (j, k) = (B * slab₁ T a * Cᵀ) j k`
+  is provable from `Matrix.kronecker_apply` + `Matrix.mul_apply`
+  + index unfolding.
 * **Sub-lemmas (each ≤ 50 LOC):**
-  - `Multiset.map_relabel_finset_univ`: `(Finset.univ : Finset
-    α).val.map f = (Finset.univ : Finset α).val.map (f ∘ σ)` for
-    any `σ : α ≃ α` and `[Fintype α]`. Provable from
-    `Equiv.Perm.image_univ` + `Multiset.map_congr` or directly
-    from `Multiset.map_eq_map_iff_of_inj`.
-  - `slabRankMultiset_smul_via_inv_relabel` — apply the
-    relabelling at `σ := (g.1⁻¹).val.toEquiv` and chain with
-    A2.3.
-* **Mathlib anchors.** `Multiset.map_eq_map_iff_of_inj`,
-  `Equiv.Perm.image_univ`, `Multiset.map_congr`,
-  `Matrix.GeneralLinearGroup`'s `toEquiv` projection (or
-  hand-roll if absent — see the gap analysis below).
-* **Risk.** Medium. The Multiset bijection arithmetic uses
-  Mathlib idioms that may need verification at `fa6418a8`. ~30
-  LOC reserve for hand-rolling `Matrix.GeneralLinearGroup`-to-
-  `Equiv.Perm` if `toEquiv` is absent at the pinned commit.
-* **Verification gate.** `#print axioms slabRankMultiset₁_smul`
-  standard trio only; non-vacuity at `n = 2` exhibiting the
-  multiset on a concrete GL³ triple.
+  - `kronecker_reshape_slab`: the reshape identity above (a
+    standalone lemma about Kronecker products and 2-tensor
+    reshapes — not encoder-specific).
+  - `slab₁_smul_decompose`: combine A2.1 with the reshape.
+* **Mathlib anchors.** `Matrix.kronecker_apply`,
+  `Matrix.mul_apply`, `Finset.sum_congr`,
+  `Matrix.transpose_apply`.
+* **Risk.** Low–Medium. The Kronecker reshape is technical but
+  bounded.
 
-#### Sub-task A2.5 — Symmetric variants for axes 2, 3 + corollary (~100 LOC, depends on A2.4)
+#### Sub-task A2.3 — Total unfolding rank invariance re-export (~20 LOC, depends on Stage 1)
 
-* **Statement.**
-  - `slabRankMultiset₂_smul`: symmetric to A2.4 on axis-2.
-  - `slabRankMultiset₃_smul`: symmetric on axis-3.
-  - `slabRankMultiset_areTensorIsomorphic` (the `Iff.rfl`-ish
-    corollary).
-* **Proof.** Pattern-matched from A2.4 by replacing `unfold₁`
-  with `unfold₂` / `unfold₃`. **Pre-requisite (sub-task A2.5.0,
-  ~40 LOC):** Stage 1's `unfold₂_tensorContract` and
-  `unfold₃_tensorContract` (research-scope per Stage 1's
-  documentation note) must land first. Pattern-matched from
-  Stage 1's `unfold₁_tensorContract` proof; budgeted within
-  this phase.
-* **Risk.** Low (post-A2.5.0).
+* **Statement.** `unfoldRank₁_preserved_under_smul` (re-export
+  of Stage 1's `unfoldRank₁_smul` for self-contained citation).
+* **Proof.** `exact unfoldRank₁_smul g T`.
+* **Risk.** None.
 
-**Mathlib API gap forecast.** The most likely gap is
-`Matrix.GeneralLinearGroup`'s `toEquiv` projection at the pinned
-commit `fa6418a8`. If absent, hand-roll via `Equiv.ofBijective`
-applied to the `Matrix.toLin'` bijection. ~50 LOC reserve.
+#### Sub-task A2.4 — Encoder-equality consequences (~70 LOC, depends on A2.2)
 
-**Risk (overall T-API-A2).** Medium. The 5-sub-task decomposition
-turns ~500 LOC into pieces of ≤ 140 LOC each. The deepest single
-sub-task is A2.4 (Multiset bijection), bounded at ~140 LOC.
+* **Statement.** `grochowQiaoEncode_unfold_eq_under_smul`:
+  ```
+  ∀ g (m) (adj₁ adj₂),
+    g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂ →
+    unfold₁ (grochowQiaoEncode m adj₂) =
+      g.1.val * unfold₁ (grochowQiaoEncode m adj₁) *
+      (g.2.valᵀ ⊗ₖ g.3.valᵀ)
+  ```
+  *(Direct application of Stage 1's `unfold₁_tensorContract`
+  to the encoder equality.)*
+* **Proof.** Substitute `g • encode m adj₁ = encode m adj₂` into
+  `unfold₁_tensorContract`. ≤ 3-line tactic body.
+* **Sub-lemmas:** none beyond direct substitution.
+* **Risk.** None.
+* **Verification gate.** Standard trio axioms only.
+* **Consumer.** Phase D's path-block extraction will use this to
+  manipulate the encoder unfoldings.
 
-**Verification gate.** Module builds; `slabRankMultiset₁_smul`
-proven for all `n`; `#print axioms slabRankMultiset₁_smul`
-standard trio only; non-vacuity at `n = 2` exhibiting
-`slabRankMultiset₁ (g • grochowQiaoEncode 1 (fun _ _ => false))`
-under a hand-rolled `g`.
+**Mathlib API verification.** All anchors above are present at
+the pinned commit `fa6418a8`. No `Matrix.GeneralLinearGroup.toEquiv`
+or false `Multiset` lemmas are needed (they don't exist).
 
-**Consumer.** Phase C (Prop 1 discharge) and Phase D (block
-extraction).
+<!-- v3 audit: the v2 A2.1–A2.5 sub-tasks below were removed
+     because they relied on the false `slabRankMultiset₁_smul`
+     and the non-existent `(g.1⁻¹).val.toEquiv`. The corrected
+     A2.1–A2.4 above replace them. -->
+
+#### [v2 A2.1, removed] Row-equation lemma — superseded by corrected A2.1 above
+
+#### [v2 A2.2, removed] Slab transformation under GL × GL × GL — superseded by corrected A2.2 above
+
+#### [v2 A2.3, removed] Slab rank under double conjugation — FALSE in general (see Critical finding #1)
+
+The v2 sub-task A2.3 claimed `slabRank₁ (g • T) ((g.1⁻¹).val a)
+= slabRank₁ T a`. This is **false**: `(g.1⁻¹).val a` does not
+type-check (`(g.1⁻¹).val` is a matrix, not a function on `Fin
+n`), and even if interpreted charitably as some pseudo-
+permutation, the claim is contradicted by the Critical-finding-
+#1 counterexample (`T(0,0,0) = 1`, `g₁` upper triangular).
+
+#### [v2 A2.4, removed] Multiset bijection via `g.1⁻¹` — invalid
+
+References the non-existent `Matrix.GeneralLinearGroup.toEquiv`
+projection (Critical finding #2). Removed.
+
+#### [v2 A2.5, removed] Symmetric variants for axes 2, 3 — moot
+
+Without A2.4's framework, the symmetric variants are also moot.
+Stage 1's axis-2/3 unfolding bridges (which v2 listed as
+"sub-task A2.5.0 prerequisite") remain a research-scope follow-
+up, but they are no longer used to prove a false multiset
+invariant — they're used in Phase D's path-block extraction
+directly.
 
 ### Phase A deliverables and gates
 
@@ -530,14 +685,44 @@ extraction).
 
 ---
 
-## Phase B — Diagonal-value invariance under GL³ (~600 LOC)
+## Phase B — Diagonal-value structural lemmas (~300 LOC, post-v3 correction)
 
-**Goal.** Prove that the multiset of triple-diagonal values
-`{T(i, i, i) : i}` of a 3-tensor is invariant under the GL³
-tensor action (when the encoder's diagonal carries the
-distinguished post-Stage-0 values). This is the **second shallow
-rigidity invariant** that Phase C combines with Phase A's
-slab-rank multiset to discharge Prop 1.
+> **v3 audit correction.** v2's Phase B claimed a "joint
+> signature multiset" framework that, in combination with
+> Phase A's (false) `slabRankMultiset_smul`, was supposed to
+> discharge Prop 1 via shallow rigidity. v2's "Resolution"
+> section even acknowledged that the diagonal multiset is NOT
+> generally GL³-invariant — only "for the encoder family". But
+> the claim that encoder-family invariance holds was hand-
+> waved (it actually requires the deep Phase D-G argument).
+> v3 removes the false framework and repositions Phase B as
+> **diagonal-value structural infrastructure** for downstream
+> phases.
+
+**Goal.** Land the diagonal-value definitions and per-slot
+diagonal computations needed by downstream phases. Establish
+the σ-relabelled correspondence under permutation-matrix GL³
+actions (which IS true). The general GL³ diagonal-multiset
+invariance claim is removed.
+
+**What is preserved (true).**
+- Under permutation-matrix GL³ action `(liftedSigmaGL m σ)³`,
+  the diagonal entries are σ-relabelled. The diagonal
+  multiset IS preserved in this restricted case (because σ is
+  a genuine bijection on `Fin (dimGQ m)`).
+- For the encoder, per-slot-kind diagonal values are pairwise
+  distinct (vertex=1, present-arrow=0, padding=2, post-Stage-
+  0). This is already proven in `StructureTensor.lean` and is
+  re-exported here.
+
+**What is NOT preserved (false in general).**
+- Generic GL³ diagonal-multiset invariance. A generic GL³
+  triple acts non-trivially on diagonal entries:
+  ```
+  (g • T)(i, i, i) = ∑_{a, b, c} g.1(i, a) g.2(i, b) g.3(i, c) T(a, b, c)
+  ```
+  which mixes off-diagonal entries of `T` into the diagonal of
+  `g • T`. The diagonal multiset can change.
 
 ### Layer T-API-B1 — Diagonal multiset definition + permutation invariance (~200 LOC)
 
@@ -573,228 +758,49 @@ diagonal.
 
 **Consumer.** Layer T-API-B2.
 
-### Layer T-API-B2 — Full GL³ diagonal multiset invariance (~400 LOC)
+### Layer T-API-B2 — Encoder-equality diagonal correspondences (~100 LOC, post-v3 correction)
 
-**Public surface:**
+> **v3 audit correction.** The v2 T-API-B2 layer claimed a
+> generic `diagonalMultiset_smul` invariance, then walked it
+> back to "encoder-family invariance" via a hand-waved
+> "Resolution" section. Both the generic claim and the encoder-
+> family claim are unsupported (the encoder-family case is
+> precisely Prop 1 in disguise — the conclusion we are trying
+> to prove). v3 removes the false framework. What remains is a
+> small set of structural lemmas about encoder diagonals.
 
-| Declaration | Signature | Role |
-|-------------|-----------|------|
-| `diagonalMultiset_smul` | `∀ g : GL n F × GL n F × GL n F, (g • T).diagonalMultiset = T.diagonalMultiset` | The diagonal multiset is GL³-invariant. |
+**File:** extends
+`Orbcrypt/Hardness/GrochowQiao/DiagonalValues.lean` (or the
+existing `StructureTensor.lean`'s diagonal-value lemmas — see
+re-export note below).
 
-**Mathematical content.**
-
-This is **strictly harder than Phase A** because diagonal entries
-are NOT invariant under arbitrary GL³ actions in general. The
-invariance holds **only when the tensor has the distinguished
-diagonal-value structure** of `grochowQiaoEncode` (post-Stage-0):
-each diagonal value comes from the structure tensor's piecewise
-definition, with three exact values `{1, 0, 2}`.
-
-The argument therefore proceeds:
-
-1. **Diagonal entries determine slot kind (post-Stage-0).** From
-   `encoder_diagonal_values_pairwise_distinct` (Stage 2), each
-   slot's diagonal value uniquely identifies the slot kind
-   (vertex / present-arrow / padding). Hence the diagonal
-   multiset is the multiset
-   `m × {1} + |E| × {0} + (m² - |E|) × {2}`.
-
-2. **GL³ action preserves total tensor structure.** From
-   `g • encode m adj₁ = encode m adj₂` and `unfold₁_tensorContract`
-   plus the multilinear-algebra structure, the encoder's
-   piecewise structure is preserved up to the GL³-induced row /
-   column relabelling.
-
-3. **Per-slot-kind cardinality preservation (the hard part).** The
-   number of `1`-valued, `0`-valued, and `2`-valued diagonal
-   entries must agree between `T₁ = encode m adj₁` and `T₂ =
-   encode m adj₂`. This is what we *want* to prove (it gives Prop
-   1 directly), but it is also what makes the diagonal multiset
-   invariant — circular if stated naively.
-
-**Resolution.** Phase B's `diagonalMultiset_smul` is **not
-unconditional for arbitrary tensors** — it is unconditional **only
-when restricted to the encoder's distinguished diagonal
-structure**. The correct headline is therefore:
+**Public surface (corrected, no false claims).**
 
 | Declaration | Signature | Role |
 |-------------|-----------|------|
-| `grochowQiaoEncode_diagonalMultiset_smul` | `g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂ → (grochowQiaoEncode m adj₂).diagonalMultiset = (grochowQiaoEncode m adj₁).diagonalMultiset` | Diagonal multiset of the encoder is GL³-invariant in the encoder family. |
+| `grochowQiaoEncode_diagonal_at_slot` | `(grochowQiaoEncode m adj).diagonal i ∈ {0, 1, 2}` | Encoder diagonal values are restricted to three values. |
+| `grochowQiaoEncode_diagonal_classifies_slot` | `(grochowQiaoEncode m adj).diagonal i = 1 ↔ isVertexSlot m i` (analogous for 0 / 2) | Diagonal value uniquely classifies slot kind. |
 
-This **does** follow unconditionally, by combining:
+These are **direct re-exports** of Stage 0 / Stage 2 lemmas
+already proven in the codebase:
+- `grochowQiaoEncode_diagonal_vertex` (vertex diagonal = 1).
+- `grochowQiaoEncode_diagonal_present_arrow` (present-arrow
+  diagonal = 0).
+- `grochowQiaoEncode_diagonal_padding` (padding diagonal = 2).
 
-* The slab-rank multiset invariance (Phase A's
-  `slabRankMultiset₁_smul`).
-* A pairing argument: each slot's `(slabRank₁, diagonalValue)`
-  pair is determined by the encoder's per-slot evaluation
-  (Stage 2 + Stage 0). Specifically (post-C1.1 correction —
-  see Phase C below), vertex slots have signature `(1, 1)`,
-  present-arrow slots `(2, 0)`, padding slots `(1, 2)`. The
-  slab-rank multiset alone does not distinguish vertex slots
-  (rank 1) from padding slots (rank 1) — the **diagonal-value
-  component** distinguishes them (vertex value 1 vs padding
-  value 2). The diagonal-value multiset alone does not
-  distinguish vertex from padding either (since both have
-  scalar values vs. present-arrow's value 0); the slab-rank
-  component distinguishes present-arrow (rank 2) from
-  vertex/padding (rank 1). **Together** they form a refined
-  multiset that *is* preserved under GL³ for the encoder
-  family.
+There is no "GL³ smul invariance" content. The downstream
+phases (D, E, F, G) use these structural lemmas directly to
+analyse encoder-equality consequences — they do NOT use a
+hypothetical generic-or-encoder-family smul.
 
-**Resolving the circularity formally.**
+**Risk.** None — pure re-export.
 
-The "circularity" concern in step 3 above is only superficial.
-The diagonal-value multiset of `g • T` is **not** identical to
-`T`'s diagonal multiset for arbitrary tensors `T`, but it **is**
-preserved when `T` is itself an encoder image (i.e., `T = encode m
-adj`). The reason is that the encoder's diagonal entries are a
-*by-product* of its piecewise structure, which is preserved under
-GL³ relabelling. We exploit this by **pairing diagonal values with
-slab ranks at the same slot index** — the pair `(slabRank₁, T(i,
-i, i))` is a finer invariant that determines slot kind exactly,
-and its multiset is GL³-invariant by composition with Phase A.
+**Verification gate.** Re-export lemmas elaborate via direct
+reference to Stage 0 / Stage 2 lemmas.
 
-**Detailed sub-task breakdown.**
-
-#### Sub-task B2.1 — Joint signature definition (~50 LOC, 0 deps)
-
-* **Definitions.**
-  - `slabDiagonalSignature (T : Tensor3 n F) (i : Fin n) : ℕ × F :=
-       (slabRank₁ T i, T.diagonal i)`
-  - `slabDiagonalSignatureMultiset (T : Tensor3 n F) : Multiset
-       (ℕ × F) := (Finset.univ : Finset (Fin n)).val.map
-       (slabDiagonalSignature T)`
-* **Apply lemmas (`@[simp]`).**
-  - `slabDiagonalSignature_apply`,
-  - `slabDiagonalSignatureMultiset_apply`,
-  - `slabDiagonalSignatureMultiset_count` (via
-    `Multiset.count_eq_card_filter`).
-* **Risk.** Low. Pure bookkeeping.
-
-#### Sub-task B2.2 — Joint multiset relabelling under GL × GL × GL (~150 LOC, depends on Phase A + B2.1)
-
-* **Statement.** `slabDiagonalSignatureMultiset_smul`:
-  ```
-  ∀ (g : GL n F × GL n F × GL n F) (T : Tensor3 n F),
-    g • T arbitrary →
-    slabDiagonalSignatureMultiset (g • T) =
-      (Finset.univ.val).map
-        (fun a => ((g.2.val * slab₁ T a * g.3.valᵀ).rank,
-                   T.diagonal a))
-  ```
-  *(In words: the joint multiset of `g • T` is reachable from
-  `T`'s slabs via the same `(g.1⁻¹)`-relabelling as Phase A,
-  with the slab-rank component picking up the
-  `g.2 * - * g.3.valᵀ` conjugation, but the diagonal-value
-  component evaluated **at the original index `a`**, not at the
-  conjugated index.)*
-* **Proof.** Apply Phase A's A2.2 (`slab_smul_eq_double_conjugation`)
-  to the slab-rank component and re-inspect the diagonal-value
-  component:
-  - The diagonal entry of `g • T` at `(g.1⁻¹).val a` is
-    `(g • T)((g.1⁻¹) a, (g.1⁻¹) a, (g.1⁻¹) a)`. Expanding via
-    `tensorContract` at the triple-diagonal entry:
-    ```
-    (g • T)(i, i, i) = ∑_{a, b, c} g.1.val i a · g.2.val i b ·
-                                     g.3.val i c · T(a, b, c)
-    ```
-    This **does not** simplify to `T(a, a, a)` for general `T`
-    — there is no reason the off-diagonal entries `T(a, b, c)`
-    with `a ≠ b ∨ b ≠ c` should vanish.
-  - **Key insight: encoder diagonal entries are determined by
-    slab-1 row support.** For the encoder
-    `T = grochowQiaoEncode m adj`, the diagonal entry `T(i, i,
-    i)` is determined by `i`'s slot kind via
-    `encoder_diagonal_values_pairwise_distinct` (Stage 2). A
-    GL³-equivariant pulled-back encoder must have the same
-    diagonal-vs-slot-kind correspondence, by the slot-kind
-    discrimination from joint slab-rank (which is GL³-
-    invariant by Phase A) plus the encoder's piecewise
-    structure.
-* **Sub-lemmas (each ≤ 50 LOC):**
-  - `tensorContract_diagonal_entry_unfold`: explicit form of
-    `(g • T)(i, i, i)` via the `tensorContract` definition.
-  - `encoder_diagonal_index_to_slot_kind`: for the encoder,
-    `T(i, i, i)`'s value forces a unique slot-kind for `i`.
-  - **Key bridge lemma**:
-    `gl3_acted_encoder_diagonal_at_inv_index_eq_T_diagonal`
-    — for `T = encode m adj₁` and `g • T = encode m adj₂`,
-    `(g • T).diagonal ((g.1⁻¹) a) = T.diagonal a`. *Proof
-    idea*: combine the slab-rank invariance (Phase A) with
-    the encoder diagonal-value table (Stage 2 +
-    Stage 0), via the slot-kind correspondence.
-* **Risk.** Medium-High. The bridge lemma is the technical
-  content; ~80 LOC reserve for the slot-kind correspondence
-  argument.
-
-#### Sub-task B2.3 — Encoder-family joint-multiset invariance (~150 LOC, depends on B2.2)
-
-* **Statement.**
-  `grochowQiaoEncode_slabDiagonalSignatureMultiset_smul`:
-  ```
-  ∀ (g) (m) (adj₁ adj₂),
-    g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂ →
-    slabDiagonalSignatureMultiset (grochowQiaoEncode m adj₂) =
-    slabDiagonalSignatureMultiset (grochowQiaoEncode m adj₁)
-  ```
-* **Proof.** Compose Phase A's `slabRankMultiset₁_smul` with B2.2:
-  - The slab-rank component is invariant via A2.4.
-  - The diagonal-value component is invariant via the bridge
-    lemma at B2.2.
-  - The joint pair (rank, value) is invariant because both
-    components are evaluated at the **same** index `a` (after
-    `(g.1⁻¹)`-relabelling on the LHS and identity on the RHS).
-* **Sub-lemmas (each ≤ 60 LOC):**
-  - `joint_signature_relabel_eq` — under the `(g.1⁻¹)`-
-    relabelling, the joint signatures match component-wise.
-  - `Multiset.map_relabel_finset_univ_with_inverse` —
-    Multiset.map relabel via `(g.1⁻¹)` (similar to A2.4's
-    sub-lemma but for the joint signature function).
-* **Risk.** Medium. Composition of A2.4 with B2.2.
-
-#### Sub-task B2.4 — Diagonal-value multiset corollary (~50 LOC, depends on B2.3)
-
-* **Statement.** `grochowQiaoEncode_diagonalMultiset_smul`:
-  ```
-  g • encode m adj₁ = encode m adj₂ →
-  (encode m adj₂).diagonalMultiset = (encode m adj₁).diagonalMultiset
-  ```
-* **Proof.** Project the joint multiset to its second
-  component via `Multiset.map Prod.snd`. The composition
-  `Multiset.map Prod.snd ∘ slabDiagonalSignatureMultiset =
-  diagonalMultiset` (definitional after a `@[simp]` apply
-  lemma). Apply B2.3 + Multiset functoriality.
-* **Risk.** Low. Pure projection.
-
-**Note on circularity.** The argument is non-circular because:
-
-1. Phase A's `slabRankMultiset₁_smul` is established **without
-   reference to** the diagonal-value multiset.
-2. The bridge lemma (B2.2 sub-lemma) uses Phase A's slab-rank
-   invariance + the encoder's piecewise structure. It does NOT
-   use the conclusion `(encode m adj₂).diagonalMultiset =
-   (encode m adj₁).diagonalMultiset`.
-3. The joint multiset's invariance (B2.3) is established as a
-   theorem, from which the diagonal-value multiset corollary
-   (B2.4) follows by Multiset functoriality.
-
-This linearisation shows the circularity is only apparent: at no
-point do we invoke step 3's conclusion to prove step 3's
-hypothesis. The chain is `A2.4 → B2.2 → B2.3 → B2.4`, with each
-arrow a strict logical dependency.
-
-**Mathlib anchors.** `Multiset.map`, `Multiset.count`,
-`Multiset.count_eq_card_filter`,
-`Multiset.map_eq_map_iff_of_inj`, `Multiset.map_map` (for B2.4
-corollary). Combined with the Phase A toolkit.
-
-**Verification gate.** Module builds;
-`grochowQiaoEncode_diagonalMultiset_smul` (or the joint-signature
-form) proven; non-vacuity at `m = 2` (`adj` empty) exhibiting
-the signature multiset is `{(1, 1) × 2, (1, 2) × 4}` —
-two vertex slots and four padding slots, no present arrows.
-
-**Consumer.** Phase C (Prop 1 discharge).
+**Consumer.** Phase D's path-block extraction directly accesses
+the encoder's diagonal classification to argue about
+non-vanishing entries.
 
 ### Phase B deliverables and gates
 
@@ -808,10 +814,64 @@ two vertex slots and four padding slots, no present arrows.
 
 ---
 
-## Phase C — Slot-classification rigidity (Prop 1 discharge, ~900 LOC post-expansion)
+## Phase C — Per-slot signature computations (~400 LOC, post-v3 correction)
 
-**Goal.** Discharge `GL3PreservesPartitionCardinalities` from
-Phase A and Phase B. This is the **first headline theorem** of
+> **v3 audit correction.** v2's Phase C claimed to discharge
+> `GL3PreservesPartitionCardinalities` (Prop 1) **independently**
+> of Phases D–G via a "shallow rigidity" argument through the
+> joint signature multiset. **This is fundamentally unsound**
+> (Critical findings #1, #4). The shallow path doesn't exist:
+> Prop 1 is a *corollary* of Prop 2, derivable only after
+> Phases D–G's deep AlgEquiv → σ → arrow chain. v3 repositions
+> Phase C as **per-slot signature computation infrastructure**
+> for downstream phases, NOT as a Prop-1 discharge layer.
+> Prop 1 is now derived in Phase G as `Prop 2 ⟹ Prop 1`.
+
+**Goal.** Land the per-slot slab-rank and signature
+computations on the encoder. These are **structural
+properties of the encoder** (not GL³-invariants), useful as
+hypotheses for downstream phases when they need to argue
+about specific encoder slots.
+
+**v3 mathematical correction (Critical finding #3).** The
+encoder's structure constant is
+
+```
+pathSlotStructureConstant m i j k = 1[pathMul slot_i slot_j = some slot_k]
+```
+
+i.e., the **first** tensor index `i` matches the **first**
+`pathMul` argument; the **third** index `k` matches the
+`pathMul` *output*. The v2 plan inverted this convention,
+giving wrong slab-rank values. The corrected values are:
+
+| Slot kind at index `i` | slab-axis-1 non-zero entries | slab rank |
+|------------------------|------------------------------|-----------|
+| vertex `v` | `(vertex v, vertex v) = 1` AND `(arrow v w, arrow v w) = 1` for each present arrow `(v, w)` | **1 + outDegree(v)** |
+| present-arrow `(u, v)` | `(vertex v, arrow u v) = 1` only | **1** |
+| padding `(u, v)` | `(padding (u,v), padding (u,v)) = 2` only | **1** |
+
+The joint signature `(slabRank₁, T(i,i,i))` per slot:
+
+| Slot kind | Joint signature |
+|-----------|------------------|
+| vertex `v` | `(1 + outDegree(v), 1)` |
+| present-arrow | `(1, 0)` |
+| padding | `(1, 2)` |
+
+These are **pairwise distinct across slot kinds** (and even
+across vertices of different out-degrees). But they are
+**properties of the encoder, not GL³ invariants** — see the v3
+audit preamble for why a generic `_smul` invariance is false.
+
+**Phase C does not discharge Prop 1.** That is now Phase G's
+responsibility (via `Prop 2 ⟹ Prop 1`). Phase C provides the
+per-slot signature lemmas as building blocks.
+
+[Original text retained for context, but Phase C no longer claims
+Prop 1 discharge]:
+
+This is the **first headline theorem** of
 the workstream: it eliminates one of the two research-scope
 `Prop`s and lets `partitionPreservingPermFromEqualCardinalities`
 (Stage 3 of the prior plan) become unconditional.
@@ -853,93 +913,101 @@ is preserved under any GL³ tensor isomorphism between
 
 **Detailed sub-task breakdown.**
 
-#### Sub-task C1.1 — Slab evaluation at vertex slots (~120 LOC, depends on Stage 2)
+#### Sub-task C1.1 — Slab evaluation at vertex slots (~120 LOC, depends on Stage 2) [v3 corrected]
+
+> **v3 audit correction.** The v2 C1.1 derivation searched for
+> `pathMul slot_j slot_k = output slot_i` (output-side
+> match), which inverts the encoder's actual structure-tensor
+> convention `T_{ijk} = 1[pathMul slot_i slot_j = some slot_k]`.
+> The corrected derivation below uses the actual convention.
 
 * **Statement.** `grochowQiaoEncode_slab₁_at_vertex`:
   for `i = slotEquiv.symm (.vertex v)`,
   ```
   slab₁ (grochowQiaoEncode m adj) i j k = 1
-    ↔ (j = i ∧ k = i)
+    ↔ (j = slotEquiv.symm (.vertex v) ∧ k = slotEquiv.symm (.vertex v))
+    ∨ (∃ w, adj v w = true ∧
+            j = slotEquiv.symm (.arrow v w) ∧
+            k = slotEquiv.symm (.arrow v w))
   ```
-  *(slab is non-zero **only at the triple-diagonal**, with
-  value 1 there).*
-* **Derivation.** The encoder's slab `T(i, j, k)` at fixed
-  `i = vertex v` returns 1 iff `pathMul m (slotToArrow j)
-  (slotToArrow k) = some (slotToArrow i) = some (.id v)` (the
-  encoder's `pathSlotStructureConstant` definition). Per
-  Layer 1 of `AlgebraWrapper.lean`, the `pathMul` case
-  classification at **output `some (.id v)`** is:
-  - `pathMul (.id v) (.id v) = some (.id v)` ✓ (idempotent
-    law — fires).
-  - `pathMul (.id u) (.id v) = none` for `u ≠ v` (orthogonal
-    idempotents).
-  - `pathMul (.id u) (.edge u' v') = some (.edge u' v')` if
-    `u = u'` (vertex-times-arrow yields the arrow, NOT `.id v`).
-  - `pathMul (.edge u' v') (.id v) = some (.edge u' v')` if
-    `v = v'` (arrow-times-vertex yields the arrow, NOT `.id v`).
-  - `pathMul (.edge _ _) (.edge _ _) = none` (J² = 0 in
-    radical-2 quotient).
-  Only the first case yields output `some (.id v)`, so the
-  slab is non-zero **only** at `(j, k) = (vertex v, vertex
-  v)`, with value 1.
-* **Slab-rank consequence.** `slabRank₁ (encode m adj)
-  (vertex v) = 1` for **every** vertex `v`, regardless of
-  in/out-degree (the slab matrix has a single non-zero entry
-  at the diagonal).
+  *(slab is non-zero at the diagonal `(vertex v, vertex v) →
+  1` AND at each "outgoing arrow self-pair" `(arrow v w, arrow
+  v w) → 1` for each present arrow `(v, w)`.)*
+
+* **Derivation.** From the actual encoder definition, when all
+  three slots are path-algebra:
+  ```
+  pathSlotStructureConstant m i j k = 1[pathMul slot_i slot_j = some slot_k]
+  ```
+  At fixed `slot_i = .id v`:
+  - `pathMul (.id v) (.id v) = some (.id v)` → contributes at
+    `(j, k) = (vertex v, vertex v)`.
+  - `pathMul (.id v) (.id u) = none` for `u ≠ v` → no
+    contribution.
+  - `pathMul (.id v) (.edge v w) = some (.edge v w)` for any
+    `w` → contributes at `(j, k) = (arrow v w, arrow v w)`,
+    BUT **only when the resulting `arrow v w` is a path-
+    algebra slot**, i.e., `(v, w) ∈ presentArrows m adj` (i.e.,
+    `adj v w = true`).
+  - `pathMul (.id v) (.edge u w) = none` for `u ≠ v`.
+  - `pathMul (.edge ?, ?) ?` doesn't apply (slot_i is `.id v`,
+    not an arrow).
+
+* **Slab-rank consequence.** `slabRank₁ (encode m adj) (vertex v)
+  = 1 + outDegree(v)` where `outDegree(v) := |{w : adj v w =
+  true}|`. The slab matrix has `1 + outDegree(v)` non-zero
+  diagonal entries (each at distinct positions), all linearly
+  independent.
+
 * **Sub-lemmas (each ≤ 60 LOC):**
-  - `pathMul_output_id_classification`: complete `pathMul`
-    case table for outputs of the form `some (.id v)`.
+  - `pathMul_id_first_arg_classification`: complete table of
+    `pathMul (.id v) X` for each constructor of `X`, derivable
+    from the existing `pathMul_id_id`, `pathMul_id_edge`
+    `@[simp]` lemmas in `PathAlgebra.lean`.
   - `slab₁_encoder_at_vertex_apply`: the slab evaluation as
-    above (case-split via `slotEquiv` apply lemma).
-  - `slabRank₁_at_vertexSlot`: the slab is rank-1 (single
-    non-zero entry).
-* **Risk.** Low (post-derivation correction).
+    above.
+  - `slabRank₁_at_vertexSlot_eq_outDegree_plus_one`: the slab
+    is rank `1 + outDegree(v)`. *Proof technique*: count the
+    non-zero diagonal entries; each is in a distinct
+    row/column position; the matrix is therefore equivalent to
+    a diagonal with `1 + outDegree(v)` non-zero entries; rank
+    follows.
 
-> **Important correction to the prior plan's Stage 2 narrative.**
-> The Stage 2 plan documented vertex-slot slab-rank as `1 +
-> outDegree(v)` based on a slab-axis-2 / row-vs-column confusion.
-> The correct slab-axis-1 vertex-slot slab-rank is **1**
-> (uniformly), because the encoder's structure constant
-> `pathSlotStructureConstant i j k = 1[pathMul (slotToArrow j)
-> (slotToArrow k) = some (slotToArrow i)]` only fires when
-> the slot triple `(i, j, k)` matches a path-multiplication
-> identity, and at vertex-target slot `i` only the
-> idempotent-self-loop produces a structure constant of 1.
-> The corrected vertex-slot signature is therefore `(1, 1)`
-> (slab-rank 1, diagonal value 1), and the C1 framework
-> distinguishes vertex slots from padding slots **purely by
-> the diagonal-value component** (vertex = 1, padding = 2),
-> not by slab rank. **Phase B's joint multiset framework is
-> still required** because slab-rank distinguishes
-> present-arrow slots (rank 2) from vertex / padding slots
-> (rank 1).
+* **Risk.** Low (post-correction).
 
-#### Sub-task C1.2 — Slab evaluation at present-arrow slots (~120 LOC, depends on Stage 2)
+#### Sub-task C1.2 — Slab evaluation at present-arrow slots (~120 LOC, depends on Stage 2) [v3 corrected]
+
+> **v3 audit correction.** The v2 C1.2 derivation claimed the
+> slab has rank 2 with non-zero entries at `(vertex u, arrow u
+> v)` AND `(arrow u v, vertex v)`. This applies the same
+> wrong-direction convention as v2 C1.1. The actual
+> convention `T_{ijk} = 1[pathMul slot_i slot_j = some slot_k]`
+> with `slot_i = .edge u v` gives ONLY the entry `(vertex v,
+> arrow u v) → 1`. The corrected slab rank is **1**, not 2.
 
 * **Statement.** `grochowQiaoEncode_slab₁_at_presentArrow`:
   for `(u, v)` with `adj u v = true`, the slab at `i =
-  slotEquiv.symm (.arrow u v)` is non-zero at exactly two
-  entries:
-  - `(j, k) = (vertex u, arrow u v)` with value 1: from
-    `pathMul (.id u) (.edge u v) = some (.edge u v)`.
-  - `(j, k) = (arrow u v, vertex v)` with value 1: from
-    `pathMul (.edge u v) (.id v) = some (.edge u v)`.
-* **slab-rank consequence.** `slabRank₁ (encode m adj)
-  (presentArrow u v) = 2`. *Proof*: the slab matrix is
-  ```
-  ⎛ ...    1  ... ⎞   <- row `vertex u`, col `arrow u v` = 1
-  ⎜ ...    .  ... ⎟
-  ⎜ ...    .  ... ⎟
-  ⎝ ...    1  ... ⎠   <- row `arrow u v`, col `vertex v` = 1
-  ```
-  with all other entries zero. The two non-zero rows are
-  linearly independent (they have different non-zero columns
-  in the rank-2 framework). Hence rank 2.
+  slotEquiv.symm (.arrow u v)` is non-zero at exactly one
+  entry: `(j, k) = (vertex v, arrow u v)` with value 1.
+
+* **Derivation.** At fixed `slot_i = .edge u v`:
+  - `pathMul (.edge u v) (.id w) = some (.edge u v)` if `v = w`
+    → contributes at `(j, k) = (vertex v, arrow u v)`.
+    The `arrow u v` slot is a path-algebra slot (since `(u, v)
+    ∈ presentArrows`), so the encoder takes the path-algebra
+    branch.
+  - `pathMul (.edge u v) (.id w) = none` for `w ≠ v`.
+  - `pathMul (.edge u v) (.edge a b) = none` (J² = 0).
+
+* **Slab-rank consequence.** `slabRank₁ (encode m adj)
+  (presentArrow u v) = 1` (single non-zero entry).
+
 * **Sub-lemmas (each ≤ 60 LOC):**
-  - `pathMul_output_edge_classification`: complete `pathMul`
-    case table for outputs of the form `some (.edge u v)`.
+  - `pathMul_edge_first_arg_classification`: complete table of
+    `pathMul (.edge u v) X`.
   - `slab₁_encoder_at_presentArrow_apply`.
-  - `slabRank₁_at_presentArrowSlot_eq_2`.
+  - `slabRank₁_at_presentArrowSlot_eq_one`.
+
 * **Risk.** Low.
 
 #### Sub-task C1.3 — Slab evaluation at padding slots (~80 LOC, depends on Stage 0)
@@ -958,90 +1026,87 @@ is preserved under any GL³ tensor isomorphism between
   - `slabRank₁_at_paddingSlot_eq_1`.
 * **Risk.** Low.
 
-#### Sub-task C1.4 — Per-slot joint signatures (~50 LOC, depends on C1.1–3 + Stage 2 diagonals)
+#### Sub-task C1.4 — Per-slot joint signatures (~50 LOC, depends on C1.1–3 + Stage 2 diagonals) [v3 corrected]
 
-* **Definitions (revised post-C1.1 correction):**
-  - `vertexSlotSignature : ℕ × ℚ := (1, 1)`
-    (no longer parameterised by `outDegree`).
-  - `presentArrowSlotSignature : ℕ × ℚ := (2, 0)`.
+* **Definitions (post-v3 correction).**
+  - `vertexSlotSignature m adj v : ℕ × ℚ :=
+       (1 + outDegree m adj v, 1)`
+    (per-vertex variable; depends on outDegree).
+  - `presentArrowSlotSignature : ℕ × ℚ := (1, 0)` (rank 1, NOT
+    rank 2; v2's claim of rank 2 was based on the wrong
+    structure-tensor convention).
   - `paddingSlotSignature : ℕ × ℚ := (1, 2)`.
 * **Per-slot signature theorems** combining C1.1–3 with
   Stage 2 diagonal-value classification:
   - `grochowQiaoEncode_slabDiagonal_at_vertex_eq_signature`.
   - `grochowQiaoEncode_slabDiagonal_at_presentArrow_eq_signature`.
   - `grochowQiaoEncode_slabDiagonal_at_padding_eq_signature`.
-* **Pairwise distinctness:**
-  - `vertex_signature_ne_presentArrow_signature` (slab-rank
-    1 vs 2 distinguishes).
-  - `vertex_signature_ne_padding_signature` (diagonal value
-    1 vs 2 distinguishes).
-  - `presentArrow_signature_ne_padding_signature` (slab-rank
-    2 vs 1 distinguishes).
-* **Risk.** Low.
+* **Pairwise distinctness across slot kinds.** Using the
+  diagonal-value component (vertex=1, present-arrow=0,
+  padding=2):
+  - vertex (any outDegree) vs present-arrow: distinguished by
+    diagonal value 1 vs 0.
+  - vertex (any outDegree) vs padding: distinguished by
+    diagonal value 1 vs 2.
+  - present-arrow vs padding: distinguished by both rank
+    component (1 vs 1 — NOT distinguishing) and diagonal value
+    (0 vs 2 — distinguishing).
+* **Risk.** Low (post-correction).
 
-#### Sub-task C1.5 — Multiset structure of encoder + count argument (~150 LOC, depends on C1.4)
+#### Sub-task C1.5 — Encoder signature multiset (structural lemma only) (~150 LOC, depends on C1.4) [v3 repositioned]
+
+> **v3 audit correction.** v2's C1.5 / C1.6 used the (false)
+> Phase B `slabDiagonalSignatureMultiset_smul` to derive Prop 1.
+> v3 removes the Prop-1-discharge claim. C1.5 retains the
+> **structural signature-multiset description** of the encoder
+> (no GL³ smul invariance is asserted); C1.6's count-equality
+> argument is removed (the conclusion is now a Phase G
+> corollary of Prop 2, not a Phase C theorem).
 
 * **Statement.** `grochowQiaoEncode_slabDiagonalSignatureMultiset`:
   ```
   slabDiagonalSignatureMultiset (grochowQiaoEncode m adj) =
-    m • {vertexSlotSignature} +
-    (presentArrowSlotIndices m adj).card • {presentArrowSlotSignature} +
-    (paddingSlotIndices m adj).card • {paddingSlotSignature}
+    (Finset.image (fun v => (1 + outDegree m adj v, 1))
+      Finset.univ).val.map (...) +
+    |presentArrows m adj| • {(1, 0)} +
+    |paddingSlotIndices m adj| • {(1, 2)}
   ```
-  where `n • {x}` is `Multiset.replicate n x` (a multiset of
-  `n` copies of `x`).
+  *(The vertex part is a sum of per-vertex signatures, NOT a
+  uniform replicate, because outDegree varies per vertex.)*
 * **Proof.** Partition `Finset.univ : Finset (Fin (dimGQ m))`
   into three classes via `slotEquiv` + `isPathAlgebraSlot` +
   `adj` (Stage 2 partition theorem). Apply C1.4 per class.
-  Sum via `Multiset.add_def` + `Finset.sum_disjoint`.
+  Sum via `Multiset.add_def`.
 * **Sub-lemmas (each ≤ 50 LOC):**
-  - `multiset_disjoint_partition_three_way` —
-    `Finset.univ.val.map f = (vertex.val.map f) +
-    (presentArrow.val.map f) + (padding.val.map f)` for the
-    three-way Stage 2 partition.
-  - `multiset_replicate_via_constant_map` — when `f` is
-    constant on a Finset `S`, `S.val.map f = S.card •
-    {f.const}`.
+  - `multiset_disjoint_partition_three_way`.
+  - `multiset_replicate_via_constant_map` (applies to present-
+    arrow and padding classes only — vertex class is NOT
+    constant per the corrected signature).
+  - `multiset_per_vertex_outDegree_sum` — vertex class
+    contribution.
+* **Risk.** Low.
+* **No Prop-1 discharge.** This is a *structural description*
+  of the encoder's multiset, NOT a claim about GL³-invariance.
+  Phase G is responsible for Prop 1 (as a corollary of Prop 2).
 
-#### Sub-task C1.6 — Count-equality argument (~80 LOC, depends on C1.5 + B2.3)
+#### Sub-task C1.6 — REMOVED [v3 audit]
 
-* **Statement.** `grochowQiao_present_arrow_count_eq_via_signature_multiset`:
-  ```
-  ∀ (g) (m) (adj₁ adj₂),
-    g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂ →
-    (presentArrowSlotIndices m adj₁).card =
-    (presentArrowSlotIndices m adj₂).card
-  ```
-* **Proof.**
-  1. By B2.3,
-     `slabDiagonalSignatureMultiset (encode m adj₁) =
-      slabDiagonalSignatureMultiset (encode m adj₂)`.
-  2. By C1.5, both sides have the explicit form `m • {V} + |E_i|
-     • {P} + |F_i| • {Pad}` where `V = vertexSlotSignature`,
-     `P = presentArrowSlotSignature`, `Pad =
-     paddingSlotSignature`, `|E_i|` is the present-arrow count
-     for `adj_i`, `|F_i|` is the padding-slot count.
-  3. Take `Multiset.count P` of both sides:
-     - LHS: `m • {V}` contributes 0 (V ≠ P), `|E₁| • {P}`
-       contributes `|E₁|`, `|F₁| • {Pad}` contributes 0 (Pad ≠
-       P). Total: `|E₁|`.
-     - RHS: similarly, total: `|E₂|`.
-  4. Conclude `|E₁| = |E₂|`.
-* **Sub-lemmas:**
-  - `Multiset.count_replicate_self` (Mathlib).
-  - `Multiset.count_replicate_other` (Mathlib).
+> **v3 audit correction.** v2's C1.6 attempted to discharge
+> Prop 1 via `slabDiagonalSignatureMultiset_smul` (Phase B's
+> false framework). With Phase B's framework removed, this
+> argument doesn't go through. **C1.6 is removed entirely.**
+> Prop 1 is discharged in Phase G as `Prop 2 ⟹ Prop 1`.
 
 **Mathlib anchors.** `Multiset.count`,
-`Multiset.count_eq_card_filter`, `Multiset.count_replicate_self`,
-`Multiset.count_replicate_other`, `Multiset.replicate`,
-`Multiset.add_def`, `Finset.card_disjoint_union`,
-`Finset.sum_disjoint`. All present at the pinned commit
+`Multiset.count_eq_card_filter`,
+`Multiset.replicate`, `Multiset.add_def`,
+`Finset.card_disjoint_union`. All present at the pinned commit
 `fa6418a8`.
 
-**Risk (overall T-API-C1).** Low–Medium. The 6-sub-task
-decomposition turns ~600 LOC into pieces of ≤ 150 LOC each (the
-budget rises slightly post-correction because C1.1's vertex-slot
-slab-rank derivation requires explicit case-table reasoning).
+**Risk (overall T-API-C1).** Low. The 5-sub-task decomposition
+(C1.1–C1.5; C1.6 removed) turns ~400 LOC of structural
+infrastructure into pieces of ≤ 150 LOC each. No Prop-1
+discharge is claimed; Phase C is purely diagnostic.
 
 **Verification gate.** Module builds;
 `grochowQiao_present_arrow_count_eq_via_signature_multiset`
@@ -1050,49 +1115,23 @@ two complete graphs `K₃`.
 
 **Consumer.** Layer T-API-C2.
 
-### Layer T-API-C2 — Prop 1 unconditional discharge (~300 LOC)
+### Layer T-API-C2 — REMOVED [v3 audit]
 
-**File:** extends `Orbcrypt/Hardness/GrochowQiao/BlockDecomp.lean`
-(the existing module already containing
-`GL3PreservesPartitionCardinalities` and the conditional
-`partitionPreservingPermFromEqualCardinalities`).
+> **v3 audit correction.** v2's T-API-C2 was a "one-line
+> composition" discharging Prop 1
+> (`gl3_preserves_partition_cardinalities`) by invoking the
+> false `slabDiagonalSignatureMultiset_smul` (Phase B). With
+> Phase B's framework removed, this composition does not go
+> through. **T-API-C2 is removed entirely.** Prop 1 is now
+> discharged in Phase G as a corollary of Prop 2.
 
-**Public surface:**
-
-| Declaration | Signature | Role |
-|-------------|-----------|------|
-| `gl3_preserves_partition_cardinalities` | `: GL3PreservesPartitionCardinalities` | The unconditional discharge. |
-| `partitionPreservingPermOfGL3` | `(g : GL × GL × GL) (h : g • encode₁ = encode₂) → Equiv.Perm (Fin (dimGQ m))` | Combine the discharge with `partitionPreservingPermFromEqualCardinalities`. |
-| `partitionPreservingPermOfGL3_isThreePartition` | the constructed permutation preserves all three slot classes | |
-
-**Composition.**
-
-```lean
-theorem gl3_preserves_partition_cardinalities :
-    GL3PreservesPartitionCardinalities := by
-  intro m adj₁ adj₂ g hg
-  exact grochowQiao_present_arrow_count_eq_via_signature_multiset hg
-```
-
-(One-line composition of the Phase B + C1 toolkit with the
-`Prop` definition.)
-
-```lean
-def partitionPreservingPermOfGL3 (g) (hg) : Equiv.Perm (Fin (dimGQ m)) :=
-  partitionPreservingPermFromEqualCardinalities
-    (gl3_preserves_partition_cardinalities m adj₁ adj₂ g hg)
-```
-
-`partitionPreservingPermOfGL3_isThreePartition` is direct from
-the Stage 3 `_isThreePartition` theorem applied at the constructed
-permutation.
-
-**Risk.** Low — pure composition.
-
-**Verification gate.** `gl3_preserves_partition_cardinalities`
-proven; `#print axioms` standard trio only;
-`partitionPreservingPermOfGL3` builds and carries
-`_isThreePartition`.
+**The `partitionPreservingPermOfGL3` constructor and its
+`_isThreePartition` proof remain useful** but are repositioned
+in **Phase G**: once Prop 2 is discharged (and σ is extracted),
+the partition-preserving permutation is built via Stage 3's
+existing `partitionPreservingPermFromEqualCardinalities`
+applied to the cardinality equality (which is now Phase G's
+`Prop 2 ⟹ Prop 1` corollary).
 
 ### Phase C deliverables and gates
 
@@ -1509,68 +1548,87 @@ relies on the same vanishing on axes 2 and 3.
 * **Risk.** Medium. Relies on the mutual-induction loop closing
   in D2.4 (next sub-task).
 
-#### Sub-task D2.4 — Mutual-induction closure (~120 LOC, the technical heart)
+#### Sub-task D2.4 — Simultaneous off-diagonal vanishing (RESEARCH-SCOPE) [v3 corrected]
 
-* **Statement.** `gl3_block_offDiag_zero_simultaneous`:
+> **v3 audit correction.** The v2 sub-task D2.4 proposed a
+> "potential function" mutual induction with three steps that
+> are individually unspecified or circular:
+>
+> - "Encoder-equality forces a polynomial identity" — but
+>   *which* polynomial identity, and what does it imply?
+> - "Path-aligned columns... restrict to a bijection
+>   PROVIDED the off-diagonals all vanish" — circular (assumes
+>   the conclusion).
+> - "Conclude the potential is zero" — by what mechanism?
+>
+> No actual proof argument is provided. The "potential
+> function" framing does not break the mutual-induction
+> circularity: summing squares of off-diagonal entries gives
+> a non-negative real number, and showing it is zero requires
+> a separate argument that the v2 plan did not provide.
+>
+> The honest assessment: **the simultaneous off-diagonal
+> vanishing across three axes is genuinely deep multilinear-
+> algebra content from Grochow–Qiao 2021 §4.3, NOT a 120-LOC
+> exercise.** The formal proof requires either:
+>
+> 1. A direct algebraic argument from the encoder's piecewise
+>    structure that bypasses the mutual-induction loop (e.g.,
+>    showing one axis's vanishing without circular reference
+>    to the other two).
+> 2. The full Grochow–Qiao path-block decomposition theory,
+>    which is itself ~80 pages of non-trivial mathematics.
+>
+> v3 marks D2.4 as **research-scope** with no claim of a
+> 120-LOC discharge; the LOC budget is reset to "research-
+> scope, multi-month".
+
+* **Statement (target).**
+  `gl3_block_offDiag_zero_simultaneous`:
   ```
-  ∀ (i₁ ∈ pathSlotIndices m adj₁) (a₁ ∈ paddingSlotIndices m adj₁)
-    (i₂ ∈ pathSlotIndices m adj₁) (a₂ ∈ paddingSlotIndices m adj₁)
-    (i₃ ∈ pathSlotIndices m adj₁) (a₃ ∈ paddingSlotIndices m adj₁),
-    (pathBlockMatrix g hg) i₁ a₁ = 0 ∧
-    (pathBlockMatrix₂ g hg) i₂ a₂ = 0 ∧
-    (pathBlockMatrix₃ g hg) i₃ a₃ = 0
+  ∀ (i ∈ pathSlotIndices m adj₁) (a ∈ paddingSlotIndices m adj₁),
+    (pathBlockMatrix g hg) i a = 0 ∧
+    (pathBlockMatrix₂ g hg) i a = 0 ∧
+    (pathBlockMatrix₃ g hg) i a = 0
   ```
-  *(All three off-diagonal vanishings hold simultaneously.)*
 
-* **Proof technique — the simultaneous induction.**
+* **Proof status.** **Research-scope.** v2's "potential function"
+  approach does NOT close the mutual-induction loop — the
+  three-step sketch contains a circular step ("path-aligned
+  columns... restrict to a bijection PROVIDED the off-
+  diagonals all vanish") and an unspecified step ("encoder-
+  equality forces a polynomial identity").
 
-  The key insight is that **D1.6's "Step 4 needs D2's vanishing"
-  reads symmetrically across all three axes**: each axis's
-  vanishing presupposes the other two axes' vanishing. The naive
-  reading is circular, but the trick is to argue
-  **simultaneously** by **strong induction on a unified
-  potential function** that decreases across all three axes.
+* **Possible approaches (all research-scope).**
 
-  Specifically, define a "GL³ off-diagonal-mass" potential:
-  ```
-  potential g := ∑_{i ∈ path}
-                    ∑_{a ∈ padding}
-                      ((pathBlockMatrix g hg) i a)² +
-                  (pathBlockMatrix₂ g hg) i a)² +
-                  (pathBlockMatrix₃ g hg) i a)²
-  ```
-  We argue `potential g = 0` by:
+  - **Approach 1: Per-axis induction on encoder-equality
+    polynomial expansion.** Expand
+    `(g • encode m adj₁)(i, j, k) = encode m adj₂(i, j, k)`
+    at specific path-padding-mixed slot triples; derive
+    one-axis-at-a-time vanishing via degree-reasoning. ≥ 500
+    LOC; risk of getting stuck at a single-axis lemma that
+    requires the other two.
 
-  1. **Encoder-equality forces a polynomial identity.** From
-     `g • encode m adj₁ = encode m adj₂` plus the mutual
-     unfoldings, every entry of the path-aligned columns of the
-     three Kronecker-product factors is determined by a linear
-     combination over the path-aligned entries of `g`'s factors.
-  2. **The path-aligned columns of `g`'s factors restrict to a
-     bijection.** Phase C's partition-preserving permutation π
-     restricts each factor `g.1`, `g.2`, `g.3` to a block-diagonal
-     action, **provided** the off-diagonals all vanish. The
-     converse: any factor with a non-zero off-diagonal would
-     violate the encoder-equality (by introducing a non-zero
-     entry in a position that the encoder's piecewise structure
-     forbids).
-  3. **Conclude the potential is zero.** The encoder-equality
-     forces every off-diagonal entry to be zero individually.
+  - **Approach 2: Direct algebra-iso argument.** Bypass the
+    GL³ block decomposition entirely; instead, construct the
+    AlgEquiv on the path subspace via the Wedderburn-Mal'cev
+    theorem applied directly to the encoded algebra structure.
+    The radical-preservation of any algebra iso then gives
+    Phase D's content for free. Reorders Phases D-E. ≥ 1000
+    LOC; substantial restructure.
 
-* **Sub-lemmas (each ≤ 50 LOC):**
-  - `gl3_offDiag_potential_definition` — the potential function.
-  - `gl3_offDiag_potential_at_encoder_equality` — the polynomial
-    identity at `g • encode₁ = encode₂`.
-  - `gl3_offDiag_potential_eq_zero` — the conclusion.
+  - **Approach 3: Reduce to the literature.** Find an explicit
+    formal version of Grochow-Qiao 2021's §4.3 argument and
+    transcribe it. ~2000+ LOC; closest to faithful
+    reproduction of the paper.
 
-* **Risk.** **Very High.** The simultaneous-induction structure
-  is novel formalisation content. ~80 LOC reserve for the
-  potential-function machinery + 40 LOC reserve for the
-  polynomial-identity expansion.
+* **Risk.** **Very High (research-scope).** The "120-LOC
+  technical heart" estimate in v2 is unsupported by any
+  concrete proof outline.
 
-* **Verification gate.** All three pathBlockMatrix off-diagonals
-  vanish; `gl3_block_offDiag_zero_simultaneous` proven; non-
-  vacuity at `m = 2` (empty graph identity case).
+* **Verification gate.** Once an approach is chosen and
+  partially landed, intermediate witnesses on `m ∈ {2, 3}`
+  with concrete graphs.
 
 #### Sub-task D2.5 — Block-diagonal packaging for axes 2, 3 + triple corollary (~80 LOC, depends on D2.4)
 
@@ -1821,53 +1879,75 @@ basis-element-pair cases are organised into 6 named sub-tasks.
   `arrowElement_mul_vertexIdempotent`.
 * **Risk.** Low.
 
-##### Sub-task E2.2.4 — Arrow × Arrow case (the deepest) (~80 LOC)
+##### Sub-task E2.2.4 — Arrow × Arrow case (RESEARCH-SCOPE) [v3 corrected]
 
-* **Statement.** `gl3OnPathBlock_to_lin_arrow_mul_arrow`:
-  ```
-  ∀ u v w x : Fin m,
-    (.edge u v) ∈ presentArrows m adj₁ →
-    (.edge w x) ∈ presentArrows m adj₁ →
-    gl3OnPathBlock_to_lin g hg
-      (arrowElement m u v * arrowElement m w x) =
-    gl3OnPathBlock_to_lin g hg (arrowElement m u v) *
-    gl3OnPathBlock_to_lin g hg (arrowElement m w x)
-  ```
-* **Proof.** **Both sides are zero** (no further case
-  splitting needed):
-  - LHS: `α(u, v) * α(w, x) = 0` by Layer 1.4's
-    `arrowElement_mul_arrowElement_eq_zero` (the J²=0
-    property of the radical-2 path algebra). Then
-    `gl3OnPathBlock_to_lin (0) = 0` by linearity.
-  - RHS: each
-    `gl3OnPathBlock_to_lin (arrowElement m u v)` is **some
-    element of pathAlgebraQuotient m**; the product of two
-    such elements is **also a sum of arrow-arrow products**
-    (after the AlgEquiv structure analysis from sub-layer
-    E2.1's `pathSlotStructureConstant_eq_pathMul_indicator`),
-    each of which vanishes by Layer 1.4.
-* **The key insight.** The RHS vanishing is **non-trivial** —
-  one might worry that `gl3OnPathBlock_to_lin` could send
-  arrow-elements to *non*-arrow-element-supported elements,
-  breaking the J² = 0 closure. This is where E2.1's structure-
-  tensor pull-back is used: the path-block restriction
-  preserves the **arrow-element subspace** as a Submodule
-  (since arrow-elements correspond to present-arrow slots,
-  which are preserved by the partition-preserving π). Hence
-  `gl3OnPathBlock_to_lin (arrowElement m u v) ∈
-  arrowElementSubspace m adj₂`, and the product of any two
-  elements of this subspace lies in `arrowElementSubspace m
-  adj₂ * arrowElementSubspace m adj₂ = 0` (Layer 1.4 +
-  bilinearity).
-* **Sub-lemmas (each ≤ 30 LOC):**
-  - `gl3OnPathBlock_to_lin_arrowElement_in_arrowSubspace`:
-    arrow-elements are mapped to the arrow-subspace.
-  - `arrowSubspace_mul_arrowSubspace_eq_zero`: J² = 0 at the
-    Submodule level.
-* **Risk.** Medium. The Submodule-level J² = 0 argument
-  requires lifting Layer 1.4 from basis elements to arbitrary
-  elements of the arrow-subspace via `Submodule.mul_le_*` +
-  `Submodule.span_induction`.
+> **v3 audit correction.** The v2 sub-task E2.2.4 contains a
+> **circular argument**: the RHS-vanishing claim
+> "`gl3OnPathBlock_to_lin (arrowElement m u v)` is in the
+> arrow-element subspace" assumed
+> `gl3OnPathBlock_to_lin` preserves the radical, which is
+> what we are *trying* to prove (multiplicativity). The "key
+> insight" attempted to break the circularity by appealing to
+> the partition-preservation of π, but **π preserves the
+> path-vs-padding partition only at the cardinality level
+> (Phase D)** — not the finer vertex-vs-arrow split within the
+> path subspace. Without the finer split preserved, the
+> arrow-image could land in any path-subspace element
+> (vertex idempotents + arrows), and the J²-closure does not
+> apply.
+>
+> **Honest assessment:** the arrow×arrow multiplicativity case
+> is the **central technical lemma of Phase E**, not an 80-LOC
+> "deepest case" that closes via a structural shortcut. Its
+> formal proof requires either:
+>
+> 1. Phase D's three-way partition preservation (vertex /
+>    present-arrow / padding) at the slot level — a strictly
+>    stronger statement than the binary path-vs-padding
+>    partition currently in scope. Phase C's
+>    `partitionPreservingPermFromEqualCardinalities` produces a
+>    three-partition-preserving permutation, but this is
+>    conditional on the cardinality equalities **per slot
+>    kind**, not just the present-arrow count. Discharging
+>    the per-slot-kind cardinalities requires Phase G's
+>    Prop-2 corollary chain.
+> 2. Or: use the structure-tensor pull-back (E2.1) directly
+>    to derive the multiplication-table-preservation property
+>    of `gl3OnPathBlock_to_lin` from the encoder-equality —
+>    which IS what `pathSlotStructureConstant_eq_pathMul_indicator`
+>    + the path-block restriction provide, but the formal
+>    chain is non-trivial.
+
+* **Statement (target).** `gl3OnPathBlock_to_lin_arrow_mul_arrow`
+  (as in v2).
+
+* **Proof status.** **Research-scope.** v2's "Both sides are
+  zero" argument is invalid (RHS vanishing requires
+  multiplicativity, which is being proved). Correct proof
+  approaches:
+
+  - **Approach A: Three-partition preservation pre-requisite.**
+    Establish Phase D + the three-partition-preserving
+    extension (vertex slots map to vertex slots, etc.) before
+    Phase E. This requires per-slot-kind cardinality
+    preservation — itself a Prop-1-strength statement, but
+    refined per slot kind. Then the arrow-element subspace IS
+    preserved, and J²=0 applies. ~150 LOC for the
+    pre-requisite + ~30 LOC for the application.
+
+  - **Approach B: Direct structure-tensor argument.**
+    `gl3OnPathBlock_to_lin (a * b)` and
+    `gl3OnPathBlock_to_lin a * gl3OnPathBlock_to_lin b` are
+    BOTH derived from the encoder's path-slot structure
+    constants under the GL³ action. Show they agree directly
+    via the structure-constant-equivariance argument
+    (E2.1's pull-back applied at the multiplication-table
+    level), bypassing radical-preservation entirely. ~150 LOC.
+
+* **Risk.** **High.** The v2 argument is invalid; Approaches A
+  and B both require non-trivial new content.
+
+* **LOC reserve.** ~150 LOC (post-correction).
 
 ##### Sub-task E2.2.5 — Bilinear extension to general elements (~30 LOC)
 
