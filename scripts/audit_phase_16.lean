@@ -2967,3 +2967,70 @@ example (m : ℕ)
   vertexPermOfVertexPreserving_one m h
 
 end VertexPermDescentNonVacuity
+
+-- ============================================================================
+-- ## §15.11 Workstream R-TI Stage 3 T-API-4 (block decomposition under GL³).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.GL3PreservesPartitionCardinalities
+#print axioms Orbcrypt.GrochowQiao.gl3_preserves_partition_cardinalities_identity_case
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlotEquiv
+#print axioms Orbcrypt.GrochowQiao.paddingSlotEquiv
+#print axioms Orbcrypt.GrochowQiao.padding_card_eq_of_present_card_eq
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_presentArrow
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_padding
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_vertex
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_vertex
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_apply_presentArrow
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_apply_padding
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_apply_presentArrow
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_apply_padding
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_fwd
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_inv
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_apply
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_vertexPreserving
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_paddingPreserving
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_isThreePartition
+#print axioms Orbcrypt.GrochowQiao.partition_preserving_perm_under_GL3
+#print axioms Orbcrypt.GrochowQiao.total_slot_cardinality
+#print axioms Orbcrypt.GrochowQiao.paddingSlotIndices_card_eq
+#print axioms Orbcrypt.GrochowQiao.padding_card_eq_arrow_count_complement
+
+namespace BlockDecompNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 3 T-API-4 non-vacuity witness (cardinality identity).**
+The total partition card sums to `dimGQ m`. -/
+example (adj : Fin 3 → Fin 3 → Bool) :
+    (vertexSlotIndices 3).card + (presentArrowSlotIndices 3 adj).card +
+      (paddingSlotIndices 3 adj).card = dimGQ 3 :=
+  total_slot_cardinality 3 adj
+
+/-- **Stage 3 T-API-4 non-vacuity witness (partition-preserving on equal adjs).**
+For `adj = adj`, we trivially have equal cardinalities, so the
+partition-preserving permutation can be constructed and is
+three-partition-preserving. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    IsThreePartitionPreserving m adj adj
+      (partitionPreservingPermFromEqualCardinalities m adj adj rfl) :=
+  partitionPreservingPermFromEqualCardinalities_isThreePartition m adj adj rfl
+
+/-- **Stage 3 T-API-4 non-vacuity witness (composition under the Prop).**
+Given the research-scope `GL3PreservesPartitionCardinalities` Prop,
+every GL³ tensor isomorphism yields a three-partition-preserving
+permutation. -/
+example (h_gl3 : GL3PreservesPartitionCardinalities)
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ)
+    (h_iso : g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂) :
+    ∃ π : Equiv.Perm (Fin (dimGQ m)),
+      IsThreePartitionPreserving m adj₁ adj₂ π :=
+  partition_preserving_perm_under_GL3 h_gl3 m adj₁ adj₂ g h_iso
+
+end BlockDecompNonVacuity

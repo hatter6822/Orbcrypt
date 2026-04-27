@@ -396,5 +396,54 @@ theorem encoder_diagonal_values_pairwise_distinct :
     ((1 : ℚ) ≠ 0) ∧ ((1 : ℚ) ≠ 2) ∧ ((0 : ℚ) ≠ 2) := by
   refine ⟨?_, ?_, ?_⟩ <;> norm_num
 
+-- ============================================================================
+-- T-API-3.7 — Total cardinality identity.
+-- ============================================================================
+
+/-- The sum of vertex / present-arrow / padding slot counts equals `dimGQ m`. -/
+theorem total_slot_cardinality (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (vertexSlotIndices m).card + (presentArrowSlotIndices m adj).card +
+      (paddingSlotIndices m adj).card = dimGQ m := by
+  -- Compute the union cardinality two ways.
+  have h_partition := vertex_present_padding_partition m adj
+  have h_disj_vp : Disjoint (vertexSlotIndices m) (presentArrowSlotIndices m adj) :=
+    vertexSlotIndices_disjoint_presentArrowSlotIndices m adj
+  have h_disj_vpad : Disjoint (vertexSlotIndices m) (paddingSlotIndices m adj) :=
+    vertexSlotIndices_disjoint_paddingSlotIndices m adj
+  have h_disj_ppad : Disjoint (presentArrowSlotIndices m adj) (paddingSlotIndices m adj) :=
+    presentArrowSlotIndices_disjoint_paddingSlotIndices m adj
+  have h_disj_union : Disjoint (vertexSlotIndices m ∪ presentArrowSlotIndices m adj)
+                                (paddingSlotIndices m adj) := by
+    rw [Finset.disjoint_union_left]
+    exact ⟨h_disj_vpad, h_disj_ppad⟩
+  -- LHS: by additivity over the partition.
+  have h_card : ((vertexSlotIndices m ∪ presentArrowSlotIndices m adj) ∪
+      paddingSlotIndices m adj).card =
+      (vertexSlotIndices m).card + (presentArrowSlotIndices m adj).card +
+        (paddingSlotIndices m adj).card := by
+    rw [Finset.card_union_of_disjoint h_disj_union,
+        Finset.card_union_of_disjoint h_disj_vp]
+  -- RHS: the union is `Finset.univ`, cardinality `dimGQ m`.
+  rw [← h_card, h_partition]
+  exact Finset.card_univ.trans (Fintype.card_fin _)
+
+/-- Padding cardinality = `dimGQ m - vertex cardinality - present-arrow cardinality`. -/
+theorem paddingSlotIndices_card_eq (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (paddingSlotIndices m adj).card =
+      dimGQ m - (vertexSlotIndices m).card -
+        (presentArrowSlotIndices m adj).card := by
+  have h := total_slot_cardinality m adj
+  omega
+
+/-- The total slot count, expressed in terms of `m` and `|presentArrows|`. -/
+theorem padding_card_eq_arrow_count_complement
+    (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (paddingSlotIndices m adj).card =
+      m * m - (presentArrowSlotIndices m adj).card := by
+  rw [paddingSlotIndices_card_eq, vertexSlotIndices_card]
+  -- dimGQ m = m + m * m, so dimGQ m - m = m * m.
+  unfold dimGQ
+  omega
+
 end GrochowQiao
 end Orbcrypt

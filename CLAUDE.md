@@ -4542,6 +4542,113 @@ under `Orbcrypt/Hardness/GrochowQiao/`). The zero-sorry /
 zero-custom-axiom posture and the standard-trio-only axiom-
 dependency posture are all preserved.
 
+Workstream R-TI rigidity discharge — Stage 3 (Audit 2026-04-27 —
+block decomposition under GL³, T-API-4) has been completed:
+
+- **One new module.** `Orbcrypt/Hardness/GrochowQiao/BlockDecomp.lean`
+  (~520 LOC, NEW) — captures the block-decomposition theorem of
+  the Grochow–Qiao rigidity argument as a layered structure with
+  the genuinely research-grade content isolated as a single named
+  `Prop`.
+- **Design.** Stage 3 decomposes the rigidity argument's "block
+  decomposition" into two genuinely independent parts:
+  * **Cardinality preservation under GL³** (research-scope,
+    isolated as `GL3PreservesPartitionCardinalities`): under
+    `g • encode₁ = encode₂`, the present-arrow slot count is
+    preserved between `adj₁` and `adj₂`. This is the deep
+    multilinear-algebra content of Grochow–Qiao SIAM J. Comp.
+    2023 §4.3 (~80 pages, ~1,000+ LOC).
+  * **Partition-preserving permutation construction** (proven
+    unconditionally in this stage): given equal present-arrow
+    cardinalities, build an `Equiv.Perm (Fin (dimGQ m))` that
+    preserves the vertex / present-arrow / padding partition.
+- **Stage 2 cardinality extensions** (added to `SlotSignature.lean`):
+  `total_slot_cardinality`, `paddingSlotIndices_card_eq`,
+  `padding_card_eq_arrow_count_complement` — express the `m + |E|
+  + (m² - |E|) = dimGQ m` partition arithmetic.
+- **Public surface (≈ 27 declarations).**
+  * The research-scope `Prop`: `GL3PreservesPartitionCardinalities`,
+    plus `gl3_preserves_partition_cardinalities_identity_case`
+    showing the diagonal case is unconditional.
+  * Per-class equivs: `presentArrowSlotEquiv`, `paddingSlotEquiv`
+    (built via `Fintype.equivOfCardEq`).
+  * Cardinality bridges: `padding_card_eq_of_present_card_eq`.
+  * Function-level construction: `partitionPreservingFwd`,
+    `partitionPreservingInv` (case analysis on slot kind).
+  * Slot-class preservation lemmas:
+    `partitionPreservingFwd_presentArrow`,
+    `partitionPreservingFwd_padding`,
+    `partitionPreservingFwd_vertex`,
+    `partitionPreservingInv_vertex`.
+  * Apply lemmas: `partitionPreservingFwd_apply_presentArrow`,
+    `partitionPreservingFwd_apply_padding`,
+    `partitionPreservingInv_apply_presentArrow`,
+    `partitionPreservingInv_apply_padding`.
+  * Round-trip identities: `partitionPreservingInv_fwd`,
+    `partitionPreservingFwd_inv` (`fwd ∘ inv = id` and
+    `inv ∘ fwd = id` proven unconditionally).
+  * **Equiv.Perm packaging**:
+    `partitionPreservingPermFromEqualCardinalities` and its
+    `@[simp]` apply lemma.
+  * **Three-partition preservation theorems** for the constructed
+    permutation: `_vertexPreserving`, `_presentArrowPreserving`,
+    `_paddingPreserving`, and the bundled
+    `_isThreePartition` (the headline for downstream consumers).
+  * **Composition with the research-scope Prop**:
+    `partition_preserving_perm_under_GL3` — under the Prop, every
+    GL³ tensor isomorphism yields a three-partition-preserving
+    permutation. **This is the consumer-facing API for Stages
+    4–5.**
+- **Mathematical content.**
+  * **Structural construction (proven unconditionally).** Given
+    `(presentArrowSlotIndices m adj₁).card = (presentArrowSlotIndices
+    m adj₂).card`, we use `Fintype.equivOfCardEq` to get per-class
+    bijections, define `partitionPreservingFwd/Inv` by case analysis
+    on slot kind (vertex slots fixed; present-arrow and padding
+    slots mapped via per-class equivs), and prove the round-trip
+    identities. The bijection follows from disjointness of slot
+    classes and the partition theorem
+    `vertex_present_padding_partition`.
+  * **Three-partition preservation (proven unconditionally).** The
+    constructed permutation is shown to preserve all three slot-
+    kind classes via case analysis: vertex slots are fixed, hence
+    map to vertex slots; non-vertex slots (present or padding) map
+    to non-vertex slots (image is in the corresponding adj₂ class
+    by the per-class equiv); disjointness of slot classes closes
+    the contrapositive directions.
+  * **Research-scope content (named, isolated).** The single
+    `Prop` `GL3PreservesPartitionCardinalities` captures the
+    genuine multilinear-algebra content that Stage 3 cannot
+    discharge. Discharging this Prop is **R-15-residual-TI-
+    reverse** (~80 pages on paper, ~1,000+ LOC of Lean). Once
+    discharged, `partition_preserving_perm_under_GL3` becomes the
+    unconditional consumer-facing API.
+- **Audit script.** `scripts/audit_phase_16.lean` extended with
+  ~27 new `#print axioms` entries plus 3 non-vacuity `example`s
+  exercising total cardinality identity, identity-case three-
+  partition preservation, and the conditional composition under
+  the research-scope Prop.
+- **Verification.** Full `lake build` succeeds with **3,400 jobs**
+  (up from 3,399). Phase 16 audit script exercises **735
+  declarations** (up from 708 — 27 new entries), all on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+  Zero `sorry`, zero custom axioms.
+- **Cryptographic role.** Stage 3 is the **technical heart** of
+  the rigidity argument. The structural construction here lets
+  Stage 4 (T-API-7 AlgEquiv lift) consume an honest
+  `Equiv.Perm (Fin (dimGQ m))` that preserves the path-algebra-
+  vs-padding partition, then bridge to the path algebra
+  via the basis enumeration. The single `Prop`
+  `GL3PreservesPartitionCardinalities` is the only research-scope
+  obligation across all of Stages 1–3 + 5; Stage 4 (T-API-7) can
+  introduce additional research-scope content as needed.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 3 lands one
+new module and is structurally additive. The module count rises
+from 54 to **55** (`BlockDecomp.lean` is the new module). The
+zero-sorry / zero-custom-axiom posture and the standard-trio-only
+axiom-dependency posture are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
