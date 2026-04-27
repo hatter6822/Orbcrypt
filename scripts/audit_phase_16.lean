@@ -3093,7 +3093,6 @@ end AlgEquivLiftNonVacuity
 -- ## §15.13 Workstream R-TI Stage 4 T-API-8 (Wedderburn-Mal'cev σ-extraction).
 -- ============================================================================
 
-#print axioms Orbcrypt.GrochowQiao.gl3_to_vertexPerm
 #print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_extractVertexPerm_witness
 #print axioms Orbcrypt.GrochowQiao.extracted_perm_at_identity
 
@@ -3134,7 +3133,6 @@ end WMSigmaExtractionNonVacuity
 #print axioms Orbcrypt.GrochowQiao.radical_arrowElement_mul
 #print axioms Orbcrypt.GrochowQiao.arrowElement_radical_mul
 #print axioms Orbcrypt.GrochowQiao.inner_aut_radical_fixes_arrow
-#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_arrow_image
 #print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_sandwich
 #print axioms Orbcrypt.GrochowQiao.mem_presentArrows_iff
 #print axioms Orbcrypt.GrochowQiao.vertexPerm_isGraphIso_iff_arrow_preserving

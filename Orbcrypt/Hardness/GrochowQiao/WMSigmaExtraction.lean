@@ -28,9 +28,6 @@ import Orbcrypt.Hardness.GrochowQiao.WedderburnMalcev
 
 Public API:
 
-* `gl3_to_vertexPerm m σ` — wrapper for `algEquiv_extractVertexPerm`
-  applied to the σ-induced AlgEquiv. Extracts σ' + j satisfying the
-  WM conjugation identity at the σ-image vertex idempotents.
 * `quiverPermAlgEquiv_extractVertexPerm_witness` — the WM extraction
   witness for the σ-induced AlgEquiv produces a σ' equal to σ when
   taking `j = 0` (the trivial conjugating element on σ-permuted
@@ -38,11 +35,17 @@ Public API:
 * `extracted_perm_at_identity` — the extraction at the identity AlgEquiv
   yields the identity vertex permutation.
 
+For the underlying AlgEquiv → (σ, j) extraction, callers should use
+`algEquiv_extractVertexPerm` directly (in
+`Orbcrypt.Hardness.GrochowQiao.WedderburnMalcev`) — this module does
+not introduce a renamed wrapper for that function, since the WM
+extraction takes an arbitrary AlgEquiv (not a GL³ element).
+
 ## Naming
 
-Identifiers describe content (`gl3_to_vertexPerm`,
-`quiverPermAlgEquiv_extractVertexPerm_witness`), not workstream
-provenance.
+Identifiers describe content
+(`quiverPermAlgEquiv_extractVertexPerm_witness`,
+`extracted_perm_at_identity`), not workstream provenance.
 -/
 
 namespace Orbcrypt
@@ -51,33 +54,7 @@ namespace GrochowQiao
 open Orbcrypt
 
 -- ============================================================================
--- T-API-8.1 — Wrapper for algEquiv_extractVertexPerm.
--- ============================================================================
-
-/-- **σ + j extraction from any AlgEquiv on the path algebra.**
-
-Given any AlgEquiv `φ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m`,
-extract the unique vertex permutation σ and radical element j
-satisfying the Wedderburn–Mal'cev conjugation identity:
-```
-(1 + j) * vertexIdempotent (σ v) * (1 - j) = φ (vertexIdempotent v)
-```
-for all `v : Fin m`.
-
-This is the consumer-facing wrapper around `algEquiv_extractVertexPerm`
-(`WedderburnMalcev.lean:801`); the body is identical, but this name
-better reflects its role in the GL³ → σ rigidity chain. -/
-theorem gl3_to_vertexPerm (m : ℕ)
-    (φ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m) :
-    ∃ (σ : Equiv.Perm (Fin m)) (j : pathAlgebraQuotient m),
-      j ∈ pathAlgebraRadical m ∧
-      ∀ v : Fin m,
-        (1 + j) * vertexIdempotent m (σ v) * (1 - j) =
-          φ (vertexIdempotent m v) :=
-  algEquiv_extractVertexPerm m φ
-
--- ============================================================================
--- T-API-8.2 — Round-trip: applied to quiverPermAlgEquiv m σ.
+-- T-API-8.1 — Round-trip: applied to quiverPermAlgEquiv m σ.
 -- ============================================================================
 
 /-- **The σ-induced AlgEquiv is in WM normal form with `j = 0`.**
@@ -87,9 +64,9 @@ witness `(σ' := σ, j := 0)` satisfies the WM conjugation identity:
 ```
 (1 + 0) * vertexIdempotent (σ v) * (1 - 0) = quiverPermAlgEquiv m σ (vertexIdempotent v).
 ```
-This is *one* witness from `gl3_to_vertexPerm`'s existential — WM
-σ-extraction is unique up to the radical, so the σ'-component agrees
-with the original σ. -/
+This is *one* witness from `algEquiv_extractVertexPerm`'s existential
+— WM σ-extraction is unique up to the radical, so the σ'-component
+agrees with the original σ. -/
 theorem quiverPermAlgEquiv_extractVertexPerm_witness (m : ℕ)
     (σ : Equiv.Perm (Fin m)) :
     ∃ (j : pathAlgebraQuotient m),

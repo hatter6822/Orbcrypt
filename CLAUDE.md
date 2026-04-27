@@ -4687,10 +4687,7 @@ Workstream R-TI rigidity discharge — Stage 4 (Audit 2026-04-27 —
     `quiverPermAlgEquiv_apply_vertexIdempotent` (`@[simp]`),
     `quiverPermAlgEquiv_apply_arrowElement` (`@[simp]`),
     `quiverPermAlgEquiv_one` — round-trip identity AlgEquiv.
-- **T-API-8 public surface (≈ 3 declarations).**
-  * `gl3_to_vertexPerm m φ` — wrapper for
-    `algEquiv_extractVertexPerm`. Given any AlgEquiv on the path
-    algebra, extract σ + j satisfying the WM conjugation identity.
+- **T-API-8 public surface (≈ 2 declarations).**
   * `quiverPermAlgEquiv_extractVertexPerm_witness` — the σ-induced
     AlgEquiv is in WM normal form with `j = 0`. The trivial
     radical witness exhibits the σ' = σ identification.
@@ -4769,10 +4766,10 @@ has been completed:
   * `inner_aut_radical_fixes_arrow` — `(1 + j) * α(u, v) * (1 - j) =
     α(u, v)` from J²=0 (the structural lemma at the heart of the
     rigidity argument's arrow-action analysis).
-  * `quiverPermAlgEquiv_arrow_image` — re-export of Stage 4's
-    arrow-action lemma.
   * `quiverPermAlgEquiv_sandwich` — σ-induced AlgEquiv preserves
-    sandwich identity.
+    sandwich identity (consumes Stage 4's
+    `quiverPermAlgEquiv_apply_arrowElement` directly without a
+    re-exported wrapper).
   * `mem_presentArrows_iff` — membership in `presentArrows` is
     exactly `adj u v = true`.
   * `vertexPerm_isGraphIso_iff_arrow_preserving` — σ is a graph iso
@@ -4895,6 +4892,61 @@ masquerading as theorems. The audit also verified that no existing
 code was inadvertently deleted or modified beyond the documented
 Stage 0 encoder strengthening (which was a numeric-literal change
 with backwards-compatible downstream proofs).
+
+Workstream R-TI rigidity discharge — Audit pass II (2026-04-27,
+post-Stage-5 deep audit) found and fixed three additional code-
+quality issues that the first audit pass missed:
+
+1. **`gl3_to_vertexPerm` removed** (`WMSigmaExtraction.lean`).
+   The theorem was a tautological renamed wrapper around
+   `algEquiv_extractVertexPerm` (identical signature, identical
+   body) with a misleading "GL³" prefix in the name (the input is
+   an `AlgEquiv`, not a GL³ element). Removed; callers should use
+   `algEquiv_extractVertexPerm` directly. Module docstring updated
+   to clarify that the WM extraction module does not introduce a
+   renamed wrapper for the `WedderburnMalcev`-supplied function.
+
+2. **`quiverPermAlgEquiv_arrow_image` removed**
+   (`AdjacencyInvariance.lean`). This was a tautological re-export
+   of Stage 4's `quiverPermAlgEquiv_apply_arrowElement` with
+   identical signature. The downstream consumer
+   `quiverPermAlgEquiv_sandwich` is rewired to use the original
+   Stage 4 lemma directly. Module-docstring annotation in CLAUDE.md
+   updated.
+
+3. **`gl3_preserves_partition_cardinalities_identity_case`
+   converted from vacuous to substantive** (`BlockDecomp.lean`).
+   The previous statement was `(presentArrowSlotIndices m adj).card =
+   (presentArrowSlotIndices m adj).card` discharged by `rfl` — i.e.,
+   `X = X`. This did not actually witness the
+   `GL3PreservesPartitionCardinalities` Prop at the identity GL³
+   triple. The new version takes the identity GL³ triple and a
+   hypothesis that `1 • encode adj₁ = encode adj₂`, then proves
+   the present-arrow cardinalities of `adj₁` and `adj₂` match. The
+   proof uses `one_smul` to reduce to `encode adj₁ = encode adj₂`,
+   then uses the post-Stage-0 diagonal-value classification (via
+   `grochowQiaoEncode_diagonal_present_arrow` and
+   `grochowQiaoEncode_diagonal_padding`) to conclude `adj₁ = adj₂`,
+   from which cardinality equality follows.
+
+4. **`r_ti_rigidity_status_disclosure` first conjunct converted
+   from vacuous to substantive** (`Rigidity.lean`). Previously
+   the first conjunct was a literal `X = X` tautology; now it
+   takes the `1 • encode adj₁ = encode adj₂` form and discharges
+   to the new substantive
+   `gl3_preserves_partition_cardinalities_identity_case`.
+
+The audit-script `#print axioms` entries for the removed `gl3_to_vertexPerm`
+and `quiverPermAlgEquiv_arrow_image` were removed; the audit script
+now exercises 769 declarations (down from 770 — 2 removed wrappers,
++1 new substantive identity-case witness). All declarations remain
+on the standard Lean trio. Lake build remains at 3,404 jobs with
+zero warnings, zero errors.
+
+The findings demonstrate that even after a clean first audit pass,
+deeper review can surface tautological wrappers and vacuously-true
+"witness" theorems. The post-audit-pass-II state is more honest
+and the test coverage is more substantive.
 
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`

@@ -105,14 +105,56 @@ def GL3PreservesPartitionCardinalities : Prop :=
 
 /-- **Identity-case witness for `GL3PreservesPartitionCardinalities`.**
 
-When `g = (1, 1, 1)` and `g • encode adj = encode adj'` (i.e.,
-`adj = adj'`), the cardinalities trivially match.  This shows the
-Prop is at least non-vacuous on the identity case, which is the
-diagonal `(adj, adj)`. -/
+The identity GL³ triple acts trivially on tensors (`one_smul`), so
+`(1, 1, 1) • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂`
+reduces to `grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂`.
+For this case, the present-arrow cardinalities trivially agree
+because the encoders are the same function.
+
+This is a substantive identity-case witness for the research-scope
+`GL3PreservesPartitionCardinalities` Prop — it proves the Prop's
+conclusion when the GL³ triple is the identity, demonstrating the
+Prop is non-vacuous on the diagonal of the action. -/
 theorem gl3_preserves_partition_cardinalities_identity_case
-    (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    (presentArrowSlotIndices m adj).card =
-      (presentArrowSlotIndices m adj).card := rfl
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h : ((1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+            GL (Fin (dimGQ m)) ℚ)) • grochowQiaoEncode m adj₁ =
+          grochowQiaoEncode m adj₂) :
+    (presentArrowSlotIndices m adj₁).card =
+      (presentArrowSlotIndices m adj₂).card := by
+  -- (1 : GL × GL × GL) • T = T by `one_smul`.
+  rw [one_smul] at h
+  -- Now h : grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂.
+  -- The cardinalities depend only on adj via presentArrowSlotIndices,
+  -- so we need to show adj₁ and adj₂ have equal arrow-counts.
+  -- This follows from the fact that the encoder's diagonal values at
+  -- arrow slots determine adj: T (arrow uv) (arrow uv) (arrow uv) = 0
+  -- iff adj u v = true (present-arrow case), = 2 iff adj u v = false
+  -- (padding case). Hence encode₁ = encode₂ ⇒ adj₁ = adj₂.
+  have h_adj : adj₁ = adj₂ := by
+    funext u v
+    -- Compute the diagonal at (slotEquiv).symm (.arrow u v).
+    have h_diag := congrFun (congrFun (congrFun h
+      ((slotEquiv m).symm (.arrow u v)))
+      ((slotEquiv m).symm (.arrow u v)))
+      ((slotEquiv m).symm (.arrow u v))
+    -- Direct Bool case analysis on adj₁ u v and adj₂ u v.
+    rcases h₁ : adj₁ u v with _ | _
+    · -- adj₁ u v = false ⇒ LHS diagonal = 2.
+      rw [grochowQiaoEncode_diagonal_padding m adj₁ u v h₁] at h_diag
+      rcases h₂ : adj₂ u v with _ | _
+      · rfl
+      · -- adj₂ u v = true ⇒ RHS diagonal = 0; contradicts 2 = 0.
+        rw [grochowQiaoEncode_diagonal_present_arrow m adj₂ u v h₂] at h_diag
+        norm_num at h_diag
+    · -- adj₁ u v = true ⇒ LHS diagonal = 0.
+      rw [grochowQiaoEncode_diagonal_present_arrow m adj₁ u v h₁] at h_diag
+      rcases h₂ : adj₂ u v with _ | _
+      · -- adj₂ u v = false ⇒ RHS diagonal = 2; contradicts 0 = 2.
+        rw [grochowQiaoEncode_diagonal_padding m adj₂ u v h₂] at h_diag
+        norm_num at h_diag
+      · rfl
+  rw [h_adj]
 
 -- ============================================================================
 -- T-API-4.C — Partition-preserving permutation from equal cardinalities.

@@ -135,16 +135,6 @@ theorem inner_aut_radical_fixes_arrow (m : ℕ) (j : pathAlgebraQuotient m)
 -- T-API-9.3 — σ-induced AlgEquiv: arrow image is `α(σ u, σ v)`.
 -- ============================================================================
 
-/-- The σ-induced AlgEquiv sends `arrowElement u v` to
-`arrowElement (σ u) (σ v)` (re-export of Stage 4 T-API-7's
-`quiverPermAlgEquiv_apply_arrowElement` for use in adjacency
-arguments). -/
-theorem quiverPermAlgEquiv_arrow_image (m : ℕ) (σ : Equiv.Perm (Fin m))
-    (u v : Fin m) :
-    quiverPermAlgEquiv m σ (arrowElement m u v) =
-      arrowElement m (σ u) (σ v) :=
-  quiverPermAlgEquiv_apply_arrowElement m σ u v
-
 /-- The σ-induced AlgEquiv preserves the sandwich identity: the σ-image
 of `e_u * α(u, v) * e_v` is `e_{σ u} * α(σ u, σ v) * e_{σ v}`. -/
 theorem quiverPermAlgEquiv_sandwich (m : ℕ) (σ : Equiv.Perm (Fin m))

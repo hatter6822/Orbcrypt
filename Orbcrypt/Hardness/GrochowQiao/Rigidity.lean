@@ -171,15 +171,22 @@ What's research-scope (`R-15-residual-TI-reverse`):
 Once both Props are discharged, all the conditional theorems above
 become unconditional via the composition chain. -/
 theorem r_ti_rigidity_status_disclosure :
-    -- Identity case for both research-scope Props is unconditional.
-    (∀ m adj, (presentArrowSlotIndices m adj).card =
-              (presentArrowSlotIndices m adj).card) ∧
+    -- Identity case for `GL3PreservesPartitionCardinalities`: under
+    -- the identity GL³ triple, the present-arrow cardinalities of
+    -- adj₁ and adj₂ are equal whenever the encoder values match.
+    (∀ m (adj₁ adj₂ : Fin m → Fin m → Bool),
+      ((1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+         GL (Fin (dimGQ m)) ℚ)) • grochowQiaoEncode m adj₁ =
+            grochowQiaoEncode m adj₂ →
+      (presentArrowSlotIndices m adj₁).card =
+        (presentArrowSlotIndices m adj₂).card) ∧
+    -- Identity case for `GL3InducesArrowPreservingPerm`.
     (∀ m adj, ∃ σ : Equiv.Perm (Fin m),
       ∀ u v, (.edge u v : QuiverArrow m) ∈ presentArrows m adj ↔
              (quiverMap m σ (.edge u v)) ∈ presentArrows m adj) := by
   refine ⟨?_, ?_⟩
-  · intros m adj
-    rfl
+  · intros m adj₁ adj₂ h
+    exact gl3_preserves_partition_cardinalities_identity_case m adj₁ adj₂ h
   · intros m adj
     exact gl3_induces_arrow_preserving_perm_identity_case m adj
 
