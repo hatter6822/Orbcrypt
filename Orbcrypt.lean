@@ -60,6 +60,8 @@ import Orbcrypt.Hardness.GrochowQiao.VertexPermDescent
 import Orbcrypt.Hardness.GrochowQiao.BlockDecomp
 import Orbcrypt.Hardness.GrochowQiao.AlgEquivLift
 import Orbcrypt.Hardness.GrochowQiao.WMSigmaExtraction
+import Orbcrypt.Hardness.GrochowQiao.AdjacencyInvariance
+import Orbcrypt.Hardness.GrochowQiao.Rigidity
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling

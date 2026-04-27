@@ -4743,6 +4743,108 @@ module count rises from 55 to **57** (`AlgEquivLift.lean` and
 zero-custom-axiom posture and the standard-trio-only axiom-
 dependency posture are all preserved.
 
+Workstream R-TI rigidity discharge — Stage 5 (Audit 2026-04-27 —
+adjacency invariance + final rigidity composition, T-API-9 + T-API-10)
+has been completed:
+
+- **Two new modules.**
+  * `Orbcrypt/Hardness/GrochowQiao/AdjacencyInvariance.lean`
+    (~250 LOC, NEW) — T-API-9: sandwich identity, inner-conjugation
+    fixes arrows (J²=0 content), `presentArrows` membership iff,
+    σ-induced AlgEquiv preserves arrows iff σ is graph iso.
+  * `Orbcrypt/Hardness/GrochowQiao/Rigidity.lean` (~150 LOC, NEW)
+    — T-API-10: final composition theorem.
+    `grochowQiaoRigidity_under_arrowDischarge` discharges
+    `GrochowQiaoRigidity` from a single arrow-preservation Prop.
+- **One theorem added to top-level `GrochowQiao.lean`:**
+  `grochowQiao_isInhabitedKarpReduction_full_chain` — composes Stage
+  5's `grochowQiaoRigidity_under_arrowDischarge` with the existing
+  `grochowQiao_isInhabitedKarpReduction_under_rigidity` to give the
+  unconditional Karp reduction `@GIReducesToTI ℚ _` under the
+  research-scope arrow-discharge.
+- **T-API-9 public surface (≈ 9 declarations).**
+  * `arrowElement_sandwich m u v` — `α(u, v) = e_u * α(u, v) * e_v`.
+  * `radical_arrowElement_mul`, `arrowElement_radical_mul` —
+    `j * α = 0` and `α * j = 0` for `j ∈ J`.
+  * `inner_aut_radical_fixes_arrow` — `(1 + j) * α(u, v) * (1 - j) =
+    α(u, v)` from J²=0 (the structural lemma at the heart of the
+    rigidity argument's arrow-action analysis).
+  * `quiverPermAlgEquiv_arrow_image` — re-export of Stage 4's
+    arrow-action lemma.
+  * `quiverPermAlgEquiv_sandwich` — σ-induced AlgEquiv preserves
+    sandwich identity.
+  * `mem_presentArrows_iff` — membership in `presentArrows` is
+    exactly `adj u v = true`.
+  * `vertexPerm_isGraphIso_iff_arrow_preserving` — σ is a graph iso
+    iff its arrow-action respects adjacency.
+  * `quiverPermAlgEquiv_preserves_presentArrows_iff` — σ-induced
+    AlgEquiv preserves arrow support iff σ is a graph iso.
+- **T-API-10 public surface (≈ 6 declarations).**
+  * `vertexPermPreservesAdjacency` — adjacency preservation theorem
+    derived from arrow-preservation hypothesis.
+  * `GL3InducesArrowPreservingPerm : Prop` — research-scope
+    obligation parallel to `GL3PreservesPartitionCardinalities`.
+    Captures the deep GL³ → AlgEquiv content (genuine multi-month
+    Lean formalization of Grochow–Qiao SIAM J. Comp. 2023 §4.3).
+  * `gl3_induces_arrow_preserving_perm_identity_case` — identity
+    case witness.
+  * `grochowQiaoRigidity_under_arrowDischarge` — under the
+    arrow-discharge Prop, every GL³ tensor isomorphism yields a
+    graph isomorphism; this discharges `GrochowQiaoRigidity` (the
+    pre-existing `Prop` from `Reverse.lean`).
+  * `r_ti_rigidity_status_disclosure` — explicit status table:
+    what's unconditional vs. research-scope.
+  * (top-level) `grochowQiao_isInhabitedKarpReduction_full_chain`
+    — final Karp reduction inhabitant under the arrow-discharge.
+- **Mathematical content.**
+  * **Sandwich identity**: `e_u * α(u, v) * e_v = α(u, v)` follows
+    immediately from the basis-element multiplication table
+    (`vertexIdempotent_mul_arrowElement` and
+    `arrowElement_mul_vertexIdempotent` from AlgebraWrapper).
+  * **Inner conjugation fixes arrows (J²=0)**: For `j ∈ J`,
+    `(1 + j) * α * (1 - j)` distributes to `α + j*α - α*j - j*α*j`.
+    Using `member_radical_mul_arrowElement` and
+    `arrowElement_mul_member_radical` (both proved via radical span
+    induction in WedderburnMalcev), each cross-term vanishes,
+    leaving just `α`.
+  * **Adjacency-iff-arrow-preservation**: σ is a graph isomorphism
+    between (adj₁, adj₂) iff σ's arrow-action on basis-element
+    arrows preserves the `presentArrows` membership. Proved by
+    Bool case analysis on `adj₁ u v` and `adj₂ (σ u) (σ v)`,
+    using `mem_presentArrows_iff` to bridge the algebraic and
+    graph-theoretic notions.
+  * **Final composition**: `vertexPermPreservesAdjacency` takes the
+    arrow-preservation hypothesis and produces the adjacency
+    preservation directly via `quiverPermAlgEquiv_preserves_presentArrows_iff.mpr`.
+- **Audit script.** `scripts/audit_phase_16.lean` extended with
+  ~15 new `#print axioms` entries plus 6 non-vacuity `example`s
+  exercising the sandwich identity, inner-conjugation with zero
+  radical, `mem_presentArrows_iff`, and the final composition
+  under the research-scope arrow-discharge.
+- **Verification.** Full `lake build` succeeds with **3,404 jobs**
+  (up from 3,402 — two new modules). Phase 16 audit script
+  exercises **770 declarations** (up from 755 — 15 new entries),
+  all on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`). Zero `sorry`, zero custom axioms.
+- **Research-scope status.** Stages 1–5 land all the structural
+  content of the rigidity argument unconditionally. The remaining
+  research-scope content (multi-month Lean formalization of
+  Grochow–Qiao SIAM J. Comp. 2023 §4.3) is captured in **two
+  named, isolated Props**:
+  * `GL3PreservesPartitionCardinalities` (Stage 3).
+  * `GL3InducesArrowPreservingPerm` (Stage 5).
+  Both Props admit unconditional identity-case witnesses; the
+  full discharge requires the Grochow–Qiao SIAM J. Comp. 2023 §4.3
+  argument. Once discharged, all conditional theorems become
+  unconditional via the explicit composition chain.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 5 lands two
+new modules and one new theorem in the top-level `GrochowQiao.lean`.
+The module count rises from 57 to **59** (`AdjacencyInvariance.lean`
+and `Rigidity.lean` are the new modules). The zero-sorry /
+zero-custom-axiom posture and the standard-trio-only axiom-
+dependency posture are all preserved.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

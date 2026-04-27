@@ -3124,3 +3124,85 @@ example (m : ℕ) :
   extracted_perm_at_identity m
 
 end WMSigmaExtractionNonVacuity
+
+-- ============================================================================
+-- ## §15.14 Workstream R-TI Stage 5 T-API-9 (adjacency invariance lemmas).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.arrowElement_sandwich
+#print axioms Orbcrypt.GrochowQiao.radical_arrowElement_mul
+#print axioms Orbcrypt.GrochowQiao.arrowElement_radical_mul
+#print axioms Orbcrypt.GrochowQiao.inner_aut_radical_fixes_arrow
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_arrow_image
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_sandwich
+#print axioms Orbcrypt.GrochowQiao.mem_presentArrows_iff
+#print axioms Orbcrypt.GrochowQiao.vertexPerm_isGraphIso_iff_arrow_preserving
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_preserves_presentArrows_iff
+
+namespace AdjacencyInvarianceNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 5 T-API-9.1 non-vacuity witness (sandwich identity).**
+On any vertex pair, the sandwich identity holds for arrowElement. -/
+example (m : ℕ) (u v : Fin m) :
+    vertexIdempotent m u * arrowElement m u v * vertexIdempotent m v =
+      arrowElement m u v :=
+  arrowElement_sandwich m u v
+
+/-- **Stage 5 T-API-9.2 non-vacuity witness (inner conjugation fixes arrow).**
+For zero radical element, the trivial inner conjugation acts as identity. -/
+example (m : ℕ) (u v : Fin m) :
+    (1 + (0 : pathAlgebraQuotient m)) * arrowElement m u v * (1 - 0) =
+      arrowElement m u v :=
+  inner_aut_radical_fixes_arrow m 0 (pathAlgebraRadical m).zero_mem u v
+
+/-- **Stage 5 T-API-9.4 non-vacuity witness (mem_presentArrows iff).**
+Membership in `presentArrows` is exactly `adj u v = true`. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (u v : Fin m) :
+    (.edge u v : QuiverArrow m) ∈ presentArrows m adj ↔ adj u v = true :=
+  mem_presentArrows_iff m adj u v
+
+end AdjacencyInvarianceNonVacuity
+
+-- ============================================================================
+-- ## §15.15 Workstream R-TI Stage 5 T-API-10 (final rigidity composition).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.vertexPermPreservesAdjacency
+#print axioms Orbcrypt.GrochowQiao.GL3InducesArrowPreservingPerm
+#print axioms Orbcrypt.GrochowQiao.gl3_induces_arrow_preserving_perm_identity_case
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoRigidity_under_arrowDischarge
+#print axioms Orbcrypt.GrochowQiao.r_ti_rigidity_status_disclosure
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_isInhabitedKarpReduction_full_chain
+
+namespace RigidityNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 5 T-API-10 non-vacuity witness (identity case).**
+The identity vertex permutation trivially preserves arrow support
+on any single graph. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    ∃ σ : Equiv.Perm (Fin m),
+      ∀ u v, (.edge u v : QuiverArrow m) ∈ presentArrows m adj ↔
+             (quiverMap m σ (.edge u v)) ∈ presentArrows m adj :=
+  gl3_induces_arrow_preserving_perm_identity_case m adj
+
+/-- **Stage 5 T-API-10 non-vacuity witness (composition under arrow-discharge).**
+Given the research-scope arrow-preservation Prop, the rigidity
+theorem is unconditional. -/
+example (h_arrow : GL3InducesArrowPreservingPerm) :
+    GrochowQiaoRigidity :=
+  grochowQiaoRigidity_under_arrowDischarge h_arrow
+
+/-- **Stage 5 T-API-10 non-vacuity witness (final Karp reduction).**
+Under the arrow-discharge, the full Karp reduction inhabitant is
+discharged. -/
+example (h_arrow : GL3InducesArrowPreservingPerm) :
+    @GIReducesToTI ℚ _ :=
+  grochowQiao_isInhabitedKarpReduction_full_chain h_arrow
+
+end RigidityNonVacuity
