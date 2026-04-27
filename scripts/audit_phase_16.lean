@@ -2293,6 +2293,7 @@ end PetrankRothLayer3NonVacuity
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_padding_mid
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_padding_right
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_vertex
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_padding
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_padding_distinguishable
 
 -- Layer T1 σ-action on quiver arrows + multiplicative equivariance
@@ -2492,6 +2493,20 @@ example (adj : Fin 3 → Fin 3 → Bool) :
       ((slotEquiv 3).symm (.vertex 0))
       ((slotEquiv 3).symm (.vertex 0)) = 1 :=
   grochowQiaoEncode_diagonal_vertex 3 adj 0
+
+/-- **Stage 0 non-vacuity witness (encoder evaluation at the diagonal of a
+    padding slot returns `2`).** Confirms the post-Stage-0
+    distinguished-padding strengthening: padding-diagonal value `2` is
+    distinct from vertex-diagonal value `1` and present-arrow-diagonal
+    value `0`, closing the isolated-vertex degeneracy at the
+    diagonal-value level. Witnessed on the empty graph at `m = 2`,
+    where the arrow slot `(0, 1)` is a padding slot. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1)) = 2 :=
+  grochowQiaoEncode_diagonal_padding 2 (fun _ _ => false) 0 1 rfl
 
 /-- **R-TI Layer T2.6 non-vacuity witness (padding-distinguishability
     on the empty graph).** On the empty graph, every arrow slot is

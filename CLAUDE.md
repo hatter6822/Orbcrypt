@@ -4223,6 +4223,77 @@ script exercises **639 declarations** (up from 636), all on the
 standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
 Zero `sorry`, zero custom axioms across all Layer 0–6b material.
 
+Workstream R-TI rigidity discharge — Stage 0 (Audit 2026-04-27 —
+encoder strengthening for distinguished padding) has been completed:
+
+- **Mathematical issue closed.** Pre-Stage-0, the encoder's
+  `ambientSlotStructureConstant := if i = j ∧ j = k then 1 else 0`
+  (`StructureTensor.lean:289`) used the same scalar value `1` at
+  padding diagonals as the `pathSlotStructureConstant` at vertex-slot
+  diagonals (the idempotent law `e_v · e_v = e_v` contributes `1`).
+  As a consequence, an isolated vertex `v` (no incident edges in
+  `adj`) had the same slab-rank signature as any padding slot — both
+  contributed only a single non-zero entry at the triple-diagonal
+  with value `1`, giving rank 1 with no other invariant to
+  distinguish them. This blocked the rigidity argument's slot-
+  classification step on graphs with isolated vertices.
+- **Fix.** `Orbcrypt/Hardness/GrochowQiao/StructureTensor.lean`:
+  `ambientSlotStructureConstant` strengthened to value `2` instead
+  of `1`, implementing Decision GQ-B's distinguished-padding
+  requirement at the value level. The three slot kinds are now
+  literally distinguishable at the diagonal-value level alone:
+  vertex slots have diagonal `1` (idempotent law), present-arrow
+  slots have diagonal `0` (since `pathMul (.edge u v) (.edge u v) =
+  none` from `J² = 0`), padding slots have diagonal `2` (the
+  strengthened ambient constant).
+- **New theorem.** `grochowQiaoEncode_diagonal_padding` — explicit
+  witness that for any padding slot `(u, v)` (i.e., arrow slot with
+  `adj u v = false`), the encoder evaluates to `2` at the triple-
+  diagonal. Companion to the existing `grochowQiaoEncode_diagonal_vertex`.
+- **Audit script.** `scripts/audit_phase_16.lean` extended with one
+  new `#print axioms` entry (`grochowQiaoEncode_diagonal_padding`)
+  + one non-vacuity `example` exhibiting the diagonal-value-2
+  property on the empty graph at `m = 2`.
+- **Forward direction unchanged.** The forward-direction proofs
+  (`grochowQiaoEncode_padding_left/_mid/_right`,
+  `grochowQiaoEncode_padding_distinguishable`,
+  `ambientSlotStructureConstant_equivariant`,
+  `pathSlotStructureConstant_equivariant`,
+  `grochowQiaoEncode_equivariant`, `grochowQiao_forwardObligation`)
+  all compile without modification because their proofs depend on
+  `ambientSlotStructureConstant` symbolically (via `if i = j ∧ j =
+  k`), not by its specific value. Only one in-prose docstring update
+  in `grochowQiaoEncode_padding_distinguishable` adjusts the value
+  reference from `1` to `2`.
+- **Verification.** Full `lake build` succeeds with **3,391 jobs,
+  zero warnings, zero errors**. Phase 16 audit script exercises
+  **640 declarations** (up from 639 — one new entry for
+  `grochowQiaoEncode_diagonal_padding`), all on the standard Lean
+  trio. `#print axioms grochowQiaoEncode_diagonal_padding` reports
+  `[propext, Classical.choice, Quot.sound]`.
+- **Cryptographic rationale.** The rigidity argument
+  (`GrochowQiaoRigidity` Prop in `Reverse.lean:122`) requires that
+  GL³ tensor isomorphisms preserve the path-algebra-vs-padding
+  partition. Without distinguishable padding values, an isolated
+  vertex of `adj₁` could be mapped to a padding slot of `adj₂` by a
+  GL³ isomorphism — yielding a slot bijection that does NOT descend
+  to a vertex permutation. The Stage 0 strengthening ensures that
+  every slot-classification predicate (vertex / present-arrow /
+  padding) is GL³-invariant up to slot permutation, which is the
+  pre-requisite for Stages 1–5 of the rigidity-discharge plan
+  (`docs/planning/R_TI_PHASE_C_THROUGH_H_PLAN.md`).
+- **Next steps.** Stage 1 (T-API-1 + T-API-2: `Tensor3` unfoldings
+  + GL³ rank invariance, ~800 LOC) is the foundation layer
+  consuming Stage 0's strengthened encoder.
+
+Patch version: `lakefile.lean` retains `0.1.21`; Stage 0 is a
+pre-requisite encoder strengthening with no API surface change
+(zero new modules, one new theorem inside an existing module). The
+38-module total, the zero-sorry / zero-custom-axiom posture, and
+the standard-trio-only axiom-dependency posture are all preserved.
+The full version bump (`0.1.21 → 0.1.22`) is reserved for the
+final Stage 5 landing of `grochowQiaoRigidity`.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
