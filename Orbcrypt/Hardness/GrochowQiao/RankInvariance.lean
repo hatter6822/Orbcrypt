@@ -148,5 +148,27 @@ theorem unfoldRank₁_areTensorIsomorphic (T₁ T₂ : Tensor3 n F)
   obtain ⟨g, hg⟩ := h
   rw [← hg, unfoldRank₁_smul]
 
+-- ============================================================================
+-- Note on axis-2 and axis-3 unfolding rank invariance.
+--
+-- The symmetric theorems `unfoldRank₂_smul` and `unfoldRank₃_smul`
+-- (and the combined `tensorRank_smul`) require deriving the
+-- `unfold₂_tensorContract` and `unfold₃_tensorContract` bridges
+-- analogous to T-API-1.6's `unfold₁_tensorContract`.  For axis-2,
+-- the bridge would have the form
+--   `unfold₂ (tensorContract A B C T) = B * unfold₂ T * (Aᵀ ⊗ₖ Cᵀ)`,
+-- with the rank invariance proof structurally identical to
+-- `unfoldRank₁_smul`.
+--
+-- These derivations are research-scope follow-ups per the Stage 1
+-- planning document; the axis-1 case `unfoldRank₁_smul` proven
+-- above is the critical path that Stage 3 (T-API-4 block
+-- decomposition) consumes for slot rank-class arguments.
+--
+-- This module intentionally does not stub out the axes-2/3 cases
+-- with `sorry` to preserve the zero-`sorry` posture across the
+-- entire workstream.
+-- ============================================================================
+
 end Tensor3
 end Orbcrypt

@@ -2917,6 +2917,7 @@ end SlotSignatureNonVacuity
 #print axioms Orbcrypt.GrochowQiao.presentArrowSlot_bijOn_of_presentArrowPreserving
 #print axioms Orbcrypt.GrochowQiao.paddingSlot_bijOn_of_paddingPreserving
 #print axioms Orbcrypt.GrochowQiao.presentArrowSlot_card_eq_of_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_image_eq_of_vertexPreserving
 #print axioms Orbcrypt.GrochowQiao.paddingSlot_card_eq_of_paddingPreserving
 #print axioms Orbcrypt.GrochowQiao.present_arrow_count_eq_of_threePartitionPreserving
 

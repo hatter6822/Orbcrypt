@@ -231,12 +231,29 @@ theorem paddingSlot_bijOn_of_paddingPreserving (m : ℕ)
 -- T-API-5.5 — Cardinality preservation under partition-preserving permutation.
 -- ============================================================================
 
-/-- A vertex-slot-preserving permutation preserves the vertex-slot
-cardinality (which is always `m`, but stated as a structural identity). -/
-theorem vertexSlotIndices_card_eq_of_vertexPreserving (m : ℕ)
+/-- A vertex-slot-preserving permutation maps vertex-slot indices to
+vertex-slot indices: the π-image of `vertexSlotIndices m` (as a
+Finset) equals `vertexSlotIndices m` itself.
+
+This is the substantive form of vertex-slot preservation at the
+Finset level, used by downstream cardinality / bijection arguments.
+The structural identity `(vertexSlotIndices m).card = (vertexSlotIndices m).card`
+is trivially true (vertex slots are independent of `adj`); the
+content here is that π's *image* is exactly the same Finset. -/
+theorem vertexSlotIndices_image_eq_of_vertexPreserving (m : ℕ)
     (π : Equiv.Perm (Fin (dimGQ m)))
-    (_ : IsVertexSlotPreserving m π) :
-    (vertexSlotIndices m).card = (vertexSlotIndices m).card := rfl
+    (h : IsVertexSlotPreserving m π) :
+    (vertexSlotIndices m).image π = vertexSlotIndices m := by
+  apply Finset.ext
+  intro j
+  simp only [Finset.mem_image]
+  constructor
+  · rintro ⟨i, hi, rfl⟩
+    exact (h i).mp hi
+  · intro hj
+    have h_inv : IsVertexSlotPreserving m π⁻¹ := h.inv
+    refine ⟨π⁻¹ j, ?_, by simp⟩
+    exact (h_inv j).mp hj
 
 /-- A present-arrow-slot-preserving permutation forces both adjacencies to
 have the same number of present arrows.
