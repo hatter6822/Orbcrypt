@@ -4045,6 +4045,116 @@ declaration depends only on the standard Lean trio (`propext`,
 `Classical.choice`, `Quot.sound`); `lake build` succeeds cleanly
 across all 3,389 jobs; zero `sorry`, zero custom axioms.
 
+Workstream R-TI Layer 6.7–6.10 + Layer 6b — CompleteOrthogonalIdempotents
+machinery + Wedderburn–Mal'cev conjugacy for `F[Q_G] / J²` (FULL PROOF,
+no Prop hypothesis) has been completed (2026-04-27):
+
+- **Layer 6.7–6.10 — CompleteOrthogonalIdempotents (in
+  AlgebraWrapper.lean):**
+  * `vertexIdempotent_completeOrthogonalIdempotents m`: the canonical
+    vertex-idempotent family is a `CompleteOrthogonalIdempotents`
+    structure (ortho via `vertexIdempotent_mul_vertexIdempotent`;
+    complete via `pathAlgebraOne` definition).
+  * `AlgEquiv_preserves_completeOrthogonalIdempotents`: `AlgEquiv`
+    preserves COIs (each field follows from `AlgEquiv.map_mul`,
+    `map_zero`, `map_sum`, `map_one`).
+  * Mathlib's `CompleteOrthogonalIdempotents` from
+    `Mathlib.RingTheory.Idempotents` is the reused vehicle.
+
+- **Layer 6b — Wedderburn–Mal'cev for J² = 0 (NEW module
+  `Orbcrypt/Hardness/GrochowQiao/WedderburnMalcev.lean`, 762 LOC):**
+  * **Layer 6b.1 — Jacobson radical:** `pathAlgebraRadical m`
+    (Submodule ℚ via arrow basis span); `pathAlgebraRadical_mul_radical_eq_zero`
+    proves `J · J = 0` via `Submodule.span_induction` reducing to
+    `arrowElement_mul_arrowElement_eq_zero` (Layer 1.4).
+  * **Layer 6b.2 — Element decomposition modulo radical:** restates
+    `pathAlgebra_decompose` (Layer 5.3) using named projections
+    `pathAlgebra_vertexPart` and `pathAlgebra_arrowPart`, the latter
+    explicitly `∈ pathAlgebraRadical m`.
+  * **Layer 6b.4 — Inner conjugation machinery:**
+    `oneAddRadical_mul_oneSubRadical : (1 + j) * (1 - j) = 1` (and
+    symmetric) follow from `j² = 0` via `noncomm_ring`. The structural
+    `innerAut_simplified : (1 + j) * c * (1 - j) = c + j*c - c*j`
+    (using `J² = 0` to kill the cubic `j * c * j` term, via
+    `radical_sandwich_eq_zero`) drives the verification.
+  * **Layer 6b.3 — HEADLINE: Wedderburn–Mal'cev conjugacy
+    (FULL PROOF):**
+      - `coi_vertex_coef_zero_or_one` / `_orth` / `_complete`: vertex
+        coefficient analysis from idempotency / orthogonality /
+        completeness of the COI.
+      - `pathAlgebra_idempotent_zero_of_id_coef_zero`: an idempotent
+        with all `.id` coefficients zero IS zero (via
+        `pathAlgebra_idempotent_mu_constraint`).
+      - `coi_unique_active_per_z`: each `z` has exactly one COI
+        element with `(e' i)(.id z) = 1` (existence from completeness;
+        uniqueness from orthogonality).
+      - `coi_chooseActive` + `_bijective`: extracts a function
+        `Fin m → Fin m` mapping each `z` to its unique active `i`;
+        bijectivity via `Finite.injective_iff_surjective`.
+      - `coi_vertexPerm`: the σ permutation as the inverse of
+        `coi_chooseActive`, with `coi_vertexPerm_active`,
+        `coi_vertexPerm_iff`, `coi_vertexPerm_eval`.
+      - `coi_conjugator h_coi h_nz := -∑_{w, s} (e' w)(.edge (σ w) s) •
+        α(σ w, s)`: the explicit construction of `j`.
+      - `coi_conjugator_mem_radical`, `coi_conjugator_apply_id`
+        (always 0), `coi_conjugator_apply_edge` (= -(e' (σ⁻¹u))(.edge u t)).
+      - `pathAlgebra_idempotent_self_loop_zero`: at the active vertex,
+        the self-loop coefficient is 0 (from `2X = X` ⟹ `X = 0`).
+      - `pathAlgebra_idempotent_offdiag_arrow_zero`: arrows with both
+        endpoints inactive have coefficient 0.
+      - `coi_cross_arrow_compat`: cross-COI arrow compatibility
+        `(e' v)(.edge u t) + (e' (σ⁻¹u))(.edge u t) = 0` when
+        `t = σv`, `u ≠ σv`, derived from
+        `e' (σ⁻¹u) * e' v = 0` evaluated at `.edge u t` via
+        `pathAlgebraMul_apply_edge`.
+      - **`coi_conjugation_identity`**: the pointwise verification
+        that `(1 + j) * vertexIdempotent (σ v) * (1 - j) = e' v`,
+        proven via `funext c; cases c` and case-splitting `σv = u`,
+        `σv = t` to compute the four corner cases, each closed by
+        the appropriate idempotency / compatibility / self-loop /
+        off-diagonal lemma.
+      - **`wedderburn_malcev_conjugacy m e' h_coi h_nz`** (HEADLINE):
+        ```
+        ∃ (σ : Equiv.Perm (Fin m)) (j : pathAlgebraQuotient m),
+          j ∈ pathAlgebraRadical m ∧
+          ∀ v : Fin m,
+            (1 + j) * vertexIdempotent m (σ v) * (1 - j) = e' v
+        ```
+        Built by composing the σ-extraction (`coi_vertexPerm`),
+        the j-construction (`coi_conjugator`), and the conjugation
+        identity (`coi_conjugation_identity`).
+  * **Phase F starter (Layer 9.1):**
+      - `algEquiv_image_vertexIdempotent_COI`: the AlgEquiv-image of
+        the canonical COI is itself a COI (immediate from L6.9).
+      - `algEquiv_image_vertexIdempotent_ne_zero`: each
+        `φ (vertexIdempotent v) ≠ 0` (φ is injective).
+      - **`algEquiv_extractVertexPerm`**: from any
+        `AlgEquiv (pathAlgebraQuotient m)`, extract σ and j with
+        `(1 + j) * vertexIdempotent (σ v) * (1 - j) = φ (vertexIdempotent v)`
+        for all v. This is the cryptographic-rigidity entry point
+        Phase F's adjacency-invariance argument consumes.
+
+**Layer 6 + 6b posture.** 23 new public declarations across
+`AlgebraWrapper.lean` (+76 LOC) and `WedderburnMalcev.lean` (NEW,
+762 LOC). All public declarations depend only on the standard Lean
+trio (`propext`, `Classical.choice`, `Quot.sound`). Zero `sorry`,
+zero custom axioms. Module count rises from 47 to 48 (one new file
+under `Orbcrypt/Hardness/GrochowQiao/`). Full `lake build` succeeds
+across 3,391 jobs with zero warnings / zero errors.
+
+**Mathematical significance.** Wedderburn–Mal'cev for `F[Q_G] / J²`
+is the deep algebraic content underlying the rigidity of vertex
+idempotents in the radical-2 truncated path algebra. The user's
+mid-session ban on Prop hypotheses for Layer 6b.3 forced an
+elementary explicit-construction proof. Key insight: in `J² = 0`,
+the conjugating element `j` decomposes uniquely as a sum of arrow
+basis elements weighted by the COI's off-diagonal coefficients, and
+the cross-orthogonality conditions guarantee the construction is
+self-consistent across all `(u, t)` arrow pairs (the
+`coi_cross_arrow_compat` lemma).
+
+**Patch version.** `lakefile.lean` bumped from `0.1.20` to `0.1.21`.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

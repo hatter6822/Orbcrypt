@@ -2672,3 +2672,52 @@ example (h_rigidity : GrochowQiaoRigidity) : @GIReducesToTI ℚ _ :=
   grochowQiao_isInhabitedKarpReduction_under_rigidity h_rigidity
 
 end GrochowQiaoNonVacuity
+
+-- ============================================================================
+-- ## §15.5 Workstream R-TI Layer 6 + 6b (CompleteOrthogonal + Wedderburn-Mal'cev)
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_completeOrthogonalIdempotents
+#print axioms Orbcrypt.GrochowQiao.AlgEquiv_preserves_completeOrthogonalIdempotents
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraRadical
+#print axioms Orbcrypt.GrochowQiao.arrowElement_mem_pathAlgebraRadical
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraRadical_mul_radical_eq_zero
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_decompose_radical
+#print axioms Orbcrypt.GrochowQiao.oneAddRadical_mul_oneSubRadical
+#print axioms Orbcrypt.GrochowQiao.oneSubRadical_mul_oneAddRadical
+#print axioms Orbcrypt.GrochowQiao.innerAut_simplified
+#print axioms Orbcrypt.GrochowQiao.coi_vertex_coef_zero_or_one
+#print axioms Orbcrypt.GrochowQiao.coi_vertex_coef_orth
+#print axioms Orbcrypt.GrochowQiao.coi_vertex_coef_complete
+#print axioms Orbcrypt.GrochowQiao.coi_unique_active_per_z
+#print axioms Orbcrypt.GrochowQiao.coi_chooseActive_bijective
+#print axioms Orbcrypt.GrochowQiao.coi_vertexPerm
+#print axioms Orbcrypt.GrochowQiao.coi_vertexPerm_active
+#print axioms Orbcrypt.GrochowQiao.coi_vertexPerm_eval
+#print axioms Orbcrypt.GrochowQiao.coi_conjugator
+#print axioms Orbcrypt.GrochowQiao.coi_conjugator_mem_radical
+#print axioms Orbcrypt.GrochowQiao.coi_conjugator_apply_id
+#print axioms Orbcrypt.GrochowQiao.coi_conjugator_apply_edge
+#print axioms Orbcrypt.GrochowQiao.coi_conjugation_identity
+#print axioms Orbcrypt.GrochowQiao.wedderburn_malcev_conjugacy
+
+namespace WedderburnMalcevNonVacuity
+
+open Orbcrypt.GrochowQiao
+
+/-- The canonical vertex-idempotent COI is itself a witness. -/
+example : CompleteOrthogonalIdempotents (vertexIdempotent 3) :=
+  vertexIdempotent_completeOrthogonalIdempotents 3
+
+/-- Non-vacuity at m = 1: the canonical COI yields a trivial conjugacy
+    via the Wedderburn-Mal'cev theorem. -/
+example :
+    ∃ (σ : Equiv.Perm (Fin 1)) (j : pathAlgebraQuotient 1),
+      j ∈ pathAlgebraRadical 1 ∧
+      ∀ v : Fin 1,
+        (1 + j) * vertexIdempotent 1 (σ v) * (1 - j) = vertexIdempotent 1 v :=
+  wedderburn_malcev_conjugacy 1 (vertexIdempotent 1)
+    (vertexIdempotent_completeOrthogonalIdempotents 1)
+    (vertexIdempotent_ne_zero 1)
+
+end WedderburnMalcevNonVacuity

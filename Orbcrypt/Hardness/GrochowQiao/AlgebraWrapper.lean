@@ -18,6 +18,7 @@ arrow basis elements.
 import Mathlib.Algebra.Algebra.Basic
 import Mathlib.Algebra.Algebra.Pi
 import Mathlib.Algebra.Ring.Idempotent
+import Mathlib.RingTheory.Idempotents
 import Mathlib.LinearAlgebra.Basis.Basic
 import Mathlib.LinearAlgebra.Basis.Defs
 import Mathlib.Algebra.BigOperators.Pi
@@ -1821,6 +1822,79 @@ theorem exists_nonVertex_idempotent (m : ℕ) (h_m : 2 ≤ m) :
       vertexIdempotent_apply_edge m v' v w
     rw [h_lhs, h_rhs] at h_at
     exact one_ne_zero h_at
+
+-- ============================================================================
+-- Layer 6.7–6.10 — `CompleteOrthogonalIdempotents` machinery for vertex
+-- idempotents + AlgEquiv preservation.
+-- ============================================================================
+
+/-- **Layer 6.8 — Vertex idempotents form a complete orthogonal system.**
+
+The family `vertexIdempotent m : Fin m → pathAlgebraQuotient m`
+satisfies Mathlib's `CompleteOrthogonalIdempotents` predicate:
+* each `vertexIdempotent m v` is an idempotent (Layer 6.4);
+* distinct vertex idempotents are mutually annihilating (Layer 1.1);
+* the sum equals `1` (definition of `pathAlgebraOne`).
+
+This is the structural content the Layer 9 (Phase F) vertex-permutation
+extraction will consume: an `AlgEquiv` of path algebras maps the
+canonical COI to another COI of the same cardinality, and by
+Wedderburn–Mal'cev (Layer 6b.3) such COIs are conjugate to the
+canonical one. -/
+theorem vertexIdempotent_completeOrthogonalIdempotents (m : ℕ) :
+    CompleteOrthogonalIdempotents (vertexIdempotent m) where
+  idem v := vertexIdempotent_isIdempotentElem m v
+  ortho := by
+    intro v w h_ne
+    show pathAlgebraMul m (vertexIdempotent m v) (vertexIdempotent m w) = 0
+    rw [vertexIdempotent_mul_vertexIdempotent, if_neg h_ne]
+  complete := by
+    -- Goal: ∑ v : Fin m, vertexIdempotent m v = 1.
+    -- `1 = pathAlgebraOne m = ∑ v, vertexIdempotent m v` is `rfl` by the
+    -- `One` instance + `pathAlgebraOne` definition.
+    show (∑ v : Fin m, vertexIdempotent m v) = pathAlgebraOne m
+    rfl
+
+/-- **Layer 6.9 — `AlgEquiv` preserves complete orthogonal idempotent
+families.**
+
+If `φ : A ≃ₐ[ℚ] B` is an algebra isomorphism and `e : ι → A` is a
+COI, then `φ ∘ e` is a COI in `B`. Each field is preserved:
+* `idem`: `AlgEquiv` preserves `IsIdempotentElem` (Layer 6.6).
+* `ortho`: `φ (e i * e j) = φ (e i) * φ (e j)` and `φ 0 = 0`.
+* `complete`: `φ (∑ i, e i) = ∑ i, φ (e i)` and `φ 1 = 1`.
+
+This is the primary consumer hook for Phase F (vertex permutation
+extraction): apply this to the canonical COI
+`vertexIdempotent_completeOrthogonalIdempotents`, obtaining an image
+COI `φ ∘ vertexIdempotent` that the Wedderburn–Mal'cev conjugacy
+lemma (Layer 6b.3) conjugates back to the canonical one via an
+inner automorphism, yielding the vertex permutation σ. -/
+theorem AlgEquiv_preserves_completeOrthogonalIdempotents
+    {A B : Type*} [Ring A] [Ring B] [Algebra ℚ A] [Algebra ℚ B]
+    {ι : Type*} [Fintype ι] (φ : A ≃ₐ[ℚ] B)
+    {e : ι → A} (h : CompleteOrthogonalIdempotents e) :
+    CompleteOrthogonalIdempotents (φ ∘ e) where
+  idem i := AlgEquiv_preserves_isIdempotentElem φ (h.idem i)
+  ortho := by
+    intro i j h_ne
+    show φ (e i) * φ (e j) = 0
+    rw [← map_mul]
+    rw [show e i * e j = 0 from h.ortho h_ne]
+    exact map_zero φ
+  complete := by
+    show ∑ i, φ (e i) = 1
+    rw [← map_sum, h.complete, map_one]
+
+/-- **Layer 6.10 — Cardinality of the canonical vertex-idempotent COI.**
+
+The canonical COI on `pathAlgebraQuotient m` has cardinality `m`.
+This is just `Fintype.card_fin`, named here to make the COI cardinality
+invariant explicit at the call site (used by Phase F to rule out
+COIs of different cardinalities under any `AlgEquiv`-image). -/
+theorem vertexIdempotent_completeOrthogonalIdempotents_card (m : ℕ) :
+    Fintype.card (Fin m) = m :=
+  Fintype.card_fin m
 
 end GrochowQiao
 end Orbcrypt
