@@ -152,11 +152,11 @@ We follow the **Grochow–Qiao algebra-isomorphism approach**:
 |-------|-------|-----|------|------------|
 | 1 | Encoder structural foundation | ~600 | Low | — (infrastructure) |
 | 2 | Path-block linear restriction (parametric in π) | ~700 | Med | — (infrastructure) |
-| 3 | **GL³ → algebra-iso bridge** | ~2,000+ | **RESEARCH** | The deep step |
+| 3 | **GL³ → algebra-iso bridge** (Approach A; sub-tasks A.1–A.6) | **~3,200** | **RESEARCH** | The deep step |
 | 4 | σ extraction via Wedderburn–Mal'cev | ~250 | Low | — (uses Stage 4 + 6b) |
 | 5 | Arrow preservation from σ + radical | ~400 | Med | — (uses Stage 5) |
 | 6 | Final discharge (Prop 2 + Prop 1 corollary) | ~250 | Low | **Prop 1** + **Prop 2** |
-| | **Total Lean** | **~4,200+** | | |
+| | **Total Lean** | **~5,400** | | |
 
 Plus ~400 LOC for documentation refresh, audit-script
 extensions, and Vacuity-map / VERIFICATION_REPORT updates.
@@ -164,11 +164,12 @@ extensions, and Vacuity-map / VERIFICATION_REPORT updates.
 **Critical observation.** The genuine deep content is
 concentrated in **Phase 3 alone**. Phases 1, 2, 4, 5, 6 are
 all tractable infrastructure or composition with existing
-machinery. **The ~2,000+ LOC budget for Phase 3 is uncertain**
-because it formalises ~80 pages of the Grochow–Qiao paper
-that does not have an existing Lean translation; the budget
-could be substantially higher if hidden Mathlib API gaps are
-encountered.
+machinery. **Phase 3's ~3,200 LOC budget reflects honest
+analysis of Approach A's six sub-tasks** (A.1 ~250, A.2 ~300,
+A.3 ~700, A.4 ~250, A.5 ~600, A.6 ~400, plus ~660 LOC
+reserves). This budget is achievable with focused effort
+but contains genuine research content (sub-tasks A.3 and
+A.5 are both research-grade).
 
 ## 5. Outcome
 
@@ -493,7 +494,7 @@ algebra iso.
 
 ---
 
-## Phase 3 — GL³ → algebra-iso bridge (~2,000+ LOC, RESEARCH-SCOPE)
+## Phase 3 — GL³ → algebra-iso bridge (~3,200 LOC via Approach A, RESEARCH-SCOPE)
 
 **Goal.** Given `g • encode adj₁ = encode adj₂`, construct an
 `AlgEquiv` `pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m`
@@ -507,68 +508,595 @@ substantial multilinear-algebra content. The two main approaches
 are described below; the plan does not commit to either, since
 which is more tractable in Lean is itself a research question.
 
-### Approach A — Tensor stabilizer / Manin-style (~2,000 LOC)
+### Approach A — Tensor stabilizer / Manin-style (RECOMMENDED, ~2,400–2,800 LOC)
 
-**Outline.**
-1. Use Phase 1's `encoder_associativity_identity` to argue
-   that the encoder satisfies a **non-degenerate associative
-   tensor identity**.
-2. The space of GL³ stabilizers of an associative tensor
-   coincides (up to a small modification) with the algebra
-   automorphism group. (Manin's theorem on tensor stabilizers
-   for associative algebras.)
-3. Specialize to TWO encoders adj₁, adj₂: a GL³ iso between
-   them induces an algebra iso between the path algebras.
+**Why recommended.** Approach A is the cleanest formalization
+strategy because:
 
-**Status.** This approach uses the cleanest mathematical
-content (associativity identity, Manin's theorem). Manin's
-theorem itself is not in Mathlib at the pinned commit; would
-need to be formalized as a prerequisite (~500 LOC).
+1. It uses the **encoder's polynomial identities** (Phase 1's
+   associativity identity) as the central technical lever,
+   building cleanly on existing Phase-1 content.
+2. Once the polynomial framework is in place, the partition-
+   preservation step (sub-task A.3) and the algebra-iso
+   construction (sub-tasks A.5–A.6) decompose naturally into
+   tractable pieces.
+3. The "Manin tensor stabilizer" technique is a standard tool
+   in algebraic-tensor-rank theory; the formalization
+   prerequisites are well-defined.
+4. Approach A's intermediate deliverables (e.g.,
+   `encoder_polynomial_identities`, the Manin theorem itself)
+   are independently useful — they advance Mathlib's
+   tensor-algebra coverage even if the workstream stalls.
 
-### Approach B — Direct path-block algebra construction (~2,000 LOC)
+**High-level argument.**
 
-**Outline.**
-1. Establish that GL³ preserves the path/padding partition at
-   the slot-cardinality level, somehow. **This is a
-   chicken-and-egg problem with Prop 1**: cardinality
-   preservation is what we're trying to prove. Two ways to
-   break the cycle:
-   - **Approach B1.** Use the encoder's diagonal-value
-     structure (post-Stage-0: vertex=1, present-arrow=0,
-     padding=2) plus a clever multilinear-algebra invariant
-     to derive cardinality preservation directly. Open
-     research question what invariant suffices.
-   - **Approach B2.** Use the encoder's *non-degenerate
-     associativity* (Phase 1) plus the GL³ action's effect
-     on associativity-witnesses to derive partition
-     preservation. This is closer to Approach A.
-2. Once partition preservation is established, use Phase 2's
-   `gl3_restrict_to_pathBlock` to obtain a linear iso between
-   path subspaces.
-3. Use Phase 1's encoder evaluation lemmas + the structure-
-   tensor preservation under GL³ to argue the linear iso is
-   multiplicative (an algebra hom). This step is the
-   substantive content.
-4. Package as `AlgEquiv` via `AlgEquiv.ofBijective` (Mathlib).
+The encoder `T = grochowQiaoEncode m adj` satisfies a *family
+of polynomial identities* (associativity, distinguished-padding
+diagonal, padding orthogonality). These identities are
+preserved under GL³ action (because they are multilinear in
+T's entries, and GL³ acts by multilinear transformations).
+For two encoders `T₁ = encode adj₁` and `T₂ = encode adj₂`
+with `g • T₁ = T₂`, both encoders satisfy the same polynomial
+identities. Combined with Manin's theorem (which says
+"GL³-isomorphic associative-tensor encodings induce
+algebra-isomorphic algebras"), this delivers an algebra iso
+`A(adj₁) ≃ A(adj₂)`.
 
-**Status.** Approach B is more directly aligned with the
-existing Lean infrastructure (`pathAlgebraQuotient`'s
-explicit basis + multiplication table). Step 3 is the
-genuinely novel content; ~1,500 LOC reserve.
+The argument decomposes into **6 named sub-tasks** (A.1 → A.6)
+with concrete LOC budgets, dependencies, and Mathlib API
+verifications. Each sub-task is independently auditable.
 
-### Recommended approach (v4)
+| Sub-task | Title | LOC | Risk |
+|----------|-------|-----|------|
+| A.1 | Encoder polynomial-identity catalogue | ~250 | Low |
+| A.2 | GL³ action preserves polynomial identities | ~300 | Low–Med |
+| A.3 | Distinguished-padding rigidity (partition preservation) | ~700 | **High** |
+| A.4 | Restriction to path-only structure tensor | ~250 | Med |
+| A.5 | Manin tensor-stabilizer theorem (prerequisite) | ~600 | **High** |
+| A.6 | Algebra-iso construction + AlgEquiv packaging | ~400 | Med |
+| | **Approach A total** | **~2,500** | |
 
-The plan **does not commit** to either Approach A or B.
-Implementers should choose based on:
-- Mathlib's growth between plan-acceptance and
-  implementation-start (e.g., if Manin's theorem lands in
-  Mathlib, Approach A becomes much shorter).
-- Available person-time and mathematical comfort with each
-  technique.
-- Empirical Lean-formalization difficulty (some steps may
-  be easier in one approach than the other).
+Plus ~300 LOC reserve for Mathlib-API hand-roll if needed
+(see per-sub-task risk analysis).
 
-**Both approaches yield the same final theorem:**
+#### Sub-task A.1 — Encoder polynomial-identity catalogue (~250 LOC, Low risk)
+
+**Goal.** Catalogue and prove the family of polynomial
+identities the encoder satisfies. These identities will be
+used by sub-tasks A.2 (preservation under GL³) and A.3
+(partition-preservation argument).
+
+**Public surface.**
+
+| Declaration | Statement | LOC |
+|-------------|-----------|-----|
+| `encoder_assoc_path` | (re-export of Phase 1.2 `encoder_associativity_identity`) | ~5 |
+| `encoder_diag_at_path_in_zero_one` | `i path-algebra slot → encode m adj i i i ∈ {0, 1}` | ~30 |
+| `encoder_diag_at_padding_eq_two` | `i padding slot → encode m adj i i i = 2` | ~30 |
+| `encoder_off_diag_path_padding_zero` | `i path, j padding → encode m adj i j k = 0 ∧ encode m adj i k j = 0 ∧ encode m adj j i k = 0` (re-export of `_padding_distinguishable`) | ~30 |
+| `encoder_padding_diag_only` | `i padding slot → encode m adj i j k ≠ 0 ↔ j = i ∧ k = i` | ~50 |
+| `encoder_unit_compatibility` | `∑_v encode m adj (vertexSlot v) j k = δ(j, k)` for path-algebra `j, k` (encodes `(∑_v e_v) · e_j = e_j`, the unit identity) | ~80 |
+
+**Mathematical content.**
+
+`encoder_diag_at_path_in_zero_one` follows from Phase 1.1's
+per-slot evaluation: vertex slot diagonal = 1, present-arrow
+slot diagonal = 0.
+
+`encoder_padding_diag_only` follows from the encoder's
+piecewise definition + `_padding_distinguishable`: at padding
+slot `i`, the encoder uses `ambientSlotStructureConstant`,
+which is `if i = j ∧ j = k then 2 else 0`.
+
+`encoder_unit_compatibility` is the **multiplicative-identity
+identity**: in the path algebra `pathAlgebraQuotient m`, the
+unit element is `1 = ∑_v vertexIdempotent v`, and `1 · e_j =
+e_j` for any `j`. This translates to the structure-tensor
+identity `∑_{vertex slots i} T(i, j, k) = δ(j, k)` for path-
+algebra `(j, k)`.
+
+**Sub-lemma decomposition (each ≤ 80 LOC).**
+
+* **A.1.1.** `encoder_diag_at_path_in_zero_one` — direct
+  case-split on slot kind via `slotEquiv`.
+* **A.1.2.** `encoder_diag_at_padding_eq_two` — uses Stage 0
+  `grochowQiaoEncode_diagonal_padding`.
+* **A.1.3.** `encoder_padding_diag_only` — uses
+  `_padding_distinguishable` + `ambientSlotStructureConstant`'s
+  `if i = j ∧ j = k` shape.
+* **A.1.4.** `encoder_unit_compatibility_at_vertex_slots` —
+  case-split: when `j = vertex v`, only `i = vertex v`
+  contributes (`pathMul (.id v) (.id v) = some (.id v)`); when
+  `j = arrow u v` (present), only `i = vertex u` contributes
+  (`pathMul (.id u) (.edge u v) = some (.edge u v)`).
+
+**Mathlib anchors.** `pathMul_id_id`, `pathMul_id_edge`
+(existing in `PathAlgebra.lean`); `Finset.sum_eq_single`;
+Stage 0 / Stage 2 diagonal-value lemmas.
+
+**Risk.** Low. Pure structural unfolding.
+
+**Verification gate.** Each lemma's `#print axioms` reports
+standard Lean trio only; non-vacuity at `m ∈ {1, 2}`.
+
+**Consumer.** Sub-tasks A.2 and A.3.
+
+#### Sub-task A.2 — GL³ action preserves polynomial identities (~300 LOC, Low–Med risk)
+
+**Goal.** For any 3-tensor `T : Tensor3 n F` and any GL³ triple
+`g`, certain polynomial identities (associativity, padding
+diagonality) are preserved by the GL³ action `g • T`. This is
+the **multilinearity preservation** content needed for sub-task
+A.3 to apply A.1's identities to `g • T₁ = T₂`.
+
+**Why this is non-trivial.** The associativity identity
+`∑_a T(i, j, a) · T(a, k, l) = ∑_a T(j, k, a) · T(i, a, l)` is
+a quartic polynomial in T's entries. Under
+`(g • T)(i, j, k) = ∑_{a,b,c} g.1(i,a) g.2(j,b) g.3(k,c) T(a,b,c)`,
+the identity becomes a degree-8 polynomial in g's entries
+times T's entries. Showing this identity holds for `g • T`
+when it holds for T requires careful index manipulation.
+
+**Public surface.**
+
+| Declaration | Statement |
+|-------------|-----------|
+| `tensorContract_assoc_preserved` | If T satisfies the associativity identity (on a subset of indices closed under the multiplicative table), then `g • T` also satisfies it (with the same indices, after left-multiplying by g₁). |
+| `tensorContract_diag_preserved_for_invariant_diagonal` | A SPECIAL case: if T's diagonal entries are restricted to a discrete invariant set (e.g., `{0, 1, 2}` for our encoder), this restriction is preserved by GL³ ONLY when g is a permutation matrix triple (NOT general GL³). |
+
+> **Important honest note:** the second claim
+> (`_diag_preserved_for_invariant_diagonal`) is NOT preserved
+> for general GL³ — it holds only for permutation-matrix
+> triples. For arbitrary GL³, diagonal entries change. This
+> is a key reason sub-task A.3 (distinguished-padding
+> rigidity) is genuinely hard: the discrete-diagonal
+> invariance must be DERIVED, not assumed.
+
+**Mathematical content of `tensorContract_assoc_preserved`.**
+
+Let `T' = g • T`. The associativity identity for `T'`:
+```
+∑_a T'(i, j, a) · T'(a, k, l) = ∑_a T'(j, k, a) · T'(i, a, l)
+```
+
+Expand both sides via `unfold₁_tensorContract` (or directly via
+`tensorContract` definition), use
+`Finset.sum_comm` extensively, and reduce to the original
+associativity identity for T (with index relabeling).
+
+The cleanest formalization is probably to:
+
+1. Define a "tensor associativity predicate" as a `Prop`:
+   `IsAssociativeTensor T := ∀ i j k l, ∑_a T i j a * T a k l = ∑_a T j k a * T i a l`.
+
+2. Prove `IsAssociativeTensor T → IsAssociativeTensor (g • T)`.
+   This takes a few hundred LOC of `Finset.sum`-arithmetic but
+   is mechanical.
+
+3. Combine with A.1's `encoder_assoc_path` to conclude:
+   `IsAssociativeTensor (g • encode adj₁) ↔ IsAssociativeTensor (encode adj₁)`.
+
+**Sub-lemma decomposition (each ≤ 100 LOC).**
+
+* **A.2.1** `IsAssociativeTensor` definition (~10 LOC).
+* **A.2.2** `IsAssociativeTensor.smul` — preservation under
+  GL³ action (~150 LOC). The technical core; uses
+  `Finset.sum_comm`, `unfold₁_tensorContract`, and three
+  applications of multilinearity.
+* **A.2.3** `encoder_isAssociativeTensor` — apply A.1's
+  `encoder_assoc_path` to derive the predicate for the
+  encoder (~50 LOC). Note: A.1's identity is conditional on
+  all four indices being path-algebra; A.2.3 must extend to
+  ALL indices (the off-path entries contribute zero on both
+  sides by `encoder_off_diag_path_padding_zero`).
+* **A.2.4** `encoder_unit_compatibility_smul` — GL³ also
+  preserves the unit-compatibility identity from A.1.6 (~80 LOC).
+
+**Mathlib anchors.** `Finset.sum_comm`, `Finset.sum_congr`,
+`Finset.mul_sum`, `Finset.sum_mul`, `unfold₁_tensorContract`
+(Stage 1), `tensorContract` definition (`TensorAction.lean`).
+
+**Risk.** Low–Med. The sum manipulations are mechanical but
+require careful index tracking. ~80 LOC reserve for index
+bookkeeping.
+
+**Verification gate.** `IsAssociativeTensor.smul` proven for
+arbitrary `n`, `F` (CommRing); `encoder_isAssociativeTensor`
+proven for the GQ encoder; non-vacuity at `m = 1, 2`
+(verify via `decide` on small encoders).
+
+**Consumer.** Sub-task A.3.
+
+#### Sub-task A.3 — Distinguished-padding rigidity (~700 LOC, **High risk**)
+
+**Goal.** Use the polynomial identities from A.1 (preserved
+by GL³ via A.2) plus the encoder's distinguished-padding
+structure (post-Stage-0) to show that **a GL³ tensor iso
+between two encoders preserves the path/padding partition**.
+
+Concretely:
+```
+g • encode m adj₁ = encode m adj₂ →
+  ∃ π : Equiv.Perm (Fin (dimGQ m)),
+    π '' (pathSlotIndices m adj₁) = pathSlotIndices m adj₂ ∧
+    π '' (paddingSlotIndices m adj₁) = paddingSlotIndices m adj₂
+```
+
+This is the **central technical content of Approach A**, and
+the genuinely deep step from Grochow–Qiao 2021 §4.3. It IS
+solvable (the paper proves it), but the formalization is
+substantial.
+
+**Mathematical insight (why this works).**
+
+The padding diagonal is `2`, while path-algebra diagonals are
+in `{0, 1}`. Under arbitrary GL³, diagonals don't transform
+trivially. BUT: the polynomial-identity framework constrains
+the GL³ stabilizers in a way that forces them to act compatibly
+with the padding structure.
+
+Specifically, the encoder has **TWO** independent
+multiplicative structures within it:
+
+1. The path-algebra multiplication on path-algebra slots
+   (associative; satisfies A.1's identity with non-trivial
+   structure constants).
+2. The padding "multiplication" on padding slots (a
+   `δ_{i=j=k}`-only structure, scaled by 2; trivially
+   associative — it's essentially a direct sum of trivial
+   1-dimensional algebras).
+
+A GL³ iso between two encoders must preserve BOTH structures
+(because both are encoded as polynomial identities in the
+encoder). Since the two structures have **incompatible
+multiplicative behaviour** (path-algebra multiplications
+generally produce non-zero off-diagonal entries; padding
+"multiplications" only produce diagonal entries), no GL³ iso
+can mix them.
+
+**Formalization breakdown — 5 sub-sub-tasks.**
+
+##### A.3.1 — Padding "trivial-algebra" identity (~80 LOC)
+
+* **Statement.** `encoder_padding_trivial_algebra`:
+  ```
+  ∀ (i j k : Fin (dimGQ m)) padding slots,
+    encoder m adj i j k = if i = j ∧ j = k then 2 else 0
+  ```
+  (i.e., the padding portion is a direct sum of trivial
+  1-dim algebras, each spanned by a single padding slot.)
+
+* **Proof.** Direct from A.1.3 + the encoder's piecewise
+  definition.
+
+* **Consequence.** The padding portion satisfies the trivial
+  associativity identity with a particular non-trivial scalar
+  (2), which differs from the path-algebra portion's scalars
+  (0 and 1).
+
+##### A.3.2 — Padding-rank polynomial invariant (~150 LOC)
+
+* **Statement.** Define a polynomial invariant
+  `padding_rank_invariant : Tensor3 n F → ℕ` such that:
+  - For the encoder, `padding_rank_invariant (encode m adj) =
+    |paddingSlotIndices m adj|`.
+  - For ANY tensor T satisfying A.1's identities + A.3.1's
+    padding identity, the invariant is GL³-invariant.
+
+  *Concrete construction:* the invariant could be defined as
+  "the number of `i` such that `(T i i i, ∑_a T(i, i, a))`
+  takes the value `(2, 2)` and the slab `T(i, ·, ·)` has
+  rank 1". Verify this characterizes padding slots and is
+  GL³-invariant by combining A.1's identities with A.2's
+  preservation.
+
+  *Note: this is non-trivial; the exact form of the
+  invariant is part of A.3's research-scope content.*
+
+* **Risk.** **High.** The invariant must satisfy three
+  properties simultaneously: (i) it equals
+  `|paddingSlotIndices|` on the encoder, (ii) it's GL³-
+  invariant, (iii) it's expressible as a polynomial in the
+  tensor's entries. Whether ALL three properties can be
+  simultaneously satisfied with a single invariant is the
+  research question. ~200 LOC reserve if multiple
+  invariants must be combined.
+
+##### A.3.3 — Padding-cardinality preservation (~80 LOC)
+
+* **Statement.**
+  `g • encode m adj₁ = encode m adj₂ →
+    |paddingSlotIndices m adj₁| = |paddingSlotIndices m adj₂|`.
+
+* **Proof.** Direct from A.3.2 (apply the invariant to both
+  encoders; the invariance under GL³ + the encoder-equality
+  give equality of cardinalities).
+
+##### A.3.4 — Path-cardinality preservation (~30 LOC)
+
+* **Statement.**
+  `g • encode m adj₁ = encode m adj₂ →
+    |pathSlotIndices m adj₁| = |pathSlotIndices m adj₂|`.
+
+* **Proof.** Total dimension is fixed (`dimGQ m` in both); A.3.3
+  gives padding cardinality equality; subtracting:
+  `|pathSlotIndices| = dimGQ m - |paddingSlotIndices|`.
+
+##### A.3.5 — Constructing the partition-preserving permutation (~360 LOC)
+
+* **Goal.** Combine A.3.3 + A.3.4 with Stage 3's existing
+  `partitionPreservingPermFromEqualCardinalities` to construct:
+  ```
+  π : Equiv.Perm (Fin (dimGQ m)) such that
+    π '' (pathSlotIndices m adj₁) = pathSlotIndices m adj₂ ∧
+    π '' (paddingSlotIndices m adj₁) = paddingSlotIndices m adj₂.
+  ```
+
+* **Public surface.**
+
+  | Declaration | Statement |
+  |-------------|-----------|
+  | `gl3_partition_preserving_perm_via_invariant` | the constructed π (uses A.3.3's cardinality result + Stage 3 infrastructure) |
+  | `gl3_partition_preserving_perm_isThreePartition` | (further refinement) π also preserves vertex-vs-present-arrow split within path slots — proven via A.1's diagonal-value invariant restricted to path slots |
+
+* **Proof.** A.3.3's cardinality equality is the hypothesis
+  of Stage 3's `partitionPreservingPermFromEqualCardinalities`.
+  Apply it to obtain π. The "isThreePartition" refinement
+  follows from A.1's `encoder_diag_at_path_in_zero_one`:
+  within path slots, the diagonal value distinguishes vertex
+  (1) from present-arrow (0), and this distinction is
+  preserved under the polynomial-identity-respecting GL³
+  action.
+
+  Wait — we noted in A.2 that "diagonal value preservation
+  is generally false under GL³". So how does `isThreePartition`
+  work?
+
+  **Honest answer:** `isThreePartition` is genuinely deeper
+  than the binary path/padding split. The vertex-vs-present-
+  arrow split depends on subtler invariants (e.g., the
+  number of non-zero entries in the slab, weighted by
+  associativity-witnesses). Constructing this finer invariant
+  is part of A.3.5's content.
+
+  **Risk reserve:** ~150 LOC reserve specifically for the
+  `isThreePartition` refinement. If it proves too hard,
+  Phase 5's argument can be re-routed through the binary
+  partition + radical-preservation (which is enough for
+  arrow preservation; the vertex-vs-arrow distinction
+  emerges algebraically from the radical structure).
+
+**Sub-task A.3 deliverables.**
+
+* One new `.lean` module:
+  `Orbcrypt/Hardness/GrochowQiao/PaddingRigidity.lean`.
+* `padding_rank_invariant` definition + GL³-invariance proof.
+* `gl3_partition_preserving_perm_via_invariant` headline.
+* Audit-script `#print axioms` entries.
+
+**Risk (overall A.3).** **High.** This is the genuinely deep
+step. The 5 sub-sub-tasks decompose ~700 LOC into ≤ 360 LOC
+pieces. **The biggest unknown is A.3.2's polynomial
+invariant** — finding the right one is itself research. If
+A.3.2 proves intractable, an alternative is to derive the
+partition preservation directly from sub-tasks A.5–A.6
+(Manin's theorem implies it as a corollary). This rerouting
+adds ~200 LOC to A.5/A.6 but eliminates A.3.2/A.3.3.
+
+**Verification gate.** Each sub-sub-task individually verified;
+non-vacuity at `m = 1, 2, 3`; `gl3_partition_preserving_perm_via_invariant`
+returns a concrete π for the identity GL³ triple.
+
+**Consumer.** Sub-tasks A.4 and A.5.
+
+#### Sub-task A.4 — Restriction to path-only structure tensor (~250 LOC, Med risk)
+
+**Goal.** Use Phase 2's `pathBlockMatrix` infrastructure
+together with A.3's partition-preserving permutation π to
+restrict `g.1, g.2, g.3` to the path-algebra subspace,
+producing a GL³ triple that acts on the **path-only structure
+tensor** (the "restricted encoder").
+
+**Mathematical content.**
+
+A.3 gives π : `Equiv.Perm (Fin (dimGQ m))` preserving the
+path/padding partition. Phase 2's `pathBlockMatrix g π` is
+then well-defined and (by A.3) has block-diagonal structure.
+Specifically, `pathBlockMatrix g π = path-component ⊕
+padding-component` (after `Equiv.sumCompl`-style reindexing).
+
+**Define the path-only restricted tensor:**
+```
+T₁_path : Tensor3 |pathSlotIndices m adj₁| ℚ :=
+  fun (i j k : pathSlotIndices m adj₁) =>
+    encode m adj₁ i.val j.val k.val
+```
+(i.e., the encoder restricted to path-algebra slots, viewed
+as a smaller tensor).
+
+**Restricted GL³ triple.** Define
+`(g.1', g.2', g.3') : GL × GL × GL` (each with index set
+`pathSlotIndices m adj₁ → pathSlotIndices m adj₂`) as the
+path-block components of `pathBlockMatrix g π`,
+`pathBlockMatrix₂ g π`, `pathBlockMatrix₃ g π`.
+
+**Key claim.** `(g.1', g.2', g.3') • T₁_path = T₂_path` (where
+`T₂_path` is the path-only restriction of `encode m adj₂`).
+
+This is the structural fact that A.4 establishes: the path-
+block restriction of GL³ acts as a GL³ tensor iso between the
+path-only structure tensors of the two encoders.
+
+**Public surface.**
+
+| Declaration | Statement | LOC |
+|-------------|-----------|-----|
+| `pathOnlyStructureTensor m adj : Tensor3 (pathSlotIndices m adj).card ℚ` | path-restricted encoder | ~30 |
+| `pathOnlyStructureTensor_apply` | unfolding | ~10 |
+| `gl3_path_block_restriction` | the restricted GL³ triple, conditional on A.3's π | ~80 |
+| `gl3_path_block_restriction_action` | `(g.1', g.2', g.3') • T₁_path = T₂_path` | ~130 |
+
+**Proof technique.** A.3's `gl3_partition_preserving_perm_via_invariant`
+gives π preserving path/padding. The off-diagonal block of
+`pathBlockMatrix g π` vanishes (which is what
+"partition-preserving" means at the matrix level). Hence
+`pathBlockMatrix g π = (path-block) ⊕ (padding-block)` after
+sumCompl-reindexing. The path-block component restricts to a
+linear map on the indicator subspace. Phase 2's
+`gl3_restrict_to_pathBlock` provides the formal `LinearEquiv`.
+
+**Sub-lemma decomposition (each ≤ 100 LOC).**
+
+* **A.4.1** `pathOnlyStructureTensor` — definition + apply
+  (~40 LOC).
+* **A.4.2** `pathOnlyStructureTensor_isAssociative` — direct
+  from A.1's `encoder_assoc_path` (restricted to path-only
+  slots). ~30 LOC.
+* **A.4.3** `gl3_path_block_restriction` — uses A.3's π +
+  Phase 2's `gl3_restrict_to_pathBlock` (~80 LOC).
+* **A.4.4** `gl3_path_block_restriction_action` — verify the
+  restricted triple acts as required on the restricted tensor
+  (~100 LOC). The technical core; uses
+  `unfold₁_tensorContract` + index restriction.
+
+**Mathlib anchors.** `Equiv.sumCompl`, `Matrix.fromBlocks`
+(used in Phase 2); `LinearMap.restrict`; Phase 2's
+`pathBlockMatrix_at_partition_preserving_π`.
+
+**Risk.** Medium. Index management is the main challenge.
+Reserve ~50 LOC for sumCompl-reindex bookkeeping.
+
+**Verification gate.** `gl3_path_block_restriction_action`
+proven; non-vacuity at `m = 1, 2`.
+
+**Consumer.** Sub-tasks A.5 and A.6.
+
+#### Sub-task A.5 — Manin tensor-stabilizer theorem (~600 LOC, **High risk**, prerequisite)
+
+**Goal.** Formalize the **tensor stabilizer ⟹ algebra
+isomorphism** theorem for unital associative algebras.
+
+**Statement (target theorem).**
+
+```
+theorem manin_tensor_stabilizer_iso
+    {n F} [Field F] (A B : Type*)
+    [Ring A] [Ring B] [Algebra F A] [Algebra F B]
+    [Module.Finite F A] [Module.Finite F B]
+    (b_A : Basis (Fin n) F A) (b_B : Basis (Fin n) F B)
+    (T_A := structure tensor of A in basis b_A)
+    (T_B := structure tensor of B in basis b_B)
+    (g : GL (Fin n) F × GL (Fin n) F × GL (Fin n) F)
+    (h_action : g • T_A = T_B)
+    -- non-degeneracy: A and B both have a multiplicative
+    -- identity expressible via the basis (e.g., 1_A = ∑ c_i b_A i)
+    (h_unit_A : ...) (h_unit_B : ...)
+    -- compatibility: g₁, g₂, g₃ agree on the unit
+    (h_unit_compat : ...) :
+  ∃ (φ : A ≃ₐ[F] B), <φ extends g₁ to an algebra iso>
+```
+
+The exact form of the unit-compatibility hypothesis depends
+on a choice of structure-tensor convention; the precise
+statement should be derived in coordination with the existing
+`pathAlgebraQuotient` infrastructure.
+
+**Why this is research-scope.** Manin's "quantum tensor
+stabilizer" theory is a substantial body of work in
+algebraic geometry. The simplified version we need (tensor
+iso ⟹ algebra iso) is a known consequence but lacks an
+existing Lean formalization at the pinned commit `fa6418a8`.
+Hand-rolling it requires:
+
+1. Defining the abstract "structure tensor of an algebra in
+   a basis" Mathlib-quality concept (~150 LOC).
+2. Proving the `_smul` action equivariance via
+   `Basis.constr` (~100 LOC).
+3. The core technical content: showing that a GL³ tensor iso
+   `g · T_A = T_B` with appropriate unit-compatibility forces
+   `g₁` to extend to a multiplicative map (algebra hom). ~300
+   LOC.
+4. Inverting via `g⁻¹` to upgrade to algebra iso. ~50 LOC.
+
+**Sub-sub-task breakdown.**
+
+##### A.5.1 — Abstract algebra structure-tensor (~150 LOC)
+
+* `Algebra.structureTensor (b : Basis I F A) : Tensor3 |I| F`:
+  `T_{ijk} = b.repr (b i * b j) k` (the coefficient of `b k`
+  in the product `b i * b j`).
+* `Algebra.structureTensor_apply` — unfolding lemma.
+* `Algebra.structureTensor_symm` — the symmetric formula
+  via `b.smul`.
+
+##### A.5.2 — Algebra structure-tensor under GL action on basis (~100 LOC)
+
+* For `A` a fixed algebra and `g : GL I F`, define a new
+  basis `g · b := fun i => ∑_a g(i, a) · b a`. Then
+  `Algebra.structureTensor (g · b) = some-GL³-action of g
+  on Algebra.structureTensor b`. (The exact GL³-action shape
+  is encoded by the Manin theorem.)
+* `Algebra.structureTensor_basis_change` — the formula.
+
+##### A.5.3 — Two-algebra tensor iso ⟹ algebra hom existence (~250 LOC)
+
+* The technical core. Given:
+  - `b_A : Basis I F A`, `b_B : Basis I F B`.
+  - `g · structureTensor(b_A) = structureTensor(b_B)`.
+  - Unit-compatibility hypothesis (the encoder satisfies
+    A.1.6's `encoder_unit_compatibility`).
+
+  Construct `φ : A → B` as a linear map by `φ (b_A i) =
+  ∑_j g.1(i, j) b_B j`. Show `φ` is multiplicative.
+
+  The multiplicativity proof uses A.5.2's structure-tensor
+  basis-change formula + the GL³-iso hypothesis. Standard
+  manipulation but ~250 LOC of careful index work.
+
+##### A.5.4 — Upgrade to AlgEquiv (~50 LOC)
+
+* Apply `g⁻¹` to construct the inverse `φ⁻¹`. Combine via
+  `AlgEquiv.ofBijective` (Mathlib).
+
+##### A.5.5 — Specialization to path algebra (~50 LOC)
+
+* Apply A.5.3–A.5.4 with `A = pathAlgebraQuotient m_1` (with
+  `adj₁`'s basis), `B = pathAlgebraQuotient m_2` (with
+  `adj₂`'s basis). Get `pathAlgebraQuotient m_1 ≃ₐ[ℚ]
+  pathAlgebraQuotient m_2`.
+
+  *Note:* Both algebras are `pathAlgebraQuotient m` (for the
+  same `m`), but with different bases (different `adj`
+  values). The AlgEquiv produced is genuinely between the
+  same underlying ℚ-vector space but with multiplications
+  reflecting different graphs. This is the natural Lean
+  formalization of "graph-iso encoded as algebra-iso".
+
+**Mathlib API forecast.**
+
+* `Basis.constr`, `Basis.equiv`, `Basis.repr` — present.
+* `Algebra.structureTensor` — **not present**; A.5.1 hand-
+  rolls it.
+* "Manin tensor stabilizer" theorem — **not present**;
+  A.5.3–A.5.4 hand-rolls the core specialization we need.
+* `AlgEquiv.ofBijective` — present.
+
+**Risk.** **High.** Several Mathlib gaps; A.5.3 is
+mathematically deep. **Reserve: ~200 LOC for unforeseen
+Mathlib gaps, sum-manipulation index issues, and edge cases
+(e.g., handling the unital structure rigorously).**
+
+**Verification gate.** `manin_tensor_stabilizer_iso` proven
+in full generality; specialization to path algebra verified
+on `m = 1, 2` non-vacuity examples.
+
+**Consumer.** Sub-task A.6.
+
+#### Sub-task A.6 — AlgEquiv construction + pathAlgebraQuotient bridge (~400 LOC, Med risk)
+
+**Goal.** Compose A.4 and A.5 to deliver Phase 3's headline
+theorem:
+
 ```
 theorem gl3_induces_algEquiv_on_pathSubspace
     (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
@@ -576,32 +1104,278 @@ theorem gl3_induces_algEquiv_on_pathSubspace
     (hg : g • grochowQiaoEncode m adj₁ =
           grochowQiaoEncode m adj₂) :
   ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
-    -- ϕ "implements" the GL³ action on the path subspace
-    True  -- exact "implementation" property TBD by approach
+    ϕ '' (presentArrowsSubspace m adj₁ : Set _) =
+    presentArrowsSubspace m adj₂
 ```
 
-The exact statement of "implements" depends on the chosen
-approach, but every reasonable choice is sufficient for
-Phase 4's σ extraction.
+**Why this is non-trivial (despite being "just composition").**
+A.5 produces an AlgEquiv between the **path-only structure
+tensors of adj₁ and adj₂**, viewed as restricted algebras on
+distinct vector spaces (`pathSlotIndices m adj₁` vs
+`pathSlotIndices m adj₂`). The Phase 3 headline requires an
+AlgEquiv on `pathAlgebraQuotient m` (a single fixed algebra
+type with two distinct presentation bases reflecting `adj₁`
+and `adj₂`).
 
-### Phase 3 deliverables and gates
+A.6 bridges these by:
 
-* **Indeterminate** number of new modules (depends on
-  approach). Approach A: ~3–5 modules; Approach B: ~3–4 modules.
-* **LOC budget: ~2,000+ LOC** of new Lean. Could be
-  substantially higher (4,000+ LOC) if hidden Mathlib gaps are
-  encountered (e.g., Manin's theorem prerequisites for
-  Approach A).
-* **Calendar time: 6–18 months** of focused effort. The wide
-  uncertainty reflects the genuine difficulty of formalizing
-  ~80 pages of the Grochow–Qiao paper.
-* **Risk: Very High (RESEARCH-SCOPE).** This is the genuine
-  novelty of the workstream.
+1. Showing the path-only structure tensor of `adj` is
+   isomorphic to the corresponding restriction of
+   `pathAlgebraQuotient m` (essentially what
+   `presentArrowsSubspace m adj` is).
+2. Translating A.5's AlgEquiv between path-only tensors into
+   an AlgEquiv on the full `pathAlgebraQuotient m` algebra
+   (extending by zero on the complement, or by trivial
+   identity on padding).
+
+**Sub-sub-task breakdown.**
+
+##### A.6.1 — Path-only tensor ↔ presentArrowsSubspace bridge (~150 LOC)
+
+* Define a linear equivalence
+  `pathOnlyAlgebra adj ≃ₗ[ℚ] presentArrowsSubspace m adj`
+  via the `slotEquiv` + `slotToArrow` correspondence.
+* Show the linear equiv is also an algebra equiv (preserves
+  multiplication), using A.1's identities and Phase 2's
+  `pathBlock_to_presentArrows` (Phase 2 Layer 2.4).
+
+##### A.6.2 — Lift A.5's AlgEquiv to pathAlgebraQuotient (~150 LOC)
+
+* A.5 produces `ϕ' : pathOnlyAlgebra adj₁ ≃ₐ[ℚ]
+  pathOnlyAlgebra adj₂`.
+* Apply A.6.1's bridge to translate to
+  `ϕ'' : presentArrowsSubspace m adj₁ ≃ₐ[ℚ]
+  presentArrowsSubspace m adj₂`.
+
+  *(Wait: `presentArrowsSubspace` is a Submodule, not an
+  algebra in general. Need to verify it inherits the algebra
+  structure when adj's induced subset of present arrows is
+  closed under multiplication.)*
+
+* **Important correction.** `presentArrowsSubspace m adj` is
+  the span of `vertexIdempotent v` (all `v`) ∪
+  `arrowElement u v` (for present `(u, v)`). This subspace
+  is closed under the path algebra's multiplication: vertex
+  idempotents multiply to vertex idempotents (by
+  orthogonality), arrow elements multiply to zero (by J²=0).
+  So it IS a sub-algebra.
+
+  Hence `ϕ''` is well-defined as an AlgEquiv between sub-
+  algebras of `pathAlgebraQuotient m`.
+
+* Extend `ϕ''` to a full AlgEquiv on `pathAlgebraQuotient m`
+  by combining with trivial action on the complement. The
+  complement is `Submodule.span ℚ (Set.range arrowElement \
+  presentArrows)`-style — basis elements that are NOT in any
+  adj. These should map to themselves under the trivial
+  extension (or to corresponding elements of adj₂'s
+  complement, depending on the formalization choice).
+
+##### A.6.3 — Subspace-preservation property (~100 LOC)
+
+* Show `ϕ '' (presentArrowsSubspace m adj₁ : Set _) =
+  presentArrowsSubspace m adj₂` (the explicit subspace-
+  preservation that Phase 5 needs).
+* Direct from A.6.2's construction: the AlgEquiv was
+  constructed precisely to map adj₁'s present-arrow subspace
+  to adj₂'s.
+
+**Sub-task A.6 deliverables.**
+
+* New `.lean` module:
+  `Orbcrypt/Hardness/GrochowQiao/AlgEquivFromGL3.lean`.
+* `gl3_induces_algEquiv_on_pathSubspace` headline.
+* `_apply_vertexIdempotent`, `_apply_arrowElement` simp
+  lemmas (used by Phases 4, 5).
+* Audit-script `#print axioms` entries.
+
+**Mathlib anchors.** `AlgEquiv.ofBijective`, `LinearEquiv.ofBijective`,
+`Submodule.subtype`, `Subalgebra` API.
+
+**Risk.** Medium. Most content is Mathlib bookkeeping over
+A.5's output. Reserve: ~80 LOC for the "extend AlgEquiv to
+the complement" subtlety in A.6.2.
+
+**Verification gate.** `gl3_induces_algEquiv_on_pathSubspace`
+proven; subspace-preservation property explicit; non-vacuity
+at `m = 1, 2`; identity GL³ produces AlgEquiv.refl.
+
+**Consumer.** Phase 4.
+
+#### Approach A — sub-task dependency graph
+
+```
+[Phase 1 lemmas (associativity, padding-distinguishability)]
+       │
+       ▼
+   [A.1 — polynomial identity catalogue]
+       │
+       ▼
+   [A.2 — GL³ preserves polynomial identities]
+       │
+       ▼
+   [A.3 — distinguished-padding rigidity (HIGH)]
+       │     produces π preserving partition
+       ▼
+   [A.4 — path-only structure tensor + restricted GL³]
+       │     produces (g.1', g.2', g.3') • T₁_path = T₂_path
+       │
+       │     ┌────────────────────────────┐
+       │     │                            │
+       ▼     ▼                            │
+   [A.5 — Manin theorem (HIGH)]           │
+       │     A.5.1–A.5.5                  │
+       │                                  │
+       └─────────────────┬────────────────┘
+                         ▼
+            [A.6 — AlgEquiv on pathAlgebraQuotient]
+                         │
+                         ▼
+       gl3_induces_algEquiv_on_pathSubspace
+                         │
+                         ▼
+                    [Phase 4 input]
+```
+
+**Critical-path observations.**
+
+* **A.3 is the bottleneck.** Its 700 LOC budget reflects the
+  novel polynomial-invariant content (sub-sub-task A.3.2),
+  which has the highest research-content density.
+* **A.5 is the second bottleneck.** Manin's theorem (~600
+  LOC) is independently substantial and Mathlib-quality
+  reusable.
+* **Sub-tasks A.1, A.2, A.4, A.6 are tractable** (~250–400
+  LOC each, Low–Med risk).
+* **Parallelizable.** A.1 and A.5 are largely independent
+  (A.1 is encoder-specific; A.5 is general-algebra). They
+  can be developed in parallel by two implementers.
+
+#### Approach A — per-sub-task risk register
+
+| Sub-task | Risk | Mitigation |
+|----------|------|------------|
+| A.1 | Low | Pure structural unfolding. ~50 LOC reserve for index management. |
+| A.2 | Low–Med | Sum-arithmetic via `Finset.sum_comm`. ~80 LOC reserve. |
+| A.3 | **High** | Polynomial-invariant existence is research-grade. Reroute fall-back: if A.3.2 stalls, derive partition preservation from A.5+A.6 directly (adds ~200 LOC to A.5 but eliminates A.3.2-A.3.4). Reserve: 200 LOC. |
+| A.4 | Med | Index management with `Equiv.sumCompl`. ~50 LOC reserve. |
+| A.5 | **High** | Manin theorem prerequisites are Mathlib-quality content not currently present. Several Mathlib gaps (e.g., `Algebra.structureTensor` doesn't exist). Reserve: 200 LOC. |
+| A.6 | Med | Mostly composition; A.6.2's "extend AlgEquiv to complement" is the subtle step. Reserve: 80 LOC. |
+
+**Total reserves:** ~660 LOC across all sub-tasks.
+
+**Approach A grand total:** ~2,500 LOC (per-sub-task) + ~660
+LOC (reserves) = **~3,200 LOC**. This is at the upper end of
+Phase 3's overall ~2,000+ LOC budget; the difference reflects
+honest acknowledgment that Approach A has substantial
+Mathlib-prerequisite content (Manin's theorem).
+
+#### Approach A — calendar estimate
+
+* **Lower bound (team of 2 implementers, parallelizing A.1 +
+  A.5 vs A.2/A.3/A.4 + A.6):** 4–6 months wall-clock.
+* **Upper bound (single implementer, sequential):** 8–12
+  months.
+* **Stall scenarios:**
+  - If A.3.2's polynomial invariant proves intractable:
+    ~3 months to find an alternative or reroute via A.5+A.6.
+  - If A.5.3's algebra-hom multiplicativity argument hits an
+    unforeseen Mathlib gap: ~2 months extra for hand-roll.
+
+The total **calendar uncertainty is ~6–18 months**, mirroring
+Phase 3's overall budget.
+
+### Approach B — Direct path-block algebra construction (alternative, ~2,000 LOC, NOT recommended)
+
+**Brief description.** An alternative to Approach A that
+attempts to derive partition preservation via diagonal-value
+or associativity-witness invariants directly, without going
+through Manin's theorem.
+
+**Why NOT recommended.** Approach B encounters the same
+research-grade content as Approach A's sub-task A.3
+(deriving partition preservation from polynomial invariants),
+but without the cleaner Manin-theorem framework that
+Approach A's sub-task A.5 provides. Specifically:
+
+* Approach B's Step 1 ("partition preservation by some
+  invariant") is essentially Approach A's A.3 — same
+  research challenge, no easier.
+* Approach B's Step 3 ("argue the linear iso is
+  multiplicative") is essentially Approach A's A.5 — same
+  difficulty, but without the abstract Manin-theorem
+  packaging that lets the result generalize cleanly.
+
+**When to consider Approach B.** If, during Approach A's
+implementation, sub-task A.5 (Manin's theorem) hits an
+unexpected Mathlib obstacle that takes longer to resolve
+than ~6 weeks, Approach B becomes a valid pivot — its more
+"hands-on" path-block algebra construction may bypass the
+problematic Mathlib gap.
+
+**Outline (for completeness).**
+1. Derive partition preservation directly from a polynomial
+   invariant (analogous to A.3.2).
+2. Use Phase 2's `gl3_restrict_to_pathBlock` to obtain a
+   linear iso between path subspaces (just like Approach A's
+   A.4).
+3. Manually argue multiplicativity via Phase 1's encoder
+   evaluation lemmas and the GL³-action equation expanded
+   on basis elements. Hand-rolled, without the abstract
+   Manin-theorem packaging.
+4. Package as `AlgEquiv` via `AlgEquiv.ofBijective`.
+
+**Status.** Approach B's Step 3 is the cost-driver: ~1,500
+LOC of hand-rolled multiplicativity verification, without
+the Mathlib-quality reusable content of A.5.
+
+### Headline theorem (both approaches)
+
+Both approaches yield the same Phase 3 deliverable:
+
+```
+theorem gl3_induces_algEquiv_on_pathSubspace
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (g : GL × GL × GL)
+    (hg : g • grochowQiaoEncode m adj₁ =
+          grochowQiaoEncode m adj₂) :
+  ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
+    ϕ '' (presentArrowsSubspace m adj₁ : Set _) =
+    presentArrowsSubspace m adj₂
+```
+
+**Recommendation.** Default to Approach A (more
+mathematically clean and produces reusable Mathlib content).
+Pivot to Approach B only if Approach A's Manin-theorem
+prerequisite (A.5) encounters unforeseen Mathlib gaps.
+
+### Phase 3 deliverables and gates (Approach A)
+
+* **5–6 new modules** under
+  `Orbcrypt/Hardness/GrochowQiao/`:
+  - `EncoderPolynomialIdentities.lean` (sub-task A.1, ~250
+    LOC)
+  - `TensorIdentityPreservation.lean` (sub-task A.2, ~300
+    LOC)
+  - `PaddingRigidity.lean` (sub-task A.3, ~700 LOC)
+  - `PathOnlyTensor.lean` (sub-task A.4, ~250 LOC)
+  - `ManinStabilizerTheorem.lean` (sub-task A.5, ~600 LOC)
+    — Mathlib-quality reusable
+  - `AlgEquivFromGL3.lean` (sub-task A.6, ~400 LOC)
+* **LOC budget: ~2,500 LOC** sub-task content + **~660 LOC**
+  reserves = **~3,200 LOC total**.
+* **Calendar time: ~6–18 months** of focused effort. Lower
+  bound assumes parallel implementation by 2 people; upper
+  bound is single-implementer worst case.
+* **Risk: Very High (RESEARCH-SCOPE).** Sub-tasks A.3 and
+  A.5 are both research-grade.
 
 **Verification gate.** `gl3_induces_algEquiv_on_pathSubspace`
 proven for all `m`; `#print axioms` standard trio only;
 non-vacuity at `m ∈ {1, 2, 3}` exhibiting the AlgEquiv on
-concrete encoder pairs (e.g., adj₁ = adj₂ with identity GL³).
+concrete encoder pairs (e.g., adj₁ = adj₂ with identity GL³
+yields `AlgEquiv.refl`); subspace-preservation property
+explicit (required by Phase 5).
 
 **Consumer.** Phase 4.
 
@@ -909,7 +1683,10 @@ not 150 LOC. Adjusted budget: **Layer 5.2 ~80 LOC** total
 ### Phase 5 deliverables and gates
 
 * One new `.lean` module (`ArrowFromGL3.lean`, ~330 LOC
-  post-recheck).
+  post-recheck — Layer 5.1 ~250 LOC + Layer 5.2 ~80 LOC after
+  the v4 recheck reduced 5.2 from ~150 to ~80; Phase 5
+  header's "~400 LOC" includes ~70 LOC of testing /
+  audit-script extension).
 * `Orbcrypt.lean` extended with one new import.
 * `scripts/audit_phase_16.lean` extended.
 * CLAUDE.md change-log entry.
@@ -1244,27 +2021,35 @@ After each phase lands (i.e., all its sub-tasks committed):
 |-------|-----|-----------------|------|
 | 1 | ~600 | 2–3 weeks | Low |
 | 2 | ~700 | 3–4 weeks | Med |
-| 3 | ~2,000+ | **6–18 months** | **Very High (research)** |
+| 3 (Approach A) | ~3,200 | **6–18 months** | **Very High (research)** |
 | 4 | ~250 | 1 week | Low |
-| 5 | ~330 | 1–2 weeks | Med |
+| 5 | ~400 | 1–2 weeks | Med |
 | 6 | ~250 | 1 week | Low |
-| **Total Lean** | **~4,200+** | **~9–22 months** | |
+| **Total Lean** | **~5,400** | **~9–22 months** | |
 | Plus docs | ~400 | (concurrent with phases) | — |
 
-**Calendar uncertainty.** Phase 3 dominates the schedule. The
-6–18-month range reflects:
-* **Lower bound (6 months):** if Mathlib's tensor / algebra-
-  geometry API gains relevant additions between plan
-  acceptance and implementation start, OR if Approach B
-  proves directly tractable.
-* **Upper bound (18 months):** if both Approaches A and B
-  encounter substantial Mathlib gaps requiring prerequisite
-  formalizations.
+**Phase 3 calendar uncertainty.** Phase 3 dominates the
+schedule. Per Approach A's sub-task analysis:
+
+* **Lower bound (6 months):** team of 2 implementers,
+  parallelizing A.1+A.5 vs A.2/A.3/A.4+A.6.
+* **Upper bound (18 months):** single implementer, sequential,
+  with both A.3.2 (polynomial-invariant) and A.5.3 (Manin
+  algebra-hom) requiring multiple iteration rounds.
+* **Stall scenarios:**
+  - Sub-task A.3.2's polynomial invariant proves intractable:
+    +3 months to find an alternative or reroute via
+    A.5+A.6. Reduce risk by starting A.3 and A.5 in parallel
+    (the fall-back is then partly already in flight).
+  - Sub-task A.5.3 hits an unforeseen Mathlib gap: +2 months
+    for hand-roll; pivot to Approach B if gap exceeds 6
+    weeks.
 
 **Dedicated effort total:** ~9–22 months for a single focused
 implementer. **Smaller team (2–3 people in parallel):** ~6–14
-months wall-clock by parallelizing Phase 1 with Phase 4
-preparation.
+months wall-clock by parallelizing Phases 1 + 2 + Phase 3's
+A.5 (Manin theorem prerequisite) at the start, then Phase 3's
+A.1–A.4, A.6 sequentially after the prerequisites land.
 
 ## 11. Phase dependency graph
 
@@ -1323,17 +2108,30 @@ foundation             restriction (param π)       Wedderburn–Mal'cev
 
 ### New `.lean` modules (under `Orbcrypt/Hardness/GrochowQiao/`)
 
-| File | Phase | LOC |
-|------|-------|-----|
+| File | Phase / Sub-task | LOC |
+|------|------------------|-----|
 | `EncoderSlabEval.lean` | 1 | ~600 |
 | `PathBlockSubspace.lean` | 2 | ~700 |
-| (Phase 3 modules) | 3 | ~2,000+ |
+| `EncoderPolynomialIdentities.lean` | 3 / A.1 | ~250 |
+| `TensorIdentityPreservation.lean` | 3 / A.2 | ~300 |
+| `PaddingRigidity.lean` | 3 / A.3 | ~700 |
+| `PathOnlyTensor.lean` | 3 / A.4 | ~250 |
+| `ManinStabilizerTheorem.lean` | 3 / A.5 | ~600 |
+| `AlgEquivFromGL3.lean` | 3 / A.6 | ~400 |
 | `SigmaFromGL3.lean` | 4 | ~250 |
-| `ArrowFromGL3.lean` | 5 | ~330 |
+| `ArrowFromGL3.lean` | 5 | ~400 |
 
-**Phase 3 modules** are not pre-named because the file
-decomposition depends on which approach (A or B) is chosen
-during implementation start.
+**Module organization (Approach A).** Phase 3's six sub-tasks
+land as six separate modules under
+`Orbcrypt/Hardness/GrochowQiao/`. This decomposition allows
+incremental commits, separate code review per sub-task, and
+independent debugging if a specific sub-task encounters
+elaboration-time issues.
+
+**Approach B alternative.** If implementers pivot to
+Approach B mid-stream, the Phase 3 module decomposition would
+collapse into ~3–4 modules with different names. The plan
+defaults to Approach A's decomposition.
 
 ### Existing `.lean` files modified
 
