@@ -3205,3 +3205,118 @@ example (h_arrow : GL3InducesArrowPreservingPerm) :
   grochowQiao_isInhabitedKarpReduction_full_chain h_arrow
 
 end RigidityNonVacuity
+
+-- ============================================================================
+-- ## §15.16 R-TI rigidity discharge — Phase 1: Encoder structural foundation.
+-- ============================================================================
+--
+-- Layer 1.1: per-slot slab evaluation (vertex/vertex/vertex, vertex/arrow/arrow,
+-- arrow/vertex/arrow, padding diagonal, plus zero-classification on the
+-- remaining path-algebra and mixed triples).
+--
+-- Layer 1.2: encoder associativity identity, via the LHS / RHS closed forms
+-- and `pathMul_assoc`.
+--
+-- Layer 1.3: path-identity pairing — algebraic non-degeneracy invariants
+-- distinguishing vertex from present-arrow slots.
+--
+-- See `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean` for the full
+-- definitions and proofs.
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.arrowToSlot
+#print axioms Orbcrypt.GrochowQiao.slotToArrow_arrowToSlot
+#print axioms Orbcrypt.GrochowQiao.arrowToSlot_slotToArrow
+#print axioms Orbcrypt.GrochowQiao.slotOfArrow
+#print axioms Orbcrypt.GrochowQiao.slotToArrow_slotEquiv_slotOfArrow
+#print axioms Orbcrypt.GrochowQiao.slotOfArrow_slotToArrow_slotEquiv
+#print axioms Orbcrypt.GrochowQiao.eq_slotOfArrow_iff
+#print axioms Orbcrypt.GrochowQiao.slotOfArrow_pathMul_isPathAlgebra
+#print axioms Orbcrypt.GrochowQiao.encoder_at_vertex_vertex_vertex_eq_one
+#print axioms Orbcrypt.GrochowQiao.encoder_at_vertex_arrow_arrow_eq_one
+#print axioms Orbcrypt.GrochowQiao.encoder_at_arrow_vertex_arrow_eq_one
+#print axioms Orbcrypt.GrochowQiao.encoder_at_padding_diagonal_eq_two
+#print axioms Orbcrypt.GrochowQiao.encoder_zero_at_remaining_path_triples
+#print axioms Orbcrypt.GrochowQiao.encoder_zero_at_mixed_triples
+#print axioms Orbcrypt.GrochowQiao.encoder_associativity_lhs_eq_pathMul_chain
+#print axioms Orbcrypt.GrochowQiao.encoder_associativity_rhs_eq_pathMul_chain
+#print axioms Orbcrypt.GrochowQiao.encoder_associativity_identity
+#print axioms Orbcrypt.GrochowQiao.encoder_double_sum_at_present_arrow_slot
+#print axioms Orbcrypt.GrochowQiao.encoder_idempotent_contribution_at_vertex_slot
+
+namespace EncoderSlabEvalNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Layer 1.1.1 non-vacuity witness (m = 1).**
+On the empty graph at `m = 1`, the unique vertex slot has diagonal value `1`. -/
+example :
+    grochowQiaoEncode 1 (fun _ _ => false)
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0)) = 1 :=
+  encoder_at_vertex_vertex_vertex_eq_one 1 (fun _ _ => false)
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    (0 : Fin 1)
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+
+/-- **Layer 1.1.4 non-vacuity witness (m = 2).**
+On the empty graph at `m = 2`, the arrow slot `(0, 1)` is a padding slot
+(`adj 0 1 = false`) and its diagonal value is `2`. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1)) = 2 :=
+  encoder_at_padding_diagonal_eq_two 2 (fun _ _ => false)
+    ((slotEquiv 2).symm (.arrow 0 1))
+    0 1
+    (Equiv.apply_symm_apply _ _)
+    rfl
+
+/-- **Layer 1.2.0 helper non-vacuity witness — `slotOfArrow` round-trip.**
+`slotOfArrow m q` recovers the original arrow `q` after `slotToArrow ∘
+slotEquiv`. -/
+example (m : ℕ) (q : QuiverArrow m) :
+    slotToArrow m (slotEquiv m (slotOfArrow m q)) = q :=
+  slotToArrow_slotEquiv_slotOfArrow m q
+
+/-- **Layer 1.2.4 non-vacuity witness — associativity holds on the empty
+graph at `m = 1`.**
+
+On the empty graph at `m = 1`, every slot is path-algebra (the unique
+slot is the vertex slot at `0`, and the arrow slot `(0, 0)` is padding).
+The associativity identity holds for the vertex-only quadruple. -/
+example :
+    let v0 : Fin (dimGQ 1) := (slotEquiv 1).symm (.vertex 0)
+    (∑ a : Fin (dimGQ 1), grochowQiaoEncode 1 (fun _ _ => false) v0 v0 a *
+                          grochowQiaoEncode 1 (fun _ _ => false) a v0 v0) =
+    (∑ a : Fin (dimGQ 1), grochowQiaoEncode 1 (fun _ _ => false) v0 v0 a *
+                          grochowQiaoEncode 1 (fun _ _ => false) v0 a v0) := by
+  let v0 : Fin (dimGQ 1) := (slotEquiv 1).symm (.vertex 0)
+  have h_v0 : isPathAlgebraSlot 1 (fun _ _ => false) v0 = true := by
+    show isPathAlgebraSlot 1 (fun _ _ => false)
+          ((slotEquiv 1).symm (.vertex 0)) = true
+    exact isPathAlgebraSlot_vertex 1 _ 0
+  exact encoder_associativity_identity 1 (fun _ _ => false) v0 v0 v0 v0
+    h_v0 h_v0 h_v0 h_v0
+
+/-- **Layer 1.3 non-vacuity witness — present-arrow slot double-sum at m = 2.**
+
+On the complete graph at `m = 2` (all entries `true`), the arrow slot
+`(0, 1)` is a present-arrow slot, and its double-sum equals exactly `1`. -/
+example :
+    let i : Fin (dimGQ 2) := (slotEquiv 2).symm (.arrow 0 1)
+    (∑ j : Fin (dimGQ 2), ∑ k : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true) i j k) = 1 :=
+  encoder_double_sum_at_present_arrow_slot 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.arrow 0 1)) 0 1
+    (Equiv.apply_symm_apply _ _)
+    rfl
+
+end EncoderSlabEvalNonVacuity

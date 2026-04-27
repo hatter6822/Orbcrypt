@@ -219,7 +219,17 @@ After all six phases land:
 
 ---
 
-## Phase 1 — Encoder structural foundation (~600 LOC)
+## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27)**
+
+**Status.** Landed in `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean`
+(1000 LOC).  All three layers are unconditional; every public declaration
+depends only on the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`).  Full `lake build` succeeds (3405 jobs, zero warnings).
+Phase 16 audit script's `#print axioms` total rises from 770 to 788
+(18 new entries: 8 helper, 6 Layer 1.1, 3 Layer 1.2, 2 Layer 1.3) plus
+5 non-vacuity `example` bindings under
+`§ 15.16 EncoderSlabEvalNonVacuity`.  `lakefile.lean` bumped from
+`0.1.21` to `0.1.22` for the new public-API module.
 
 **Goal.** Establish per-slot evaluation lemmas for the
 encoder, derived from the actual code's structure-tensor
