@@ -18,6 +18,7 @@ import Orbcrypt.Hardness.GrochowQiao.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao.Forward
 import Orbcrypt.Hardness.GrochowQiao.PermMatrix
 import Orbcrypt.Hardness.GrochowQiao.Reverse
+import Orbcrypt.Hardness.GrochowQiao.Rigidity
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
 
@@ -331,6 +332,27 @@ theorem grochowQiao_partial_closure_status :
   ⟨grochowQiaoEncode_nonzero_of_pos_dim,
    grochowQiaoEncode_reverse_zero,
    grochowQiao_forwardObligation⟩
+
+-- ============================================================================
+-- Stage 5 T-API-10 — Final Karp reduction inhabitant under arrow-discharge.
+-- ============================================================================
+
+/-- **Final Karp reduction inhabitant under the Stage 5 arrow-preservation
+discharge** (R-TI Stage 5 T-API-10).
+
+Composes the Stage 5 `grochowQiaoRigidity_under_arrowDischarge` with
+the existing `grochowQiao_isInhabitedKarpReduction_under_rigidity` to
+produce a `@GIReducesToTI ℚ _` inhabitant under the single
+research-scope `Prop` `GL3InducesArrowPreservingPerm`.
+
+When `GL3InducesArrowPreservingPerm` is discharged (research-scope
+**R-15-residual-TI-reverse**), this becomes the unconditional
+Karp reduction. -/
+theorem grochowQiao_isInhabitedKarpReduction_full_chain
+    (h_arrow : GL3InducesArrowPreservingPerm) :
+    @GIReducesToTI ℚ _ :=
+  grochowQiao_isInhabitedKarpReduction_under_rigidity
+    (grochowQiaoRigidity_under_arrowDischarge h_arrow)
 
 end GrochowQiao
 end Orbcrypt

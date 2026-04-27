@@ -274,19 +274,40 @@ the path-algebra pattern.
 
 We use the **simplest non-trivial graph-independent pattern**:
 `δ_{i, j} · δ_{j, k}` (delta on the three indices simultaneously).
-This pattern has the property that it is constant `1` on the
+This pattern has the property that it is constant on the
 triple-diagonal `i = j = k` and `0` everywhere else — the simplest
 shape that (a) is graph-independent and (b) carries non-zero
 content on every slot, ensuring the encoder is "non-zero" on every
-slot when restricted to the diagonal of the padding subblock. The
-full ambient-matrix structure constant from the audit plan
+slot when restricted to the diagonal of the padding subblock.
+
+**Diagonal value: `2`.** Decision GQ-B (distinguished padding)
+requires the padding diagonal scalar to be *distinct* from any
+path-algebra structure constant. The path-algebra structure constants
+take values in `{0, 1}` (a `pathMul` either matches the target or
+doesn't, contributing 1 or 0 respectively). Setting the padding
+diagonal to `2` gives a third distinct value, making the three slot
+kinds (vertex / present-arrow / padding) literally distinguishable
+at the diagonal-value level alone:
+* Vertex slot diagonal: `1` (idempotent law `e_v · e_v = e_v`).
+* Present-arrow slot diagonal: `0` (since `pathMul (.edge u v)
+  (.edge u v) = none` from `J² = 0`).
+* Padding slot diagonal: `2`.
+
+This closes the **isolated-vertex degeneracy**: without the value
+distinction, an isolated vertex `v` would have the same rank
+signature as any padding slot (both: only non-zero at the diagonal),
+making the Grochow–Qiao rigidity argument fail on graphs with
+isolated vertices. The strengthened encoder makes the rigidity
+argument robust at the value level.
+
+The full ambient-matrix structure constant from the audit plan
 (`δ_{j_col, k_row} δ_{i_row, k_row}` after rectangular factoring)
 is more faithful to the matrix-multiplication structure but is
 substantively equivalent for the rigidity argument; we land the
 diagonal version here as the minimum-viable padding. -/
 def ambientSlotStructureConstant (m : ℕ)
     (i j k : Fin (dimGQ m)) : ℚ :=
-  if i = j ∧ j = k then 1 else 0
+  if i = j ∧ j = k then 2 else 0
 
 /-- **Grochow–Qiao tensor encoder** (`grochowQiaoEncode m adj`).
 
@@ -435,6 +456,83 @@ theorem grochowQiaoEncode_diagonal_vertex
   rw [pathMul_id_self]
   simp
 
+/-- **Encoder evaluation at the diagonal of a padding slot** (Stage 0,
+distinguished-padding strengthening).
+
+At the triple-diagonal `(p, p, p)` for any padding slot `p` (i.e.,
+an arrow slot `(u, v)` with `adj u v = false`), the encoder returns
+`2` (the strengthened `ambientSlotStructureConstant` value).
+
+This explicit-value witness anchors the post-Stage-0 distinguishability
+property: padding-diagonal value `2` is distinct from vertex-diagonal
+value `1` (`grochowQiaoEncode_diagonal_vertex`) and from
+present-arrow-diagonal value `0` (which follows from `J² = 0`). The
+three slot-kind diagonal values are pairwise distinct, closing the
+isolated-vertex degeneracy that motivated the Stage 0 strengthening.
+
+**Why distinguished padding matters.** Without the strengthened value,
+an isolated vertex `v` (no incident edges) would have the same slab-
+rank signature as any padding slot — both have a single non-zero
+entry at the triple-diagonal with value `1`, giving slab rank 1 and
+no other invariant to distinguish them. The Grochow–Qiao rigidity
+argument requires distinguishability between these slot kinds; the
+post-Stage-0 encoder achieves it at the value level. -/
+theorem grochowQiaoEncode_diagonal_padding
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (u v : Fin m)
+    (h_padding : adj u v = false) :
+    grochowQiaoEncode m adj
+      ((slotEquiv m).symm (.arrow u v))
+      ((slotEquiv m).symm (.arrow u v))
+      ((slotEquiv m).symm (.arrow u v)) = 2 := by
+  -- The arrow slot `(u, v)` with `adj u v = false` is a padding slot,
+  -- i.e., `isPathAlgebraSlot m adj _ = false`. The encoder takes the
+  -- "otherwise" branch and returns `ambientSlotStructureConstant`,
+  -- which is `2` at the triple-diagonal.
+  have h_not_path : isPathAlgebraSlot m adj
+      ((slotEquiv m).symm (.arrow u v)) = false := by
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    exact h_padding
+  rw [grochowQiaoEncode_padding_left m adj _ _ _ h_not_path]
+  unfold ambientSlotStructureConstant
+  simp
+
+/-- **Encoder evaluation at the diagonal of a present-arrow slot** (Stage 0,
+distinguished-padding distinguishability — completes the three-slot-kind
+diagonal-value characterization).
+
+At the triple-diagonal `(α, α, α)` for any present-arrow slot `α` (i.e.,
+an arrow slot `(u, v)` with `adj u v = true`), the encoder returns `0`.
+
+*Why.* The slot is a path-algebra slot (since `adj u v = true`), so the
+encoder takes the path-algebra branch.  The path-algebra structure
+constant at `(α, α, α)` evaluates `pathMul (.edge u v) (.edge u v)`,
+which is `none` because the radical-2 path algebra `F[Q_G] / J²` has
+`J² = 0` (length-2 paths vanish).
+
+This completes the post-Stage-0 distinguishability property: the
+three slot-kind diagonal values are pairwise distinct — vertex slots
+give `1`, present-arrow slots give `0`, padding slots give `2`. -/
+theorem grochowQiaoEncode_diagonal_present_arrow
+    (m : ℕ) (adj : Fin m → Fin m → Bool) (u v : Fin m)
+    (h_present : adj u v = true) :
+    grochowQiaoEncode m adj
+      ((slotEquiv m).symm (.arrow u v))
+      ((slotEquiv m).symm (.arrow u v))
+      ((slotEquiv m).symm (.arrow u v)) = 0 := by
+  -- The arrow slot `(u, v)` with `adj u v = true` is a path-algebra slot.
+  have h_path : isPathAlgebraSlot m adj
+      ((slotEquiv m).symm (.arrow u v)) = true := by
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    exact h_present
+  -- Take the path-algebra branch.
+  rw [grochowQiaoEncode_path m adj _ _ _ h_path h_path h_path]
+  -- The path-algebra structure constant evaluates `pathMul (.edge u v)
+  -- (.edge u v)`, which is `none` from `J² = 0`.
+  unfold pathSlotStructureConstant
+  simp only [Equiv.apply_symm_apply, slotToArrow, pathMul]
+
 -- ============================================================================
 -- Sub-task T2.6 — Padding-distinguishability lemma.
 -- ============================================================================
@@ -469,7 +567,7 @@ since `isPathAlgebraSlot` is a function of the slot, not of the
 triple).
 
 Specifically: in the "otherwise" branch, the ambient constant is
-`if i = j ∧ j = k then 1 else 0` — non-zero only at triples
+`if i = j ∧ j = k then 2 else 0` — non-zero only at triples
 `i = j = k`. At such a triple, all three slots have the same
 `isPathAlgebraSlot` value (since they are the same slot), and we
 fell into the "otherwise" branch precisely because that value is

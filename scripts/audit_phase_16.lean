@@ -2293,6 +2293,7 @@ end PetrankRothLayer3NonVacuity
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_padding_mid
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_padding_right
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_vertex
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_padding
 #print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_padding_distinguishable
 
 -- Layer T1 σ-action on quiver arrows + multiplicative equivariance
@@ -2492,6 +2493,20 @@ example (adj : Fin 3 → Fin 3 → Bool) :
       ((slotEquiv 3).symm (.vertex 0))
       ((slotEquiv 3).symm (.vertex 0)) = 1 :=
   grochowQiaoEncode_diagonal_vertex 3 adj 0
+
+/-- **Stage 0 non-vacuity witness (encoder evaluation at the diagonal of a
+    padding slot returns `2`).** Confirms the post-Stage-0
+    distinguished-padding strengthening: padding-diagonal value `2` is
+    distinct from vertex-diagonal value `1` and present-arrow-diagonal
+    value `0`, closing the isolated-vertex degeneracy at the
+    diagonal-value level. Witnessed on the empty graph at `m = 2`,
+    where the arrow slot `(0, 1)` is a padding slot. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1)) = 2 :=
+  grochowQiaoEncode_diagonal_padding 2 (fun _ _ => false) 0 1 rfl
 
 /-- **R-TI Layer T2.6 non-vacuity witness (padding-distinguishability
     on the empty graph).** On the empty graph, every arrow slot is
@@ -2736,3 +2751,457 @@ example :
   algEquiv_extractVertexPerm 1 AlgEquiv.refl
 
 end WedderburnMalcevNonVacuity
+
+-- ============================================================================
+-- ## §15.6 Workstream R-TI Stage 1 T-API-1 (Tensor3 unfoldings).
+-- ============================================================================
+
+#print axioms Orbcrypt.Tensor3.unfold₁
+#print axioms Orbcrypt.Tensor3.unfold₂
+#print axioms Orbcrypt.Tensor3.unfold₃
+#print axioms Orbcrypt.Tensor3.unfold₁_apply
+#print axioms Orbcrypt.Tensor3.unfold₂_apply
+#print axioms Orbcrypt.Tensor3.unfold₃_apply
+#print axioms Orbcrypt.Tensor3.unfold₁_inj
+#print axioms Orbcrypt.Tensor3.unfold₂_inj
+#print axioms Orbcrypt.Tensor3.unfold₃_inj
+#print axioms Orbcrypt.Tensor3.unfold₁_matMulTensor1
+#print axioms Orbcrypt.Tensor3.unfold₂_matMulTensor2
+#print axioms Orbcrypt.Tensor3.unfold₃_matMulTensor3
+#print axioms Orbcrypt.Tensor3.unfold₁_matMulTensor2
+#print axioms Orbcrypt.Tensor3.unfold₁_matMulTensor3
+#print axioms Orbcrypt.Tensor3.unfold₁_tensorContract
+
+namespace TensorUnfoldNonVacuity
+
+open Orbcrypt
+open Orbcrypt.Tensor3
+open scoped Matrix
+open scoped Kronecker
+
+/-- **T-API-1 non-vacuity witness (axis-1 unfolding apply at concrete index).**
+On a hand-rolled `Tensor3 2 ℚ`, the axis-1 unfolding evaluates by
+definition to the underlying tensor entry. -/
+example (T : Tensor3 2 ℚ) (i j k : Fin 2) :
+    unfold₁ T i (j, k) = T i j k := rfl
+
+/-- **T-API-1 non-vacuity witness (single-axis bridge for axis-1).**
+The axis-1 contraction `matMulTensor1 A T` corresponds to left matrix
+multiplication on the axis-1 unfolding. -/
+example (A : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
+    unfold₁ (matMulTensor1 A T) = A * unfold₁ T :=
+  unfold₁_matMulTensor1 A T
+
+/-- **T-API-1 non-vacuity witness (Kronecker bridge for axis-2 acting on
+    `unfold₁`).** The axis-2 contraction is right matrix multiplication
+by `Bᵀ ⊗ₖ 1`. -/
+example (B : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
+    unfold₁ (matMulTensor2 B T) =
+      unfold₁ T * (Bᵀ ⊗ₖ (1 : Matrix (Fin 2) (Fin 2) ℚ)) :=
+  unfold₁_matMulTensor2 B T
+
+/-- **T-API-1 non-vacuity witness (combined GL³-action bridge).** The full
+`tensorContract A B C T` corresponds, on the axis-1 unfolding, to the
+matrix product `A * unfold₁ T * (Bᵀ ⊗ₖ Cᵀ)`. -/
+example (A B C : Matrix (Fin 2) (Fin 2) ℚ) (T : Tensor3 2 ℚ) :
+    unfold₁ (tensorContract A B C T) = A * unfold₁ T * (Bᵀ ⊗ₖ Cᵀ) :=
+  unfold₁_tensorContract A B C T
+
+end TensorUnfoldNonVacuity
+
+-- ============================================================================
+-- ## §15.7 Workstream R-TI Stage 1 T-API-2 (GL³ rank invariance).
+-- ============================================================================
+
+#print axioms Orbcrypt.Tensor3.kronecker_isUnit_det
+#print axioms Orbcrypt.Tensor3.unfoldRank₁
+#print axioms Orbcrypt.Tensor3.unfoldRank₂
+#print axioms Orbcrypt.Tensor3.unfoldRank₃
+#print axioms Orbcrypt.Tensor3.tensorRank
+#print axioms Orbcrypt.Tensor3.unfoldRank₁_smul
+#print axioms Orbcrypt.Tensor3.unfoldRank₁_areTensorIsomorphic
+
+namespace RankInvarianceNonVacuity
+
+open Orbcrypt
+open Orbcrypt.Tensor3
+open scoped Matrix
+open scoped Kronecker
+
+/-- **T-API-2 non-vacuity witness (axis-1 rank invariance under identity GL³).**
+The identity element of GL³ acts trivially on any tensor, so the rank
+is trivially preserved.  Confirms `unfoldRank₁_smul` is well-typed. -/
+example (T : Tensor3 2 ℚ) :
+    unfoldRank₁ ((1 : GL (Fin 2) ℚ × GL (Fin 2) ℚ × GL (Fin 2) ℚ) • T) =
+      unfoldRank₁ T :=
+  unfoldRank₁_smul (n := 2) 1 T
+
+/-- **T-API-2 non-vacuity witness (rank tuple at concrete tensor).**
+On a hand-rolled `Tensor3 1 ℚ`, the rank tuple is well-defined. -/
+example (T : Tensor3 1 ℚ) : tensorRank T = (unfoldRank₁ T, unfoldRank₂ T, unfoldRank₃ T) :=
+  rfl
+
+/-- **T-API-2 non-vacuity witness (Kronecker preserves invertibility).**
+The Kronecker product of the identity matrices is itself a unit (in fact
+the identity), confirming `kronecker_isUnit_det` discharges on units. -/
+example : IsUnit ((1 : Matrix (Fin 2) (Fin 2) ℚ) ⊗ₖ (1 : Matrix (Fin 2) (Fin 2) ℚ)).det :=
+  kronecker_isUnit_det 1 1 (by simp) (by simp)
+
+end RankInvarianceNonVacuity
+
+-- ============================================================================
+-- ## §15.8 Workstream R-TI Stage 2 T-API-3 (slot signature classification).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.isVertexSlot
+#print axioms Orbcrypt.GrochowQiao.isPresentArrowSlot
+#print axioms Orbcrypt.GrochowQiao.isPaddingSlot
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlotIndices
+#print axioms Orbcrypt.GrochowQiao.paddingSlotIndices
+#print axioms Orbcrypt.GrochowQiao.pathSlotIndices
+#print axioms Orbcrypt.GrochowQiao.mem_vertexSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.mem_presentArrowSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.mem_paddingSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.mem_pathSlotIndices_iff
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_disjoint_presentArrowSlotIndices
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_disjoint_paddingSlotIndices
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlotIndices_disjoint_paddingSlotIndices
+#print axioms Orbcrypt.GrochowQiao.vertex_present_padding_partition
+#print axioms Orbcrypt.GrochowQiao.pathSlotIndices_eq_vertex_union_presentArrow
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_card
+#print axioms Orbcrypt.GrochowQiao.pathSlotIndices_card_empty
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_at_vertexSlot
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_at_presentArrowSlot
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_at_paddingSlot
+#print axioms Orbcrypt.GrochowQiao.encoder_diagonal_values_pairwise_distinct
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoEncode_diagonal_present_arrow
+
+namespace SlotSignatureNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 2 T-API-3 non-vacuity witness (vertex slot Finset cardinality at m=3).**
+There are exactly 3 vertex slots in `Fin (dimGQ 3)`. -/
+example : (vertexSlotIndices 3).card = 3 :=
+  vertexSlotIndices_card 3
+
+/-- **Stage 2 T-API-3 non-vacuity witness (path-slot card on empty graph).**
+On the empty graph at m=3, only vertex slots are path-algebra; the count is 3. -/
+example : (pathSlotIndices 3 (fun _ _ => false)).card = 3 :=
+  pathSlotIndices_card_empty 3
+
+/-- **Stage 2 T-API-3 non-vacuity witness (diagonal value distinguishability).**
+The three slot-kind diagonal values are pairwise distinct. -/
+example : ((1 : ℚ) ≠ 0) ∧ ((1 : ℚ) ≠ 2) ∧ ((0 : ℚ) ≠ 2) :=
+  encoder_diagonal_values_pairwise_distinct
+
+end SlotSignatureNonVacuity
+
+-- ============================================================================
+-- ## §15.9 Workstream R-TI Stage 2 T-API-5 (slot bijection).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.IsPartitionPreserving
+#print axioms Orbcrypt.GrochowQiao.IsVertexSlotPreserving
+#print axioms Orbcrypt.GrochowQiao.IsPresentArrowSlotPreserving
+#print axioms Orbcrypt.GrochowQiao.IsPaddingSlotPreserving
+#print axioms Orbcrypt.GrochowQiao.IsThreePartitionPreserving
+#print axioms Orbcrypt.GrochowQiao.isThreePartitionPreserving_one
+#print axioms Orbcrypt.GrochowQiao.IsVertexSlotPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.IsPresentArrowSlotPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.IsPaddingSlotPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.IsThreePartitionPreserving.inv
+#print axioms Orbcrypt.GrochowQiao.vertexSlot_bijOn_of_vertexPreserving
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlot_bijOn_of_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.paddingSlot_bijOn_of_paddingPreserving
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlot_card_eq_of_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.vertexSlotIndices_image_eq_of_vertexPreserving
+#print axioms Orbcrypt.GrochowQiao.paddingSlot_card_eq_of_paddingPreserving
+#print axioms Orbcrypt.GrochowQiao.present_arrow_count_eq_of_threePartitionPreserving
+
+namespace SlotBijectionNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 2 T-API-5 non-vacuity witness (identity is three-partition-preserving).**
+The identity slot permutation trivially preserves all three slot-kind classes. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    IsThreePartitionPreserving m adj adj 1 :=
+  isThreePartitionPreserving_one m adj
+
+/-- **Stage 2 T-API-5 non-vacuity witness (cardinality preservation).**
+Under the identity permutation, present-arrow slots have the same count
+in both adjacencies (vacuously: same adjacency). -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (presentArrowSlotIndices m adj).card =
+      (presentArrowSlotIndices m adj).card :=
+  presentArrowSlot_card_eq_of_presentArrowPreserving m adj adj 1
+    (isThreePartitionPreserving_one m adj).presentArrow
+
+end SlotBijectionNonVacuity
+
+-- ============================================================================
+-- ## §15.10 Workstream R-TI Stage 2 T-API-6 (vertex permutation descent).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.vertexImage
+#print axioms Orbcrypt.GrochowQiao.vertexImage_spec
+#print axioms Orbcrypt.GrochowQiao.vertexImage_inv
+#print axioms Orbcrypt.GrochowQiao.vertexImage_inv'
+#print axioms Orbcrypt.GrochowQiao.vertexPermOfVertexPreserving
+#print axioms Orbcrypt.GrochowQiao.vertexPermOfVertexPreserving_apply
+#print axioms Orbcrypt.GrochowQiao.vertexPermOfVertexPreserving_one
+
+namespace VertexPermDescentNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 2 T-API-6 non-vacuity witness (identity descent).**
+The identity slot permutation descends to the identity vertex permutation. -/
+example (m : ℕ)
+    (h : IsVertexSlotPreserving m (1 : Equiv.Perm (Fin (dimGQ m)))) :
+    vertexPermOfVertexPreserving m 1 h = 1 :=
+  vertexPermOfVertexPreserving_one m h
+
+end VertexPermDescentNonVacuity
+
+-- ============================================================================
+-- ## §15.11 Workstream R-TI Stage 3 T-API-4 (block decomposition under GL³).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.GL3PreservesPartitionCardinalities
+#print axioms Orbcrypt.GrochowQiao.gl3_preserves_partition_cardinalities_identity_case
+#print axioms Orbcrypt.GrochowQiao.presentArrowSlotEquiv
+#print axioms Orbcrypt.GrochowQiao.paddingSlotEquiv
+#print axioms Orbcrypt.GrochowQiao.padding_card_eq_of_present_card_eq
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_presentArrow
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_padding
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_vertex
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_vertex
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_apply_presentArrow
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_apply_padding
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_apply_presentArrow
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_apply_padding
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingInv_fwd
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingFwd_inv
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_apply
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_vertexPreserving
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_presentArrowPreserving
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_paddingPreserving
+#print axioms Orbcrypt.GrochowQiao.partitionPreservingPermFromEqualCardinalities_isThreePartition
+#print axioms Orbcrypt.GrochowQiao.partition_preserving_perm_under_GL3
+#print axioms Orbcrypt.GrochowQiao.total_slot_cardinality
+#print axioms Orbcrypt.GrochowQiao.paddingSlotIndices_card_eq
+#print axioms Orbcrypt.GrochowQiao.padding_card_eq_arrow_count_complement
+
+namespace BlockDecompNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 3 T-API-4 non-vacuity witness (cardinality identity).**
+The total partition card sums to `dimGQ m`. -/
+example (adj : Fin 3 → Fin 3 → Bool) :
+    (vertexSlotIndices 3).card + (presentArrowSlotIndices 3 adj).card +
+      (paddingSlotIndices 3 adj).card = dimGQ 3 :=
+  total_slot_cardinality 3 adj
+
+/-- **Stage 3 T-API-4 non-vacuity witness (partition-preserving on equal adjs).**
+For `adj = adj`, we trivially have equal cardinalities, so the
+partition-preserving permutation can be constructed and is
+three-partition-preserving. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    IsThreePartitionPreserving m adj adj
+      (partitionPreservingPermFromEqualCardinalities m adj adj rfl) :=
+  partitionPreservingPermFromEqualCardinalities_isThreePartition m adj adj rfl
+
+/-- **Stage 3 T-API-4 non-vacuity witness (composition under the Prop).**
+Given the research-scope `GL3PreservesPartitionCardinalities` Prop,
+every GL³ tensor isomorphism yields a three-partition-preserving
+permutation. -/
+example (h_gl3 : GL3PreservesPartitionCardinalities)
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ)
+    (h_iso : g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂) :
+    ∃ π : Equiv.Perm (Fin (dimGQ m)),
+      IsThreePartitionPreserving m adj₁ adj₂ π :=
+  partition_preserving_perm_under_GL3 h_gl3 m adj₁ adj₂ g h_iso
+
+end BlockDecompNonVacuity
+
+-- ============================================================================
+-- ## §15.12 Workstream R-TI Stage 4 T-API-7 (σ-induced AlgEquiv lift).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_apply
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_one
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_add
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_smul
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_zero
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_apply_vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_apply_arrowElement
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_round_trip
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_round_trip'
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_preserves_mul
+#print axioms Orbcrypt.GrochowQiao.quiverPermFun_preserves_one
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_apply
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_apply_vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_apply_arrowElement
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_one
+
+namespace AlgEquivLiftNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 4 T-API-7 non-vacuity witness (vertex-idempotent action under σ).**
+For σ = swap 0 1 in `Equiv.Perm (Fin 2)`, the σ-induced AlgEquiv sends
+`vertexIdempotent 0` to `vertexIdempotent 1`. -/
+example :
+    (quiverPermAlgEquiv 2 (Equiv.swap (0 : Fin 2) 1)) (vertexIdempotent 2 0) =
+      vertexIdempotent 2 1 := by
+  rw [quiverPermAlgEquiv_apply_vertexIdempotent]
+  simp
+
+/-- **Stage 4 T-API-7 non-vacuity witness (arrow-element action under σ).**
+For σ = swap 0 1, the σ-induced AlgEquiv sends `arrowElement 0 1` to
+`arrowElement 1 0`. -/
+example :
+    (quiverPermAlgEquiv 2 (Equiv.swap (0 : Fin 2) 1)) (arrowElement 2 0 1) =
+      arrowElement 2 1 0 := by
+  rw [quiverPermAlgEquiv_apply_arrowElement]
+  simp
+
+/-- **Stage 4 T-API-7 non-vacuity witness (identity descent).**
+The identity vertex permutation gives the identity AlgEquiv. -/
+example (m : ℕ) :
+    quiverPermAlgEquiv m 1 = AlgEquiv.refl :=
+  quiverPermAlgEquiv_one m
+
+end AlgEquivLiftNonVacuity
+
+-- ============================================================================
+-- ## §15.13 Workstream R-TI Stage 4 T-API-8 (Wedderburn-Mal'cev σ-extraction).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_extractVertexPerm_witness
+#print axioms Orbcrypt.GrochowQiao.extracted_perm_at_identity
+
+namespace WMSigmaExtractionNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 4 T-API-8 non-vacuity witness (round-trip on σ-induced AlgEquiv).**
+The σ-induced AlgEquiv is in WM normal form with j = 0; the WM
+σ-extraction recovers the original σ. -/
+example (m : ℕ) (σ : Equiv.Perm (Fin m)) :
+    ∃ (j : pathAlgebraQuotient m),
+      j ∈ pathAlgebraRadical m ∧
+      ∀ v : Fin m,
+        (1 + j) * vertexIdempotent m (σ v) * (1 - j) =
+          quiverPermAlgEquiv m σ (vertexIdempotent m v) :=
+  quiverPermAlgEquiv_extractVertexPerm_witness m σ
+
+/-- **Stage 4 T-API-8 non-vacuity witness (identity AlgEquiv extraction).** -/
+example (m : ℕ) :
+    ∃ (j : pathAlgebraQuotient m),
+      j ∈ pathAlgebraRadical m ∧
+      ∀ v : Fin m,
+        (1 + j) * vertexIdempotent m ((1 : Equiv.Perm (Fin m)) v) * (1 - j) =
+          (AlgEquiv.refl :
+            pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m)
+            (vertexIdempotent m v) :=
+  extracted_perm_at_identity m
+
+end WMSigmaExtractionNonVacuity
+
+-- ============================================================================
+-- ## §15.14 Workstream R-TI Stage 5 T-API-9 (adjacency invariance lemmas).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.arrowElement_sandwich
+#print axioms Orbcrypt.GrochowQiao.radical_arrowElement_mul
+#print axioms Orbcrypt.GrochowQiao.arrowElement_radical_mul
+#print axioms Orbcrypt.GrochowQiao.inner_aut_radical_fixes_arrow
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_sandwich
+#print axioms Orbcrypt.GrochowQiao.mem_presentArrows_iff
+#print axioms Orbcrypt.GrochowQiao.vertexPerm_isGraphIso_iff_arrow_preserving
+#print axioms Orbcrypt.GrochowQiao.quiverPermAlgEquiv_preserves_presentArrows_iff
+
+namespace AdjacencyInvarianceNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 5 T-API-9.1 non-vacuity witness (sandwich identity).**
+On any vertex pair, the sandwich identity holds for arrowElement. -/
+example (m : ℕ) (u v : Fin m) :
+    vertexIdempotent m u * arrowElement m u v * vertexIdempotent m v =
+      arrowElement m u v :=
+  arrowElement_sandwich m u v
+
+/-- **Stage 5 T-API-9.2 non-vacuity witness (inner conjugation fixes arrow).**
+For zero radical element, the trivial inner conjugation acts as identity. -/
+example (m : ℕ) (u v : Fin m) :
+    (1 + (0 : pathAlgebraQuotient m)) * arrowElement m u v * (1 - 0) =
+      arrowElement m u v :=
+  inner_aut_radical_fixes_arrow m 0 (pathAlgebraRadical m).zero_mem u v
+
+/-- **Stage 5 T-API-9.4 non-vacuity witness (mem_presentArrows iff).**
+Membership in `presentArrows` is exactly `adj u v = true`. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) (u v : Fin m) :
+    (.edge u v : QuiverArrow m) ∈ presentArrows m adj ↔ adj u v = true :=
+  mem_presentArrows_iff m adj u v
+
+end AdjacencyInvarianceNonVacuity
+
+-- ============================================================================
+-- ## §15.15 Workstream R-TI Stage 5 T-API-10 (final rigidity composition).
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.vertexPermPreservesAdjacency
+#print axioms Orbcrypt.GrochowQiao.GL3InducesArrowPreservingPerm
+#print axioms Orbcrypt.GrochowQiao.gl3_induces_arrow_preserving_perm_identity_case
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoRigidity_under_arrowDischarge
+#print axioms Orbcrypt.GrochowQiao.r_ti_rigidity_status_disclosure
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_isInhabitedKarpReduction_full_chain
+
+namespace RigidityNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Stage 5 T-API-10 non-vacuity witness (identity case).**
+The identity vertex permutation trivially preserves arrow support
+on any single graph. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    ∃ σ : Equiv.Perm (Fin m),
+      ∀ u v, (.edge u v : QuiverArrow m) ∈ presentArrows m adj ↔
+             (quiverMap m σ (.edge u v)) ∈ presentArrows m adj :=
+  gl3_induces_arrow_preserving_perm_identity_case m adj
+
+/-- **Stage 5 T-API-10 non-vacuity witness (composition under arrow-discharge).**
+Given the research-scope arrow-preservation Prop, the rigidity
+theorem is unconditional. -/
+example (h_arrow : GL3InducesArrowPreservingPerm) :
+    GrochowQiaoRigidity :=
+  grochowQiaoRigidity_under_arrowDischarge h_arrow
+
+/-- **Stage 5 T-API-10 non-vacuity witness (final Karp reduction).**
+Under the arrow-discharge, the full Karp reduction inhabitant is
+discharged. -/
+example (h_arrow : GL3InducesArrowPreservingPerm) :
+    @GIReducesToTI ℚ _ :=
+  grochowQiao_isInhabitedKarpReduction_full_chain h_arrow
+
+end RigidityNonVacuity
