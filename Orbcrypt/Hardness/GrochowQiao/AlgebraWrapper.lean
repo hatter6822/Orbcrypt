@@ -799,13 +799,13 @@ theorem vertexIdempotent_mul_vertexIdempotent (m : ℕ) (v w : Fin m) :
     -- RHS: (if v = w then vertexIdempotent v else 0) (.id z)
     --    = if v = w then (if v = z then 1 else 0) else 0  [Pi.zero_apply]
     rw [vertexIdempotent_apply_id]
-    split_ifs with h_vz h_wz h_vw h_vw' h_vz'
-    all_goals try (first | rfl | simp_all [Pi.zero_apply, vertexIdempotent_apply_id])
+    split_ifs <;> first | rfl | simp_all
   | edge u w' =>
     rw [vertexIdempotent_mul_apply_edge]
     rw [vertexIdempotent_apply_edge]
-    split_ifs with h_vu h_vw
-    all_goals try (first | rfl | simp_all [Pi.zero_apply, vertexIdempotent_apply_edge])
+    -- LHS = (if v = u then 0 else 0); RHS = (if v = w then 0 else 0).
+    -- Both sides reduce to 0 regardless of branch.
+    split_ifs <;> rfl
 
 /-- **Vertex idempotent times arrow element** (Layer 1.2).
 
@@ -818,15 +818,13 @@ theorem vertexIdempotent_mul_arrowElement (m : ℕ) (v u w : Fin m) :
   | id z =>
     rw [vertexIdempotent_mul_apply_id]
     rw [arrowElement_apply_id]
-    -- (if v = z then 0 else 0) = (if v = u then arrowElement m u w else 0) (.id z)
-    --                         = (if v = u then 0 else 0) [Pi.zero_apply, arrowElement_apply_id]
-    split_ifs with h_vz h_vu
-    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_id])
+    -- LHS = (if v = z then 0 else 0); RHS = (if v = u then 0 else 0).
+    -- Both sides reduce to 0 regardless of branch.
+    split_ifs <;> rfl
   | edge u' w' =>
     rw [vertexIdempotent_mul_apply_edge]
     rw [arrowElement_apply_edge]
-    split_ifs with h_vu' h_uw' h_uw'' h_vu h_uw' h_vu' h_uw''
-    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_edge])
+    split_ifs <;> first | rfl | simp_all
 
 /-- **Arrow element times vertex idempotent** (Layer 1.3).
 
@@ -839,13 +837,13 @@ theorem arrowElement_mul_vertexIdempotent (m : ℕ) (u v w : Fin m) :
   | id z =>
     rw [mul_vertexIdempotent_apply_id]
     rw [arrowElement_apply_id]
-    split_ifs with h_wz h_vw
-    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_id])
+    -- LHS = (if w = z then 0 else 0); RHS = (if v = w then 0 else 0).
+    -- Both sides reduce to 0 regardless of branch.
+    split_ifs <;> rfl
   | edge u' w' =>
     rw [mul_vertexIdempotent_apply_edge]
     rw [arrowElement_apply_edge]
-    split_ifs with h_ww' h_uw'_match h_vw h_uw'_match
-    all_goals try (first | rfl | simp_all [Pi.zero_apply, arrowElement_apply_edge])
+    split_ifs <;> first | rfl | simp_all
 
 /-- **Arrow element times arrow element is zero** (Layer 1.4).
 
@@ -1807,7 +1805,7 @@ theorem exists_nonVertex_idempotent (m : ℕ) (h_m : 2 ≤ m) :
     rw [vertexIdempotent_mul_arrowElement, if_pos rfl]
     rw [arrowElement_mul_arrowElement_eq_zero]
     -- e_v + 0 + α(v,w) + 0 = e_v + α(v,w)
-    simp [add_zero, zero_add]
+    simp [add_zero]
   · -- Not equal to any vertex idempotent:
     intros v' h_eq
     -- Evaluate at .edge v w: LHS gives 1, RHS (e_{v'}) gives 0.

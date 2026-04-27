@@ -2700,6 +2700,9 @@ end GrochowQiaoNonVacuity
 #print axioms Orbcrypt.GrochowQiao.coi_conjugator_apply_edge
 #print axioms Orbcrypt.GrochowQiao.coi_conjugation_identity
 #print axioms Orbcrypt.GrochowQiao.wedderburn_malcev_conjugacy
+#print axioms Orbcrypt.GrochowQiao.algEquiv_image_vertexIdempotent_COI
+#print axioms Orbcrypt.GrochowQiao.algEquiv_image_vertexIdempotent_ne_zero
+#print axioms Orbcrypt.GrochowQiao.algEquiv_extractVertexPerm
 
 namespace WedderburnMalcevNonVacuity
 
@@ -2719,5 +2722,17 @@ example :
   wedderburn_malcev_conjugacy 1 (vertexIdempotent 1)
     (vertexIdempotent_completeOrthogonalIdempotents 1)
     (vertexIdempotent_ne_zero 1)
+
+/-- Phase F starter non-vacuity: the identity `AlgEquiv` on
+    `pathAlgebraQuotient 1` yields σ + j via `algEquiv_extractVertexPerm`
+    (extracting from the trivially-equal `φ ∘ vertexIdempotent`). -/
+example :
+    ∃ (σ : Equiv.Perm (Fin 1)) (j : pathAlgebraQuotient 1),
+      j ∈ pathAlgebraRadical 1 ∧
+      ∀ v : Fin 1,
+        (1 + j) * vertexIdempotent 1 (σ v) * (1 - j) =
+        (AlgEquiv.refl : pathAlgebraQuotient 1 ≃ₐ[ℚ] pathAlgebraQuotient 1)
+          (vertexIdempotent 1 v) :=
+  algEquiv_extractVertexPerm 1 AlgEquiv.refl
 
 end WedderburnMalcevNonVacuity

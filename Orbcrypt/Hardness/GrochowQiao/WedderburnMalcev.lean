@@ -223,7 +223,7 @@ theorem innerAut_simplified (m : ℕ) {j : pathAlgebraQuotient m}
 -- Layer 6b.3 — Wedderburn–Mal'cev conjugacy: vertex coefficient analysis.
 -- ============================================================================
 
-variable {m : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]
+variable {m : ℕ} {ι : Type*} [Fintype ι]
 
 /-- **Vertex coefficient is 0 or 1 in any idempotent.**
 
@@ -296,7 +296,7 @@ theorem coi_nonzero_has_active_vertex
     {i : ι} (h_nz : e' i ≠ 0) :
     ∃ z, (e' i) (.id z) = 1 := by
   by_contra h_no
-  push_neg at h_no
+  push Not at h_no
   -- h_no : ∀ z, (e' i) (.id z) ≠ 1
   -- Combined with `coi_vertex_coef_zero_or_one`, each coef is 0.
   have h_all_zero : ∀ z, (e' i) (.id z) = 0 := fun z =>
@@ -318,7 +318,7 @@ theorem coi_unique_active_per_z
   -- If all coefs were 0, the sum would be 0; we'd contradict 1.
   have h_exists : ∃ i, (e' i) (.id z) = 1 := by
     by_contra h_no
-    push_neg at h_no
+    push Not at h_no
     -- h_no : ∀ i, (e' i)(.id z) ≠ 1
     have h_all_zero : ∀ i, (e' i) (.id z) = 0 := fun i =>
       (coi_vertex_coef_zero_or_one h_coi i z).resolve_right (h_no i)
@@ -503,7 +503,7 @@ theorem coi_conjugator_apply_edge
     (u t : Fin m) :
     coi_conjugator h_coi h_nz (.edge u t) =
     -(e' ((coi_vertexPerm h_coi h_nz).symm u)) (.edge u t) := by
-  set σ := coi_vertexPerm h_coi h_nz with hσ_def
+  set σ := coi_vertexPerm h_coi h_nz
   show (-∑ p : Fin m × Fin m,
             (e' p.1) (.edge (σ p.1) p.2) • arrowElement m (σ p.1) p.2) (.edge u t) =
        -(e' (σ.symm u)) (.edge u t)
@@ -590,7 +590,7 @@ theorem coi_cross_arrow_compat
     (h_u_ne : u ≠ coi_vertexPerm h_coi h_nz v) :
     (e' v) (.edge u t) =
     -(e' ((coi_vertexPerm h_coi h_nz).symm u)) (.edge u t) := by
-  set σ := coi_vertexPerm h_coi h_nz with hσ_def
+  set σ := coi_vertexPerm h_coi h_nz
   -- σ.symm u ≠ v: if σ.symm u = v, then u = σ v, contradicting h_u_ne.
   have h_ne : σ.symm u ≠ v := by
     intro h_eq

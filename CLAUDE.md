@@ -4155,6 +4155,74 @@ self-consistent across all `(u, t)` arrow pairs (the
 
 **Patch version.** `lakefile.lean` bumped from `0.1.20` to `0.1.21`.
 
+Workstream R-TI Layer 0–6b deep audit (2026-04-27, post-WM landing)
+has been completed. The audit verified each layer's content against
+the implementation (not the documentation), checked for shortcuts
+that compromise correctness, and ran the build + Phase-16 audit
+script to convergence. Findings + fixes:
+
+- **Layer 0–5:** clean. `PathAlgebra.lean`'s `pathMul_assoc` uses a
+  disciplined 8-case structural recursion (8 cases via three nested
+  `cases QuiverArrow`, all closed by `simp only` + `split_ifs` /
+  `rfl`). `AlgebraWrapper.lean`'s `pathAlgebraMul_assoc` uses the
+  C1 + C2 + C3 canonical-form decomposition (private helpers
+  `pathMul_indicator_collapse[_right]`,
+  `pathAlgebraMul_assoc_lhs_canonical`, `_rhs_canonical`).
+  Layers 1–5 use clean ring lemmas and Mathlib's `Algebra.ofModule`.
+- **Layer 6 (Phase C):** clean. `IsPrimitiveIdempotent` is
+  hand-rolled (Mathlib lacks the predicate). `vertexIdempotent_isPrimitive`
+  proven via the Phase-C.4 helper chain (`_lambda_at_v` /
+  `_lambda_off_v` / `_lambda_zero_everywhere`).
+- **Layer 6.7–6.10:** clean. Vertex-idempotent COI builds directly
+  from Layers 1.1 + 6.4 + the `pathAlgebraOne` definition; AlgEquiv
+  preservation uses Mathlib's `AlgEquivClass.map_mul` / `map_zero` /
+  `map_sum` / `map_one`.
+- **Layer 6b:** clean. The Wedderburn–Mal'cev conjugacy is proven
+  in full: σ extracted via `Finite.injective_iff_surjective` from
+  `coi_chooseActive`'s surjectivity (each non-zero COI element has
+  ≥ 1 active vertex); `j` constructed as the explicit sum
+  `-∑ (e' w)(.edge (σw) s) • α(σw, s)`; conjugation identity
+  proven pointwise with 4-case analysis on `(σv = u, σv = t)`.
+
+Audit-driven fixes (committed in this audit pass):
+
+1. **`AlgebraWrapper.lean` linter cleanup (12 → 0 warnings):**
+   - `vertexIdempotent_mul_vertexIdempotent` (Layer 1.1) and 3
+     symmetric basis-element-multiplication theorems used the
+     pattern `all_goals try (first | rfl | simp_all [Pi.zero_apply,
+     ...])` where the `simp_all` arguments were unused (because
+     `rfl` always closed the goal first) and the `try` was triggering
+     "tactic never executed" warnings. Replaced with the cleaner
+     `split_ifs <;> rfl` (when both sides reduce to 0 unconditionally)
+     or `split_ifs <;> first | rfl | simp_all` (when some cases need
+     the simp set).
+   - `exists_nonVertex_idempotent` (Phase C.5 counterexample)
+     dropped an unused `zero_add` simp argument.
+2. **`WedderburnMalcev.lean` linter cleanup (5 → 0 warnings):**
+   - The `variable {m : ℕ} {ι : Type*} [Fintype ι] [DecidableEq ι]`
+     section variable carried `[DecidableEq ι]` which was never
+     consumed (the COI machinery uses orthogonality and completeness,
+     not equality decisions on the index type). Removed.
+   - Two `push_neg` invocations in `coi_nonzero_has_active_vertex`
+     and `coi_unique_active_per_z` were flagged as deprecated by
+     Mathlib's `Tactic.Push` (Mathlib at `fa6418a8` prefers the
+     unified `push Not` form). Replaced.
+   - Two `set σ := coi_vertexPerm h_coi h_nz with hσ_def` patterns
+     in `coi_conjugator_apply_edge` and `coi_cross_arrow_compat`
+     declared `hσ_def` but never used it. Removed the `with hσ_def`
+     trailers.
+3. **Audit script extension:** added `#print axioms` entries for the
+   Phase F starter (`algEquiv_image_vertexIdempotent_COI` /
+   `_ne_zero` / `algEquiv_extractVertexPerm`) plus a non-vacuity
+   `example` exercising `algEquiv_extractVertexPerm` on the identity
+   `AlgEquiv` at `m = 1`.
+
+Post-audit posture (2026-04-27): full `lake build` succeeds across
+**3,391 jobs with zero warnings, zero errors**. Phase 16 audit
+script exercises **639 declarations** (up from 636), all on the
+standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+Zero `sorry`, zero custom axioms across all Layer 0–6b material.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

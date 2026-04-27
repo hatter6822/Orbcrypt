@@ -126,11 +126,39 @@
 
 - Full `lake build` succeeds across **3,391 jobs** (zero warnings,
   zero errors).
-- Phase 16 audit script: 485 `#print axioms` lines, 0 `sorryAx`,
-  0 errors. All 23 new declarations depend only on the standard
+- Phase 16 audit script: 639 `#print axioms` lines, 0 `sorryAx`,
+  0 errors. All declarations depend only on the standard
   Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
 - Module count: 47 → **48** (added `WedderburnMalcev.lean`).
 - `lakefile.lean` version: `0.1.20` → **`0.1.21`**.
+
+### 2026-04-27 audit-pass fixes (post-WM landing)
+
+A subsequent deep audit of Layers 0–6b verified each layer's
+content against the implementation and ran the build + Phase 16
+script to convergence. Audit-driven cleanups:
+
+1. **`AlgebraWrapper.lean`** Layer 1 basis-element theorems:
+   removed redundant `try (first | rfl | simp_all [...])` chains
+   (12 build warnings → 0). Pattern was `all_goals try (...)` where
+   `try` was triggering "tactic never executed" because `rfl`
+   always closed first. Replaced with `split_ifs <;> rfl` or
+   `split_ifs <;> first | rfl | simp_all`.
+2. **`WedderburnMalcev.lean`** linter cleanups (5 warnings → 0):
+   * Removed unused `[DecidableEq ι]` from section variable.
+   * Replaced deprecated `push_neg` with `push Not` (Mathlib at
+     `fa6418a8` prefers the unified form).
+   * Removed unused `with hσ_def` trailers on two `set` patterns.
+3. **Audit script** extended with the Phase F starter declarations
+   (`algEquiv_image_vertexIdempotent_COI`,
+   `algEquiv_image_vertexIdempotent_ne_zero`,
+   `algEquiv_extractVertexPerm`) and a non-vacuity `example`
+   exercising `algEquiv_extractVertexPerm` on `AlgEquiv.refl` at
+   `m = 1`.
+
+The audit confirmed all Layers 0–6b are fully discharged with no
+shortcuts: no `sorry`, no custom axioms, no Prop-hypothesis
+fallbacks, no incomplete proofs masquerading as theorems.
 
 ### Remaining work (the user pre-approved Prop fallback ONLY for Phase D)
 
