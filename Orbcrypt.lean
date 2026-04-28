@@ -69,6 +69,9 @@ import Orbcrypt.Hardness.GrochowQiao.EncoderPolynomialIdentities
 import Orbcrypt.Hardness.GrochowQiao.TensorIdentityPreservation
 import Orbcrypt.Hardness.GrochowQiao.PathOnlyTensor
 import Orbcrypt.Hardness.GrochowQiao.AlgEquivFromGL3
+-- Phase 3 / Final discharge: A.1.5 prerequisite + Manin foundations:
+import Orbcrypt.Hardness.GrochowQiao.EncoderUnitCompatibility
+import Orbcrypt.Hardness.GrochowQiao.Manin.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling
