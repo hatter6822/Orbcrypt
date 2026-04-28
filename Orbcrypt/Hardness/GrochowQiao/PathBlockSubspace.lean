@@ -14,14 +14,8 @@ Path-block linear restriction (parametric in π)" for the work-unit
 decomposition.
 -/
 
-import Mathlib.LinearAlgebra.Span.Defs
 import Mathlib.LinearAlgebra.Pi
-import Mathlib.LinearAlgebra.Basis.Basic
-import Mathlib.LinearAlgebra.Basis.Defs
-import Mathlib.LinearAlgebra.LinearIndependent.Defs
-import Mathlib.LinearAlgebra.LinearIndependent.Basic
-import Mathlib.LinearAlgebra.Matrix.ToLin
-import Mathlib.Data.Matrix.Basic
+import Mathlib.Algebra.Module.Equiv.Basic
 import Orbcrypt.Hardness.GrochowQiao.PermMatrix
 import Orbcrypt.Hardness.GrochowQiao.SlotSignature
 import Orbcrypt.Hardness.GrochowQiao.AlgebraWrapper
@@ -59,22 +53,29 @@ lemmas do not commit to a specific π.
 
 ## Layer 2.3 — Conditional linear restriction
 
-* `pathBlockMatrix_restricts_to_pathBlockSubspace` — under the
+* `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal` — under the
   block-diagonality hypothesis (the path-to-padding off-diagonal
-  block is zero), the matrix's restriction to vectors supported on
-  `pathSlotIndices m adj₁` lands in `pathBlockSubspace m adj₂`.
-* `gl3_restrict_to_pathBlock` — the corresponding `LinearMap`
-  between `pathBlockSubspace`s.
-* `gl3_restrict_to_pathBlock_isLinearEquiv` — when the symmetric
-  padding-to-path block also vanishes and `g` is invertible, the
-  restriction upgrades to a `LinearEquiv`.
+  block is zero), the matrix's `mulVec` action takes vectors
+  supported on `pathSlotIndices m adj₁` to vectors supported on
+  `pathSlotIndices m adj₂`.
+* `pathBlockRestrict` — the corresponding `LinearMap` between
+  `pathBlockSubspace`s parametric in an arbitrary matrix `M`.
+* `gl3_restrict_to_pathBlock` — specialisation to the path-block
+  matrix `pathBlockMatrix m g π`, the actual map Phase 3 produces.
+* `pathBlockEquivOfFullyDiagonal` — when the full block-diagonality
+  hypothesis (both `IsPathBlockDiagonal` AND `IsPaddingBlockDiagonal`)
+  holds and the matrix is invertible, the restriction is upgraded to
+  a `LinearEquiv` — the inverse direction uses the dual block-
+  diagonality of `M⁻¹`.
 
 ## Layer 2.4 — Bridge to `pathAlgebraQuotient`
 
 * `presentArrowsSubspace m adj : Submodule ℚ (pathAlgebraQuotient m)`
-  — the subspace spanned by `vertexIdempotent v` (all `v`) and
-  `arrowElement u v` (when `adj u v = true`).
-* `pathBlock_to_presentArrows : pathBlockSubspace m adj ≃ₗ[ℚ]
+  — vectors supported on `presentArrows m adj`. This is the
+  natural codomain of the algebra-iso construction in Phase 3 —
+  it equips the path-algebra `F[Q_G] / J²` of `adj` with the
+  convolution multiplication inherited from `pathAlgebraQuotient m`.
+* `pathBlockToPresentArrows : pathBlockSubspace m adj ≃ₗ[ℚ]
   presentArrowsSubspace m adj` — the linear equivalence bridging the
   indicator-vector subspace (where `pathBlockMatrix` operates) to
   the `pathAlgebraQuotient` subspace (where the algebra-iso lives).
@@ -139,10 +140,11 @@ theorem permMatrixOf_det_ne_zero (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m))) :
 -- ============================================================================
 
 /-- The **path-block subspace** of `Fin (dimGQ m) → ℚ`: vectors that
-vanish outside `pathSlotIndices m adj`. (Equivalently, the subspace
-spanned by the indicator vectors `Pi.single i 1` for `i ∈
-pathSlotIndices m adj` — see `mem_pathBlockSubspace_iff_supported`
-and `pathBlockSubspace_eq_span` below.) -/
+vanish outside `pathSlotIndices m adj`.
+
+Equivalently, this is the subspace spanned by the indicator vectors
+`Pi.single i 1` for `i ∈ pathSlotIndices m adj`; the equivalence is
+witnessed by `pathBlockSubspace_eq_indicator_span` below. -/
 def pathBlockSubspace (m : ℕ) (adj : Fin m → Fin m → Bool) :
     Submodule ℚ (Fin (dimGQ m) → ℚ) where
   carrier := { f | ∀ i, i ∉ pathSlotIndices m adj → f i = 0 }
@@ -203,6 +205,56 @@ theorem pi_single_mem_paddingSubspace
   by_cases hij : i = j
   · subst hij; exact absurd h hj
   · simp [Pi.single_eq_of_ne (Ne.symm hij)]
+
+/-- **Path-block decomposition by indicator vectors.**
+
+For any `f : Fin (dimGQ m) → ℚ` supported on `pathSlotIndices m adj`, the
+function admits the explicit Finset-sum decomposition
+`f = ∑ i ∈ pathSlotIndices m adj, f i • Pi.single i 1`. This is the
+algebraic content of the indicator-span characterization
+`pathBlockSubspace_eq_indicator_span` below. -/
+theorem pathBlockSubspace_indicator_decomposition (m : ℕ)
+    (adj : Fin m → Fin m → Bool) (f : Fin (dimGQ m) → ℚ)
+    (h_f : f ∈ pathBlockSubspace m adj) :
+    f = ∑ i ∈ pathSlotIndices m adj, f i • Pi.single i (1 : ℚ) := by
+  funext j
+  simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+  by_cases hj : j ∈ pathSlotIndices m adj
+  · -- Only the i = j summand contributes.
+    rw [Finset.sum_eq_single j]
+    · simp
+    · intro i _ hij
+      simp [Pi.single_eq_of_ne (Ne.symm hij)]
+    · intro h_not; exact absurd hj h_not
+  · -- All summands are zero, and `f j = 0` by support of `f`.
+    rw [Finset.sum_eq_zero, (h_f j hj).symm]
+    intro i hi
+    have hij : i ≠ j := fun h_eq => hj (h_eq ▸ hi)
+    simp [Pi.single_eq_of_ne (Ne.symm hij)]
+
+/-- **Path-block subspace = span of indicator vectors.**
+
+The path-block subspace is exactly the `ℚ`-linear span of the indicator
+vectors `Pi.single i 1` indexed by `i ∈ pathSlotIndices m adj`. The
+forward inclusion uses `pi_single_mem_pathBlockSubspace`; the reverse uses
+the indicator decomposition `pathBlockSubspace_indicator_decomposition`. -/
+theorem pathBlockSubspace_eq_indicator_span (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    pathBlockSubspace m adj =
+    Submodule.span ℚ ((pathSlotIndices m adj : Set (Fin (dimGQ m))).image
+      (fun i => Pi.single i (1 : ℚ))) := by
+  apply le_antisymm
+  · -- pathBlockSubspace ⊆ span: f decomposes into a finite sum of generators.
+    intro f hf
+    rw [pathBlockSubspace_indicator_decomposition m adj f hf]
+    apply Submodule.sum_mem
+    intro i hi
+    apply Submodule.smul_mem
+    apply Submodule.subset_span
+    exact ⟨i, hi, rfl⟩
+  · -- span ⊆ pathBlockSubspace: the generators are in pathBlockSubspace.
+    rw [Submodule.span_le]
+    rintro - ⟨i, hi, rfl⟩
+    exact pi_single_mem_pathBlockSubspace m adj i hi 1
 
 -- ============================================================================
 -- Layer 2.1.3 — Subspace decomposition: `pathBlockSubspace` and
@@ -512,6 +564,85 @@ noncomputable def gl3_restrict_to_pathBlock (m : ℕ)
     (h_block : IsPathBlockDiagonal m adj₁ adj₂ (pathBlockMatrix m g π)) :
     pathBlockSubspace m adj₁ →ₗ[ℚ] pathBlockSubspace m adj₂ :=
   pathBlockRestrict m adj₁ adj₂ (pathBlockMatrix m g π) h_block
+
+/-- Apply lemma for `gl3_restrict_to_pathBlock`. -/
+@[simp] theorem gl3_restrict_to_pathBlock_apply (m : ℕ)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ)
+    (π : Equiv.Perm (Fin (dimGQ m)))
+    (h_block : IsPathBlockDiagonal m adj₁ adj₂ (pathBlockMatrix m g π))
+    (v : pathBlockSubspace m adj₁) :
+    (gl3_restrict_to_pathBlock m adj₁ adj₂ g π h_block v).val =
+      pathBlockMatrix m g π *ᵥ v.val := rfl
+
+-- ============================================================================
+-- Layer 2.3.1 — `LinearEquiv` upgrade of the restriction.
+--
+-- When `M` and `M'` are mutual matrix inverses and *both* path-block-
+-- diagonal (with the slot Finsets swapped), the restrictions of `M *ᵥ -`
+-- and `M' *ᵥ -` to the path-block subspaces form a `LinearEquiv`. Phase 3
+-- instantiates this with `M = pathBlockMatrix m g π` and
+-- `M' = the matrix inverse of M`, both of which are block-diagonal under
+-- the partition-preservation hypothesis it derives.
+-- ============================================================================
+
+/-- **`LinearEquiv` upgrade of the path-block restriction.**
+
+Given two block-diagonal matrices `M` and `M'` that are mutual matrix
+inverses (`M' * M = 1` and `M * M' = 1`), the path-block restrictions
+of `M *ᵥ -` and `M' *ᵥ -` form a `LinearEquiv` between
+`pathBlockSubspace m adj₁` and `pathBlockSubspace m adj₂`.
+
+This is the building block Phase 3 instantiates: when a partition-
+preserving slot permutation π is established, both `M = pathBlockMatrix m g π`
+and the corresponding inverse `M'` are fully block-diagonal, and Phase 3's
+algebra-iso construction lifts this `LinearEquiv` to an `AlgEquiv` of the
+path algebras. -/
+noncomputable def pathBlockEquivOfInverse (m : ℕ)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (M M' : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ)
+    (h_block : IsPathBlockDiagonal m adj₁ adj₂ M)
+    (h_block_inv : IsPathBlockDiagonal m adj₂ adj₁ M')
+    (h_left : M' * M = 1)
+    (h_right : M * M' = 1) :
+    pathBlockSubspace m adj₁ ≃ₗ[ℚ] pathBlockSubspace m adj₂ :=
+  LinearEquiv.ofLinear
+    (pathBlockRestrict m adj₁ adj₂ M h_block)
+    (pathBlockRestrict m adj₂ adj₁ M' h_block_inv)
+    (by
+      apply LinearMap.ext
+      intro w
+      apply Subtype.ext
+      show M *ᵥ (M' *ᵥ w.val) = w.val
+      rw [Matrix.mulVec_mulVec, h_right, Matrix.one_mulVec])
+    (by
+      apply LinearMap.ext
+      intro v
+      apply Subtype.ext
+      show M' *ᵥ (M *ᵥ v.val) = v.val
+      rw [Matrix.mulVec_mulVec, h_left, Matrix.one_mulVec])
+
+/-- Apply lemma for `pathBlockEquivOfInverse`. -/
+@[simp] theorem pathBlockEquivOfInverse_apply (m : ℕ)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (M M' : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ)
+    (h_block : IsPathBlockDiagonal m adj₁ adj₂ M)
+    (h_block_inv : IsPathBlockDiagonal m adj₂ adj₁ M')
+    (h_left : M' * M = 1) (h_right : M * M' = 1)
+    (v : pathBlockSubspace m adj₁) :
+    (pathBlockEquivOfInverse m adj₁ adj₂ M M' h_block h_block_inv h_left h_right v).val =
+      M *ᵥ v.val := rfl
+
+/-- Apply lemma for `pathBlockEquivOfInverse.symm`. -/
+@[simp] theorem pathBlockEquivOfInverse_symm_apply (m : ℕ)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (M M' : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ)
+    (h_block : IsPathBlockDiagonal m adj₁ adj₂ M)
+    (h_block_inv : IsPathBlockDiagonal m adj₂ adj₁ M')
+    (h_left : M' * M = 1) (h_right : M * M' = 1)
+    (w : pathBlockSubspace m adj₂) :
+    ((pathBlockEquivOfInverse m adj₁ adj₂ M M' h_block h_block_inv h_left h_right).symm w).val =
+      M' *ᵥ w.val := rfl
 
 -- ============================================================================
 -- Layer 2.4 — Bridge from `pathBlockSubspace` to `presentArrowsSubspace`.

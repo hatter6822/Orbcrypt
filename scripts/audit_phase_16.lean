@@ -3627,6 +3627,16 @@ end EncoderSlabEvalNonVacuity
 #print axioms Orbcrypt.GrochowQiao.pathBlockToPresentArrows_apply
 #print axioms Orbcrypt.GrochowQiao.pathBlockToPresentArrows_symm_apply
 
+-- Layer 2.1 indicator-span / decomposition (post-audit Phase 2 expansion).
+#print axioms Orbcrypt.GrochowQiao.pathBlockSubspace_indicator_decomposition
+#print axioms Orbcrypt.GrochowQiao.pathBlockSubspace_eq_indicator_span
+
+-- Layer 2.3 / 2.3.1 (post-audit Phase 2 expansion).
+#print axioms Orbcrypt.GrochowQiao.gl3_restrict_to_pathBlock_apply
+#print axioms Orbcrypt.GrochowQiao.pathBlockEquivOfInverse
+#print axioms Orbcrypt.GrochowQiao.pathBlockEquivOfInverse_apply
+#print axioms Orbcrypt.GrochowQiao.pathBlockEquivOfInverse_symm_apply
+
 namespace PathBlockSubspaceNonVacuity
 
 open Orbcrypt
@@ -3733,5 +3743,141 @@ example (v : pathBlockSubspace 2 (fun _ _ => false)) :
     (pathBlockToPresentArrows 2 (fun _ _ => false)).symm
       (pathBlockToPresentArrows 2 (fun _ _ => false) v) = v :=
   (pathBlockToPresentArrows 2 (fun _ _ => false)).left_inv v
+
+-- ----------------------------------------------------------------------------
+-- Post-audit expansions (added in the 2026-04-28 audit pass): direct
+-- non-vacuity tests for the new declarations and for previously
+-- underrepresented existing declarations.
+-- ----------------------------------------------------------------------------
+
+/-- **Layer 2.1 non-vacuity: zero matrix path-padding decomposition.**
+Demonstrates the existence form of the decomposition theorem on a
+concrete vector (the zero vector splits as 0 + 0). -/
+example :
+    ∃ (fp fpd : Fin (dimGQ 2) → ℚ),
+      fp ∈ pathBlockSubspace 2 (fun _ _ => false) ∧
+      fpd ∈ paddingSubspace 2 (fun _ _ => false) ∧
+      (0 : Fin (dimGQ 2) → ℚ) = fp + fpd :=
+  pathBlock_padding_decomposition 2 (fun _ _ => false) 0
+
+/-- **Layer 2.1 non-vacuity: `pathBlockSubspace_disjoint_paddingSubspace`.** -/
+example :
+    pathBlockSubspace 2 (fun _ _ => false) ⊓ paddingSubspace 2 (fun _ _ => false) = ⊥ :=
+  pathBlockSubspace_disjoint_paddingSubspace 2 (fun _ _ => false)
+
+/-- **Layer 2.1 non-vacuity: `pathBlockSubspace_sup_paddingSubspace_eq_top`.** -/
+example :
+    pathBlockSubspace 2 (fun _ _ => false) ⊔ paddingSubspace 2 (fun _ _ => false) = ⊤ :=
+  pathBlockSubspace_sup_paddingSubspace_eq_top 2 (fun _ _ => false)
+
+/-- **Layer 2.1 non-vacuity: indicator-span characterisation.**
+Witnesses that `pathBlockSubspace m adj` equals the `ℚ`-linear span of
+the indicator vectors `Pi.single i 1` over `pathSlotIndices m adj`. -/
+example :
+    pathBlockSubspace 1 (fun _ _ => false) =
+    Submodule.span ℚ ((pathSlotIndices 1 (fun _ _ => false) : Set _).image
+      (fun i => Pi.single i (1 : ℚ))) :=
+  pathBlockSubspace_eq_indicator_span 1 (fun _ _ => false)
+
+/-- **Layer 2.1 non-vacuity: indicator decomposition on the zero vector.**
+Witnesses that the indicator-decomposition theorem applies to a concrete
+element of the path-block subspace. -/
+example :
+    (0 : Fin (dimGQ 1) → ℚ) =
+      ∑ i ∈ pathSlotIndices 1 (fun _ _ => false),
+        (0 : Fin (dimGQ 1) → ℚ) i • Pi.single i (1 : ℚ) :=
+  pathBlockSubspace_indicator_decomposition 1 (fun _ _ => false) 0
+    (Submodule.zero_mem _)
+
+/-- **Layer 2.2 non-vacuity: `pathBlockMatrix_apply_eq_g_at_pi`.**
+Witnesses the partition-preserving simplification on a concrete entry. -/
+example
+    (g : GL (Fin (dimGQ 2)) ℚ × GL (Fin (dimGQ 2)) ℚ × GL (Fin (dimGQ 2)) ℚ)
+    (π : Equiv.Perm (Fin (dimGQ 2))) (i j : Fin (dimGQ 2)) :
+    pathBlockMatrix 2 g π i j = g.1.val i (π j) :=
+  pathBlockMatrix_apply_eq_g_at_pi 2 g π i j
+
+/-- **Layer 2.3 non-vacuity: `IsPaddingBlockDiagonal` on the zero matrix.** -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool) :
+    IsPaddingBlockDiagonal m adj₁ adj₂ 0 := by
+  intro _ _ _ _; rfl
+
+/-- **Layer 2.3 non-vacuity: `IsFullyPathBlockDiagonal` on the zero matrix.** -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool) :
+    IsFullyPathBlockDiagonal m adj₁ adj₂ 0 :=
+  ⟨fun _ _ _ _ => rfl, fun _ _ _ _ => rfl⟩
+
+/-- **Layer 2.3 non-vacuity: `pathBlockRestrict` is well-typed.** -/
+noncomputable example
+    (M : Matrix (Fin (dimGQ 2)) (Fin (dimGQ 2)) ℚ)
+    (h_block : IsPathBlockDiagonal 2 (fun _ _ => false) (fun _ _ => false) M) :
+    pathBlockSubspace 2 (fun _ _ => false) →ₗ[ℚ]
+    pathBlockSubspace 2 (fun _ _ => false) :=
+  pathBlockRestrict 2 (fun _ _ => false) (fun _ _ => false) M h_block
+
+/-- **Layer 2.3.1 non-vacuity: `pathBlockEquivOfInverse` with M = M' = 1.**
+The identity matrix is its own inverse and trivially block-diagonal w.r.t.
+any adjacency partition. This produces a `LinearEquiv` between the
+path-block subspace and itself (the identity equivalence).
+
+The path-to-padding off-diagonal of `(1 : Matrix _ _ ℚ)` vanishes because
+the entry `(1 : Matrix) i j = 0` whenever `i ≠ j`, and the
+path-slot/padding-slot Finsets are disjoint. -/
+noncomputable example :
+    pathBlockSubspace 2 (fun _ _ => false) ≃ₗ[ℚ]
+    pathBlockSubspace 2 (fun _ _ => false) :=
+  let id_block_diag :
+      IsPathBlockDiagonal 2 (fun _ _ => false) (fun _ _ => false)
+        (1 : Matrix (Fin (dimGQ 2)) (Fin (dimGQ 2)) ℚ) := fun i hi j hj => by
+    rw [Matrix.one_apply, if_neg]
+    intro h_eq
+    subst h_eq
+    rw [pathSlotIndices_eq_vertex_union_presentArrow] at hj
+    rcases Finset.mem_union.mp hj with hv | hp
+    · exact (Finset.disjoint_left.mp
+        (vertexSlotIndices_disjoint_paddingSlotIndices 2 (fun _ _ => false))) hv hi
+    · exact (Finset.disjoint_left.mp
+        (presentArrowSlotIndices_disjoint_paddingSlotIndices 2 (fun _ _ => false))) hp hi
+  pathBlockEquivOfInverse 2 (fun _ _ => false) (fun _ _ => false)
+    (1 : Matrix (Fin (dimGQ 2)) (Fin (dimGQ 2)) ℚ)
+    (1 : Matrix (Fin (dimGQ 2)) (Fin (dimGQ 2)) ℚ)
+    id_block_diag id_block_diag (one_mul _) (one_mul _)
+
+/-- **Layer 2.4 non-vacuity: `slotToArrow_mem_presentArrows_of_path` on m=2.** -/
+example :
+    slotToArrow 2 (slotEquiv 2 ((slotEquiv 2).symm (.vertex 0))) ∈
+      presentArrows 2 (fun _ _ => false) := by
+  apply slotToArrow_mem_presentArrows_of_path
+  rw [pathSlotIndices_eq_vertex_union_presentArrow]
+  apply Finset.mem_union_left
+  rw [mem_vertexSlotIndices_iff]
+  exact ⟨0, Equiv.apply_symm_apply _ _⟩
+
+/-- **Layer 2.4 non-vacuity: `slotOfArrow_mem_pathSlotIndices_of_present`
+on the vertex idempotent at m=2.** -/
+example :
+    slotOfArrow 2 (.id 0) ∈ pathSlotIndices 2 (fun _ _ => false) :=
+  slotOfArrow_mem_pathSlotIndices_of_present 2 (fun _ _ => false) _
+    (presentArrows_id_mem _ _ _)
+
+/-- **Layer 2.4 non-vacuity: forward map's `_mem` discharges unconditionally.** -/
+example (v : Fin (dimGQ 2) → ℚ) :
+    pathBlockToPresentArrowsFun 2 (fun _ _ => false) v ∈
+      presentArrowsSubspace 2 (fun _ _ => false) :=
+  pathBlockToPresentArrowsFun_mem 2 (fun _ _ => false) v
+
+/-- **Layer 2.4 non-vacuity: reverse map's `_mem` discharges unconditionally.** -/
+example (f : pathAlgebraQuotient 2) :
+    presentArrowsToPathBlockFun 2 (fun _ _ => false) f ∈
+      pathBlockSubspace 2 (fun _ _ => false) :=
+  presentArrowsToPathBlockFun_mem 2 (fun _ _ => false) f
+
+/-- **Layer 2.4 non-vacuity: bridge round-trip `forward ∘ reverse = id`.**
+Companion to the existing `symm ∘ forward = id` test, exercising the
+other direction of the LinearEquiv. -/
+example (f : presentArrowsSubspace 2 (fun _ _ => false)) :
+    pathBlockToPresentArrows 2 (fun _ _ => false)
+      ((pathBlockToPresentArrows 2 (fun _ _ => false)).symm f) = f :=
+  (pathBlockToPresentArrows 2 (fun _ _ => false)).right_inv f
 
 end PathBlockSubspaceNonVacuity

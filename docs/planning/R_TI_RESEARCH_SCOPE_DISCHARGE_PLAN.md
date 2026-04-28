@@ -456,18 +456,84 @@ evaluation lemmas to argue about encoder structure.
 
 ---
 
-## Phase 2 — Path-block linear restriction (parametric in π) (~700 LOC) — **COMPLETE (2026-04-28)**
+## Phase 2 — Path-block linear restriction (parametric in π) (~700 LOC) — **COMPLETE (2026-04-28, audited 2026-04-28)**
 
 **Status.** Landed in
-`Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` (~795 LOC).
-All four layers are unconditional; every public declaration depends
-only on the standard Lean trio (`propext`, `Classical.choice`,
-`Quot.sound`).  Full `lake build` succeeds (3,406 jobs, zero warnings,
-zero errors).  Phase 16 audit script's `#print axioms` covers 40
-Phase-2 declarations plus 15 non-vacuity `example` bindings under
-`§ 15.17 PathBlockSubspaceNonVacuity`, all at `m ∈ {1, 2}`.
-`lakefile.lean` bumped from `0.1.22` to `0.1.23` for the new public-API
-module.
+`Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` (~926 LOC after
+audit pass).  All four layers are unconditional; every public
+declaration depends only on the standard Lean trio (`propext`,
+`Classical.choice`, `Quot.sound`).  Full `lake build` succeeds (3,406
+jobs, zero warnings, zero errors).  Phase 16 audit script's `#print
+axioms` covers 46 Phase-2 declarations plus 25 non-vacuity `example`
+bindings under `§ 15.17 PathBlockSubspaceNonVacuity`, all at
+`m ∈ {0, 1, 2}`.  `lakefile.lean` bumped from `0.1.22` to `0.1.23` for
+the new public-API module.
+
+**Post-landing audit pass (2026-04-28).** Deep audit surfaced six
+issues, all fixed in the audit pass:
+
+1. **Critical: missing plan deliverable.** The Layer 2.3 table
+   listed `gl3_restrict_to_pathBlock_isLinearEquiv` (the `LinearEquiv`
+   form of the restriction under symmetric block-diagonality and
+   invertibility hypotheses), but only the `LinearMap` form was
+   delivered initially.  Added the parametric helper
+   `pathBlockEquivOfInverse`, plus apply lemmas
+   `pathBlockEquivOfInverse_apply` and
+   `pathBlockEquivOfInverse_symm_apply`.  Phase 3 will instantiate
+   this with `M = pathBlockMatrix m g π` and the corresponding
+   matrix inverse (which Phase 3 derives from the partition-
+   preserving slot permutation it constructs).
+
+2. **High: module docstring referenced non-existent declarations.**
+   Four false claims in the module-level docstring
+   (`pathBlockMatrix_restricts_to_pathBlockSubspace`,
+   `pathBlock_to_presentArrows`, `gl3_restrict_to_pathBlock_isLinearEquiv`,
+   "spanned by `vertexIdempotent v`"). Fixed.
+
+3. **High: `pathBlockSubspace` def docstring referenced two
+   non-existent theorems** (`mem_pathBlockSubspace_iff_supported` and
+   `pathBlockSubspace_eq_span`) as if they were declared "below".
+   Closed by adding a substantive
+   `pathBlockSubspace_eq_indicator_span` theorem (with supporting
+   decomposition lemma `pathBlockSubspace_indicator_decomposition`)
+   that proves the equivalence of the support-based and
+   indicator-span definitions.
+
+4. **Medium: unused imports.** Removed `Mathlib.LinearAlgebra.Span.Defs`,
+   `Mathlib.LinearAlgebra.Basis.Basic`, `Mathlib.LinearAlgebra.Basis.Defs`,
+   `Mathlib.LinearAlgebra.LinearIndependent.Defs`,
+   `Mathlib.LinearAlgebra.LinearIndependent.Basic`,
+   `Mathlib.LinearAlgebra.Matrix.ToLin`, and
+   `Mathlib.Data.Matrix.Basic` (none directly referenced in body —
+   transitive imports cover the actual API).  Added
+   `Mathlib.Algebra.Module.Equiv.Basic` (for `LinearEquiv.ofLinear`).
+
+5. **Medium: missing apply lemma for `gl3_restrict_to_pathBlock`.**
+   Added `gl3_restrict_to_pathBlock_apply` as a `@[simp]` unfolding.
+
+6. **Low: test coverage gaps.** The initial landing had 15
+   non-vacuity examples; 24 of 40 public declarations lacked direct
+   coverage. Added 10 new examples (15 → 25), directly exercising
+   `pathBlock_padding_decomposition`,
+   `pathBlockSubspace_disjoint_paddingSubspace`,
+   `pathBlockSubspace_sup_paddingSubspace_eq_top`,
+   `pathBlockSubspace_eq_indicator_span`,
+   `pathBlockSubspace_indicator_decomposition`,
+   `pathBlockMatrix_apply_eq_g_at_pi`,
+   `IsPaddingBlockDiagonal`, `IsFullyPathBlockDiagonal`,
+   `pathBlockRestrict`, `pathBlockEquivOfInverse`,
+   `slotToArrow_mem_presentArrows_of_path`,
+   `slotOfArrow_mem_pathSlotIndices_of_present`,
+   `pathBlockToPresentArrowsFun_mem`,
+   `presentArrowsToPathBlockFun_mem`, and the bridge round-trip
+   `forward ∘ symm = id`.
+
+Module size after audit: 926 LOC (up from 795).  Public declarations:
+46 (up from 40, +6: `pathBlockEquivOfInverse`,
+`pathBlockEquivOfInverse_apply`, `pathBlockEquivOfInverse_symm_apply`,
+`gl3_restrict_to_pathBlock_apply`,
+`pathBlockSubspace_indicator_decomposition`,
+`pathBlockSubspace_eq_indicator_span`).
 
 **Goal.** Build the linear-algebra infrastructure needed by
 Phase 3: given a permutation `π : Equiv.Perm (Fin (dimGQ m))`
