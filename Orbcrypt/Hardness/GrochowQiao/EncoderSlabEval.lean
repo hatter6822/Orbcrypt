@@ -58,11 +58,27 @@ two bracketings reconciled by `pathMul_assoc`.
 
 ## Layer 1.3 — Path-identity pairing
 
-The diagonal trace `∑ j, encode m adj i j j` counts the number of
-slots that pair with `slot_i` via the path multiplication.  This is
-an algebraic invariant that distinguishes vertex slots from
-present-arrow slots without referring to the slot-kind discriminator
-directly.
+The diagonal trace `∑ j, encode m adj i j j` counts the basis
+elements `slot_j` such that `pathMul slot_i slot_j = some slot_j` —
+i.e., the basis elements that act as a *right identity* on
+`slot_i` modulo the structure tensor.  This is an algebraic
+invariant that distinguishes vertex slots from present-arrow slots:
+
+* For a **vertex slot** `i = .vertex u`, the diagonal trace is
+  `≥ 1` — the term at `j = (slotEquiv).symm (.vertex u)` already
+  contributes `1` (the idempotent witness `e_u · e_u = e_u`), and
+  the remaining terms are non-negative.  (The exact value is
+  `1 + (count of present arrows out of u)`.)
+
+* For a **present-arrow slot** `i = .arrow u v` with
+  `adj u v = true`, the diagonal trace is exactly `0` — no basis
+  element `slot_j` can satisfy `α(u, v) · slot_j = slot_j`, since
+  the only non-zero product is `α(u, v) · e_v = α(u, v) ≠ e_v`,
+  and `α(u, v) · α(_, _) = 0` from `J² = 0`.
+
+This `≥ 1` vs `= 0` separation is the algebraic distinction the
+Phase 3 algebra-iso construction will consume to refine the
+path/padding partition into vertex/arrow/padding.
 
 ## Status
 
@@ -776,170 +792,190 @@ theorem encoder_associativity_identity
 -- Layer 1.3 — Encoder path-identity pairing (algebraic non-degeneracy).
 -- ============================================================================
 
-/-- **Layer 1.3 — Encoder path-identity pairing at a present-arrow slot.**
+-- ============================================================================
+-- Layer 1.3.0 — Encoder values are non-negative (helper).
+-- ============================================================================
 
-For any present-arrow slot `i = .arrow u v` (with `adj u v = true`),
-the double sum `∑ j k, encode m adj i j k` evaluates to exactly `1`.
+/-- **Layer 1.3.0 — Encoder is non-negative.**
 
-**Why.**  In the radical-2 path algebra, the only basis elements `b`
-such that `α(u, v) · b = c` for some basis element `c` are the
-right-identity `e_v` (with `α(u, v) · e_v = α(u, v)`).  All other
-products involving `α(u, v)` either return `0` (`α(u, v) · e_w = 0`
-for `w ≠ v`, `α(u, v) · α(_, _) = 0` from `J² = 0`) or vanish at the
-encoder (mixed triples). -/
-theorem encoder_double_sum_at_present_arrow_slot
+The encoder `grochowQiaoEncode m adj` takes only the values `0`, `1`,
+or `2` at every slot triple `(i, j, k)`, hence is non-negative as a
+ℚ-valued function.  This is needed to apply
+`Finset.single_le_sum`-style lower bounds in Layer 1.3's vertex-slot
+proof. -/
+private theorem encoder_nonneg
     (m : ℕ) (adj : Fin m → Fin m → Bool)
-    (i : Fin (dimGQ m)) (u v : Fin m)
-    (hi : slotEquiv m i = .arrow u v)
-    (h_adj : adj u v = true) :
-    (∑ j : Fin (dimGQ m), ∑ k : Fin (dimGQ m),
-      grochowQiaoEncode m adj i j k) = 1 := by
-  -- The unique non-zero contribution is at (j, k) = (.vertex v, .arrow u v).
-  let j_star : Fin (dimGQ m) := (slotEquiv m).symm (.vertex v)
-  let k_star : Fin (dimGQ m) := (slotEquiv m).symm (.arrow u v)
-  have hi_path : isPathAlgebraSlot m adj i = true := by
-    unfold isPathAlgebraSlot; rw [hi]; exact h_adj
-  have h_j_star_path : isPathAlgebraSlot m adj j_star = true := by
-    unfold j_star
-    exact isPathAlgebraSlot_vertex m adj v
-  have h_k_star_path : isPathAlgebraSlot m adj k_star = true := by
-    unfold k_star
-    rw [isPathAlgebraSlot_arrow]; exact h_adj
-  -- ∑ j, ∑ k, T(i, j, k) = ∑ j, [(j = j*) → ∑_k = T(i, j*, k_star) = 1, else = 0]
-  rw [Finset.sum_eq_single j_star]
-  · -- The j = j_star contribution.
-    -- The inner sum ∑ k, T(i, j_star, k) collapses at k = k_star.
-    rw [Finset.sum_eq_single k_star]
-    · -- T(i, j_star, k_star) = 1 (arrow–vertex–arrow case).
-      apply encoder_at_arrow_vertex_arrow_eq_one m adj i j_star k_star u v
-        hi (by unfold j_star; rw [Equiv.apply_symm_apply])
-        (by unfold k_star; rw [Equiv.apply_symm_apply])
-        h_adj
-    · -- For k ≠ k_star, T(i, j_star, k) = 0.
-      intro k _ h_ne
-      -- We compute pathMul slot_i slot_{j_star} = pathMul (.edge u v) (.id v) = some (.edge u v).
-      have h_slot_j_star : slotEquiv m j_star = .vertex v := by
-        unfold j_star; rw [Equiv.apply_symm_apply]
-      have h_pmul : pathMul m (slotToArrow m (slotEquiv m i))
-                              (slotToArrow m (slotEquiv m j_star)) =
-                    some (.edge u v) := by
-        rw [hi, h_slot_j_star]
-        simp [slotToArrow, pathMul]
-      -- Case-split on whether k is path-algebra.
-      by_cases h_k_path : isPathAlgebraSlot m adj k = true
-      · -- All path-algebra: use encoder_zero_at_remaining_path_triples.
-        apply encoder_zero_at_remaining_path_triples m adj i j_star k
-          hi_path h_j_star_path h_k_path
-        rw [h_pmul]
-        -- some (.edge u v) ≠ some (slotToArrow (slotEquiv k)) requires
-        -- slot_k ≠ .arrow u v, i.e., k ≠ k_star.
-        intro h_eq
-        apply h_ne
-        have h_slot : slotToArrow m (slotEquiv m k) = .edge u v :=
-          (Option.some.inj h_eq).symm
-        have h_k_eq : k = (slotEquiv m).symm (slotEquiv m k) :=
-          (Equiv.symm_apply_apply _ _).symm
-        rw [h_k_eq]
-        have h_slot_eq : slotEquiv m k = .arrow u v := by
-          rw [show slotEquiv m k = arrowToSlot m (slotToArrow m (slotEquiv m k))
-                from (arrowToSlot_slotToArrow m _).symm]
-          rw [h_slot]
-          rfl
-        rw [h_slot_eq]
-      · -- Mixed branch: i, j_star path-algebra, k padding.
-        have h_k_false : isPathAlgebraSlot m adj k = false := by
-          cases h : isPathAlgebraSlot m adj k with
-          | true => exact absurd h h_k_path
-          | false => rfl
-        apply encoder_zero_at_mixed_triples m adj i j_star k
-        refine ⟨?_, ?_⟩
-        · rintro ⟨_, _, h_path_k⟩
-          exact Bool.noConfusion (h_k_false.symm.trans h_path_k)
-        · rintro ⟨h_pad_i, _, _⟩
-          exact Bool.noConfusion (h_pad_i.symm.trans hi_path)
-    · intro h_not_mem
-      exact absurd (Finset.mem_univ k_star) h_not_mem
-  · -- For j ≠ j_star, the inner sum ∑ k, T(i, j, k) is zero.
-    -- Argument: T(i, j, k) is non-zero only when (i, j, k) is one of the four
-    -- explicit cases.  Since slot_i = .arrow u v, the only case is arrow–
-    -- vertex–arrow, requiring slot_j = .vertex v.  So if j ≠ j_star, T = 0.
-    intro j _ h_ne
-    apply Finset.sum_eq_zero
-    intro k _
-    -- We show T(i, j, k) = 0.
-    -- Case-split on whether (i, j, k) is path-algebra or padding.
-    by_cases h_j : isPathAlgebraSlot m adj j = true
-    · by_cases h_k : isPathAlgebraSlot m adj k = true
-      · -- All path-algebra: use encoder_zero_at_remaining_path_triples.
-        apply encoder_zero_at_remaining_path_triples m adj i j k hi_path h_j h_k
-        -- pathMul slot_i slot_j = pathMul (.edge u v) slot_j.  By the table:
-        -- = some (.edge u v) iff slot_j = .id v; else = none.
-        rw [hi]
-        show pathMul m (slotToArrow m (.arrow u v))
-                       (slotToArrow m (slotEquiv m j)) ≠
-              some (slotToArrow m (slotEquiv m k))
-        cases h_sj : slotEquiv m j with
-        | vertex w =>
-            simp only [slotToArrow, pathMul]
-            by_cases h_vw : v = w
-            · subst h_vw
-              -- slot_j = .vertex v, but j ≠ j_star = .symm (.vertex v).
-              -- Contradiction with h_ne.
-              exfalso
-              apply h_ne
-              unfold j_star
-              rw [← h_sj, Equiv.symm_apply_apply]
-            · simp [h_vw]
-        | arrow uj wj =>
-            simp only [slotToArrow, pathMul]
-            intro h
-            cases h
-      · -- Mixed branch: i path, j path, k padding.
-        have h_k_false : isPathAlgebraSlot m adj k = false := by
-          cases h : isPathAlgebraSlot m adj k with
-          | true => exact absurd h h_k
-          | false => rfl
-        apply encoder_zero_at_mixed_triples m adj i j k
-        refine ⟨?_, ?_⟩
-        · rintro ⟨_, _, h_path_k⟩
-          exact Bool.noConfusion (h_k_false.symm.trans h_path_k)
-        · rintro ⟨h_pad_i, _, _⟩
-          exact Bool.noConfusion (h_pad_i.symm.trans hi_path)
-    · -- Mixed branch: i path, j padding.
-      have h_j_false : isPathAlgebraSlot m adj j = false := by
-        cases h : isPathAlgebraSlot m adj j with
-        | true => exact absurd h h_j
-        | false => rfl
-      apply encoder_zero_at_mixed_triples m adj i j k
-      refine ⟨?_, ?_⟩
-      · rintro ⟨_, h_path_j, _⟩
-        exact Bool.noConfusion (h_j_false.symm.trans h_path_j)
-      · rintro ⟨h_pad_i, _, _⟩
-        exact Bool.noConfusion (h_pad_i.symm.trans hi_path)
-  · intro h_not_mem
-    exact absurd (Finset.mem_univ j_star) h_not_mem
+    (i j k : Fin (dimGQ m)) :
+    (0 : ℚ) ≤ grochowQiaoEncode m adj i j k := by
+  -- Three-way case-split on which slot kind dominates the encoder evaluation.
+  -- In each case the encoder evaluates to a value in `{0, 1, 2}`, all ≥ 0.
+  --
+  -- Helper: discharge `0 ≤ ambientSlotStructureConstant` after path-branch rule out.
+  have h_ambient_nonneg : ∀ (i' j' k' : Fin (dimGQ m)),
+      (0 : ℚ) ≤ ambientSlotStructureConstant m i' j' k' := by
+    intro i' j' k'
+    unfold ambientSlotStructureConstant
+    by_cases h_eq : i' = j' ∧ j' = k'
+    · rw [if_pos h_eq]; norm_num
+    · rw [if_neg h_eq]
+  cases hi_b : isPathAlgebraSlot m adj i with
+  | false =>
+      rw [grochowQiaoEncode_padding_left m adj i j k hi_b]
+      exact h_ambient_nonneg i j k
+  | true =>
+      cases hj_b : isPathAlgebraSlot m adj j with
+      | false =>
+          rw [grochowQiaoEncode_padding_mid m adj i j k hj_b]
+          exact h_ambient_nonneg i j k
+      | true =>
+          cases hk_b : isPathAlgebraSlot m adj k with
+          | false =>
+              rw [grochowQiaoEncode_padding_right m adj i j k hk_b]
+              exact h_ambient_nonneg i j k
+          | true =>
+              -- All three path-algebra: encoder = pathSlotStructureConstant ∈ {0, 1}.
+              rw [grochowQiaoEncode_path m adj i j k hi_b hj_b hk_b]
+              show (0 : ℚ) ≤
+                (match pathMul m (slotToArrow m (slotEquiv m i))
+                                 (slotToArrow m (slotEquiv m j)) with
+                 | some d => if d = slotToArrow m (slotEquiv m k) then (1 : ℚ) else 0
+                 | none => 0)
+              rcases h_p : pathMul m (slotToArrow m (slotEquiv m i))
+                                      (slotToArrow m (slotEquiv m j)) with _ | d
+              · -- match → 0 branch
+                exact le_refl _
+              · -- match → if-then-else
+                show (0 : ℚ) ≤ (if d = slotToArrow m (slotEquiv m k) then (1 : ℚ) else 0)
+                by_cases h_eq : d = slotToArrow m (slotEquiv m k)
+                · rw [if_pos h_eq]; exact zero_le_one
+                · rw [if_neg h_eq]
 
-/-- **Layer 1.3 — Encoder path-identity pairing at a vertex slot.**
+-- ============================================================================
+-- Layer 1.3.1 — Encoder triple-diagonal at a vertex slot evaluates to one.
+-- ============================================================================
 
-For any vertex slot `i = .vertex u`, the encoder restricted to the
-`(vertex u, vertex u, vertex u)` triple-diagonal contributes `1`,
-witnessing that the double sum `∑ j k, encode m adj i j k` is at
-least `1`.
+/-- **Layer 1.3.1 — Vertex-slot triple-diagonal evaluates to one.**
 
-*Cryptographic role.*  Combined with
-`encoder_double_sum_at_present_arrow_slot` (which gives the *exact*
-value `1` for present-arrow slots), this forms part of the algebraic
-non-degeneracy invariant Layer 1.3 establishes: the path algebra's
-multiplication structure leaves a non-zero footprint at every path-
-algebra slot, distinguishing it from the padding subspace (where the
-double sum is also non-zero, but with value `2` from the
-distinguished-padding diagonal). -/
+For any vertex slot `i = .vertex u`, the encoder's triple-diagonal
+contribution `encode m adj i i i` evaluates to `1` (the idempotent
+witness `e_u · e_u = e_u` lifted to the structure-tensor level).
+This is the single-term contribution that anchors the diagonal-trace
+lower bound `encoder_diagonal_trace_at_vertex_slot_pos`. -/
 theorem encoder_idempotent_contribution_at_vertex_slot
     (m : ℕ) (adj : Fin m → Fin m → Bool)
     (i : Fin (dimGQ m)) (u : Fin m)
     (hi : slotEquiv m i = .vertex u) :
-    grochowQiaoEncode m adj i i i = 1 := by
-  exact encoder_at_vertex_vertex_vertex_eq_one m adj i i i u hi hi hi
+    grochowQiaoEncode m adj i i i = 1 :=
+  encoder_at_vertex_vertex_vertex_eq_one m adj i i i u hi hi hi
+
+-- ============================================================================
+-- Layer 1.3.2 — Diagonal trace at a present-arrow slot is zero.
+-- ============================================================================
+
+/-- **Layer 1.3.2 — Encoder diagonal trace at a present-arrow slot is zero.**
+
+For any present-arrow slot `i = .arrow u v` (with `adj u v = true`),
+the diagonal trace `∑ j, encode m adj i j j` evaluates to exactly `0`.
+
+**Why.**  No basis element `slot_j` satisfies `α(u, v) · slot_j =
+slot_j` in the radical-2 path algebra:
+
+* `slot_j = .id w`: `pathMul (.edge u v) (.id w) = some (.edge u v)`
+  if `v = w`, but `.edge u v ≠ .id w`, so the structure constant
+  `[pathMul slot_i slot_j = some slot_j]` is `0`.  When `v ≠ w`, the
+  product is `none` (also gives `0`).
+* `slot_j = .edge w x`: `pathMul (.edge u v) (.edge w x) = none`
+  from `J² = 0`, so the structure constant is `0`.
+
+Padding `j` slots contribute `0` via mixed-triple vanishing
+(`encoder_zero_at_mixed_triples` applied to `(i, j, j)` with
+`i` path-algebra and `j` padding).
+
+This `= 0` value is the algebraic distinction from vertex slots
+(where the trace is `≥ 1` from the idempotent contribution). -/
+theorem encoder_diagonal_trace_at_present_arrow_slot
+    (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (i : Fin (dimGQ m)) (u v : Fin m)
+    (hi : slotEquiv m i = .arrow u v)
+    (h_adj : adj u v = true) :
+    (∑ j : Fin (dimGQ m), grochowQiaoEncode m adj i j j) = 0 := by
+  have hi_path : isPathAlgebraSlot m adj i = true := by
+    unfold isPathAlgebraSlot; rw [hi]; exact h_adj
+  apply Finset.sum_eq_zero
+  intro j _
+  -- Show T(i, j, j) = 0.
+  by_cases h_j : isPathAlgebraSlot m adj j = true
+  · -- All path-algebra: pathMul slot_i slot_j ≠ some slot_j (proof per case on slot_j).
+    apply encoder_zero_at_remaining_path_triples m adj i j j hi_path h_j h_j
+    rw [hi]
+    show pathMul m (slotToArrow m (.arrow u v))
+                   (slotToArrow m (slotEquiv m j)) ≠
+          some (slotToArrow m (slotEquiv m j))
+    cases h_sj : slotEquiv m j with
+    | vertex w =>
+        -- pathMul (.edge u v) (.id w) = some (.edge u v) if v = w, else none.
+        -- We need this ≠ some (.id w).  Both branches give a value ≠ some (.id w).
+        simp only [slotToArrow, pathMul]
+        by_cases h_vw : v = w
+        · subst h_vw
+          -- pathMul reduces to some (.edge u v); but (.edge u v) ≠ (.id v).
+          simp
+        · -- pathMul reduces to none ≠ some (.id w).
+          simp [h_vw]
+    | arrow uj wj =>
+        -- pathMul (.edge u v) (.edge uj wj) = none ≠ some (.edge uj wj).
+        simp only [slotToArrow, pathMul]
+        intro h
+        cases h
+  · -- Mixed branch: i path, j padding (so (i, j, j) has one path + two padding,
+    -- which is mixed since not all three are equal-class).
+    have h_j_false : isPathAlgebraSlot m adj j = false := by
+      cases h : isPathAlgebraSlot m adj j with
+      | true => exact absurd h h_j
+      | false => rfl
+    apply encoder_zero_at_mixed_triples m adj i j j
+    refine ⟨?_, ?_⟩
+    · rintro ⟨_, h_path_j, _⟩
+      exact Bool.noConfusion (h_j_false.symm.trans h_path_j)
+    · rintro ⟨h_pad_i, _, _⟩
+      exact Bool.noConfusion (h_pad_i.symm.trans hi_path)
+
+-- ============================================================================
+-- Layer 1.3.3 — Diagonal trace at a vertex slot is ≥ 1.
+-- ============================================================================
+
+/-- **Layer 1.3.3 — Encoder diagonal trace at a vertex slot is at least one.**
+
+For any vertex slot `i = .vertex u`, the diagonal trace
+`∑ j, encode m adj i j j` is at least `1`.  The lower bound is
+witnessed by the term at `j = (slotEquiv).symm (.vertex u)`, which
+contributes `1` (idempotent law `e_u · e_u = e_u`, Layer 1.3.1).
+The remaining terms are all non-negative
+(`encoder_nonneg`), so the sum is at least `1`.
+
+The exact value is `1 + (count of present arrows out of u)` — the
+count of basis elements `slot_j` with `pathMul (.id u) slot_j =
+some slot_j`.  We do not prove the exact value here; the `≥ 1` lower
+bound suffices to algebraically distinguish vertex slots from
+present-arrow slots (which have diagonal trace exactly `0` by
+`encoder_diagonal_trace_at_present_arrow_slot`). -/
+theorem encoder_diagonal_trace_at_vertex_slot_pos
+    (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (i : Fin (dimGQ m)) (u : Fin m)
+    (hi : slotEquiv m i = .vertex u) :
+    1 ≤ (∑ j : Fin (dimGQ m), grochowQiaoEncode m adj i j j) := by
+  -- We show the j = i term is `1` and the rest of the sum is non-negative.
+  have h_term : grochowQiaoEncode m adj i i i = 1 :=
+    encoder_idempotent_contribution_at_vertex_slot m adj i u hi
+  have h_le : grochowQiaoEncode m adj i i i ≤
+              ∑ j : Fin (dimGQ m), grochowQiaoEncode m adj i j j :=
+    Finset.single_le_sum
+      (f := fun j => grochowQiaoEncode m adj i j j)
+      (s := Finset.univ)
+      (fun j _ => encoder_nonneg m adj i j j)
+      (Finset.mem_univ i)
+  rw [h_term] at h_le
+  exact h_le
 
 end GrochowQiao
 end Orbcrypt

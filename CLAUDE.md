@@ -5078,11 +5078,82 @@ structural foundation, EncoderSlabEval) has been completed:
      (.arrow 0 1)`. The previously degenerate `m=1` associativity
      test was replaced with the non-trivial `m=2` form that
      exercises the full LHS/RHS-collapse-and-pathMul_assoc
-     bridge. The new tests confirm Layers 1.1 and 1.3 are
-     non-vacuously inhabited on concrete instances and verify
-     Layer 1.2's closed-form lemmas evaluate correctly.
+     bridge.
 
   Module size after audit: 945 LOC (down from 1000).
+
+- **Second post-landing audit pass (2026-04-28).** Deeper
+  re-audit surfaced four substantive issues — three substantive
+  and one critical — all fixed in this pass:
+  1. **Critical: Silently-broken non-vacuity tests.** The
+     post-2026-04-27 audit pass had introduced Layer 1.2.1 /
+     1.2.2 / 1.2.4 non-vacuity tests using `let i : ... := ...`
+     bindings to share the `(slotEquiv 2).symm (...)` slot
+     witnesses across the goal and the rewrite arguments.  In
+     Lean 4, `intro i j k l` on a `let`-bound goal introduces
+     `i` as an opaque hypothesis whose body `simp` does **not**
+     zeta-reduce, so the closing `simp` left an unsolved goal
+     of the form `match (slotEquiv 2) i with ...`.  The audit
+     script silently emitted `error: unsolved goals` at three
+     positions (3408:78, 3432:78, etc.) but the previous
+     `lake env lean` invocations filtered for `^error|^warning`
+     prefixes and missed errors prefixed by
+     `scripts/audit_phase_16.lean:`.  The tests were rewritten
+     without `let`-bindings, inlining the `(slotEquiv 2).symm
+     (...)` expressions directly in both the goal statement
+     and the proof witnesses; `simp` now reduces cleanly
+     because the outer expression is the canonical form.  This
+     finding underscores the importance of robust output
+     filtering — a `^scripts.*error` pattern would have caught
+     the failure earlier.
+  2. **Documentation overclaim → code strengthening.** The
+     module docstring's Layer 1.3 description originally
+     claimed that "the diagonal trace `∑ j, encode m adj i j j`
+     ... distinguishes vertex slots from present-arrow slots".
+     The initial Phase-1 implementation provided
+     `encoder_double_sum_at_present_arrow_slot` (proving the
+     **double sum** `∑ j k, encode m adj i j k = 1` for
+     present-arrow slots) — a different and weaker
+     theorem.  Per `CLAUDE.md`'s "make code match documentation"
+     directive, the implementation was strengthened to provide
+     the genuine diagonal-trace claims:
+     * `encoder_diagonal_trace_at_present_arrow_slot` —
+       `∑ j, encode m adj i j j = 0` for present-arrow slot `i`.
+     * `encoder_diagonal_trace_at_vertex_slot_pos` —
+       `1 ≤ ∑ j, encode m adj i j j` for vertex slot `i`.
+     This `≥ 1` vs `= 0` separation **genuinely** distinguishes
+     vertex from present-arrow slots (the previous double-sum
+     formulation collapsed both kinds to value `1` when the
+     vertex was isolated, providing no distinction).  The new
+     theorems require a private helper `encoder_nonneg`
+     (`0 ≤ encode m adj i j k`) for the lower-bound proof via
+     `Finset.single_le_sum`.  The previous
+     `encoder_double_sum_at_present_arrow_slot` was removed;
+     `encoder_idempotent_contribution_at_vertex_slot` is kept
+     as the single-entry contribution that anchors the
+     vertex-slot lower bound.
+  3. **Unused local hypothesis removed.** The proof of
+     `encoder_double_sum_at_present_arrow_slot` declared a
+     local `have h_k_star_path : isPathAlgebraSlot m adj k_star
+     = true` that was never referenced.  Lean's
+     `linter.unusedVariables` does not flag local `have`
+     declarations, so this slipped past the previous audit.
+     The hypothesis is removed in the diagonal-trace
+     replacement.
+  4. **Audit script test coverage refreshed.** The audit
+     script's Layer 1.3 non-vacuity tests are updated to match
+     the new theorem names and statements, plus a new
+     "distinguishability witness" test that combines
+     `encoder_diagonal_trace_at_vertex_slot_pos` (`≥ 1`) with
+     `encoder_diagonal_trace_at_present_arrow_slot` (`= 0`) on
+     the complete graph at `m = 2` to demonstrate the
+     algebraic invariant genuinely separates the two slot
+     kinds.
+
+  Module size after second audit: 981 LOC (up from 945 — net
+  +36 from adding the diagonal-trace theorems and
+  `encoder_nonneg` helper, minus the removed
+  `encoder_double_sum_at_present_arrow_slot` proof).
 
 - **`Orbcrypt.lean`** root file extended with a new import
   `Orbcrypt.Hardness.GrochowQiao.EncoderSlabEval`.

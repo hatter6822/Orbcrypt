@@ -219,20 +219,18 @@ After all six phases land:
 
 ---
 
-## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27, audited)**
+## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27, audited 2026-04-27 + 2026-04-28)**
 
 **Status.** Landed in `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean`
-(945 LOC after the post-landing audit pass).  All three layers are
+(981 LOC after both post-landing audit passes).  All three layers are
 unconditional; every public declaration depends only on the standard
 Lean trio (`propext`, `Classical.choice`, `Quot.sound`).  Full
 `lake build` succeeds (3405 jobs, zero warnings, zero errors).  Phase
-16 audit script's `#print axioms` total rises from 770 to 788 (18 new
-entries: 8 helper, 6 Layer 1.1, 3 Layer 1.2, 2 Layer 1.3) plus 13
-non-vacuity `example` bindings under
-`§ 15.16 EncoderSlabEvalNonVacuity`, covering every public Phase-1
-theorem at `m ∈ {1, 2}` with a non-trivial path-multiplication pattern.
-`lakefile.lean` bumped from `0.1.21` to `0.1.22` for the new public-API
-module.
+16 audit script's `#print axioms` total covers 19 Phase-1 declarations
+plus 13 non-vacuity `example` bindings under
+`§ 15.16 EncoderSlabEvalNonVacuity`, all at `m ∈ {1, 2}` with a
+non-trivial path-multiplication pattern.  `lakefile.lean` bumped from
+`0.1.21` to `0.1.22` for the new public-API module.
 
 **Post-landing audit pass (2026-04-27).** Removed two dead-code
 private helpers (`encoder_second_factor_zero_when_pathMul_mismatch`
@@ -242,9 +240,47 @@ coverage gap by adding 8 non-vacuity examples for the previously
 uncovered Phase-1 theorems (Layer 1.1.2 / 1.1.3 / 1.1.5 / 1.1.6,
 Layer 1.2.1 / 1.2.2, `slotOfArrow_pathMul_isPathAlgebra`, Layer 1.3
 vertex-slot).  Replaced the degenerate `m=1` associativity test with
-a non-trivial `m=2` test pattern `(.vertex 0) · (.arrow 0 1) ·
-(.vertex 1) = (.arrow 0 1)` that exercises the full
-LHS/RHS-collapse-and-pathMul_assoc bridge.
+a non-trivial `m=2` test pattern.
+
+**Second post-landing audit pass (2026-04-28).** Re-audit surfaced
+four substantive issues, all fixed:
+
+1. **Critical: silently-broken Layer 1.2.1/1.2.2 audit tests.** The
+   tests used `let i : ... := ...` bindings that `intro i j k l`
+   converted to opaque hypotheses, leaving `simp` unable to reduce
+   `(slotEquiv 2) i`.  Output filtering missed the
+   `error: unsolved goals` because errors were prefixed by
+   `scripts/...:lineNo:col:` rather than just `error:`.  Tests
+   rewritten without `let`-bindings, inlining
+   `(slotEquiv 2).symm (...)` directly.
+
+2. **Documentation overclaim → code strengthening.** Module
+   docstring claimed Layer 1.3 provides a "diagonal trace
+   `∑ j, encode m adj i j j`" that distinguishes vertex from
+   present-arrow slots.  Initial implementation provided the
+   **double sum** `∑ j k, encode m adj i j k = 1`, a different and
+   weaker invariant (it returns the same value `1` for both isolated
+   vertices and present-arrow slots).  Per
+   "make code match documentation" directive, the implementation is
+   strengthened to provide the actual diagonal-trace theorems:
+   * `encoder_diagonal_trace_at_present_arrow_slot` —
+     `∑ j, encode m adj i j j = 0` for present-arrow slots.
+   * `encoder_diagonal_trace_at_vertex_slot_pos` —
+     `1 ≤ ∑ j, encode m adj i j j` for vertex slots.
+   This `≥ 1` vs `= 0` separation **genuinely** distinguishes the
+   two slot kinds.  Required a new helper `encoder_nonneg` for the
+   lower-bound proof via `Finset.single_le_sum`.
+
+3. **Unused local hypothesis `h_k_star_path`** in the previous
+   `encoder_double_sum_at_present_arrow_slot` proof — removed in
+   the diagonal-trace replacement.  Lean's
+   `linter.unusedVariables` does not flag local `have` decls, so
+   this slipped past the first audit.
+
+4. **Audit script test coverage refreshed** to match new theorem
+   names and statements, plus a new "distinguishability witness"
+   test combining vertex-slot `≥ 1` with present-arrow `= 0` on
+   the complete graph at `m = 2`.
 
 **Goal.** Establish per-slot evaluation lemmas for the
 encoder, derived from the actual code's structure-tensor
