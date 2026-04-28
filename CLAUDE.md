@@ -5718,6 +5718,47 @@ to the project. Total audit-script declarations exercised: 834 →
   its lemmas are byte-identical to the pre-refactor versions; only
   the file location changed.
 
+R-TI Phase 2 — Fourth audit pass (2026-04-28). A targeted re-audit
+of the post-third-audit state surfaced four cosmetic issues, all
+fixed:
+
+1. **Stale `universe u` declaration** at line 112 of
+   `PathBlockSubspace.lean` — declared but never used (no
+   `Type u`-polymorphic declarations in the file). Removed as dead
+   code.
+
+2. **Layer numbering inconsistency** in `PathBlockSubspace.lean`
+   section headers: post-third-audit relocation of `permMatrixOf`
+   to `PermMatrix.lean` left the file with "Layer 2.1" header
+   (formerly "Layer 2.1.1") but Layer 2.1.2 and 2.1.3 sub-headers
+   still numbered. Restored "Layer 2.1.1" as the canonical
+   sub-numbering and updated the comment to clarify that "Layer
+   2.1.0" is the formal numbering of `permMatrixOf` (now in
+   `PermMatrix.lean`), with the relocation attribution to the
+   third audit pass.
+
+3. **Stale section reference in audit script.** The `§ 15.17`
+   header at `scripts/audit_phase_16.lean:3570` referred to "in
+   `§ 15.10` Track B.3 above" but Track B.3 (the `permMatrixOf`
+   `#print axioms` entries) is in `§ 15.4` (Workstream R-TI), not
+   `§ 15.10` (Stage 2 T-API-6). Fixed.
+
+4. **Audit-script docstring "Layer 2.0 non-vacuity"** at the
+   `permMatrixOf m = 1` test — actual numbering is "Layer 2.1.0"
+   (relocated to `PermMatrix.lean`). Updated docstring to reflect
+   correct numbering and relocation history.
+
+**Mathematical content unchanged:** Phase 2 implementations are
+unaltered; only documentation/structure cosmetics were fixed in
+this audit pass.
+
+**Verification:**
+* `lake build`: 3,406 jobs, zero warnings, zero errors.
+* Audit script: 835 declarations exercised (675 + 160), all on
+  the standard Lean trio. Zero `sorryAx`, zero custom axioms.
+* `PathBlockSubspace.lean` size: 908 → 906 LOC (-2 LOC from
+  removing `universe u` and 1 blank line; net -2 lines).
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

@@ -3567,11 +3567,11 @@ end EncoderSlabEvalNonVacuity
 -- ## §15.17 R-TI rigidity discharge — Phase 2: Path-block linear restriction.
 -- ============================================================================
 --
--- Layer 2.1.0 (relocated to `PermMatrix.lean` post-second-audit):
--- the `permMatrixOf` family of slot-permutation matrix wrappers and the
--- bridge identity `liftedSigmaMatrix_eq_permMatrixOf` connecting them
--- to `liftedSigmaMatrix`. The corresponding `#print axioms` entries are
--- in `§ 15.10` Track B.3 above.
+-- Layer 2.1.0 (relocated to `PermMatrix.lean` by the third audit pass,
+-- 2026-04-28): the `permMatrixOf` family of slot-permutation matrix
+-- wrappers and the bridge identity `liftedSigmaMatrix_eq_permMatrixOf`
+-- connecting them to `liftedSigmaMatrix`. The corresponding
+-- `#print axioms` entries are in `§ 15.4` Track B.3 above.
 --
 -- Layer 2.1.1–2.1.3: path-block + padding subspaces (defined by support),
 -- indicator-vector membership lemmas, the indicator-span characterisation
@@ -3676,7 +3676,7 @@ namespace PathBlockSubspaceNonVacuity
 open Orbcrypt
 open Orbcrypt.GrochowQiao
 
-/-- **Layer 2.0 non-vacuity (m = 1).**
+/-- **Layer 2.1.0 non-vacuity (m = 1) — permMatrixOf relocated to PermMatrix.lean.**
 The identity slot permutation has the identity permutation matrix. -/
 example :
     permMatrixOf 1 (1 : Equiv.Perm (Fin (dimGQ 1)))

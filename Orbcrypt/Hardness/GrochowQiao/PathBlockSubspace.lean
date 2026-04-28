@@ -109,16 +109,15 @@ namespace GrochowQiao
 open Matrix
 open scoped Matrix
 
-universe u
-
 -- ============================================================================
--- Layer 2.1 — Path-block and padding subspaces (defined by support).
+-- Layer 2.1.1 — Path-block and padding subspaces (defined by support).
 --
 -- The slot-level permutation-matrix wrapper `permMatrixOf` and its
--- `_apply` / `_det_ne_zero` lemmas were relocated to `PermMatrix.lean`
--- (post-second-audit consolidation): `permMatrixOf` is foundational
--- permutation-matrix infrastructure, parallel to `liftedSigmaMatrix`,
--- and the bridge `liftedSigmaMatrix_eq_permMatrixOf` lives there.
+-- `_apply` / `_det_ne_zero` lemmas live in `PermMatrix.lean` (formally
+-- "Layer 2.1.0", relocated there by the third audit pass): `permMatrixOf`
+-- is foundational permutation-matrix infrastructure, parallel to
+-- `liftedSigmaMatrix`, and the bridge `liftedSigmaMatrix_eq_permMatrixOf`
+-- lives there too.
 -- ============================================================================
 
 /-- The **path-block subspace** of `Fin (dimGQ m) → ℚ`: vectors that
