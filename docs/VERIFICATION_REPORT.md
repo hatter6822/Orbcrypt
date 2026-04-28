@@ -1168,6 +1168,71 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-28 (R-TI Phase 3 audit pass — theatrical-theorem
+  fixes + naming-rule alignment)** — Targeted post-landing audit of
+  the same-day Phase 3 partial-discharge landing surfaced four
+  residual issues, all fixed in this audit pass.
+
+  **Theatrical-theorem fixes (3):**
+
+  * `restrictedGL3OnPathOnlyTensor_identity_case` (`PathOnlyTensor.lean`)
+    pre-audit signature: `(adj : Fin m → Fin m → Bool)` + ignored
+    hypothesis `_h`, conclusion `cardadj = cardadj` (rfl).  Post-audit:
+    `(adj₁ adj₂)` distinct, hypothesis `1 • encode m adj₁ = encode m
+    adj₂` consumed via `one_smul` + diagonal-value classification +
+    funext to derive `adj₁ = adj₂`.  Conclusion `cardadj₁ = cardadj₂`
+    follows.
+
+  * `gl3_induces_algEquiv_on_pathSubspace_identity_case`
+    (`AlgEquivFromGL3.lean`) pre-audit signature: single `adj` +
+    underscore-prefixed hypothesis `_h_eq` (intentionally unused),
+    conclusion `∃ ϕ, ϕ '' S adj = S adj` discharged by `AlgEquiv.refl`.
+    Post-audit: `(adj₁ adj₂)` distinct, hypothesis consumed via
+    `one_smul` + diagonal-value classification + `subst` to derive
+    `adj₁ = adj₂`.  Conclusion `∃ ϕ, ϕ '' S adj₁ = S adj₂` follows.
+
+  * `gl3_induces_algEquiv_on_pathSubspace_self` →
+    `algEquivRefl_preserves_presentArrowsSubspace`
+    (`AlgEquivFromGL3.lean`) — renamed.  The `_self` name suggested a
+    same-graph case witness of `GL3InducesAlgEquivOnPathSubspace`,
+    but the theorem has no GL³ in the statement and no encoder
+    hypothesis.  The new name honestly describes the content (pure
+    structural sanity check that `AlgEquiv.refl` preserves
+    `presentArrowsSubspace`).
+
+  **Naming-rule alignment (1):**
+
+  * `pathOnlyStructureTensor_inherits_encoder_assoc` →
+    `pathOnlyStructureTensor_index_is_path_algebra`
+    (`PathOnlyTensor.lean`) — renamed.  The pre-audit name promised
+    "associativity inheritance" but the content delivered only the
+    path-algebra membership precondition for the index image.  The
+    new name honestly describes the content per the
+    "Names describe content, never provenance" rule.
+
+  **Audit-script test upgrades (5):**
+
+  * Two pre-audit `example : True := by trivial` tests that exercised
+    nothing have been replaced with substantive `example` bindings.
+  * The A.1.0 associativity test now states the actual sum equality
+    rather than discarding the result via `True`.
+  * The A.4 index-is-path-algebra test now exercises
+    `pathOnlyStructureTensor_index_is_path_algebra` on `m = 2` with a
+    non-trivial adjacency (complete graph minus self-loops).
+  * Identity-case tests now exercise the substantive post-audit
+    signatures with `(adj₁, adj₂)` + the GL³ hypothesis.
+  * A new test exercises `pathOnlyStructureTensor_apply` directly.
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**,
+  zero warnings, zero errors.  Phase 16 audit script runs cleanly
+  (exit code 0).  All Phase-3 declarations depend only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`);
+  zero `sorryAx`, zero custom axioms.
+
+  **Patch version.** `lakefile.lean` retains `0.1.24` (the audit-
+  pass is API-breaking only at the identity-case-witness level;
+  the public-API surface count is unchanged).
+
 * **2026-04-28 (R-TI Phase 3 — GL³ → algebra-iso bridge,
   partial-discharge form)** — Phase 3 of the v4 plan
   (`docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § "Phase 3 —

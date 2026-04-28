@@ -79,17 +79,27 @@ research-scope obligation** replacing the v3-era pair
 * `GL3InducesAlgEquivOnPathSubspace m` (research-scope `Prop`).
 * `gl3_induces_algEquiv_on_pathSubspace` — conditional headline
   (consumes the `Prop` and produces the AlgEquiv).
-* `gl3_induces_algEquiv_on_pathSubspace_identity_case` — unconditional
-  identity witness (`g = 1` → `AlgEquiv.refl`).
-* `gl3_induces_algEquiv_on_pathSubspace_self` — unconditional witness
-  for `adj₁ = adj₂` and `g = 1` (the AlgEquiv is `AlgEquiv.refl`).
+* `gl3_induces_algEquiv_on_pathSubspace_identity_case` —
+  **substantive** identity-case witness: takes `(adj₁, adj₂)` and
+  the hypothesis `1 • encode m adj₁ = encode m adj₂`, derives
+  `adj₁ = adj₂` via the post-Stage-0 diagonal-value classification,
+  then exhibits `AlgEquiv.refl`.  Mirrors the post-audit-pass-II
+  refactoring of Stage 3's
+  `gl3_preserves_partition_cardinalities_identity_case`.
+* `algEquivRefl_preserves_presentArrowsSubspace` — pure structural
+  sanity check that `AlgEquiv.refl` preserves
+  `presentArrowsSubspace`.  Renamed from `_self` to honestly describe
+  the content (no GL³ in the statement; no encoder hypothesis).
 
 ## Status
 
-Sub-task A.6 lands the **conditional headline** (`Prop` consumer) +
-**identity case** + **same-graph self case** unconditionally.  The
-research-scope `Prop`'s discharge is multi-month research effort and
-is tracked at `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+Sub-task A.6 lands the **conditional headline** (consuming the
+research-scope `Prop`) + the **substantive identity case** (consuming
+the `1 • encode adj₁ = encode adj₂` hypothesis non-trivially via the
+diagonal-value classification) + the **AlgEquiv.refl structural
+sanity check**, all unconditional.  The research-scope `Prop`'s
+discharge is multi-month research effort and is tracked at
+`docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
 § R-15-residual-TI-reverse.
 
 ## Naming
@@ -168,38 +178,71 @@ theorem gl3_induces_algEquiv_on_pathSubspace
 
 /-- **Identity-case witness for `GL3InducesAlgEquivOnPathSubspace`.**
 
-When `g = 1` and `adj₁ = adj₂ = adj`, the AlgEquiv is the **reflexive**
-`AlgEquiv.refl` and the present-arrows-subspace preservation is trivial.
+At `g = 1` between two adjacencies `(adj₁, adj₂)`, the hypothesis
+`1 • encode m adj₁ = encode m adj₂` forces `adj₁ = adj₂` via the
+post-Stage-0 diagonal-value classification (arrow-slot diagonals
+separate `0` for present-arrows from `2` for padding).  Once the
+adjacencies coincide, the present-arrows subspace is preserved by
+the reflexive AlgEquiv `AlgEquiv.refl`.
 
-This unconditional witness shows the research-scope `Prop` is
-inhabitable on at least the identity case (i.e., `Nonempty` per
-`Equiv.Perm (Fin m)`-quotient).  It is the same pattern Stage 5's
-`gl3_induces_arrow_preserving_perm_identity_case` uses: identity GL³
-trivially induces the identity vertex permutation. -/
+This is the **substantive** identity-case witness: the proof actually
+consumes the hypothesis `h_eq` (via `one_smul` reduction + diagonal
+classification + funext to derive `adj₁ = adj₂`), not merely a
+witness of `S = S` via `AlgEquiv.refl` ignoring the hypothesis.
+Mirrors the post-audit-pass-II refactoring of Stage 3's
+`gl3_preserves_partition_cardinalities_identity_case` in
+`BlockDecomp.lean`. -/
 theorem gl3_induces_algEquiv_on_pathSubspace_identity_case
-    (m : ℕ) (adj : Fin m → Fin m → Bool)
-    (_h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
               GL (Fin (dimGQ m)) ℚ) •
-              grochowQiaoEncode m adj = grochowQiaoEncode m adj) :
+              grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂) :
     ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
-      ϕ '' (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
-        (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) := by
+      ϕ '' (presentArrowsSubspace m adj₁ : Set (pathAlgebraQuotient m)) =
+        (presentArrowsSubspace m adj₂ : Set (pathAlgebraQuotient m)) := by
+  -- (1 : GL × GL × GL) • T = T by `one_smul`.
+  rw [one_smul] at h_eq
+  -- Diagonal-value classification at arrow slots forces `adj₁ = adj₂`.
+  have h_adj : adj₁ = adj₂ := by
+    funext u v
+    have h_diag := congrFun (congrFun (congrFun h_eq
+      ((slotEquiv m).symm (.arrow u v)))
+      ((slotEquiv m).symm (.arrow u v)))
+      ((slotEquiv m).symm (.arrow u v))
+    rcases h₁ : adj₁ u v with _ | _
+    · rw [grochowQiaoEncode_diagonal_padding m adj₁ u v h₁] at h_diag
+      rcases h₂ : adj₂ u v with _ | _
+      · rfl
+      · rw [grochowQiaoEncode_diagonal_present_arrow m adj₂ u v h₂] at h_diag
+        norm_num at h_diag
+    · rw [grochowQiaoEncode_diagonal_present_arrow m adj₁ u v h₁] at h_diag
+      rcases h₂ : adj₂ u v with _ | _
+      · rw [grochowQiaoEncode_diagonal_padding m adj₂ u v h₂] at h_diag
+        norm_num at h_diag
+      · rfl
+  -- Now `adj₁ = adj₂`; the AlgEquiv is `AlgEquiv.refl`.
+  subst h_adj
   refine ⟨AlgEquiv.refl, ?_⟩
-  -- AlgEquiv.refl maps each subspace to itself.
   ext x
   simp
 
-/-- **Self-case witness for `adj₁ = adj₂` and arbitrary `g = 1`.**
+/-- **AlgEquiv.refl preserves the present-arrows subspace.**
 
-The trivial case `(g = 1, adj₁ = adj₂)`: the GL³ action is the
-identity, the encoder agrees with itself, and the AlgEquiv is
-reflexive. -/
-theorem gl3_induces_algEquiv_on_pathSubspace_self
+Pure structural sanity check: the reflexive algebra equivalence
+`AlgEquiv.refl : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m`
+maps the present-arrows subspace `presentArrowsSubspace m adj` to
+itself.  Equivalent to `Set.image_id` on the subspace's underlying
+`Set`.  This is **not** a witness of `GL3InducesAlgEquivOnPathSubspace`
+(which universally quantifies over `(adj₁, adj₂)` distinct); it is
+a structural sanity check on the AlgEquiv-image-preservation
+machinery.  Renamed from `gl3_induces_algEquiv_on_pathSubspace_self`
+in the post-audit refinement to honestly describe its content
+(no GL³ in the statement; no encoder hypothesis). -/
+theorem algEquivRefl_preserves_presentArrowsSubspace
     (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
-      ϕ '' (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
-        (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) := by
-  refine ⟨AlgEquiv.refl, ?_⟩
+    (AlgEquiv.refl : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m) ''
+      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
+      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) := by
   ext x
   simp
 
@@ -223,8 +266,10 @@ partial-closure status of R-TI Phase 3 in the codebase:
     unconditional.
   - Sub-task A.4 (path-only structure tensor + restricted-GL³ Prop +
     identity case) — unconditional + research-scope sub-Prop.
-  - Sub-task A.6 (conditional headline + identity case + self case) —
-    conditional on the research-scope `Prop`.
+  - Sub-task A.6 (conditional headline consuming the research-scope
+    `Prop` + substantive identity case + AlgEquiv.refl structural
+    sanity check) — conditional on the research-scope `Prop` for the
+    headline, unconditional for the identity case + sanity check.
 
 * The **research-scope discharge** of `GL3InducesAlgEquivOnPathSubspace`
   is multi-month research effort tracked at

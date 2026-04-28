@@ -5838,6 +5838,123 @@ algebra-iso bridge, partial-discharge form) has been completed:
   definitions).  Zero-sorry / zero-custom-axiom posture and the
   standard-trio-only axiom-dependency posture are preserved.
 
+R-TI Phase 3 — Post-landing audit pass (2026-04-28). Targeted
+re-audit of the initial Phase 3 landing surfaced **four** residual
+issues — three theatrical-theorem violations and one security-by-
+docstring naming violation — all fixed in this audit pass:
+
+1. **`restrictedGL3OnPathOnlyTensor_identity_case` was vacuous
+   (`PathOnlyTensor.lean`).** The pre-audit signature took a single
+   adjacency `adj` and the trivial conclusion `card = card`, with
+   the hypothesis `_h` ignored.  The conclusion was `rfl` regardless
+   of any GL³ hypothesis — this exactly matches the theatrical
+   pattern that the prior R-TI audit-pass-II refactored
+   `gl3_preserves_partition_cardinalities_identity_case` to fix.
+   The post-audit signature takes `(adj₁, adj₂)` distinct, takes
+   the hypothesis `1 • encode m adj₁ = encode m adj₂`, applies
+   `one_smul` to derive `encode m adj₁ = encode m adj₂`, then uses
+   the post-Stage-0 diagonal-value classification
+   (`grochowQiaoEncode_diagonal_padding` for `adj _ _ = false`,
+   `grochowQiaoEncode_diagonal_present_arrow` for `adj _ _ = true`)
+   at every arrow slot to derive `adj₁ = adj₂` by funext.  The
+   conclusion `cardadj₁ = cardadj₂` then follows.  Substantive
+   content: the proof actually consumes the hypothesis.
+
+2. **`gl3_induces_algEquiv_on_pathSubspace_identity_case` was
+   vacuous (`AlgEquivFromGL3.lean`).** The pre-audit signature
+   carried the hypothesis with an underscore prefix (`_h_eq`,
+   indicating the hypothesis is intentionally unused), making the
+   theorem effectively `∃ ϕ : pathAlgebraQuotient m ≃ₐ[ℚ]
+   pathAlgebraQuotient m, ϕ '' S adj = S adj` for any `adj` — pure
+   `AlgEquiv.refl` content with no GL³ inhabitance witnessed.  The
+   post-audit signature takes `(adj₁, adj₂)` distinct, takes the
+   hypothesis `1 • encode m adj₁ = encode m adj₂`, derives `adj₁ =
+   adj₂` via the same diagonal-value classification, then exhibits
+   `AlgEquiv.refl` after `subst`-ing the adjacency equality.
+   Substantive content: the proof actually consumes the hypothesis.
+
+3. **`gl3_induces_algEquiv_on_pathSubspace_self` was misleadingly
+   named (`AlgEquivFromGL3.lean`).** The pre-audit theorem took a
+   single `adj` and exhibited `AlgEquiv.refl '' S adj = S adj` — a
+   structural sanity check on `AlgEquiv.refl` that has *no* GL³ in
+   the statement and *no* encoder hypothesis, so it is **not** a
+   witness of `GL3InducesAlgEquivOnPathSubspace`'s identity case.
+   The name `_self` suggested it was a `(adj₁ = adj₂)` case of the
+   Prop.  Renamed to `algEquivRefl_preserves_presentArrowsSubspace`
+   to honestly describe the content (no GL³, no encoder, just
+   `AlgEquiv.refl`'s preservation property).  Per the Naming
+   convention rule "Names describe content, never provenance," the
+   new name describes what the theorem proves.
+
+4. **`pathOnlyStructureTensor_inherits_encoder_assoc` was a
+   security-by-docstring-style naming violation
+   (`PathOnlyTensor.lean`).** The pre-audit name promised
+   "associativity inheritance" from the encoder, but the content
+   delivered only the **path-algebra membership precondition** for
+   the index image (i.e., "every `Fin (pathSlotIndices m adj).card`-
+   index lands on a path-algebra slot").  The actual associativity
+   identity for the path-only tensor requires a `Finset.sum_equiv`
+   re-indexing argument from `encoder_assoc_path`, captured in the
+   research-scope `Prop` `PathOnlyTensorIsAssociative`.  Renamed to
+   `pathOnlyStructureTensor_index_is_path_algebra` to honestly
+   describe the content (path-algebra membership of the index
+   image, not associativity inheritance).  This is the same pattern
+   as the security-by-docstring rule applied to non-security
+   identifiers: name the content, not the consumer's downstream
+   intent.
+
+5. **Audit-script tests upgraded.** The pre-audit test suite
+   (`scripts/audit_phase_16.lean` § 15.18 / `AlgEquivFromGL3NonVacuity`)
+   contained two trivial `example : True := by trivial` tests that
+   exercised nothing.  The post-audit pass replaces them with 12
+   substantive `example` bindings exercising every public Phase-3
+   declaration on concrete `m ∈ {1, 2}` instances.  Specifically:
+
+   * The A.1.0 associativity test now states the actual sum equality
+     rather than discarding the result via `True`.
+   * The A.4 path-only tensor index-is-path-algebra test now
+     concretely exercises `pathOnlyStructureTensor_index_is_path_algebra`
+     on `m = 2` with a non-trivial adjacency
+     (`fun u v => decide (u.val ≠ v.val)`, the "complete graph minus
+     self-loops" with two present arrows).
+   * The A.4 substantive identity-case test exercises the post-audit
+     `restrictedGL3OnPathOnlyTensor_identity_case` signature with
+     two adjacencies + the GL³ hypothesis.
+   * The A.6 substantive identity-case test exercises the post-audit
+     `gl3_induces_algEquiv_on_pathSubspace_identity_case` signature
+     with two adjacencies + the GL³ hypothesis.
+   * The A.6 conditional headline test exercises the post-audit
+     headline with two adjacencies + the research-scope `Prop` +
+     the GL³ hypothesis.
+   * A new `pathOnlyStructureTensor_apply` simp-lemma test exercises
+     the apply-lemma directly.
+
+**Verification.** Full `lake build` succeeds with **3,410 jobs**,
+zero warnings, zero errors.  Phase 16 audit script runs cleanly
+(exit code 0); every new declaration depends only on the standard
+Lean trio (`propext`, `Classical.choice`, `Quot.sound`).  Zero
+`sorryAx`, zero custom axioms.  Module count remains 44 (no new
+modules added; only theorem-content refactoring + audit-script
+test upgrades).  `lakefile.lean` retains `0.1.24` because the
+audit-pass refactoring is API-breaking only at the
+identity-case-witness level (consumers of the pre-audit theorems
+must update to the new `(adj₁, adj₂)` + hypothesis signature) but
+the public-API surface count is unchanged.
+
+**Honest scoreboard.** Pre-audit, the Phase 3 landing carried
+**four theatrical or misleadingly-named declarations**: two
+identity-case theorems whose hypotheses were ignored, one `_self`
+theorem that didn't witness the Prop, and one `_inherits_encoder_assoc`
+theorem whose name overstated its content.  The post-audit pass
+replaces them with substantive theorems whose proofs genuinely
+consume their hypotheses, properly-named theorems whose names
+describe their content, and a comprehensive audit-script test suite
+that exercises every public declaration on non-trivial inputs.
+This brings R-TI Phase 3's partial-discharge form fully in line
+with the post-Workstream-I-audit honesty discipline established
+in CLAUDE.md's "Names describe content, never provenance" and
+"Security-by-docstring prohibition" rules.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 68 `Orbcrypt/**/*.lean`
   modules (the running total post-R-TI Phase 3 partial-discharge

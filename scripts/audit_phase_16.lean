@@ -3931,7 +3931,7 @@ end PathBlockSubspaceNonVacuity
 -- Sub-task A.4 — Path-only structure tensor + restricted GL³.
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_apply
-#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_inherits_encoder_assoc
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_index_is_path_algebra
 #print axioms Orbcrypt.GrochowQiao.PathOnlyTensorIsAssociative
 #print axioms Orbcrypt.GrochowQiao.RestrictedGL3OnPathOnlyTensor
 #print axioms Orbcrypt.GrochowQiao.restrictedGL3OnPathOnlyTensor_identity_case
@@ -3940,7 +3940,7 @@ end PathBlockSubspaceNonVacuity
 #print axioms Orbcrypt.GrochowQiao.GL3InducesAlgEquivOnPathSubspace
 #print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace
 #print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace_identity_case
-#print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace_self
+#print axioms Orbcrypt.GrochowQiao.algEquivRefl_preserves_presentArrowsSubspace
 #print axioms Orbcrypt.GrochowQiao.gl3_algEquiv_partial_closure_status_disclosure
 
 -- ============================================================================
@@ -3954,20 +3954,35 @@ open Orbcrypt.GrochowQiao
 
 /-- **Sub-task A.1.0 non-vacuity at m = 1.**
 
-The path-algebra associativity identity holds trivially on the
-single-vertex graph. -/
-example : True := by
-  have :=
-    encoder_assoc_path 1 (fun _ _ => true)
-      ((slotEquiv 1).symm (.vertex 0))
-      ((slotEquiv 1).symm (.vertex 0))
-      ((slotEquiv 1).symm (.vertex 0))
-      ((slotEquiv 1).symm (.vertex 0))
-      (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
-      (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
-      (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
-      (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
-  trivial
+At a vertex-slot quadruple `(v0, v0, v0, v0)` of the single-vertex
+graph, the LHS sum collapses to `T(v0, v0, v0) * T(v0, v0, v0) = 1`
+and the RHS sum collapses to the same value, so the associativity
+identity holds with both sides equal to `1`.  Exercises
+`encoder_assoc_path` on a concrete instance whose result is non-trivial
+(both sides collapse to a single non-zero contribution rather than
+being identically zero). -/
+example :
+    (∑ a : Fin (dimGQ 1), grochowQiaoEncode 1 (fun _ _ => true)
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0)) a *
+        grochowQiaoEncode 1 (fun _ _ => true) a
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0))) =
+    (∑ a : Fin (dimGQ 1), grochowQiaoEncode 1 (fun _ _ => true)
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0)) a *
+        grochowQiaoEncode 1 (fun _ _ => true)
+        ((slotEquiv 1).symm (.vertex 0)) a
+        ((slotEquiv 1).symm (.vertex 0))) :=
+  encoder_assoc_path 1 (fun _ _ => true)
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
 
 /-- **Sub-task A.1.1 non-vacuity: vertex slot diagonal is in {0, 1}.**
 
@@ -4034,49 +4049,104 @@ example (T : Tensor3 1 ℚ) (h : IsAssociativeTensor T) :
       ((1 : GL (Fin 1) ℚ × GL (Fin 1) ℚ × GL (Fin 1) ℚ) • T) :=
   isAssociativeTensorPreservedByGL3_identity_case T h
 
-/-- **Sub-task A.4 non-vacuity: path-only-tensor inherits encoder slot
-shape at m = 1.** -/
-example : True := by
-  -- For m = 1 with adj := fun _ _ => true, every slot is path-algebra,
-  -- so `pathSlotIndices` covers the full universe and the path-only
-  -- tensor is well-defined.
-  trivial
+/-- **Sub-task A.4 non-vacuity: path-only-tensor index is path-algebra.**
 
-/-- **Sub-task A.4 non-vacuity: the restricted-GL³ `Prop` identity case.**
+For every quadruple of `Fin (pathSlotIndices m adj).card`-indices, the
+underlying `Fin (dimGQ m)`-values obtained via the
+`(pathSlotIndices m adj).equivFin.symm` bijection are all path-algebra
+slots.  Exercised on `m = 2` with the adjacency `adj := fun u v =>
+decide (u.val ≠ v.val)` (complete graph minus self-loops, which has 2
+present arrows). -/
+example
+    (i j k l : Fin (pathSlotIndices 2 (fun u v => decide (u.val ≠ v.val))).card) :
+    let adj : Fin 2 → Fin 2 → Bool := fun u v => decide (u.val ≠ v.val)
+    let i' := ((pathSlotIndices 2 adj).equivFin.symm i).val
+    let j' := ((pathSlotIndices 2 adj).equivFin.symm j).val
+    let k' := ((pathSlotIndices 2 adj).equivFin.symm k).val
+    let l' := ((pathSlotIndices 2 adj).equivFin.symm l).val
+    isPathAlgebraSlot 2 adj i' = true ∧
+    isPathAlgebraSlot 2 adj j' = true ∧
+    isPathAlgebraSlot 2 adj k' = true ∧
+    isPathAlgebraSlot 2 adj l' = true :=
+  pathOnlyStructureTensor_index_is_path_algebra 2
+    (fun u v => decide (u.val ≠ v.val)) i j k l
 
-At `g = 1` and `adj₁ = adj₂ = adj`, the cardinality match is trivial. -/
-example (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
-      GL (Fin (dimGQ m)) ℚ) • grochowQiaoEncode m adj =
-        grochowQiaoEncode m adj →
-    (presentArrowSlotIndices m adj).card =
-      (presentArrowSlotIndices m adj).card :=
-  restrictedGL3OnPathOnlyTensor_identity_case m adj
+/-- **Sub-task A.4 non-vacuity: `pathOnlyStructureTensor_apply` simp
+lemma fires.** -/
+example
+    (i j k : Fin (pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).card) :
+    pathOnlyStructureTensor 2 (fun _ _ => false) i j k =
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm i).val
+      ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm j).val
+      ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm k).val :=
+  pathOnlyStructureTensor_apply 2 (fun _ _ => false) i j k
 
-/-- **Sub-task A.6 non-vacuity: identity-case AlgEquiv on the path
-subspace.**
+/-- **Sub-task A.4 non-vacuity: substantive `restrictedGL3OnPathOnlyTensor`
+identity case.**
 
-When `g = 1` and `adj₁ = adj₂ = adj`, the AlgEquiv is `AlgEquiv.refl`. -/
-example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+At `g = 1` between two distinct adjacencies `(adj₁, adj₂)` such that
+`1 • encode m adj₁ = encode m adj₂`, the identity-case witness derives
+`adj₁ = adj₂` via the diagonal-value classification, hence the
+present-arrow cardinalities match.
+
+Exercises the substantive version of
+`restrictedGL3OnPathOnlyTensor_identity_case` (the post-audit-pass
+version that consumes the hypothesis non-trivially). -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+              GL (Fin (dimGQ m)) ℚ) • grochowQiaoEncode m adj₁ =
+              grochowQiaoEncode m adj₂) :
+    (presentArrowSlotIndices m adj₁).card =
+      (presentArrowSlotIndices m adj₂).card :=
+  restrictedGL3OnPathOnlyTensor_identity_case m adj₁ adj₂ h_eq
+
+/-- **Sub-task A.6 non-vacuity: substantive identity-case AlgEquiv
+on the path subspace.**
+
+At `g = 1` between two distinct adjacencies `(adj₁, adj₂)` such that
+`1 • encode m adj₁ = encode m adj₂`, the identity-case witness derives
+`adj₁ = adj₂` via the diagonal-value classification, hence
+`AlgEquiv.refl` preserves `presentArrowsSubspace m adj₁ =
+presentArrowsSubspace m adj₂`.
+
+Exercises the substantive version of
+`gl3_induces_algEquiv_on_pathSubspace_identity_case` (the post-audit-
+pass version that consumes the hypothesis non-trivially). -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+              GL (Fin (dimGQ m)) ℚ) • grochowQiaoEncode m adj₁ =
+              grochowQiaoEncode m adj₂) :
     ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
-      ϕ '' (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
-        (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) :=
-  gl3_induces_algEquiv_on_pathSubspace_self m adj
+      ϕ '' (presentArrowsSubspace m adj₁ : Set (pathAlgebraQuotient m)) =
+        (presentArrowsSubspace m adj₂ : Set (pathAlgebraQuotient m)) :=
+  gl3_induces_algEquiv_on_pathSubspace_identity_case m adj₁ adj₂ h_eq
 
-/-- **Sub-task A.6 non-vacuity: conditional headline at the identity
-case.**
+/-- **Sub-task A.6 non-vacuity: `algEquivRefl_preserves_presentArrowsSubspace`
+sanity check.**
+
+Pure structural sanity check that `AlgEquiv.refl` preserves the
+present-arrows subspace.  Renamed from `_self` in the post-audit
+refinement to honestly describe its content (no GL³ in the
+statement; no encoder hypothesis). -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (AlgEquiv.refl : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m) ''
+      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
+      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) :=
+  algEquivRefl_preserves_presentArrowsSubspace m adj
+
+/-- **Sub-task A.6 non-vacuity: conditional headline.**
 
 Under the research-scope `Prop`, the conditional headline produces an
-AlgEquiv even at `(g = 1, adj₁ = adj₂)`.  We exhibit the identity-case
-witness directly. -/
-example (m : ℕ) (adj : Fin m → Fin m → Bool)
+AlgEquiv between any two adjacencies whose encoders are GL³-related. -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
     (h_research : GL3InducesAlgEquivOnPathSubspace m)
     (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
          GL (Fin (dimGQ m)) ℚ)
-    (hg : g • grochowQiaoEncode m adj = grochowQiaoEncode m adj) :
+    (hg : g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂) :
     ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
-      ϕ '' (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
-        (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) :=
-  gl3_induces_algEquiv_on_pathSubspace m h_research adj adj g hg
+      ϕ '' (presentArrowsSubspace m adj₁ : Set (pathAlgebraQuotient m)) =
+        (presentArrowsSubspace m adj₂ : Set (pathAlgebraQuotient m)) :=
+  gl3_induces_algEquiv_on_pathSubspace m h_research adj₁ adj₂ g hg
 
 end AlgEquivFromGL3NonVacuity

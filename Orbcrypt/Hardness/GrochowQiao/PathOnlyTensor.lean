@@ -58,19 +58,33 @@ identity-case witness landed as an unconditional theorem.
 
 * `pathOnlyStructureTensor m adj` — the path-restricted encoder.
 * `pathOnlyStructureTensor_apply` — definitional unfolding.
+* `pathOnlyStructureTensor_index_is_path_algebra` — the path-algebra
+  membership precondition for any `Fin (pathSlotIndices m adj).card`-
+  index quadruple (the structural fact the `Finset.sum_equiv`-re-
+  indexed path-only associativity identity consumes).
+* `PathOnlyTensorIsAssociative` (research-scope `Prop`) — the path-
+  only tensor satisfies `IsAssociativeTensor`, conditional on the
+  re-indexing argument.
 * `RestrictedGL3OnPathOnlyTensor` (research-scope `Prop`) — the
   obligation that GL³ tensor isomorphisms restrict to the path-only
   subspace.
-* `restrictedGL3OnPathOnlyTensor_identity_case` — identity witness.
+* `restrictedGL3OnPathOnlyTensor_identity_case` — **substantive**
+  identity-case witness: takes `(adj₁, adj₂)` and the hypothesis
+  `1 • encode m adj₁ = encode m adj₂`, derives `adj₁ = adj₂` via the
+  post-Stage-0 diagonal-value classification, then concludes the
+  cardinality equality.  Mirrors the post-audit-pass-II refactoring
+  of Stage 3's `gl3_preserves_partition_cardinalities_identity_case`.
 
 ## Status
 
 Sub-task A.4 lands the **path-only tensor definition** + **apply
-lemma** unconditionally.  The **path-only-tensor-is-associative**
-content (originally part of A.4.2) and the **restricted-GL³-action
-equivariance** Prop are part of the research-scope bundle consumed by
-`AlgEquivFromGL3.lean`; the identity case is landed as an
-unconditional witness.
+lemma** + **index-is-path-algebra fact** unconditionally.  The
+**path-only-tensor-is-associative** content (originally part of A.4.2)
+and the **restricted-GL³-action equivariance** content are captured
+as research-scope `Prop`s consumed by `AlgEquivFromGL3.lean`.  The
+**substantive identity case** of `RestrictedGL3OnPathOnlyTensor`
+(consuming the hypothesis non-trivially via the diagonal-value
+classification) is landed as an unconditional theorem.
 
 ## Naming
 
@@ -138,22 +152,22 @@ research-scope `Prop` since it is consumed only by Sub-task A.5
 def PathOnlyTensorIsAssociative (m : ℕ) (adj : Fin m → Fin m → Bool) : Prop :=
   IsAssociativeTensor (pathOnlyStructureTensor m adj)
 
-/-- **Identity-case anchor for `PathOnlyTensorIsAssociative`.**
+/-- **Path-only-tensor index-quadruple is path-algebra.**
 
-For graphs where every slot is path-algebra (i.e., the complete
-directed graph `adj := fun _ _ => true`), the path-only tensor coincides
-with the underlying encoder up to re-indexing, and the associativity
-identity is the `encoder_assoc_path` result re-indexed.  We capture
-this as the **identity-anchor** form: when the index map
-`equivFin.symm` lands on a path-algebra slot for every input, the
-identity holds.
+For every quadruple of `Fin (pathSlotIndices m adj).card`-indices,
+the underlying `Fin (dimGQ m)`-values obtained via the
+`(pathSlotIndices m adj).equivFin.symm` bijection are all
+path-algebra slots (`isPathAlgebraSlot m adj _ = true`).
 
-Formally, the associativity-on-an-arbitrary-quadruple-of-path-slot-indices
-form is straightforward but requires the re-indexing.  Below we provide
-the per-quadruple identity in the **`encoder_assoc_path`-aligned
-form**, which is the form Sub-task A.5's algebra-iso construction
-consumes. -/
-theorem pathOnlyStructureTensor_inherits_encoder_assoc
+This is the **path-algebra membership precondition** that the
+`Finset.sum_equiv`-re-indexed associativity identity for
+`pathOnlyStructureTensor` consumes; the re-indexed associativity
+itself is the research-scope `PathOnlyTensorIsAssociative` Prop.
+The name describes the content (path-algebra membership of the
+index image), not the consumer (`encoder_assoc_path` inheritance) —
+a pre-audit version named this `_inherits_encoder_assoc` which
+overstated the content per the security-by-docstring rule. -/
+theorem pathOnlyStructureTensor_index_is_path_algebra
     (m : ℕ) (adj : Fin m → Fin m → Bool)
     (i j k l : Fin (pathSlotIndices m adj).card) :
     let i' := ((pathSlotIndices m adj).equivFin.symm i).val
@@ -204,22 +218,50 @@ def RestrictedGL3OnPathOnlyTensor (m : ℕ) : Prop :=
     (presentArrowSlotIndices m adj₁).card =
       (presentArrowSlotIndices m adj₂).card
 
-/-- **Identity-case witness.**  At `g = 1` and `adj₁ = adj₂`, the
-restricted-GL³-action Prop holds unconditionally: the restricted
-triple is the identity, and the cardinalities trivially match.
+/-- **Identity-case witness.**  At `g = 1` between two adjacencies
+`(adj₁, adj₂)`, the hypothesis `1 • encode m adj₁ = encode m adj₂`
+forces `adj₁ = adj₂` via the post-Stage-0 diagonal-value classification
+(arrow-slot diagonals separate `0` for present-arrows from `2` for
+padding); from `adj₁ = adj₂` the cardinalities trivially match.
 
-This witnesses that the research-scope `Prop`
-`RestrictedGL3OnPathOnlyTensor` is inhabitable on at least the
-identity case, providing the foundation for the conditional discharge
-in `AlgEquivFromGL3.lean`. -/
+This is the substantive identity-case witness for the research-scope
+`Prop` `RestrictedGL3OnPathOnlyTensor`: the proof actually consumes
+the hypothesis (via `one_smul` reduction + diagonal classification),
+not merely a `rfl`-witness of `card = card`.  Mirrors the post-audit-
+pass-II refactoring of Stage 3's
+`gl3_preserves_partition_cardinalities_identity_case` in
+`BlockDecomp.lean`. -/
 theorem restrictedGL3OnPathOnlyTensor_identity_case
-    (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ) •
-      grochowQiaoEncode m adj = grochowQiaoEncode m adj →
-    (presentArrowSlotIndices m adj).card =
-      (presentArrowSlotIndices m adj).card := by
-  intro _h
-  rfl
+    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+              GL (Fin (dimGQ m)) ℚ) • grochowQiaoEncode m adj₁ =
+              grochowQiaoEncode m adj₂) :
+    (presentArrowSlotIndices m adj₁).card =
+      (presentArrowSlotIndices m adj₂).card := by
+  -- (1 : GL × GL × GL) • T = T by `one_smul`.
+  rw [one_smul] at h_eq
+  -- The encoder pinpoints `adj` exactly via the diagonal-value
+  -- classification at arrow slots: `adj u v = true` ⇒ diagonal `0`;
+  -- `adj u v = false` ⇒ diagonal `2`. Equal encoders force equal
+  -- adjacencies.
+  have h_adj : adj₁ = adj₂ := by
+    funext u v
+    have h_diag := congrFun (congrFun (congrFun h_eq
+      ((slotEquiv m).symm (.arrow u v)))
+      ((slotEquiv m).symm (.arrow u v)))
+      ((slotEquiv m).symm (.arrow u v))
+    rcases h₁ : adj₁ u v with _ | _
+    · rw [grochowQiaoEncode_diagonal_padding m adj₁ u v h₁] at h_diag
+      rcases h₂ : adj₂ u v with _ | _
+      · rfl
+      · rw [grochowQiaoEncode_diagonal_present_arrow m adj₂ u v h₂] at h_diag
+        norm_num at h_diag
+    · rw [grochowQiaoEncode_diagonal_present_arrow m adj₁ u v h₁] at h_diag
+      rcases h₂ : adj₂ u v with _ | _
+      · rw [grochowQiaoEncode_diagonal_padding m adj₂ u v h₂] at h_diag
+        norm_num at h_diag
+      · rfl
+  rw [h_adj]
 
 end GrochowQiao
 end Orbcrypt
