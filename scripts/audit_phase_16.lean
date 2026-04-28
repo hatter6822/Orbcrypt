@@ -4374,11 +4374,15 @@ end Phase3DischargeNonVacuity
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_basisChangeRelated_self
 #print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_unitCompatible_self
 
--- Path B: Manin-route research-scope obligation + discharges.
-#print axioms Orbcrypt.GrochowQiao.Discharge.GrochowQiaoRigidityViaMan
-#print axioms Orbcrypt.GrochowQiao.Discharge.grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity
-#print axioms Orbcrypt.GrochowQiao.Discharge.gl3InducesAlgEquivOnPathSubspace_via_manin
-#print axioms Orbcrypt.GrochowQiao.Discharge.restrictedGL3OnPathOnlyTensor_via_manin
+-- Path B: Genuine factoring through path-only Subalgebra AlgEquiv.
+-- (The earlier `_via_manin` aliases — definitionally equal to Path A —
+-- were removed as theatrical in the post-landing audit; replaced with
+-- the substantive obligation factoring below.)
+#print axioms Orbcrypt.GrochowQiao.Discharge.PathOnlyAlgEquivObligation
+#print axioms Orbcrypt.GrochowQiao.Discharge.PathOnlySubalgebraGraphIsoObligation
+#print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlyAlgEquivObligation_id
+#print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlySubalgebraGraphIsoObligation_id
+#print axioms Orbcrypt.GrochowQiao.Discharge.grochowQiaoRigidity_via_path_only_algEquiv_chain
 #print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlyAlgebra_manin_trivial
 
 namespace PathOnlyAlgebraNonVacuity
@@ -4431,14 +4435,36 @@ example (m : ℕ) (adj : Fin m → Fin m → Bool) :
         (pathOnlyAlgebraBasis m adj) (pathOnlyAlgebraBasis m adj) 1 :=
   pathOnlyAlgebraBasis_unitCompatible_self m adj
 
-/-- **Path B's research-scope obligation iff the original.** -/
-example : Discharge.GrochowQiaoRigidityViaMan ↔ GrochowQiaoRigidity :=
-  Discharge.grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity
+/-- **Path B obligation 1 identity-case witness.**
 
-/-- **Path B discharge of `GL3InducesAlgEquivOnPathSubspace`.** -/
-example (h_rig : Discharge.GrochowQiaoRigidityViaMan) (m : ℕ) :
-    GL3InducesAlgEquivOnPathSubspace m :=
-  Discharge.gl3InducesAlgEquivOnPathSubspace_via_manin h_rig m
+When adj₁ = adj₂, the AlgEquiv obligation discharges to `AlgEquiv.refl`. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ)
+    (h_eq : g • grochowQiaoEncode m adj = grochowQiaoEncode m adj) :
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj)) :=
+  Discharge.pathOnlyAlgEquivObligation_id m adj g h_eq
+
+/-- **Path B obligation 2 identity-case witness.**
+
+For adj₁ = adj₂, σ = identity is a graph iso. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (h : Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                    ↥(pathOnlyAlgebraSubalgebra m adj))) :
+    ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj i j = adj (σ i) (σ j) :=
+  Discharge.pathOnlySubalgebraGraphIsoObligation_id m adj h
+
+/-- **Path B factoring composition: under both Path B obligations,
+`GrochowQiaoRigidity` follows.** -/
+example (m : ℕ)
+    (h_in : Discharge.PathOnlyAlgEquivObligation m)
+    (h_out : Discharge.PathOnlySubalgebraGraphIsoObligation m)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_iso : AreTensorIsomorphic
+              (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂)) :
+    ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j) :=
+  Discharge.grochowQiaoRigidity_via_path_only_algEquiv_chain
+    m h_in h_out adj₁ adj₂ h_iso
 
 /-- **Manin chain non-vacuity: end-to-end algebra-equiv construction
 on the path-only Subalgebra at the trivial instance.** -/

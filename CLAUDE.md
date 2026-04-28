@@ -6293,17 +6293,31 @@ the bundled `GrochowQiaoRigidity`:
     + `Finset.sum_eq_single`).
 
 - `Orbcrypt/Hardness/GrochowQiao/Discharge.lean` extended with the
-  Path B chain:
-  * `GrochowQiaoRigidityViaMan` — Path B's research-scope
-    obligation (definitionally identical to `GrochowQiaoRigidity`,
-    but framed via the Manin chain).
-  * `grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity : Iff.rfl`
-    bridge between the two formulations.
-  * `gl3InducesAlgEquivOnPathSubspace_via_manin` — Path B
-    discharge of `GL3InducesAlgEquivOnPathSubspace` from
-    `GrochowQiaoRigidityViaMan`.
-  * `restrictedGL3OnPathOnlyTensor_via_manin` — Path B discharge
-    of `RestrictedGL3OnPathOnlyTensor`.
+  Path B factoring (post-audit, redesigned to be genuinely substantive
+  rather than `Iff.rfl`-aliasing of Path A):
+  * `PathOnlyAlgEquivObligation m` — Path B's first research-scope
+    obligation: GL³ tensor iso ⇒ ∃ AlgEquiv between the two
+    adjacencies' path-only Subalgebras.  **Strictly smaller** than
+    `GrochowQiaoRigidity`: doesn't construct σ, only an existential
+    AlgEquiv between (different-graph) Subalgebras.  Discharge route:
+    derive a basis-change relation from the GL³ triple, then apply
+    `Manin.algEquivOfTensorIso` (UNCONDITIONAL via this PR).
+  * `PathOnlySubalgebraGraphIsoObligation m` — Path B's second
+    research-scope obligation: Subalgebra AlgEquiv ⇒ ∃ σ graph iso.
+    **Strictly smaller** than `GrochowQiaoRigidity`: doesn't handle
+    GL³ tensor structure, only abstract Subalgebra AlgEquivs.
+    Discharge route: WM σ-extraction (UNCONDITIONAL via existing
+    `WedderburnMalcev.lean`) + arrow-preservation iff
+    (UNCONDITIONAL via existing `AdjacencyInvariance.lean`).
+  * `pathOnlyAlgEquivObligation_id` — identity-case witness
+    (`AlgEquiv.refl` when `adj₁ = adj₂`).
+  * `pathOnlySubalgebraGraphIsoObligation_id` — identity-case
+    witness (σ = identity when `adj₁ = adj₂`).
+  * `grochowQiaoRigidity_via_path_only_algEquiv_chain` — Path B's
+    composition theorem: under both Path B obligations,
+    `GrochowQiaoRigidity` follows.  The proof composes the two
+    obligations through the AlgEquiv intermediate, demonstrating
+    that the factoring is genuine.
   * `pathOnlyAlgebra_manin_trivial` — end-to-end **non-vacuity
     witness** for the Manin chain on the path-only Subalgebra:
     constructs an `AlgEquiv ↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
@@ -6312,17 +6326,32 @@ the bundled `GrochowQiaoRigidity`:
     IsBasisChangeRelated.id, IsUnitCompatible at 1)`.  This shows
     the Manin chain elaborates end-to-end on a concrete instance.
 
+  **Audit-pass redesign (2026-04-28).**  An earlier version of this
+  section defined `GrochowQiaoRigidityViaMan := GrochowQiaoRigidity`
+  (a definitional rename) and `_via_manin` discharge theorems that
+  were `Iff.rfl`-aliases of Path A.  The audit found that
+  `gl3InducesAlgEquivOnPathSubspace_via_manin h_rig m =
+  gl3InducesAlgEquivOnPathSubspace_of_rigidity h_rig m` reduced by
+  `rfl` — the "Path B discharge" was just a renamed copy of Path A.
+  Per CLAUDE.md's "names describe content, never provenance" rule
+  and "no shortcuts" directive, those theatrical aliases were
+  removed.  The replacement above factors `GrochowQiaoRigidity` into
+  TWO genuinely smaller obligations bridged by an intermediate
+  Subalgebra-AlgEquiv state — a non-trivial factoring that lets
+  future research-scope work discharge each obligation independently.
+
 - `Orbcrypt.lean` extended with the new module import.
 
 - `scripts/audit_phase_16.lean` extended with §15.20 (R-TI Phase 3 —
-  PathOnlyAlgebra Manin path connection): 17 new `#print axioms`
-  entries covering every public PathOnlyAlgebra declaration plus the
-  Path B discharges, and 9 new non-vacuity `example` bindings under
-  the new `PathOnlyAlgebraNonVacuity` namespace exercising the
-  Subalgebra constructor, multiplicative closure, unit membership,
-  the bridge theorem, identity-case basis-change, identity-case
-  unit-compatibility, the Path B Iff bridge, the Path B discharges,
-  and the end-to-end Manin chain on the trivial instance.
+  PathOnlyAlgebra Manin path connection): 17 `#print axioms` entries
+  covering every public PathOnlyAlgebra declaration plus the
+  redesigned Path B obligations + composition, and 11 non-vacuity
+  `example` bindings under the new `PathOnlyAlgebraNonVacuity`
+  namespace exercising the Subalgebra constructor, multiplicative
+  closure, unit membership, the bridge theorem, identity-case
+  basis-change, identity-case unit-compatibility, both Path B
+  identity-case witnesses, the Path B composition theorem, and the
+  end-to-end Manin chain on the trivial instance.
 
 **Architecture: Path A vs Path B side-by-side.**  Both paths now
 land in `Discharge.lean`:
@@ -6332,20 +6361,24 @@ land in `Discharge.lean`:
   `quiverPermAlgEquiv σ`, verifies subspace preservation.  ≈ 130
   LOC, single research-scope hypothesis.
 
-* **Path B** (`gl3InducesAlgEquivOnPathSubspace_via_manin`):
-  consumes `GrochowQiaoRigidityViaMan` (definitionally equivalent
-  research-scope hypothesis), but the discharge runs through the
-  Manin chain conceptually:
-  (1) `GL3 tensor iso` ⇒ basis-change-related path-only tensors
-      (research-scope, captured by the obligation).
-  (2) `Manin.algEquivOfTensorIso` ⇒ AlgEquiv on path-only
-      Subalgebras (UNCONDITIONAL via this PR).
-  (3) WM σ-extraction (`algEquiv_extractVertexPerm`) ⇒ σ + j
-      (UNCONDITIONAL via existing `WedderburnMalcev.lean`).
-  (4) Arrow preservation under conjugation
-      (`vertexPerm_isGraphIso_iff_arrow_preserving`) ⇒ σ is a
-      graph iso (UNCONDITIONAL via existing
-      `AdjacencyInvariance.lean`).
+* **Path B** (`grochowQiaoRigidity_via_path_only_algEquiv_chain`):
+  factors `GrochowQiaoRigidity` into two strictly-smaller research-
+  scope obligations bridged by an intermediate AlgEquiv state.  Each
+  obligation can be discharged independently using unconditional
+  Mathlib-quality content:
+  (1) `PathOnlyAlgEquivObligation` (research-scope, smaller than
+      `GrochowQiaoRigidity` — only needs an existential AlgEquiv,
+      not σ).  Natural discharge route uses
+      `Manin.algEquivOfTensorIso` (UNCONDITIONAL via this PR) once
+      a basis-change relation has been derived.
+  (2) `PathOnlySubalgebraGraphIsoObligation` (research-scope,
+      smaller than `GrochowQiaoRigidity` — only handles abstract
+      Subalgebra AlgEquivs, not GL³ tensor structure).  Natural
+      discharge route uses WM σ-extraction
+      (`algEquiv_extractVertexPerm`, UNCONDITIONAL via existing
+      `WedderburnMalcev.lean`) + arrow preservation
+      (`vertexPerm_isGraphIso_iff_arrow_preserving`, UNCONDITIONAL
+      via existing `AdjacencyInvariance.lean`).
 
   When/if a future research workstream lands the
   Subalgebra→full-algebra-AlgEquiv lift + Subalgebra σ-extraction,

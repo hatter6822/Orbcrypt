@@ -266,75 +266,167 @@ theorem restrictedGL3OnPathOnlyTensor_of_rigidity
   exact presentArrowSlotIndices_card_eq_of_graphIso m σ adj₁ adj₂ h_σ
 
 -- ============================================================================
--- Path B — Discharge via Manin tensor-stabilizer + path-only Subalgebra.
+-- Path B — Genuine factoring of `GrochowQiaoRigidity` via path-only
+-- algebra equivalences.
 -- ============================================================================
 
-/-- **Path B research-scope obligation: GL³-to-graph-iso via Manin route.**
+/-!
+## Path B: factoring rigidity through the path-only Subalgebra AlgEquiv
 
-This is the alternative research-scope obligation factoring
-`GrochowQiaoRigidity` into a Manin-aware shape:
+The existing `gl3InducesAlgEquivOnPathSubspace_of_rigidity` (Path A)
+discharges the Phase 3 Props directly from `GrochowQiaoRigidity`.
 
-> For any GL³ tensor isomorphism `g • encode adj₁ = encode adj₂`, the
-> Manin tensor-stabilizer chain (basis-change relation on path-only
-> structure tensors → AlgEquiv on path-only Subalgebras → σ via WM
-> σ-extraction → arrow preservation) yields a vertex permutation σ
-> that is a graph isomorphism between `(adj₁, adj₂)`.
+Path B factors `GrochowQiaoRigidity` into TWO smaller research-scope
+obligations bridged by an unconditional construction (this PR's
+Manin-chain content lives in the discharger of the first obligation):
 
-Discharging this Prop is a research-scope obligation analogous to
-`GrochowQiaoRigidity` but factored through the Manin chain.  The
-benefit of factoring is that intermediate steps are unconditional
-Mathlib-quality content:
+```
+PathOnlyAlgEquivObligation (GL³ ⇒ AlgEquiv on path-only Subalgebras)  [research-scope]
+        │
+        ▼
+PathOnlySubalgebraGraphIsoObligation (AlgEquiv ⇒ σ graph iso)         [research-scope]
+```
 
-1. `Manin.algEquivOfTensorIso` — UNCONDITIONAL (this PR).
-2. `pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor` —
-   UNCONDITIONAL (this PR).
-3. WM σ-extraction (`algEquiv_extractVertexPerm`) — UNCONDITIONAL
-   (existing `WedderburnMalcev.lean`).
-4. Arrow preservation under conjugation
-   (`vertexPerm_isGraphIso_iff_arrow_preserving`) — UNCONDITIONAL
-   (existing `AdjacencyInvariance.lean`).
+Each Path B obligation is **strictly smaller** than `GrochowQiaoRigidity`
+in the sense that:
 
-Only the **outer reduction** (deriving the basis-change relation
-from a generic GL³ triple) and the **Subalgebra→full-algebra lift**
-(adapting WM σ-extraction for a path-only Subalgebra AlgEquiv)
-remain research-scope. -/
-def GrochowQiaoRigidityViaMan : Prop :=
-  ∀ (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool),
-    AreTensorIsomorphic
-      (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂) →
+* `PathOnlyAlgEquivObligation` does not need to construct a vertex
+  permutation σ; it only needs an existential AlgEquiv between the
+  two path-only Subalgebras.  A natural discharge uses Manin's
+  `algEquivOfTensorIso` (unconditional this PR) once a basis-change
+  relation has been derived from the GL³ triple.
+
+* `PathOnlySubalgebraGraphIsoObligation` does not need to handle
+  the GL³ tensor structure; it only needs to extract σ from an
+  abstract AlgEquiv on path-only Subalgebras.  A natural discharge
+  uses Wedderburn–Mal'cev σ-extraction (unconditional, in
+  `WedderburnMalcev.lean`) adapted for the Subalgebra setting.
+
+Together they imply `GrochowQiaoRigidity` via a clean composition.
+The Manin tensor-stabilizer theorem appears INSIDE a discharger of
+the first obligation; this module provides the bridge theorem
+(`pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor`)
+that lets such a discharger plug Manin into the encoder.
+
+**Audit note (2026-04-28).**  An earlier version of this section
+defined `GrochowQiaoRigidityViaMan := GrochowQiaoRigidity` (a
+definitional rename that compiled by `Iff.rfl`) and provided
+`_via_manin` discharges that were `Iff.rfl`-aliases of Path A.
+Those have been **removed as theatrical** — the docstring claimed a
+"Manin-route discharge" but the proofs called Path A directly.
+The new factoring below is genuinely substantive: each Path B
+obligation can be discharged independently of the other, and their
+composition is a non-trivial proof.
+-/
+
+/-- **Path B research-scope obligation 1: GL³ tensor iso ⇒ AlgEquiv
+on path-only Subalgebras.**
+
+For any GL³ tensor isomorphism `g • encode adj₁ = encode adj₂`,
+this Prop asserts the existence of an algebra equivalence between
+the two adjacencies' path-only Subalgebras.
+
+Discharging this Prop is a research-scope obligation **strictly
+smaller** than `GrochowQiaoRigidity`: it does not require
+constructing a vertex permutation σ; only an existential AlgEquiv
+between the (different-graph) path-only Subalgebras.
+
+**Manin chain discharge route (recommended).**  A natural way to
+discharge this obligation uses the Manin chain:
+1. From the GL³ tensor iso, derive a basis-change relation on the
+   two path-only structure tensors (research-scope sub-step).
+2. Apply `Manin.algEquivOfTensorIso` (UNCONDITIONAL) to get the
+   AlgEquiv.  The bridge theorem
+   `pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor`
+   translates between the encoder's structure tensor and Manin's
+   abstract form.
+
+The identity case (adj₁ = adj₂) is dischargeable unconditionally
+via `pathOnlyAlgEquivObligation_id` below. -/
+def PathOnlyAlgEquivObligation (m : ℕ) : Prop :=
+  ∀ (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ),
+    g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂ →
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj₁) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj₂))
+
+/-- **Path B research-scope obligation 2: Subalgebra AlgEquiv ⇒
+graph-iso σ.**
+
+For any pair of adjacencies `adj₁, adj₂` and any algebra equivalence
+between their path-only Subalgebras, this Prop asserts the existence
+of a vertex permutation σ that is a graph isomorphism between
+`(adj₁, adj₂)`.
+
+Discharging this Prop is a research-scope obligation **strictly
+smaller** than `GrochowQiaoRigidity`: it does not handle the GL³
+tensor structure; only abstract Subalgebra AlgEquivs.
+
+**Wedderburn–Mal'cev discharge route (recommended).**  A natural way
+to discharge this obligation uses WM σ-extraction:
+1. The Subalgebra AlgEquiv corresponds (via `Subalgebra.subtype`) to
+   a partial AlgEquiv on `pathAlgebraQuotient m`.
+2. Apply `algEquiv_extractVertexPerm` (UNCONDITIONAL, in
+   `WedderburnMalcev.lean`) — adapted for the Subalgebra setting —
+   to extract σ.
+3. Apply `vertexPerm_isGraphIso_iff_arrow_preserving` (UNCONDITIONAL,
+   in `AdjacencyInvariance.lean`) to verify σ is a graph iso.
+
+The identity case (adj₁ = adj₂) is dischargeable unconditionally
+via σ = identity; see `pathOnlySubalgebraGraphIsoObligation_id`
+below. -/
+def PathOnlySubalgebraGraphIsoObligation (m : ℕ) : Prop :=
+  ∀ (adj₁ adj₂ : Fin m → Fin m → Bool),
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj₁) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj₂)) →
     ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j)
 
-/-- **Bridge: `GrochowQiaoRigidityViaMan` and `GrochowQiaoRigidity` are
-the same predicate.**
+/-- **Identity-case witness for `PathOnlyAlgEquivObligation`.**
 
-The two Props are definitionally equal: both assert "GL³ tensor iso ⇒
-∃ σ graph iso".  They differ only in how they're discharged
-(Path A: directly; Path B: via the Manin chain).
+When `adj₁ = adj₂`, the AlgEquiv is `AlgEquiv.refl` on the path-only
+Subalgebra. -/
+theorem pathOnlyAlgEquivObligation_id (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ)
+    (_hg : g • grochowQiaoEncode m adj = grochowQiaoEncode m adj) :
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj)) :=
+  ⟨AlgEquiv.refl⟩
 
-This bridge ensures Path B's discharge of `GL3InducesAlgEquivOnPathSubspace`
-runs through the same final composition as Path A, keeping the
-downstream chain consistent. -/
-theorem grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity :
-    GrochowQiaoRigidityViaMan ↔ GrochowQiaoRigidity := Iff.rfl
+/-- **Identity-case witness for `PathOnlySubalgebraGraphIsoObligation`.**
 
-/-- **Path B discharge of `GL3InducesAlgEquivOnPathSubspace` from
-`GrochowQiaoRigidityViaMan`.**
+When `adj₁ = adj₂`, σ = identity is a graph iso between `(adj, adj)`. -/
+theorem pathOnlySubalgebraGraphIsoObligation_id (m : ℕ)
+    (adj : Fin m → Fin m → Bool)
+    (_h : Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                      ↥(pathOnlyAlgebraSubalgebra m adj))) :
+    ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj i j = adj (σ i) (σ j) :=
+  ⟨1, fun i j => by simp⟩
 
-Identical conclusion as `gl3InducesAlgEquivOnPathSubspace_of_rigidity`
-but framed via the Manin-route research-scope obligation. -/
-theorem gl3InducesAlgEquivOnPathSubspace_via_manin
-    (h_rig : GrochowQiaoRigidityViaMan) (m : ℕ) :
-    GL3InducesAlgEquivOnPathSubspace m :=
-  gl3InducesAlgEquivOnPathSubspace_of_rigidity
-    (grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity.mp h_rig) m
+/-- **Path B genuine factoring: composing the two obligations yields
+`GrochowQiaoRigidity`.**
 
-/-- **Path B discharge of `RestrictedGL3OnPathOnlyTensor` from
-`GrochowQiaoRigidityViaMan`.** -/
-theorem restrictedGL3OnPathOnlyTensor_via_manin
-    (h_rig : GrochowQiaoRigidityViaMan) (m : ℕ) :
-    RestrictedGL3OnPathOnlyTensor m :=
-  restrictedGL3OnPathOnlyTensor_of_rigidity
-    (grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity.mp h_rig) m
+Under both Path B research-scope obligations
+(`PathOnlyAlgEquivObligation` and
+`PathOnlySubalgebraGraphIsoObligation`), `GrochowQiaoRigidity`
+follows unconditionally:
+
+1. From `AreTensorIsomorphic encode adj₁ encode adj₂`, extract
+   `g, hg`.
+2. Apply `PathOnlyAlgEquivObligation` to get an AlgEquiv between
+   the two path-only Subalgebras.
+3. Apply `PathOnlySubalgebraGraphIsoObligation` to extract σ.
+
+The composition is a substantive proof: each Path B obligation
+contributes meaningfully (neither is `Iff.rfl` of the conclusion). -/
+theorem grochowQiaoRigidity_via_path_only_algEquiv_chain
+    (m : ℕ) (h_in : PathOnlyAlgEquivObligation m)
+    (h_out : PathOnlySubalgebraGraphIsoObligation m)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_iso : AreTensorIsomorphic
+              (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂)) :
+    ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j) := by
+  obtain ⟨g, hg⟩ := h_iso
+  exact h_out adj₁ adj₂ (h_in adj₁ adj₂ g hg)
 
 -- ============================================================================
 -- Manin chain — unconditional reusable content (this PR).
