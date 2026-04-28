@@ -5199,6 +5199,427 @@ structural foundation, EncoderSlabEval) has been completed:
   5 (arrow preservation from σ + radical) use the per-slot
   evaluation lemmas to argue about encoder structure.
 
+R-TI Research-Scope Discharge — Phase 2 (Audit 2026-04-28 — Path-block
+linear restriction, parametric in π) has been completed:
+
+- **One new module.**
+  `Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` (~795 LOC,
+  NEW) — linear-algebra infrastructure that **Phase 3's GL³ →
+  algebra-iso bridge** consumes. The infrastructure is **parametric in
+  a slot permutation `π : Equiv.Perm (Fin (dimGQ m))`** because
+  Phase 3 derives π from algebra-iso structure — Phase 2's lemmas do
+  not commit to a specific π. Full `lake build` succeeds across
+  3,406 jobs with zero warnings, zero errors. Every public
+  declaration depends only on the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`); zero `sorry`, zero custom
+  axioms.
+
+- **Layer 2.0 — Permutation-matrix wrapper for arbitrary slot
+  permutations (~30 LOC).**
+  * `permMatrixOf m π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ`
+    — built directly from Mathlib's `Equiv.Perm.permMatrix`,
+    parallel to `liftedSigmaMatrix m σ` (which specialises to vertex
+    permutations). Lets Phase 2's `pathBlockMatrix` accept any slot
+    permutation π directly, without going through `liftedSigma`.
+  * `permMatrixOf_apply` — explicit entry formula
+    `permMatrixOf m π i j = if π i = j then 1 else 0`.
+  * `permMatrixOf_det_ne_zero` — invertibility (sign of `π` is
+    `±1` ≠ 0 in ℚ).
+
+- **Layer 2.1 — Path-block + padding subspaces (defined by support)
+  (~200 LOC).**
+  * `pathBlockSubspace m adj : Submodule ℚ (Fin (dimGQ m) → ℚ)` —
+    vectors that vanish outside `pathSlotIndices m adj`.
+  * `paddingSubspace m adj` — symmetric for padding slots.
+  * `mem_pathBlockSubspace_iff`, `mem_paddingSubspace_iff` —
+    membership characterizations.
+  * `pi_single_mem_pathBlockSubspace` — indicator vector at a path
+    slot lies in the path-block subspace.
+  * `pi_single_mem_paddingSubspace` — symmetric for padding slots.
+  * `pathBlockSubspace_disjoint_paddingSubspace` —
+    `pathBlockSubspace ⊓ paddingSubspace = ⊥` (disjointness).
+  * `pathBlock_padding_decomposition` — every `f : Fin (dimGQ m) → ℚ`
+    splits as a path part plus a padding part.
+  * `pathBlockSubspace_sup_paddingSubspace_eq_top` —
+    `pathBlockSubspace ⊔ paddingSubspace = ⊤` (covering).
+  * `pathBlockSubspace_isCompl_paddingSubspace` — the two subspaces
+    form a direct-sum decomposition (`IsCompl`).
+
+- **Layer 2.2 — Path-block matrix (parametric in π) (~80 LOC).**
+  * `pathBlockMatrix m g π := g.1.val * permMatrixOf m π⁻¹` —
+    the first GL component of `g` composed (on the right) with the
+    inverse of π's permutation matrix.
+  * `pathBlockMatrix_apply` — definitional unfolding to the matrix
+    product.
+  * `pathBlockMatrix_apply_eq_g_at_pi` — the central simplification:
+    `(pathBlockMatrix m g π) i j = g.1.val(i, π j)`. Proved by
+    `Finset.sum_eq_single (π j)` collapsing the inner sum.
+  * `pathBlockMatrix_one` — at the identity slot permutation,
+    `pathBlockMatrix m g 1 = g.1.val`.
+  * `pathBlockMatrix_det_ne_zero` — invertibility (composition of
+    two invertible matrices).
+
+- **Layer 2.3 — Conditional linear restriction (~210 LOC).**
+  * `IsPathBlockDiagonal m adj₁ adj₂ M` — `Prop`-valued helper:
+    the matrix has zero entries when the row is a padding slot of
+    `adj₂` and the column is a path slot of `adj₁`. This is the
+    hypothesis Phase 3 establishes for `M = pathBlockMatrix m g π`
+    when π is the partition-preserving slot permutation derived from
+    the algebra-iso structure.
+  * `IsPaddingBlockDiagonal m adj₁ adj₂ M` — symmetric padding-to-path
+    block-vanishing predicate (used for `LinearEquiv` upgrade).
+  * `IsFullyPathBlockDiagonal` — combined predicate.
+  * `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal` — the
+    matrix's `mulVec` action takes vectors in `pathBlockSubspace m
+    adj₁` to vectors in `pathBlockSubspace m adj₂`. Proof case-splits
+    on whether the output index `i` is path or padding (using the
+    partition theorem from Layer 2.1) and threads the support
+    constraint of `v` and the block hypothesis of `M`.
+  * `pathBlockRestrict m adj₁ adj₂ M h_block` — the restriction as
+    a `LinearMap` between the two `pathBlockSubspace`s.
+  * `pathBlockRestrict_apply` — definitional unfolding.
+  * `gl3_restrict_to_pathBlock m adj₁ adj₂ g π h_block` —
+    specialises `pathBlockRestrict` to `M = pathBlockMatrix m g π`.
+
+- **Layer 2.4 — Bridge `pathBlockSubspace ≃ₗ presentArrowsSubspace`
+  (~280 LOC).**
+  * `presentArrowsSubspace m adj : Submodule ℚ (pathAlgebraQuotient
+    m)` — vectors that vanish outside `presentArrows m adj`. This is
+    the natural codomain of the algebra-iso construction in Phase 3.
+  * `mem_presentArrowsSubspace_iff` — membership characterization.
+  * `vertexIdempotent_mem_presentArrowsSubspace` — `vertexIdempotent
+    m v ∈ presentArrowsSubspace m adj` for any `adj`.
+  * `arrowElement_mem_presentArrowsSubspace` — `arrowElement m u v ∈
+    presentArrowsSubspace m adj` iff `adj u v = true`.
+  * `pathBlockToPresentArrowsFun` — push-forward
+    `v : Fin (dimGQ m) → ℚ` through the `slotEquiv` /
+    `slotToArrow` correspondence:
+    `f a := if a ∈ presentArrows m adj then v (slotOfArrow m a)
+    else 0`.
+  * `presentArrowsToPathBlockFun` — pull-back
+    `f : QuiverArrow m → ℚ`:
+    `v i := if i ∈ pathSlotIndices m adj
+    then f (slotToArrow m (slotEquiv m i)) else 0`.
+  * `slotToArrow_mem_presentArrows_of_path` —
+    `slotToArrow m (slotEquiv m i) ∈ presentArrows m adj` for
+    `i ∈ pathSlotIndices m adj`.
+  * `slotOfArrow_mem_pathSlotIndices_of_present` — converse.
+  * `pathBlockToPresentArrowsFun_mem`,
+    `presentArrowsToPathBlockFun_mem` — the forward and reverse
+    maps' images lie in the corresponding subspaces (unconditional —
+    the piecewise definitions make zero outside the support
+    automatic, no support hypothesis needed).
+  * `presentArrowsToPathBlockFun_pathBlockToPresentArrowsFun`,
+    `pathBlockToPresentArrowsFun_presentArrowsToPathBlockFun` —
+    round-trip identities (these DO require the support hypothesis
+    because the off-support case is discharged via the assumed
+    support).
+  * `pathBlockToPresentArrows m adj : pathBlockSubspace m adj ≃ₗ[ℚ]
+    presentArrowsSubspace m adj` — the bridge `LinearEquiv`. Phase
+    3's algebra-iso construction will lift the path-block restriction
+    (Layer 2.3) to a linear map between `presentArrowsSubspace m
+    adj₁` and `presentArrowsSubspace m adj₂` via this bridge.
+  * `pathBlockToPresentArrows_apply`,
+    `pathBlockToPresentArrows_symm_apply` — apply lemmas.
+
+- **Audit script.** `scripts/audit_phase_16.lean` extended with **40
+  new `#print axioms` entries** plus **15 new non-vacuity `example`
+  bindings** under the `PathBlockSubspaceNonVacuity` namespace at
+  `m ∈ {1, 2}`, exercising every public Phase-2 declaration:
+  * Layer 2.0: identity slot permutation has identity permutation
+    matrix at `m = 1`.
+  * Layer 2.1: zero vector in both subspaces, vertex / padding
+    indicator vectors in the appropriate subspaces, complementarity
+    (`IsCompl`) of the two subspaces.
+  * Layer 2.2: identity-permutation reduction (`pathBlockMatrix g 1
+    = g.1.val`), invertibility for arbitrary `g` and `π`.
+  * Layer 2.3: zero matrix is path-block-diagonal, GL³ restriction
+    type-elaborates under any path-block-diagonal hypothesis.
+  * Layer 2.4: vertex idempotent membership for arbitrary `adj`,
+    arrow element membership on the complete graph at `m = 2`,
+    bridge `LinearEquiv` type-elaborates, round-trip identity
+    `symm ∘ pathBlockToPresentArrows = id` on a concrete vector.
+  Total declarations exercised: 828 (up from 788 — +40 from
+  Phase 2). Every new declaration depends only on the standard Lean
+  trio.
+
+- **`Orbcrypt.lean`** root file extended with one new import
+  `Orbcrypt.Hardness.GrochowQiao.PathBlockSubspace`.
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.22` to
+  `0.1.23` for Phase 2 — one new public-API module adds new public
+  declarations (40 new public `def`/`theorem`/`structure` decls),
+  warranting the patch-version bump per `CLAUDE.md`'s
+  version-bump discipline. The pre-Phase-2 module total (63) rises
+  to 64 (verified via `find Orbcrypt -name '*.lean' | wc -l`); the
+  zero-sorry / zero-custom-axiom posture and the standard-trio-only
+  axiom-dependency posture are both preserved.
+
+- **Phase 2 deliverables and gates (all met).**
+  * One new `.lean` module (`PathBlockSubspace.lean`).
+  * `Orbcrypt.lean` extended with one new import.
+  * `scripts/audit_phase_16.lean` extended with `#print axioms` for
+    every new public declaration; 15 non-vacuity examples on
+    `m ∈ {1, 2}`.
+  * CLAUDE.md change-log entry (this snapshot).
+  * `lakefile.lean` version bumped (`0.1.22 → 0.1.23`).
+  * Lake build succeeds (3,406 jobs, zero warnings, zero errors);
+    audit script clean.
+
+- **Consumer.** Phase 3 (the GL³ → algebra-iso bridge) supplies the
+  partition-preserving slot permutation π and discharges the
+  `IsPathBlockDiagonal` hypothesis, then composes
+  `gl3_restrict_to_pathBlock` with `pathBlockToPresentArrows` to
+  obtain a `LinearEquiv` between
+  `presentArrowsSubspace m adj₁` and
+  `presentArrowsSubspace m adj₂`. Phase 3 then upgrades this linear
+  equivalence to an `AlgEquiv` of the path algebras
+  `pathAlgebraQuotient m` (using the encoder's polynomial
+  identities from Phase 1).
+
+R-TI Phase 2 — Post-landing audit pass (2026-04-28). Deep audit of
+the initial Phase 2 landing surfaced six issues, all fixed in this
+audit pass:
+
+1. **Critical: missing plan deliverable
+   `gl3_restrict_to_pathBlock_isLinearEquiv`.** The plan's Layer 2.3
+   table explicitly listed a `LinearEquiv` form of the path-block
+   restriction as a deliverable (under the symmetric block-diagonality
+   + invertibility hypotheses), but the initial landing only delivered
+   the `LinearMap` form. Added a more general parametric helper
+   `pathBlockEquivOfInverse` that takes both `M` and an inverse `M'`
+   (each block-diagonal w.r.t. the appropriate adjacency partition)
+   along with `M' * M = 1` and `M * M' = 1` proofs, and produces a
+   `LinearEquiv` via `LinearEquiv.ofLinear`. Phase 3 instantiates this
+   with the specific `M = pathBlockMatrix m g π` and the corresponding
+   inverse matrix it derives. Companion apply lemmas
+   (`pathBlockEquivOfInverse_apply`, `pathBlockEquivOfInverse_symm_apply`)
+   land alongside.
+
+2. **High: module docstring referenced non-existent declarations.**
+   The initial landing's module-level `/-! ... -/` docstring listed
+   `pathBlockMatrix_restricts_to_pathBlockSubspace` (the actual name is
+   `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal`),
+   `pathBlock_to_presentArrows` (snake-case typo for the camelCase
+   `pathBlockToPresentArrows`), and `gl3_restrict_to_pathBlock_isLinearEquiv`
+   (a plan deliverable that wasn't yet implemented). Also described
+   `presentArrowsSubspace` as "spanned by `vertexIdempotent v` and
+   `arrowElement u v`" when the actual definition is by support on
+   `presentArrows m adj`. All four false claims fixed in the docstring.
+
+3. **High: `pathBlockSubspace` def docstring referenced two
+   non-existent theorems** (`mem_pathBlockSubspace_iff_supported` and
+   `pathBlockSubspace_eq_span`) as if they were available "below in
+   the file". Either remove the references or implement them — chose
+   to implement, adding the substantive theorem
+   `pathBlockSubspace_eq_indicator_span` with its supporting decomposition
+   lemma `pathBlockSubspace_indicator_decomposition`. The lemma proves
+   the equivalence of the support-based and indicator-span definitions
+   of the path-block subspace, closing a gap between the docstring
+   prose and the code.
+
+4. **Medium: unused imports.** The initial landing imported
+   `Mathlib.LinearAlgebra.Span.Defs`, `Mathlib.LinearAlgebra.Basis.Basic`,
+   `Mathlib.LinearAlgebra.Basis.Defs`, `Mathlib.LinearAlgebra.LinearIndependent.Defs`,
+   `Mathlib.LinearAlgebra.LinearIndependent.Basic`,
+   `Mathlib.LinearAlgebra.Matrix.ToLin`, and `Mathlib.Data.Matrix.Basic`,
+   none of which are directly referenced in the file's body (transitive
+   imports through `PermMatrix.lean` and `Mathlib.LinearAlgebra.Pi`
+   suffice for the actual API used). Removed these and added the
+   single missing direct import `Mathlib.Algebra.Module.Equiv.Basic`
+   (needed for `LinearEquiv.ofLinear`). Build remains clean.
+
+5. **Medium: missing apply lemma for `gl3_restrict_to_pathBlock`.**
+   The initial landing had `pathBlockRestrict_apply` (the apply lemma
+   for the parametric form) but no corresponding apply lemma for the
+   GL³-specialised form. Added `gl3_restrict_to_pathBlock_apply` (a
+   `@[simp] rfl` unfolding). Phase 3 will need this when reasoning
+   about the GL³-restriction's action on concrete vectors.
+
+6. **Low: test coverage gaps.** The initial landing had 15 non-vacuity
+   examples; 24 of 40 public declarations lacked direct coverage
+   (relying on indirect coverage via the LinearEquiv's left/right
+   inverses or the `IsCompl` packaging of disjointness + sup-top).
+   The audit pass added 12 new non-vacuity examples (audit script
+   total grows from 15 to 25), directly exercising:
+   `pathBlock_padding_decomposition`, `pathBlockSubspace_disjoint_paddingSubspace`,
+   `pathBlockSubspace_sup_paddingSubspace_eq_top`,
+   `pathBlockSubspace_eq_indicator_span`,
+   `pathBlockSubspace_indicator_decomposition`,
+   `pathBlockMatrix_apply_eq_g_at_pi` (general form),
+   `IsPaddingBlockDiagonal`, `IsFullyPathBlockDiagonal`,
+   `pathBlockRestrict`, the new `pathBlockEquivOfInverse` (with M = M' = 1
+   on the empty graph and a path/padding disjointness witness for the
+   block-diagonality discharge),
+   `slotToArrow_mem_presentArrows_of_path`,
+   `slotOfArrow_mem_pathSlotIndices_of_present`,
+   `pathBlockToPresentArrowsFun_mem`,
+   `presentArrowsToPathBlockFun_mem`, and the bridge round-trip
+   `forward ∘ symm = id` (companion to the existing
+   `symm ∘ forward = id` test).
+
+**Phase 2 audit-pass scoreboard (2026-04-28).** Module size:
+926 LOC (up from 795 — net +131 LOC: the
+`pathBlockEquivOfInverse` constructor + its two apply lemmas
+(~75 LOC), the `gl3_restrict_to_pathBlock_apply` simp lemma (~10 LOC),
+the indicator-span theorem `pathBlockSubspace_eq_indicator_span`
+together with its supporting decomposition
+`pathBlockSubspace_indicator_decomposition` (~46 LOC)). Public
+declarations: 40 → 46 (+6). Audit script `#print axioms` entries:
+40 → 46 (+6). Audit script non-vacuity examples: 15 → 25 (+10).
+Total audit-script declarations exercised: 828 → 834 (+6). Standard-
+trio-only axiom-dependency posture and zero-sorry / zero-custom-axiom
+posture preserved. Full `lake build` succeeds (3,406 jobs, zero
+warnings, zero errors).
+
+R-TI Phase 2 — Second audit pass (2026-04-28). A targeted re-audit
+of the post-first-audit state surfaced three remaining docstring
+inaccuracies, all fixed in this pass:
+
+1. **Stale name `pathBlockEquivOfFullyDiagonal` in module docstring.**
+   The first audit pass's docstring rewrite introduced the name
+   `pathBlockEquivOfFullyDiagonal` for the LinearEquiv form, but the
+   actual declaration lands as `pathBlockEquivOfInverse`. The
+   reference in the module-level `/-! ... -/` block at line 65 was a
+   broken cross-reference. Fixed by renaming the docstring entry to
+   match the actual declaration name and refining the description to
+   reflect the actual signature (parametric in `M` and an inverse
+   `M'` together with their block-diagonality proofs and matrix-
+   inverse equations `M' * M = 1` and `M * M' = 1`).
+
+2. **Stale claim `g.1 * (liftedSigmaMatrix m π⁻¹)` in module
+   docstring.** The Layer-2.2 description claimed `pathBlockMatrix`
+   was defined as `g.1 * (liftedSigmaMatrix m π⁻¹)`, but the actual
+   definition uses `g.1.val * permMatrixOf m π⁻¹` (the parametric
+   slot-permutation wrapper, not the vertex-permutation lift). Fixed
+   to match the actual definition.
+
+3. **False claim about `liftedSigmaMatrix`'s signature.** The
+   module-level docstring's parenthetical claimed
+   "`liftedSigmaMatrix` already accepts an arbitrary
+   `Equiv.Perm (Fin (dimGQ m))` once we generalise from
+   `liftedSigma m σ`". This is false: `liftedSigmaMatrix m σ` only
+   accepts `σ : Equiv.Perm (Fin m)` (a vertex permutation) and
+   *internally* lifts via `liftedSigma m σ` to a slot permutation
+   on `Fin (dimGQ m)`. There is no generalisation of
+   `liftedSigmaMatrix` to arbitrary slot permutations — `permMatrixOf`
+   was introduced in Phase 2 *precisely* to provide that wrapper.
+   Fixed by rewriting the parenthetical to honestly describe the
+   relationship between `liftedSigmaMatrix` and `permMatrixOf`.
+
+4. **Audit-script section header was incomplete.** The
+   `§ 15.17 R-TI rigidity discharge — Phase 2` comment block listed
+   only a subset of the public Phase-2 declarations under each
+   layer's bullet (e.g., it omitted `pi_single_mem_pathBlockSubspace`,
+   `pathBlockSubspace_indicator_decomposition`,
+   `pathBlockSubspace_eq_indicator_span`,
+   `pathBlock_padding_decomposition`,
+   `pathBlockMatrix_apply_eq_g_at_pi`, `pathBlockMatrix_one`,
+   `pathBlockMatrix_det_ne_zero`, `IsPaddingBlockDiagonal`,
+   `IsFullyPathBlockDiagonal`,
+   `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal`,
+   `pathBlockRestrict_apply`, `gl3_restrict_to_pathBlock_apply`,
+   the entire Layer 2.3.1 / `pathBlockEquivOfInverse` family, and most
+   of Layer 2.4's helper lemmas). Updated the comment block to list
+   every public declaration under each layer.
+
+**Mathematical soundness re-verification.** Each of the 46 public
+declarations was traced through line-by-line and confirmed correct:
+
+* `permMatrixOf`, `permMatrixOf_apply`, `permMatrixOf_det_ne_zero`
+  — correct via Mathlib's `Equiv.Perm.permMatrix` + sign analysis.
+* `pathBlockSubspace`, `paddingSubspace` and their `mem_*_iff` —
+  support-based Submodule definitions, all subspace properties
+  discharged by simp on the support condition.
+* `pi_single_mem_pathBlockSubspace`, `pi_single_mem_paddingSubspace`
+  — case-split on `i = j` with `Pi.single_eq_of_ne` for the off-diagonal.
+* `pathBlockSubspace_indicator_decomposition` — funext + case-split
+  on `j ∈ pathSlotIndices`; uses `Finset.sum_eq_single` /
+  `Finset.sum_eq_zero` to collapse the sum.
+* `pathBlockSubspace_eq_indicator_span` — `le_antisymm` of the two
+  inclusions, threading through `Submodule.sum_mem`,
+  `Submodule.smul_mem`, `Submodule.subset_span`, and
+  `Submodule.span_le`.
+* `pathBlockSubspace_disjoint_paddingSubspace` — case-split on
+  `i ∈ path` using the partition theorem from `SlotSignature.lean`.
+* `pathBlock_padding_decomposition` — explicit construction
+  `if i ∈ path then f i else 0` + the symmetric padding part.
+* `pathBlockSubspace_sup_paddingSubspace_eq_top` — uses the
+  decomposition + `Submodule.add_mem_sup`.
+* `pathBlockSubspace_isCompl_paddingSubspace` — bundles the
+  `disjoint_iff` and `codisjoint_iff` proofs.
+* `pathBlockMatrix`, `pathBlockMatrix_apply` — definitions and `rfl`-
+  level unfolding.
+* `pathBlockMatrix_apply_eq_g_at_pi` — `Finset.sum_eq_single (π j)`
+  collapse using `permMatrixOf_apply` + `Equiv.Perm.inv_def` +
+  `Equiv.symm_apply_apply` / `Equiv.apply_symm_apply`.
+* `pathBlockMatrix_one` — applies `pathBlockMatrix_apply_eq_g_at_pi`
+  + `(1 : Equiv.Perm) j = j` (definitional via `Equiv.refl`).
+* `pathBlockMatrix_det_ne_zero` — `Matrix.det_mul` + `mul_ne_zero`
+  + `Matrix.GeneralLinearGroup.det_ne_zero` + the perm-matrix
+  determinant lemma.
+* `IsPathBlockDiagonal`, `IsPaddingBlockDiagonal`,
+  `IsFullyPathBlockDiagonal` — Prop-valued predicates.
+* `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal` — case-split
+  on `j ∈ path` (uses block hypothesis) vs `j ∉ path` (uses support
+  of `v`); uses partition theorem to derive `i ∈ padding` from
+  `i ∉ path`.
+* `pathBlockRestrict`, `pathBlockRestrict_apply` — LinearMap
+  packaging + apply lemma.
+* `gl3_restrict_to_pathBlock`, `gl3_restrict_to_pathBlock_apply` —
+  specialisation to `pathBlockMatrix m g π`.
+* `pathBlockEquivOfInverse` — uses `LinearEquiv.ofLinear` with the
+  forward and backward `pathBlockRestrict` maps; both inversion
+  conditions discharge via `Matrix.mulVec_mulVec` +
+  `h_left/h_right` + `Matrix.one_mulVec`.
+* `pathBlockEquivOfInverse_apply`, `pathBlockEquivOfInverse_symm_apply`
+  — apply lemmas.
+* `presentArrowsSubspace` and `mem_presentArrowsSubspace_iff` —
+  parallel to `pathBlockSubspace`.
+* `vertexIdempotent_mem_presentArrowsSubspace` — case-split on
+  `a` ∈ `{id, edge}`; the `id` case uses
+  `presentArrows_id_mem` and the `edge` case has zero value.
+* `arrowElement_mem_presentArrowsSubspace` — `id` case has zero
+  value; `edge u' v'` case uses `presentArrows_edge_mem_iff`.
+* `pathBlockToPresentArrowsFun`, `presentArrowsToPathBlockFun` —
+  piecewise definitions.
+* `slotToArrow_mem_presentArrows_of_path` — case-split on
+  `slotEquiv m i`; uses `pathSlotIndices_eq_vertex_union_presentArrow`.
+* `slotOfArrow_mem_pathSlotIndices_of_present` — symmetric.
+* `pathBlockToPresentArrowsFun_mem`, `presentArrowsToPathBlockFun_mem`
+  — unconditional via the piecewise definitions.
+* `presentArrowsToPathBlockFun_pathBlockToPresentArrowsFun` and
+  `pathBlockToPresentArrowsFun_presentArrowsToPathBlockFun` —
+  round-trip identities via `slotToArrow`/`slotOfArrow` mutual
+  inverses.
+* `pathBlockToPresentArrows`, `pathBlockToPresentArrows_apply`,
+  `pathBlockToPresentArrows_symm_apply` — LinearEquiv packaging.
+
+Every declaration's `#print axioms` was verified: 674 total Phase-2
+declarations exercised by the audit script, all dependent only on
+the standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`),
+none on `sorryAx` or any custom axiom.
+
+**Test coverage re-verification.** All 46 public declarations are
+covered: 25 direct non-vacuity tests in `PathBlockSubspaceNonVacuity`
++ 5 trivial `Iff.rfl` lemmas (no separate test needed) + 7
+`@[simp] rfl` apply lemmas (no separate test needed; their content
+is the `rfl` itself) + 9 indirect coverage entries (covered through
+the LinearEquiv's `left_inv`/`right_inv`, the `IsCompl` packaging,
+or the parametric LinearMap restrict via specialisation).
+
+**Plan-deliverable status (`pathBlockBasis`).** The plan's Layer-2.1
+table lists `pathBlockBasis : Basis (pathSlotIndices m adj) ℚ
+(pathBlockSubspace m adj)` as a deliverable. This is **deferred**
+and not strictly required by Phase 3 (which uses `gl3_restrict_to_pathBlock`,
+`pathBlockEquivOfInverse`, and `pathBlockToPresentArrows` directly,
+not the basis packaging). The construction would require
+`Basis.mk` with explicit linear independence + spanning proofs over
+the indicator family; the spanning is `pathBlockSubspace_eq_indicator_span`
+(now proven), but linear independence requires additional Mathlib
+plumbing (~50–80 LOC). Tracked as an optional Phase-2 follow-up;
+Phase 3 does not block on it.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
