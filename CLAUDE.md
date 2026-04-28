@@ -4948,6 +4948,257 @@ deeper review can surface tautological wrappers and vacuously-true
 "witness" theorems. The post-audit-pass-II state is more honest
 and the test coverage is more substantive.
 
+R-TI Research-Scope Discharge — Phase 1 (Audit 2026-04-27 — Encoder
+structural foundation, EncoderSlabEval) has been completed:
+
+- **One new module.**
+  `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean` (1000 LOC, NEW)
+  — three layers of structural content about the Grochow–Qiao encoder
+  `grochowQiaoEncode m adj : Tensor3 (dimGQ m) ℚ`, all proven from the
+  existing `pathMul` table and the Stage 0 + Layer T2 evaluation
+  lemmas. This is the foundation Phase 3's algebra-iso construction
+  consumes (per the v4 R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md).
+
+- **Layer 1.0 — Slot/arrow round-trip helpers (~75 LOC).**
+  * `arrowToSlot m : QuiverArrow m → SlotKind m` — inverse of
+    `slotToArrow`.
+  * `slotToArrow_arrowToSlot`, `arrowToSlot_slotToArrow` (both
+    `@[simp]`) — mutual inversion.
+  * `slotOfArrow m : QuiverArrow m → Fin (dimGQ m)` — the unique slot
+    index assigned to a basis arrow (`(slotEquiv).symm ∘ arrowToSlot`).
+  * `slotToArrow_slotEquiv_slotOfArrow` (`@[simp]`) — round-trip
+    identity through `slotEquiv`.
+  * `eq_slotOfArrow_iff` — characteristic identity
+    `a = slotOfArrow m q ↔ slotToArrow m (slotEquiv m a) = q`.
+  * `slotOfArrow_pathMul_isPathAlgebra` — **path-algebra closure**:
+    if `slot_a, slot_b` are both path-algebra and `pathMul slot_a
+    slot_b = some d`, then `slotOfArrow d` is also path-algebra.
+    Case-splits on the four `pathMul` table cases; every non-`none`
+    case's output is uniquely tied to a present basis element of
+    one of the inputs, hence path-algebra by hypothesis.
+
+- **Layer 1.1 — Per-slot slab evaluation (~250 LOC).**
+  Six explicit theorems classifying the encoder's value at every
+  slot triple `(i, j, k)`:
+  * `encoder_at_vertex_vertex_vertex_eq_one` — the triple-diagonal
+    at a vertex slot evaluates to `1` (idempotent law `e_v · e_v =
+    e_v`).
+  * `encoder_at_vertex_arrow_arrow_eq_one` — `(vertex v, arrow v w,
+    arrow v w)` with `adj v w = true` evaluates to `1` (left vertex
+    action on a present arrow).
+  * `encoder_at_arrow_vertex_arrow_eq_one` — `(arrow u v, vertex v,
+    arrow u v)` with `adj u v = true` evaluates to `1` (right vertex
+    action on a present arrow).
+  * `encoder_at_padding_diagonal_eq_two` — slot-equality re-statement
+    of `grochowQiaoEncode_diagonal_padding` (padding diagonal value
+    `2`).
+  * `encoder_zero_at_remaining_path_triples` — the encoder is zero
+    at any path-algebra triple `(i, j, k)` with `pathMul slot_i
+    slot_j ≠ some slot_k`.
+  * `encoder_zero_at_mixed_triples` — the encoder is zero at any
+    triple `(i, j, k)` whose three slots do not all lie in the same
+    partition class.
+
+- **Layer 1.2 — Encoder associativity identity (~350 LOC).**
+  Three theorems closing the chain `pathMul_assoc → encoder
+  associativity`:
+  * `encoder_associativity_lhs_eq_pathMul_chain` — closed form for
+    the LHS sum: `∑ a, T(i, j, a) · T(a, k, l) = if Option.bind
+    (pathMul slot_i slot_j) (fun ab => pathMul ab slot_k) = some
+    slot_l then 1 else 0`. Proof uses `Finset.sum_eq_single` to
+    collapse the sum at the unique `a* := slotOfArrow d` (where
+    `pathMul slot_i slot_j = some d`); the path-algebra closure
+    helper supplies that `a*` is path-algebra.
+  * `encoder_associativity_rhs_eq_pathMul_chain` — symmetric closed
+    form for the RHS sum, with `Option.bind (pathMul slot_j slot_k)
+    (fun bc => pathMul slot_i bc)`.
+  * `encoder_associativity_identity` — composition: both closed
+    forms agree by `pathMul_assoc` (basis-element-level
+    associativity from `PathAlgebra.lean`). This is the central
+    polynomial identity the Phase 3 algebra-iso construction
+    consumes.
+
+- **Layer 1.3 — Encoder path-identity pairing (~150 LOC).**
+  Two algebraic non-degeneracy invariants:
+  * `encoder_double_sum_at_present_arrow_slot` — for any
+    present-arrow slot `i = .arrow u v`, the double sum
+    `∑ j k, encode m adj i j k` evaluates to exactly `1`. The
+    unique non-zero contribution is at
+    `(j, k) = (.vertex v, .arrow u v)`, witnessing the right
+    vertex action `α(u, v) · e_v = α(u, v)`.
+  * `encoder_idempotent_contribution_at_vertex_slot` — for any
+    vertex slot `i = .vertex u`, the diagonal value
+    `encode m adj i i i = 1`, witnessing that the double sum at a
+    vertex slot is at least `1` (the idempotent contribution).
+
+- **Two private helpers** (`encoder_factor_zero_when_pathMul_mismatch`,
+  `encoder_factor_eq_one_at_pathMul_match`) — reusable building
+  blocks combining `encoder_zero_at_remaining_path_triples` and
+  `encoder_zero_at_mixed_triples` for the LHS / RHS proofs.
+
+- **Audit script.** `scripts/audit_phase_16.lean` extended with 18
+  new `#print axioms` entries plus 13 non-vacuity `example` bindings
+  under the `EncoderSlabEvalNonVacuity` namespace at `m ∈ {1, 2}`,
+  covering every public Layer 1.1 / 1.2 / 1.3 theorem:
+  * Layer 1.1.1 (vertex-vertex-vertex = 1) at m=1
+  * Layer 1.1.2 (vertex-arrow-arrow = 1) at m=2
+  * Layer 1.1.3 (arrow-vertex-arrow = 1) at m=2
+  * Layer 1.1.4 (padding diagonal = 2) at m=2
+  * Layer 1.1.5 (encoder zero at non-matching path triple) at m=2
+  * Layer 1.1.6 (encoder zero at mixed triple) at m=2
+  * Layer 1.2.0 helper round-trip
+  * `slotOfArrow_pathMul_isPathAlgebra` at m=2
+  * Layer 1.2.1 (LHS closed form) at m=2 with non-trivial path
+  * Layer 1.2.2 (RHS closed form) at m=2 with non-trivial path
+  * Layer 1.2.4 (full associativity) at m=2 with non-trivial path
+  * Layer 1.3 present-arrow double-sum = 1 at m=2
+  * Layer 1.3 vertex-slot idempotent contribution = 1 at m=2
+  Total declarations exercised: 788 (up from 770). Every new
+  declaration depends only on the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`); zero `sorryAx`, zero custom
+  axioms.
+
+- **Post-landing audit pass (2026-04-27).** Deep audit of the
+  initial Phase 1 landing surfaced two issues, both fixed in the
+  audit pass:
+  1. **Dead-code helpers removed.** Two private helpers
+     `encoder_second_factor_zero_when_pathMul_mismatch` and
+     `encoder_third_factor_zero_when_pathMul_mismatch` were
+     defined during development but never used in the file or
+     elsewhere. Per `CLAUDE.md`'s "If you are certain that
+     something is unused, you can delete it completely" rule,
+     they were removed (-55 LOC).
+  2. **Test coverage gap closed.** The initial landing had 5
+     non-vacuity examples; 8 of 19 public theorems lacked
+     coverage (the action lemmas, zero classifications, closed
+     forms, vertex-slot path pairing). 8 new examples were
+     added at `m=2` with a non-trivial path multiplication
+     pattern `(.vertex 0) · (.arrow 0 1) · (.vertex 1) =
+     (.arrow 0 1)`. The previously degenerate `m=1` associativity
+     test was replaced with the non-trivial `m=2` form that
+     exercises the full LHS/RHS-collapse-and-pathMul_assoc
+     bridge.
+
+  Module size after audit: 945 LOC (down from 1000).
+
+- **Second post-landing audit pass (2026-04-28).** Deeper
+  re-audit surfaced four substantive issues — three substantive
+  and one critical — all fixed in this pass:
+  1. **Critical: Silently-broken non-vacuity tests.** The
+     post-2026-04-27 audit pass had introduced Layer 1.2.1 /
+     1.2.2 / 1.2.4 non-vacuity tests using `let i : ... := ...`
+     bindings to share the `(slotEquiv 2).symm (...)` slot
+     witnesses across the goal and the rewrite arguments.  In
+     Lean 4, `intro i j k l` on a `let`-bound goal introduces
+     `i` as an opaque hypothesis whose body `simp` does **not**
+     zeta-reduce, so the closing `simp` left an unsolved goal
+     of the form `match (slotEquiv 2) i with ...`.  The audit
+     script silently emitted `error: unsolved goals` at three
+     positions (3408:78, 3432:78, etc.) but the previous
+     `lake env lean` invocations filtered for `^error|^warning`
+     prefixes and missed errors prefixed by
+     `scripts/audit_phase_16.lean:`.  The tests were rewritten
+     without `let`-bindings, inlining the `(slotEquiv 2).symm
+     (...)` expressions directly in both the goal statement
+     and the proof witnesses; `simp` now reduces cleanly
+     because the outer expression is the canonical form.  This
+     finding underscores the importance of robust output
+     filtering — a `^scripts.*error` pattern would have caught
+     the failure earlier.
+  2. **Documentation overclaim → code strengthening.** The
+     module docstring's Layer 1.3 description originally
+     claimed that "the diagonal trace `∑ j, encode m adj i j j`
+     ... distinguishes vertex slots from present-arrow slots".
+     The initial Phase-1 implementation provided
+     `encoder_double_sum_at_present_arrow_slot` (proving the
+     **double sum** `∑ j k, encode m adj i j k = 1` for
+     present-arrow slots) — a different and weaker
+     theorem.  Per `CLAUDE.md`'s "make code match documentation"
+     directive, the implementation was strengthened to provide
+     the genuine diagonal-trace claims:
+     * `encoder_diagonal_trace_at_present_arrow_slot` —
+       `∑ j, encode m adj i j j = 0` for present-arrow slot `i`.
+     * `encoder_diagonal_trace_at_vertex_slot_pos` —
+       `1 ≤ ∑ j, encode m adj i j j` for vertex slot `i`.
+     This `≥ 1` vs `= 0` separation **genuinely** distinguishes
+     vertex from present-arrow slots (the previous double-sum
+     formulation collapsed both kinds to value `1` when the
+     vertex was isolated, providing no distinction).  The new
+     theorems require a private helper `encoder_nonneg`
+     (`0 ≤ encode m adj i j k`) for the lower-bound proof via
+     `Finset.single_le_sum`.  The previous
+     `encoder_double_sum_at_present_arrow_slot` was removed;
+     `encoder_idempotent_contribution_at_vertex_slot` is kept
+     as the single-entry contribution that anchors the
+     vertex-slot lower bound.
+  3. **Unused local hypothesis removed.** The proof of
+     `encoder_double_sum_at_present_arrow_slot` declared a
+     local `have h_k_star_path : isPathAlgebraSlot m adj k_star
+     = true` that was never referenced.  Lean's
+     `linter.unusedVariables` does not flag local `have`
+     declarations, so this slipped past the previous audit.
+     The hypothesis is removed in the diagonal-trace
+     replacement.
+  4. **Audit script test coverage refreshed.** The audit
+     script's Layer 1.3 non-vacuity tests are updated to match
+     the new theorem names and statements, plus a new
+     "distinguishability witness" test that combines
+     `encoder_diagonal_trace_at_vertex_slot_pos` (`≥ 1`) with
+     `encoder_diagonal_trace_at_present_arrow_slot` (`= 0`) on
+     the complete graph at `m = 2` to demonstrate the
+     algebraic invariant genuinely separates the two slot
+     kinds.
+
+  Module size after second audit: 981 LOC (up from 945 — net
+  +36 from adding the diagonal-trace theorems and
+  `encoder_nonneg` helper, minus the removed
+  `encoder_double_sum_at_present_arrow_slot` proof).
+
+- **Third post-landing audit pass (2026-04-28).** Targeted
+  re-audit surfaced one remaining issue:
+  1. **Dead-code `@[simp]` lemma `slotOfArrow_slotToArrow_slotEquiv`**
+     — defined as the round-trip identity
+     `slotOfArrow m (slotToArrow m (slotEquiv m a)) = a`, parallel
+     to the in-use `slotToArrow_slotEquiv_slotOfArrow`.  The
+     symmetric lemma had no consumers in the file or anywhere in
+     the codebase.  Per `CLAUDE.md`'s "Don't design for
+     hypothetical future requirements" + "If you are certain that
+     something is unused, you can delete it completely" rules,
+     this `@[simp]` lemma was removed.  Phase 2 / 3 can re-add if
+     a downstream proof needs the round-trip.
+
+  Added a substantive non-vacuity test for `eq_slotOfArrow_iff`
+  (which IS used internally by the LHS / RHS closed-form proofs
+  but lacked a direct test in the audit script).
+
+  Module size after third audit: 974 LOC (down from 981 — net
+  -7 from removing the unused round-trip lemma and its docstring).
+
+- **`Orbcrypt.lean`** root file extended with a new import
+  `Orbcrypt.Hardness.GrochowQiao.EncoderSlabEval`.
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.21` to
+  `0.1.22` for Phase 1 — one new public-API module adds new public
+  declarations, warranting the patch-version bump per `CLAUDE.md`'s
+  version-bump discipline. The 59-module total rises to 60; the
+  zero-sorry / zero-custom-axiom posture and the standard-trio-only
+  axiom-dependency posture are both preserved. Full `lake build`
+  succeeds across 3,405 jobs (3,404 pre-Phase-1 + 1 new module
+  build node) with zero warnings, zero errors.
+
+- **Phase 1 deliverables and gates (all met).**
+  * One new `.lean` module (`EncoderSlabEval.lean`).
+  * `Orbcrypt.lean` extended with one new import.
+  * `scripts/audit_phase_16.lean` extended with `#print axioms` for
+    every new public declaration; non-vacuity examples on `m ∈ {1, 2}`.
+  * CLAUDE.md change-log entry (this snapshot).
+  * Lake build succeeds; audit script clean.
+
+- **Consumer.** Phase 3 (the algebra-iso bridge) consumes the
+  associativity identity directly. Phase 4 (σ extraction) and Phase
+  5 (arrow preservation from σ + radical) use the per-slot
+  evaluation lemmas to argue about encoder structure.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

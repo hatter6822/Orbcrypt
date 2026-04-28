@@ -3205,3 +3205,354 @@ example (h_arrow : GL3InducesArrowPreservingPerm) :
   grochowQiao_isInhabitedKarpReduction_full_chain h_arrow
 
 end RigidityNonVacuity
+
+-- ============================================================================
+-- ## §15.16 R-TI rigidity discharge — Phase 1: Encoder structural foundation.
+-- ============================================================================
+--
+-- Layer 1.1: per-slot slab evaluation (vertex/vertex/vertex, vertex/arrow/arrow,
+-- arrow/vertex/arrow, padding diagonal, plus zero-classification on the
+-- remaining path-algebra and mixed triples).
+--
+-- Layer 1.2: encoder associativity identity, via the LHS / RHS closed forms
+-- and `pathMul_assoc`.
+--
+-- Layer 1.3: path-identity pairing — algebraic non-degeneracy invariants
+-- distinguishing vertex from present-arrow slots.
+--
+-- See `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean` for the full
+-- definitions and proofs.
+-- ============================================================================
+
+#print axioms Orbcrypt.GrochowQiao.arrowToSlot
+#print axioms Orbcrypt.GrochowQiao.slotToArrow_arrowToSlot
+#print axioms Orbcrypt.GrochowQiao.arrowToSlot_slotToArrow
+#print axioms Orbcrypt.GrochowQiao.slotOfArrow
+#print axioms Orbcrypt.GrochowQiao.slotToArrow_slotEquiv_slotOfArrow
+#print axioms Orbcrypt.GrochowQiao.eq_slotOfArrow_iff
+#print axioms Orbcrypt.GrochowQiao.slotOfArrow_pathMul_isPathAlgebra
+#print axioms Orbcrypt.GrochowQiao.encoder_at_vertex_vertex_vertex_eq_one
+#print axioms Orbcrypt.GrochowQiao.encoder_at_vertex_arrow_arrow_eq_one
+#print axioms Orbcrypt.GrochowQiao.encoder_at_arrow_vertex_arrow_eq_one
+#print axioms Orbcrypt.GrochowQiao.encoder_at_padding_diagonal_eq_two
+#print axioms Orbcrypt.GrochowQiao.encoder_zero_at_remaining_path_triples
+#print axioms Orbcrypt.GrochowQiao.encoder_zero_at_mixed_triples
+#print axioms Orbcrypt.GrochowQiao.encoder_associativity_lhs_eq_pathMul_chain
+#print axioms Orbcrypt.GrochowQiao.encoder_associativity_rhs_eq_pathMul_chain
+#print axioms Orbcrypt.GrochowQiao.encoder_associativity_identity
+#print axioms Orbcrypt.GrochowQiao.encoder_idempotent_contribution_at_vertex_slot
+#print axioms Orbcrypt.GrochowQiao.encoder_diagonal_trace_at_present_arrow_slot
+#print axioms Orbcrypt.GrochowQiao.encoder_diagonal_trace_at_vertex_slot_pos
+
+namespace EncoderSlabEvalNonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Layer 1.1.1 non-vacuity witness (m = 1).**
+On the empty graph at `m = 1`, the unique vertex slot has diagonal value `1`. -/
+example :
+    grochowQiaoEncode 1 (fun _ _ => false)
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0)) = 1 :=
+  encoder_at_vertex_vertex_vertex_eq_one 1 (fun _ _ => false)
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    (0 : Fin 1)
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+
+/-- **Layer 1.1.2 non-vacuity witness (m = 2, complete graph).**
+On the complete graph at `m = 2`, the vertex–arrow–arrow triple
+`(.vertex 0, .arrow 0 1, .arrow 0 1)` evaluates to `1` (left vertex
+action on the present arrow `(0, 1)`). -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => true)
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1)) = 1 :=
+  encoder_at_vertex_arrow_arrow_eq_one 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.vertex 0))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    0 1
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+    rfl
+
+/-- **Layer 1.1.3 non-vacuity witness (m = 2, complete graph).**
+On the complete graph at `m = 2`, the arrow–vertex–arrow triple
+`(.arrow 0 1, .vertex 1, .arrow 0 1)` evaluates to `1` (right vertex
+action on the present arrow `(0, 1)`). -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => true)
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.vertex 1))
+        ((slotEquiv 2).symm (.arrow 0 1)) = 1 :=
+  encoder_at_arrow_vertex_arrow_eq_one 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.arrow 0 1))
+    ((slotEquiv 2).symm (.vertex 1))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    0 1
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+    (Equiv.apply_symm_apply _ _)
+    rfl
+
+/-- **Layer 1.1.4 non-vacuity witness (m = 2).**
+On the empty graph at `m = 2`, the arrow slot `(0, 1)` is a padding slot
+(`adj 0 1 = false`) and its diagonal value is `2`. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1)) = 2 :=
+  encoder_at_padding_diagonal_eq_two 2 (fun _ _ => false)
+    ((slotEquiv 2).symm (.arrow 0 1))
+    0 1
+    (Equiv.apply_symm_apply _ _)
+    rfl
+
+/-- **Layer 1.1.5 non-vacuity witness — encoder is zero on a non-matching
+path-algebra triple (m = 2).**
+
+On the complete graph at `m = 2`, the triple `(.vertex 0, .vertex 1,
+.vertex 0)` is path-algebra but `pathMul (.id 0) (.id 1) = none ≠
+some (.id 0)`, so the encoder is `0`. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => true)
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.vertex 1))
+        ((slotEquiv 2).symm (.vertex 0)) = 0 := by
+  apply encoder_zero_at_remaining_path_triples 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.vertex 0))
+    ((slotEquiv 2).symm (.vertex 1))
+    ((slotEquiv 2).symm (.vertex 0))
+    (isPathAlgebraSlot_vertex 2 _ 0)
+    (isPathAlgebraSlot_vertex 2 _ 1)
+    (isPathAlgebraSlot_vertex 2 _ 0)
+  -- pathMul (.id 0) (.id 1) = none (vertex idempotents are orthogonal),
+  -- which is ≠ some (.id 0).
+  simp [Equiv.apply_symm_apply, slotToArrow, pathMul]
+
+/-- **Layer 1.1.6 non-vacuity witness — encoder is zero on a mixed
+(path/padding) triple (m = 2).**
+
+On the empty graph at `m = 2`, the triple `(.vertex 0, .arrow 0 1,
+.vertex 0)` mixes a path-algebra slot (vertex) with a padding slot
+(`.arrow 0 1` with `adj 0 1 = false`), so the encoder is `0`. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.vertex 0)) = 0 := by
+  apply encoder_zero_at_mixed_triples 2 (fun _ _ => false)
+    ((slotEquiv 2).symm (.vertex 0))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    ((slotEquiv 2).symm (.vertex 0))
+  refine ⟨?_, ?_⟩
+  · rintro ⟨_, h_j_path, _⟩
+    -- isPathAlgebraSlot adj (arrow 0 1) = adj 0 1 = false, contradicting true.
+    have : isPathAlgebraSlot 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)
+              ((slotEquiv 2).symm (.arrow 0 1)) = false := by
+      rw [isPathAlgebraSlot_arrow]
+    exact Bool.noConfusion (this.symm.trans h_j_path)
+  · rintro ⟨h_i_pad, _, _⟩
+    -- isPathAlgebraSlot adj (vertex 0) = true, contradicting false.
+    have : isPathAlgebraSlot 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)
+              ((slotEquiv 2).symm (.vertex 0)) = true := by
+      rw [isPathAlgebraSlot_vertex]
+    exact Bool.noConfusion (h_i_pad.symm.trans this)
+
+/-- **Layer 1.2.0 helper non-vacuity witness — `slotOfArrow` round-trip.**
+`slotOfArrow m q` recovers the original arrow `q` after `slotToArrow ∘
+slotEquiv`. -/
+example (m : ℕ) (q : QuiverArrow m) :
+    slotToArrow m (slotEquiv m (slotOfArrow m q)) = q :=
+  slotToArrow_slotEquiv_slotOfArrow m q
+
+/-- **Layer 1.2.0 helper non-vacuity witness — `eq_slotOfArrow_iff`
+distinguishes a slot index from a non-matching arrow.**
+
+At `m = 2`, the slot index `(slotEquiv 2).symm (.vertex 0)` corresponds
+to `slotOfArrow 2 (.id 0)` (the vertex idempotent at vertex 0); the
+iff lemma's forward direction proves `slotToArrow (slotEquiv _) = .id 0`. -/
+example :
+    ((slotEquiv 2).symm (.vertex 0) : Fin (dimGQ 2)) = slotOfArrow 2 (.id 0) := by
+  rw [eq_slotOfArrow_iff]
+  -- slotToArrow (slotEquiv ((slotEquiv 2).symm (.vertex 0))) = .id 0.
+  simp [Equiv.apply_symm_apply, slotToArrow]
+
+/-- **Layer 1.2.0 helper non-vacuity witness — path-algebra closure
+under `pathMul`.**
+
+On the complete graph at `m = 2`, the path-algebra slot `.vertex 0`
+multiplied with the path-algebra slot `.arrow 0 1` produces the
+arrow `.edge 0 1`, and `slotOfArrow (.edge 0 1)` is path-algebra
+because `adj 0 1 = true`. -/
+example :
+    isPathAlgebraSlot 2 (fun _ _ => true)
+        (slotOfArrow 2 (.edge 0 1)) = true :=
+  slotOfArrow_pathMul_isPathAlgebra 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.vertex 0))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    (.edge 0 1)
+    (isPathAlgebraSlot_vertex 2 _ 0)
+    (by rw [isPathAlgebraSlot_arrow])
+    (by simp [Equiv.apply_symm_apply, slotToArrow, pathMul])
+
+/-- **Layer 1.2.1 non-vacuity witness — LHS closed form at m = 2.**
+
+On the complete graph at `m = 2`, the LHS sum
+`∑ a, T(.vertex 0, .arrow 0 1, a) · T(a, .vertex 1, .arrow 0 1)`
+equals `1` because `pathMul (.id 0) (.edge 0 1) = some (.edge 0 1)`
+and `pathMul (.edge 0 1) (.id 1) = some (.edge 0 1)`. -/
+example :
+    (∑ a : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.vertex 0))
+          ((slotEquiv 2).symm (.arrow 0 1)) a *
+      grochowQiaoEncode 2 (fun _ _ => true)
+          a
+          ((slotEquiv 2).symm (.vertex 1))
+          ((slotEquiv 2).symm (.arrow 0 1))) = 1 := by
+  rw [encoder_associativity_lhs_eq_pathMul_chain 2 (fun _ _ => true)
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.vertex 1))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        (isPathAlgebraSlot_vertex 2 _ 0)
+        (by rw [isPathAlgebraSlot_arrow])
+        (isPathAlgebraSlot_vertex 2 _ 1)
+        (by rw [isPathAlgebraSlot_arrow])]
+  simp [Equiv.apply_symm_apply, slotToArrow, pathMul, Option.bind]
+
+/-- **Layer 1.2.2 non-vacuity witness — RHS closed form at m = 2.**
+
+Symmetric to Layer 1.2.1: the RHS sum
+`∑ a, T(.arrow 0 1, .vertex 1, a) · T(.vertex 0, a, .arrow 0 1)`
+also equals `1`. -/
+example :
+    (∑ a : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.arrow 0 1))
+          ((slotEquiv 2).symm (.vertex 1)) a *
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.vertex 0))
+          a
+          ((slotEquiv 2).symm (.arrow 0 1))) = 1 := by
+  rw [encoder_associativity_rhs_eq_pathMul_chain 2 (fun _ _ => true)
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.vertex 1))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        (isPathAlgebraSlot_vertex 2 _ 0)
+        (by rw [isPathAlgebraSlot_arrow])
+        (isPathAlgebraSlot_vertex 2 _ 1)
+        (by rw [isPathAlgebraSlot_arrow])]
+  simp [Equiv.apply_symm_apply, slotToArrow, pathMul, Option.bind]
+
+/-- **Layer 1.2.4 non-vacuity witness — non-trivial associativity at m = 2.**
+
+On the complete graph at `m = 2`, the associativity identity holds
+non-vacuously for the path-algebra quadruple
+`(.vertex 0, .arrow 0 1, .vertex 1, .arrow 0 1)` — both sides reduce
+to the chained product `(.id 0) · (.edge 0 1) · (.id 1) = (.edge 0 1)`,
+witnessed by Layers 1.2.1 / 1.2.2 evaluating to `1`. -/
+example :
+    (∑ a : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.vertex 0))
+          ((slotEquiv 2).symm (.arrow 0 1)) a *
+      grochowQiaoEncode 2 (fun _ _ => true)
+          a
+          ((slotEquiv 2).symm (.vertex 1))
+          ((slotEquiv 2).symm (.arrow 0 1))) =
+    (∑ a : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.arrow 0 1))
+          ((slotEquiv 2).symm (.vertex 1)) a *
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.vertex 0))
+          a
+          ((slotEquiv 2).symm (.arrow 0 1))) :=
+  encoder_associativity_identity 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.vertex 0))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    ((slotEquiv 2).symm (.vertex 1))
+    ((slotEquiv 2).symm (.arrow 0 1))
+    (isPathAlgebraSlot_vertex 2 _ 0)
+    (by rw [isPathAlgebraSlot_arrow])
+    (isPathAlgebraSlot_vertex 2 _ 1)
+    (by rw [isPathAlgebraSlot_arrow])
+
+/-- **Layer 1.3.1 non-vacuity witness — vertex-slot idempotent contribution.**
+
+For any vertex slot, the encoder's diagonal entry is `1`, witnessing
+the idempotent law's non-zero footprint on the path-algebra side
+of the partition. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.vertex 0))
+        ((slotEquiv 2).symm (.vertex 0)) = 1 :=
+  encoder_idempotent_contribution_at_vertex_slot 2 (fun _ _ => false)
+    ((slotEquiv 2).symm (.vertex 0)) 0
+    (Equiv.apply_symm_apply _ _)
+
+/-- **Layer 1.3.2 non-vacuity witness — present-arrow slot diagonal trace = 0.**
+
+On the complete graph at `m = 2`, the arrow slot `(0, 1)` is a
+present-arrow slot, and its diagonal trace `∑ j, T(i, j, j) = 0`
+because no basis element `slot_j` satisfies `α(0, 1) · slot_j =
+slot_j` in the radical-2 path algebra. -/
+example :
+    (∑ j : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.arrow 0 1)) j j) = 0 :=
+  encoder_diagonal_trace_at_present_arrow_slot 2 (fun _ _ => true)
+    ((slotEquiv 2).symm (.arrow 0 1)) 0 1
+    (Equiv.apply_symm_apply _ _)
+    rfl
+
+/-- **Layer 1.3.3 non-vacuity witness — vertex-slot diagonal trace ≥ 1.**
+
+On the empty graph at `m = 2`, the vertex slot `0` has diagonal
+trace `∑ j, T(i, j, j) ≥ 1` (the contribution at `j = i` already
+gives `1`). -/
+example :
+    1 ≤ (∑ j : Fin (dimGQ 2),
+          grochowQiaoEncode 2 (fun _ _ => false)
+              ((slotEquiv 2).symm (.vertex 0)) j j) :=
+  encoder_diagonal_trace_at_vertex_slot_pos 2 (fun _ _ => false)
+    ((slotEquiv 2).symm (.vertex 0)) 0
+    (Equiv.apply_symm_apply _ _)
+
+/-- **Layer 1.3 distinguishability witness — vertex vs. present-arrow slots
+have distinguishable diagonal traces.**
+
+Combining Layer 1.3.2 and Layer 1.3.3, vertex slots have diagonal
+trace `≥ 1` while present-arrow slots have diagonal trace `= 0`,
+giving an algebraic invariant that genuinely distinguishes the two
+slot kinds without using the slot-kind discriminator directly. -/
+example :
+    1 ≤ (∑ j : Fin (dimGQ 2),
+          grochowQiaoEncode 2 (fun _ _ => true)
+              ((slotEquiv 2).symm (.vertex 0)) j j) ∧
+    (∑ j : Fin (dimGQ 2),
+      grochowQiaoEncode 2 (fun _ _ => true)
+          ((slotEquiv 2).symm (.arrow 0 1)) j j) = 0 := by
+  refine ⟨?_, ?_⟩
+  · exact encoder_diagonal_trace_at_vertex_slot_pos 2 (fun _ _ => true)
+      ((slotEquiv 2).symm (.vertex 0)) 0
+      (Equiv.apply_symm_apply _ _)
+  · exact encoder_diagonal_trace_at_present_arrow_slot 2 (fun _ _ => true)
+      ((slotEquiv 2).symm (.arrow 0 1)) 0 1
+      (Equiv.apply_symm_apply _ _)
+      rfl
+
+end EncoderSlabEvalNonVacuity
