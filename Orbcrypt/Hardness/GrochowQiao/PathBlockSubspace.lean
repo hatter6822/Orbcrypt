@@ -42,14 +42,20 @@ lemmas do not commit to a specific π.
 
 ## Layer 2.2 — Path-block matrix (parametric in π)
 
+* `permMatrixOf m π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ` —
+  the permutation matrix for an arbitrary slot permutation
+  `π : Equiv.Perm (Fin (dimGQ m))`, built directly from Mathlib's
+  `Equiv.Perm.permMatrix`. (`PermMatrix.lean` only exposes
+  `liftedSigmaMatrix m σ` for *vertex* permutations
+  `σ : Equiv.Perm (Fin m)` lifted through `liftedSigma m σ`; Phase 2
+  needs a permutation-matrix wrapper at the slot level, so we
+  introduce `permMatrixOf` directly here.)
 * `pathBlockMatrix m g π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ`
-  — defined as `g.1 * (liftedSigmaMatrix m π⁻¹)`. (We package π
-  via Mathlib's `Equiv.Perm.permMatrix` through the existing
-  `liftedSigmaMatrix` API — note `liftedSigmaMatrix` already
-  accepts an arbitrary `Equiv.Perm (Fin (dimGQ m))` once we
-  generalise from `liftedSigma m σ`. Phase 2 uses the generalised
-  form; the `Equiv.Perm`-direct counterpart `permMatrixOf π` is
-  introduced here.)
+  — defined as `g.1.val * permMatrixOf m π⁻¹`. The `permMatrixOf m π⁻¹`
+  factor "un-permutes" the columns: when `π` is the partition-
+  preserving slot permutation derived in Phase 3, the resulting
+  matrix has block-diagonal structure aligned to the path/padding
+  partition.
 
 ## Layer 2.3 — Conditional linear restriction
 
@@ -62,11 +68,15 @@ lemmas do not commit to a specific π.
   `pathBlockSubspace`s parametric in an arbitrary matrix `M`.
 * `gl3_restrict_to_pathBlock` — specialisation to the path-block
   matrix `pathBlockMatrix m g π`, the actual map Phase 3 produces.
-* `pathBlockEquivOfFullyDiagonal` — when the full block-diagonality
-  hypothesis (both `IsPathBlockDiagonal` AND `IsPaddingBlockDiagonal`)
-  holds and the matrix is invertible, the restriction is upgraded to
-  a `LinearEquiv` — the inverse direction uses the dual block-
-  diagonality of `M⁻¹`.
+* `pathBlockEquivOfInverse` — when two block-diagonal matrices `M`
+  and `M'` are mutual matrix inverses (`M' * M = 1` and `M * M' = 1`,
+  with `IsPathBlockDiagonal` for both `(adj₁, adj₂)` on `M` and
+  `(adj₂, adj₁)` on `M'`), the path-block restrictions of `M *ᵥ -`
+  and `M' *ᵥ -` form a `LinearEquiv` between
+  `pathBlockSubspace m adj₁` and `pathBlockSubspace m adj₂`. Phase 3
+  instantiates this with `M = pathBlockMatrix m g π` and the
+  corresponding inverse matrix it derives from the partition-
+  preserving slot permutation.
 
 ## Layer 2.4 — Bridge to `pathAlgebraQuotient`
 

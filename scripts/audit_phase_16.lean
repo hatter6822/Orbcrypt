@@ -3561,26 +3561,49 @@ end EncoderSlabEvalNonVacuity
 -- ## §15.17 R-TI rigidity discharge — Phase 2: Path-block linear restriction.
 -- ============================================================================
 --
--- Layer 2.0:  permutation-matrix wrapper for arbitrary slot permutations
+-- Layer 2.1.0: permutation-matrix wrapper for arbitrary slot permutations
 -- (`permMatrixOf`, `permMatrixOf_apply`, `permMatrixOf_det_ne_zero`).
 --
--- Layer 2.1:  path-block + padding subspaces (defined by support), indicator-
--- vector membership lemmas, and the complementary direct-sum decomposition
+-- Layer 2.1.1–2.1.3: path-block + padding subspaces (defined by support),
+-- indicator-vector membership lemmas, the indicator-span characterisation
+-- and decomposition, and the complementary direct-sum decomposition
 -- (`pathBlockSubspace`, `paddingSubspace`,
+-- `pi_single_mem_pathBlockSubspace`, `pi_single_mem_paddingSubspace`,
+-- `pathBlockSubspace_indicator_decomposition`,
+-- `pathBlockSubspace_eq_indicator_span`,
 -- `pathBlockSubspace_disjoint_paddingSubspace`,
+-- `pathBlock_padding_decomposition`,
 -- `pathBlockSubspace_sup_paddingSubspace_eq_top`,
 -- `pathBlockSubspace_isCompl_paddingSubspace`).
 --
--- Layer 2.2:  the path-block matrix `g.1.val * permMatrixOf π⁻¹`, with the
--- partition-preserving simplification `(pathBlockMatrix g π) i j = g.1(i, π j)`
--- and the identity-permutation reduction.
+-- Layer 2.2:  the path-block matrix `g.1.val * permMatrixOf m π⁻¹`, with the
+-- partition-preserving simplification `(pathBlockMatrix g π) i j = g.1(i, π j)`,
+-- the identity-permutation reduction, and the determinant non-vanishing
+-- (`pathBlockMatrix`, `pathBlockMatrix_apply`,
+-- `pathBlockMatrix_apply_eq_g_at_pi`, `pathBlockMatrix_one`,
+-- `pathBlockMatrix_det_ne_zero`).
 --
 -- Layer 2.3:  the conditional linear restriction
--- (`IsPathBlockDiagonal`, `pathBlockRestrict`, `gl3_restrict_to_pathBlock`).
+-- (`IsPathBlockDiagonal`, `IsPaddingBlockDiagonal`, `IsFullyPathBlockDiagonal`,
+-- `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal`,
+-- `pathBlockRestrict`, `pathBlockRestrict_apply`,
+-- `gl3_restrict_to_pathBlock`, `gl3_restrict_to_pathBlock_apply`).
+--
+-- Layer 2.3.1: `LinearEquiv` upgrade
+-- (`pathBlockEquivOfInverse`, `pathBlockEquivOfInverse_apply`,
+-- `pathBlockEquivOfInverse_symm_apply`).
 --
 -- Layer 2.4:  the bridge `pathBlockSubspace ≃ₗ presentArrowsSubspace`
--- (`presentArrowsSubspace`, `pathBlockToPresentArrowsFun`,
--- `presentArrowsToPathBlockFun`, `pathBlockToPresentArrows`).
+-- (`presentArrowsSubspace`, `vertexIdempotent_mem_presentArrowsSubspace`,
+-- `arrowElement_mem_presentArrowsSubspace`,
+-- `pathBlockToPresentArrowsFun`, `presentArrowsToPathBlockFun`,
+-- `slotToArrow_mem_presentArrows_of_path`,
+-- `slotOfArrow_mem_pathSlotIndices_of_present`,
+-- `pathBlockToPresentArrowsFun_mem`, `presentArrowsToPathBlockFun_mem`,
+-- `presentArrowsToPathBlockFun_pathBlockToPresentArrowsFun`,
+-- `pathBlockToPresentArrowsFun_presentArrowsToPathBlockFun`,
+-- `pathBlockToPresentArrows`, `pathBlockToPresentArrows_apply`,
+-- `pathBlockToPresentArrows_symm_apply`).
 --
 -- See `Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` for the full
 -- definitions and proofs.

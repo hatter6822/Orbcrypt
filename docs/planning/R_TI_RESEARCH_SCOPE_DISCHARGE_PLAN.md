@@ -535,6 +535,41 @@ Module size after audit: 926 LOC (up from 795).  Public declarations:
 `pathBlockSubspace_indicator_decomposition`,
 `pathBlockSubspace_eq_indicator_span`).
 
+**Second audit pass (2026-04-28).** A targeted re-audit surfaced
+three remaining docstring inaccuracies, all fixed:
+
+1. **Stale name `pathBlockEquivOfFullyDiagonal`** in module docstring
+   (line 65) — actual declaration is `pathBlockEquivOfInverse`.
+   The first audit pass's docstring rewrite introduced this broken
+   cross-reference. Fixed.
+
+2. **Stale claim** `pathBlockMatrix = g.1 * (liftedSigmaMatrix m π⁻¹)`
+   in module docstring (line 46) — actual definition is
+   `g.1.val * permMatrixOf m π⁻¹`. The compounding parenthetical
+   (lines 47–52) also falsely claimed `liftedSigmaMatrix` accepts
+   arbitrary `Equiv.Perm (Fin (dimGQ m))`. Fixed by rewriting to
+   match actual code.
+
+3. **Audit-script section header was incomplete** — listed only a
+   subset of declarations under each layer's bullet (e.g.,
+   omitted `pi_single_mem_*`, `pathBlockSubspace_indicator_*`,
+   the entire Layer 2.3.1 / `pathBlockEquivOfInverse` family, and
+   most Layer 2.4 helper lemmas). Updated to list every public
+   declaration under each layer.
+
+**Mathematical soundness re-verification.** Each of the 46 public
+declarations was traced through line-by-line and confirmed correct;
+all `#print axioms` outputs depend only on the standard Lean trio.
+
+**Plan deliverable `pathBlockBasis` deferred.** The Layer-2.1
+table's plan-listed deliverable `pathBlockBasis` (Mathlib `Basis`
+packaging via `Basis.mk`) is not implemented. Phase 3 does not
+depend on it (it consumes `pathBlockEquivOfInverse`,
+`pathBlockToPresentArrows`, and `gl3_restrict_to_pathBlock` directly).
+The construction's spanning side is already established via the
+new `pathBlockSubspace_eq_indicator_span` theorem; only the linear-
+independence side remains. Tracked as an optional Phase-2 follow-up.
+
 **Goal.** Build the linear-algebra infrastructure needed by
 Phase 3: given a permutation `π : Equiv.Perm (Fin (dimGQ m))`
 (supplied as a free parameter; Phase 3 fixes it), construct
