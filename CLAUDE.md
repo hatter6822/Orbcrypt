@@ -6234,6 +6234,203 @@ theatrical theorems, zero security-by-docstring violations.
 - `#print axioms Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` — standard Lean only (probabilistic chain bound restated in classical IND-1-CPA game form; distinctness hypothesis carried as release-facing signature marker but unused in proof; audit 2026-04-21 M1, Workstream K4 companion)
 - `#print axioms Orbcrypt.det_oia_false_of_distinct_reps` — standard Lean only (machine-checked vacuity of the deterministic `OIA` under the distinct-representatives hypothesis; the `decide`-based distinguisher elaboration introduces only the standard trio; audit 2026-04-23 C-07, Workstream E1)
 - `#print axioms Orbcrypt.det_kemoia_false_of_nontrivial_orbit` — standard Lean only (KEM-layer parallel of E1; machine-checked vacuity of the deterministic `KEMOIA` under the non-trivial-basepoint-orbit hypothesis; audit 2026-04-23 E-06, Workstream E2)
+
+R-TI Phase 3 prop-discharge — Manin tensor-stabilizer + final
+discharge (audit 2026-04-28, post-Phase-3 cleanup pass v2). Lands
+the technical core of Approach A and the central conductor that
+discharges both Phase 3 research-scope Props
+(`GL3InducesAlgEquivOnPathSubspace`, `RestrictedGL3OnPathOnlyTensor`)
+from the existing Stages 0–5 research-scope Prop `GrochowQiaoRigidity`:
+
+- **Sub-task A.1.5** —
+  `Orbcrypt/Hardness/GrochowQiao/EncoderUnitCompatibility.lean`
+  (~290 LOC, NEW): `encoder_unit_compatibility` (the central
+  unit-coefficient identity `∑ v, T(vertex v, j, k) = δ_{slot j,
+  slot k}` for path-algebra slots) plus two private helpers
+  (`encoder_vertex_vertex_eq`, `encoder_vertex_arrow_eq`) that
+  `Finset.sum_eq_single` collapse the encoder slabs at vertex sources.
+- **Sub-task A.5.1** —
+  `Orbcrypt/Hardness/GrochowQiao/Manin/StructureTensor.lean`
+  (~140 LOC, NEW): hand-rolled `Manin.structureTensor (b : Basis I F
+  A) : I → I → I → F` for any algebra `A` over a field `F`; apply
+  lemma; `structureTensor_recovers_mul` (the multiplication-recovery
+  identity `b i * b j = ∑ k, T(i, j, k) • b k` via `Basis.sum_repr`).
+- **Sub-task A.5.2** —
+  `Orbcrypt/Hardness/GrochowQiao/Manin/BasisChange.lean` (~165
+  LOC, NEW): `Manin.IsBasisChangeRelated T_A T_B P P_inv` predicate
+  (the `(P, P, P⁻ᵀ)`-form basis-change relation between two
+  structure tensors with two-sided inverse equations
+  `P_inv * P = 1`, `P * P_inv = 1`); `IsBasisChangeRelated.id`
+  (identity-case witness using `Matrix.one_apply` +
+  `Finset.sum_ite_eq*` collapse — substantively proven).
+- **Sub-task A.3.1 + A.3.2** —
+  `Orbcrypt/Hardness/GrochowQiao/PaddingInvariant.lean` (~270 LOC,
+  NEW): `encoder_padding_trivial_algebra` (slot-discriminator form of
+  the padding-trivial-algebra identity); `IsConcentratedSlot`
+  predicate; `paddingRankInvariant : Tensor3 n ℚ → ℕ` (the GL³-
+  invariant counting concentrated slots); private helper
+  `isPathAlgebraSlot_false_iff_mem_paddingSlotIndices`;
+  `paddingRankInvariant_eq_paddingSlotIndices_card` (the encoder
+  evaluation theorem proving the invariant equals the padding slot
+  count). The originally-planned `paddingRankInvariant_GL3Invariant`
+  Prop and its theatrical identity-case witness were **removed** in
+  the post-landing cleanup pass — they were unused dead code (the
+  Discharge.lean partial-discharge form bypasses the padding-rank
+  invariant entirely).
+- **Sub-task A.5.3 + A.5.4** —
+  `Orbcrypt/Hardness/GrochowQiao/Manin/TensorStabilizer.lean` (~615
+  LOC, NEW): the technical core. `linearMapOfBasisChange` (the linear
+  map defined on the basis via `Basis.constr`);
+  `coefficient_match_of_basisChange` (the matrix-inverse identity
+  `∑_l T_A(i,j,l) · P(l,k) = ∑ p q, P(i,p) P(j,q) T_B(p,q,k)` driving
+  multiplicativity, proven via h_rel.action substitution + sum
+  rearrangement + `(P_inv * P)(r,k) = δ(r,k)` collapse);
+  `linearMapOfBasisChange_mul_basis` (multiplicativity on basis
+  pairs); `linearMapOfBasisChange_mul` (extension to all pairs via
+  `Basis.sum_repr`); `linearMapOfBasisChange_one` (unit preservation
+  under `IsUnitCompatible`); `algHomOfTensorIso` (algebra hom
+  packaging via `AlgHom.ofLinearMap`);
+  `linearMapOfBasisChange_inv_basis` (private helper for inverse on
+  basis); `linearMapOfBasisChange_left_inv` / `_right_inv` (inverse
+  identities on full algebra via `Basis.ext`);
+  `linearEquivOfBasisChange` (LinearEquiv via `LinearEquiv.ofLinear`);
+  `algEquivOfTensorIso` (AlgEquiv upgrade via
+  `AlgEquiv.ofLinearEquiv`).
+- **Sub-task A.6.3 (final discharge)** —
+  `Orbcrypt/Hardness/GrochowQiao/Discharge.lean` (~270 LOC, NEW):
+  the central conductor. `quiverPermFun_mem_presentArrowsSubspace`
+  (σ-action carries presentArrowsSubspace adj₁ membership when σ is a
+  graph iso — non-trivial use of σ⁻¹ inversion);
+  `quiverPermAlgEquiv_image_subset_presentArrowsSubspace` (forward
+  inclusion); `graphIso_inv` (private helper showing σ⁻¹ is a graph
+  iso between the swapped adjacencies);
+  `quiverPermAlgEquiv_image_presentArrowsSubspace` (exact image
+  equality via `Set.Subset.antisymm` — both directions substantive);
+  `gl3InducesAlgEquivOnPathSubspace_of_rigidity` (the Phase 3
+  discharge, using `quiverPermAlgEquiv m σ` as the witness);
+  `isPresentArrowSlot_liftedSigma` (slot-shape preservation lemma
+  for present-arrow slots under `liftedSigma σ`);
+  `presentArrowSlotIndices_card_eq_of_graphIso` (cardinality
+  bijection via `Finset.card_bij` + `liftedSigma m σ`);
+  `restrictedGL3OnPathOnlyTensor_of_rigidity` (the second Phase 3
+  discharge).
+- **Top-level wiring** —
+  `Orbcrypt/Hardness/GrochowQiao.lean`:
+  `grochowQiao_phase3_discharge_under_rigidity` packages both Phase 3
+  discharges into a conjunction under a single `GrochowQiaoRigidity`
+  hypothesis; `grochowQiao_unified_discharge_under_rigidity` is the
+  unified package showing all three end-states (Karp reduction
+  inhabitant + both Phase 3 Props) discharge from the same single
+  research-scope hypothesis.
+
+**Architecture note (partial-discharge form).** The R-TI Phase 3
+plan budgeted ~3,200 LOC for Approach A. The PR delivers ~2,150 LOC
+of substantive content covering A.1.5, A.3.1, A.3.2, A.5.1, A.5.2,
+A.5.3, A.5.4, A.6.3. The Manin tensor-stabilizer theorem
+(`Manin/{StructureTensor,BasisChange,TensorStabilizer}.lean`) is
+**substantively proven and Mathlib-quality** — the constructions go
+from `IsBasisChangeRelated T_A T_B P P_inv` + `IsUnitCompatible`
+hypotheses to a full `AlgEquiv A B` between any two algebras with
+related structure tensors. However, the Discharge.lean discharge
+**bypasses** the Manin theorem and routes through the simpler path:
+`GrochowQiaoRigidity` → `quiverPermAlgEquiv` (existing AlgEquivLift
+infrastructure) → both Phase 3 Props. The Manin/Padding/UnitCompat
+content stands as **standalone reusable mathematical content**
+(potentially upstreamable to Mathlib once the Manin theorem is
+upstreamed at the appropriate generality). See the v4 plan
+`docs/planning/AUDIT_2026-04-28_PHASE_3_PROP_DISCHARGE_PLAN.md` §
+"Phase 3 alternative — partial discharge" for the framing the
+audit anticipates.
+
+**Mathematical correctness verification (this audit pass):**
+* `coefficient_match_of_basisChange`: the proof correctly threads
+  h_rel.action through 4 nested sums, uses h_rel.inv_left to get
+  `(P_inv * P)(r, k) = δ(r, k)`, and collapses via
+  `Finset.sum_ite_eq'`. ✓
+* `linearMapOfBasisChange_inv_basis`: correctly uses h_inv_right
+  (`P * P_inv = 1`) for the right-inverse direction; the symmetric
+  helper applied with arguments swapped (b_B b_A P_inv P) handles
+  the left-inverse via h_inv_left. ✓
+* `linearEquivOfBasisChange`: correctly threads `h_rel.inv_left` to
+  the right-inverse field of `LinearEquiv.ofLinear` (which expects
+  `f.comp g = id_M₂`, i.e., `linearMapOfBasisChange b_A b_B P` after
+  `linearMapOfBasisChange b_B b_A P_inv` — discharged by
+  `linearMapOfBasisChange_right_inv` which expects
+  `h_inv_left : P_inv * P = 1`). ✓
+* `quiverPermAlgEquiv_image_presentArrowsSubspace` reverse direction:
+  uses `inv_inv` to canonicalise σ⁻¹⁻¹ = σ, then a 4-line case-split
+  to verify quiverMap σ ∘ quiverMap σ⁻¹ = id at vertex/edge cases. ✓
+* `presentArrowSlotIndices_card_eq_of_graphIso`: correctly applies
+  `Finset.card_bij` with `liftedSigma m σ` as the bijection;
+  `isPresentArrowSlot_liftedSigma` (substantive case-split on slot
+  kind) supplies membership preservation; `(liftedSigma m σ).symm` +
+  `Equiv.apply_symm_apply` discharge surjectivity. ✓
+
+**Audit-pass v2 fixes (this commit):**
+
+The post-landing audit identified one theatrical theorem and one
+unused Prop in `PaddingInvariant.lean`:
+
+* **`paddingRankInvariant_GL3Invariant_identity_case`**: the
+  signature took `1 • T = T → paddingRankInvariant T = paddingRankInvariant T`,
+  with the conclusion `X = X` (trivially true) and the hypothesis
+  `_h` discarded. **Removed** as theatrical per CLAUDE.md's "names
+  describe content, never provenance" rule.
+* **`paddingRankInvariant_GL3Invariant`**: the GL³-invariance Prop
+  was research-scope, not consumed anywhere in the codebase. The
+  Discharge.lean partial-discharge form bypasses it via
+  `GrochowQiaoRigidity` directly. **Removed** as unused dead code per
+  CLAUDE.md's "If you are certain that something is unused, you can
+  delete it completely" rule.
+* **`PaddingInvariant.lean` module docstring** updated to remove
+  references to the removed Prop and to clarify the standalone-content
+  status of the remaining (non-vacuous) machinery.
+
+The audit also added **5 new substantive non-vacuity tests** to
+`scripts/audit_phase_16.lean` exercising the Manin chain end-to-end
+on a concrete instance: `Module.Basis.singleton PUnit ℚ` (the
+1-dimensional ℚ-algebra ℚ acting on itself):
+* `Manin.structureTensor` evaluates to `1` at the unique basis
+  element (matches `1 * 1 = 1` in ℚ).
+* `Manin.structureTensor_recovers_mul` matches multiplication.
+* `Manin.IsUnitCompatible` is dischargeable with `simp` at `P = 1`.
+* `Manin.algHomOfTensorIso` constructs a valid AlgHom whose action
+  on the basis element yields `1 : ℚ`.
+* `Manin.algEquivOfTensorIso` constructs a valid AlgEquiv whose
+  action on the basis element yields `1 : ℚ` — end-to-end exercise
+  of the full Manin tensor-stabilizer construction (A.5.1 → A.5.2
+  → A.5.3 → A.5.4) at the smallest non-trivial instance.
+
+These tests were missing from the initial Phase 3 audit script
+landing. The five `example` blocks all elaborate cleanly and the
+`#print axioms` of every Phase 3 declaration depends only on the
+standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+
+**Audit verification scoreboard (post-fixes).** Full `lake build`
+succeeds across 3,416 jobs with zero warnings, zero errors. Phase-16
+audit script `scripts/audit_phase_16.lean` runs cleanly (exit code
+0); zero `sorryAx`, zero non-trio axioms, all Phase 3 declarations
+on the standard Lean trio. Comment-aware sorry/axiom grep returns
+empty. No naming-rule violations across the new Phase 3 modules.
+Module count: **70** (up from 64 pre-Phase-3 — six new modules:
+`EncoderUnitCompatibility.lean`, `Manin/StructureTensor.lean`,
+`Manin/BasisChange.lean`, `Manin/TensorStabilizer.lean`,
+`PaddingInvariant.lean`, `Discharge.lean`). Public declaration count:
++~50 new declarations. `lakefile.lean` version bumped from `0.1.24`
+through `0.1.26` over the Phase 3 + audit-pass-v2 commits.
+
+**`#print axioms` annotations for new Phase 3 declarations:**
+
+- `#print axioms Orbcrypt.GrochowQiao.encoder_unit_compatibility` — standard Lean only (A.1.5 helper)
+- `#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor` / `_apply` / `_recovers_mul` — standard Lean only (A.5.1)
+- `#print axioms Orbcrypt.GrochowQiao.Manin.IsBasisChangeRelated` / `.id` — standard Lean only (A.5.2)
+- `#print axioms Orbcrypt.GrochowQiao.encoder_padding_trivial_algebra` — standard Lean only (A.3.1)
+- `#print axioms Orbcrypt.GrochowQiao.IsConcentratedSlot` / `paddingRankInvariant` / `_eq_paddingSlotIndices_card` — standard Lean only (A.3.2)
+- `#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange` / `_basis` / `_mul_basis` / `_mul` / `_one` / `coefficient_match_of_basisChange` / `IsUnitCompatible` / `algHomOfTensorIso` / `_basis` — standard Lean only (A.5.3)
+- `#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_left_inv` / `_right_inv` / `linearEquivOfBasisChange` / `algEquivOfTensorIso` / `_basis` — standard Lean only (A.5.4)
+- `#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermFun_mem_presentArrowsSubspace` / `_image_subset_…` / `_image_…` / `gl3InducesAlgEquivOnPathSubspace_of_rigidity` / `isPresentArrowSlot_liftedSigma` / `presentArrowSlotIndices_card_eq_of_graphIso` / `restrictedGL3OnPathOnlyTensor_of_rigidity` — standard Lean only (A.6.3)
+- `#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity` / `_unified_discharge_under_rigidity` — standard Lean only (top-level packaging)
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

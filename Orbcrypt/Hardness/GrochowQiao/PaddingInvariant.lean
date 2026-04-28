@@ -48,12 +48,21 @@ slot (with the unit `e_i = 2 · 1_F` after rescaling).
 
 ## Status
 
-Sub-tasks A.3.1 + A.3.2.1–A.3.2.3 land unconditionally.  Sub-task
-A.3.2.4 (the GL³-invariance proof — the genuine research-grade core)
-is captured as a `Prop`-valued obligation
-`paddingRankInvariant_GL3Invariant`, with the identity-GL³ case as
-an unconditional witness.  Discharging the full Prop is part of the
-research-scope follow-up (R-15-residual-TI-reverse).
+Sub-tasks A.3.1 + A.3.2.1–A.3.2.3 land unconditionally.
+
+The originally-planned GL³-invariance Prop for `paddingRankInvariant`
+is **not** required by the partial-discharge form of Phase 3
+(`Discharge.lean` discharges both Phase 3 research-scope Props
+`GL3InducesAlgEquivOnPathSubspace` and `RestrictedGL3OnPathOnlyTensor`
+directly from `GrochowQiaoRigidity` via the σ-induced
+`quiverPermAlgEquiv` infrastructure, bypassing the padding-rank
+invariant entirely).  This module's content stands as standalone
+**structural mathematical content** about the encoder: the encoder's
+diagonal value is `2` exactly at padding slots, and
+`paddingRankInvariant` (counting concentrated slots) equals the
+padding-slot count.  It documents the padding portion's algebraic
+shape — a direct sum of trivial 1-dim algebras — even though the
+final discharge does not consume it.
 
 ## Naming
 
@@ -244,42 +253,6 @@ theorem paddingRankInvariant_eq_paddingSlotIndices_card
           -- h : j = k ∧ k = i.  Need to show j = i ∧ k = i.
           exact ⟨h.1.trans h.2, h.2⟩
         · left; exact if_neg h
-
--- ============================================================================
--- Sub-task A.3.2.4 — GL³-invariance (research-scope Prop).
--- ============================================================================
-
-/-- **Sub-task A.3.2.4 — Padding-rank invariant is GL³-invariant
-(research-scope `Prop`).**
-
-For any GL³ tensor isomorphism `T₂ = g • T₁`, the padding-rank
-invariant is preserved:
-```
-paddingRankInvariant T₁ = paddingRankInvariant T₂
-```
-
-This is the **research-grade core** of A.3.2.  The proof requires
-showing that GL³ permutes concentrated slots via a bijection; the
-specific argument uses the fact that "concentrated slot" is a
-rank-1 condition on the slab matrices, and rank-1 slabs map to
-rank-1 slabs under GL³ × GL³ action (via `Matrix.rank_outer_product`).
-
-We capture this as a `Prop` discharged in the bundled
-`GL3InducesAlgEquivOnPathSubspace` of `AlgEquivFromGL3.lean`. -/
-def paddingRankInvariant_GL3Invariant : Prop :=
-  ∀ {n : ℕ} (T₁ T₂ : Tensor3 n ℚ)
-    (g : GL (Fin n) ℚ × GL (Fin n) ℚ × GL (Fin n) ℚ),
-    g • T₁ = T₂ →
-    paddingRankInvariant T₁ = paddingRankInvariant T₂
-
-/-- **Identity-case witness.**  At `g = 1`, the GL³-invariance holds
-trivially because `1 • T = T`. -/
-theorem paddingRankInvariant_GL3Invariant_identity_case
-    {n : ℕ} (T : Tensor3 n ℚ) :
-    (1 : GL (Fin n) ℚ × GL (Fin n) ℚ × GL (Fin n) ℚ) • T = T →
-    paddingRankInvariant T = paddingRankInvariant T := by
-  intro _h
-  rfl
 
 end GrochowQiao
 end Orbcrypt

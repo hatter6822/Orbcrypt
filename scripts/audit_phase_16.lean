@@ -4284,4 +4284,67 @@ example (h_rigidity : GrochowQiaoRigidity) :
     (∀ m, RestrictedGL3OnPathOnlyTensor m) :=
   grochowQiao_unified_discharge_under_rigidity h_rigidity
 
+-- ----------------------------------------------------------------------------
+-- Concrete Manin theorem evaluations on `ℚ` as a 1-dimensional ℚ-algebra.
+-- Exercises the full Manin tensor-stabilizer pipeline at the smallest
+-- non-trivial instance (single-element basis indexed by `PUnit`).
+-- ----------------------------------------------------------------------------
+
+/-- **Manin non-vacuity: structure tensor at singleton basis evaluates to `1`.**
+
+For the basis of `ℚ` over itself (the singleton basis at `PUnit`), the
+structure tensor at the unique basis element is `1` — reflecting
+`1 * 1 = 1` in `ℚ`. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    Manin.structureTensor b default default default = (1 : ℚ) := by
+  simp [Manin.structureTensor]
+
+/-- **Manin non-vacuity: structure tensor recovers multiplication.**
+
+Exercises `structureTensor_recovers_mul` on `ℚ` viewed as a
+1-dimensional ℚ-algebra. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    b default * b default = ∑ k, Manin.structureTensor b default default k • b k :=
+  Manin.structureTensor_recovers_mul (Module.Basis.singleton PUnit ℚ) default default
+
+/-- **Manin non-vacuity: unit-compatibility holds at identity matrix.**
+
+For the singleton basis, `IsUnitCompatible` with `P = 1` is
+discharged by direct computation. -/
+example :
+    Manin.IsUnitCompatible (Module.Basis.singleton PUnit ℚ)
+      (Module.Basis.singleton PUnit ℚ)
+      (1 : Matrix PUnit PUnit ℚ) := by
+  intro _; simp
+
+/-- **Manin non-vacuity: algHomOfTensorIso constructs a valid AlgHom on
+the singleton basis at the identity matrix.**
+
+Evaluating the constructed AlgHom on the basis element `b default = 1`
+yields `1 : ℚ`, confirming the construction agrees with the identity
+algebra hom at the smallest non-trivial instance. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    let h_unit : Manin.IsUnitCompatible b b 1 := by intro _; simp
+    Manin.algHomOfTensorIso b b 1 1
+        (Manin.IsBasisChangeRelated.id (Manin.structureTensor b)) h_unit
+        (b default) = (1 : ℚ) := by simp
+
+/-- **Manin non-vacuity: algEquivOfTensorIso constructs a valid AlgEquiv
+on the singleton basis at the identity matrix.**
+
+Evaluating the constructed AlgEquiv on the basis element `b default = 1`
+yields `1 : ℚ`, confirming the construction agrees with the identity
+algebra equivalence at the smallest non-trivial instance. This is the
+end-to-end exercise of the Manin tensor-stabilizer construction
+(A.5.1 → A.5.2 → A.5.3 → A.5.4) at a concrete instance. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    let h_unit : Manin.IsUnitCompatible b b 1 := by intro _; simp
+    Manin.algEquivOfTensorIso b b 1 1
+        (Manin.IsBasisChangeRelated.id (Manin.structureTensor b)) h_unit
+        (b default) = (1 : ℚ) := by simp
+
 end Phase3DischargeNonVacuity
