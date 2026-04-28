@@ -5955,6 +5955,114 @@ with the post-Workstream-I-audit honesty discipline established
 in CLAUDE.md's "Names describe content, never provenance" and
 "Security-by-docstring prohibition" rules.
 
+R-TI Phase 3 — Strengthening pass (2026-04-28, third sweep).  Deeper
+re-audit identified **two research-scope `Prop`s that were tractable
+to convert to real theorems** and **one mathematically-incorrect
+claim** that needed dropping:
+
+1. **`PathOnlyTensorIsAssociative` upgraded from research-scope `Prop`
+   to a substantively proven theorem** (`PathOnlyTensor.lean`).  The
+   pre-strengthening landing carried `PathOnlyTensorIsAssociative
+   m adj : Prop` as an unproven research-scope obligation.  This
+   strengthening pass **proves** the path-only structure tensor
+   satisfies the associativity polynomial identity
+   `IsAssociativeTensor`, via `Finset.sum_equiv` re-indexing of
+   `encoder_assoc_path`.  The proof:
+   * Re-indexes path-only sums (over `Fin (pathSlotIndices m adj).card`)
+     to subtype Fintype-sums (over `↥(pathSlotIndices m adj)`) via
+     `Equiv.sum_comp` along `equivFin.symm`.
+   * Converts the subtype Fintype-sum to a Finset sum over
+     `(pathSlotIndices m adj).attach` via `Finset.univ_eq_attach`,
+     then to a plain Finset sum over `pathSlotIndices m adj` via
+     `Finset.sum_attach`.
+   * Extends the Finset sum to a `Fin (dimGQ m)`-univ sum via
+     `Finset.sum_subset`, showing path/padding-mixed terms contribute
+     zero (via the new private helpers
+     `pathOnlySummand_zero_of_not_path_algebra` /`'`, which apply
+     `grochowQiaoEncode_padding_right`'s ambient-branch evaluation
+     plus a `j' = a` impossibility argument since `j'` is path-
+     algebra and `a` is padding).
+   * Applies `encoder_assoc_path` (Sub-task A.1.0) on the
+     `Fin (dimGQ m)`-univ sums to conclude.
+
+   The new theorem `pathOnlyStructureTensor_isAssociative` is the
+   substantive content; the alias `PathOnlyTensorIsAssociative_proof`
+   retains the original name for consumer-facing reference (and to
+   make the audit script's reference clear).  Both have axiom output
+   `[propext, Classical.choice, Quot.sound]`.
+
+2. **`IsAssociativeTensorPreservedByGL3` dropped as mathematically
+   incorrect for arbitrary GL³** (`TensorIdentityPreservation.lean`).
+   The pre-strengthening landing carried
+   `IsAssociativeTensorPreservedByGL3 n F : Prop` as a research-scope
+   obligation claiming "for all GL³ `g`, `IsAssociativeTensor T →
+   IsAssociativeTensor (g • T)`".  **This claim is false** for
+   generic GL³ — only the structure-tensor-preserving sub-class
+   (specifically, `(P, P, P⁻ᵀ)`-shaped triples corresponding to
+   basis changes of the underlying algebra) preserves associativity.
+   For arbitrary `(g.1, g.2, g.3) ∈ GL × GL × GL`, the polynomial
+   identity is not preserved (counterexample: pick a non-associative
+   T and find `g` such that `g • T` is associative; reverse `g` to
+   produce a counterexample).
+
+   This strengthening pass **drops** the misleading `Prop` and its
+   identity-case witness from the codebase, replacing the module
+   docstring with an explicit `Mathematical correctness` section
+   that documents the actual preservation structure (the Manin
+   tensor-stabilizer subgroup), and points at
+   `GL3InducesAlgEquivOnPathSubspace` in `AlgEquivFromGL3.lean` as
+   the correct research-scope bundle for the deep content.
+
+   The remaining content of `TensorIdentityPreservation.lean` is
+   the `IsAssociativeTensor` predicate (correct) +
+   `encoder_isAssociativeTensor_full_path` (correct, real proof
+   delegating to `encoder_assoc_path`).
+
+3. **`gl3_algEquiv_partial_closure_status_disclosure` corrected to
+   honestly describe what's still research-scope.**  The pre-
+   strengthening docstring listed `RestrictedGL3OnPathOnlyTensor`
+   as a research-scope sub-Prop, which is correct (path/padding
+   cardinality preservation is genuinely research-scope content of
+   Sub-task A.3).  No content change here; just docstring alignment.
+
+**Audit-script test upgrades (post-strengthening):**
+
+* `pathOnlyStructureTensor_isAssociative` is now exercised on
+  `m = 2` with the non-trivial adjacency `fun u v => decide (u.val ≠
+  v.val)` (complete graph minus self-loops, 2 present arrows).  This
+  is a non-vacuous test of the substantive proof.
+* The dropped `isAssociativeTensorPreservedByGL3_identity_case` test
+  has been removed from the audit script.
+
+**Verification.** Full `lake build` succeeds with **3,410 jobs**,
+zero warnings, zero errors.  Phase 16 audit script runs cleanly
+(exit code 0); every Phase-3 declaration depends only on the
+standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`);
+zero `sorryAx`, zero custom axioms.
+
+**Honest scoreboard, post-strengthening pass.** Of the four
+research-scope `Prop`s introduced by the initial Phase 3 landing
+(`IsAssociativeTensorPreservedByGL3`, `PathOnlyTensorIsAssociative`,
+`RestrictedGL3OnPathOnlyTensor`, `GL3InducesAlgEquivOnPathSubspace`):
+
+* **`PathOnlyTensorIsAssociative`** — converted from research-scope
+  Prop to **substantively proven theorem**
+  (`pathOnlyStructureTensor_isAssociative`).
+* **`IsAssociativeTensorPreservedByGL3`** — **dropped** as
+  mathematically incorrect for arbitrary GL³.
+* **`RestrictedGL3OnPathOnlyTensor`** — retained as research-scope
+  Prop (path/padding cardinality preservation is genuinely deep
+  content of Sub-task A.3).
+* **`GL3InducesAlgEquivOnPathSubspace`** — retained as the genuinely
+  research-scope obligation (Manin theorem + rigidity argument; ~80
+  pages on paper, ~1,800 LOC of Lean).
+
+The remaining two research-scope `Prop`s capture content that is
+**genuinely mathematically deep** (Manin's theorem; structure-tensor
+rigidity), not "tractable but unproven" content.  Both have
+unconditional identity-case witnesses that consume their hypotheses
+non-trivially via the post-Stage-0 diagonal-value classification.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 68 `Orbcrypt/**/*.lean`
   modules (the running total post-R-TI Phase 3 partial-discharge

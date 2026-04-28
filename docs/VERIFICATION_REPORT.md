@@ -1168,6 +1168,70 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-28 (R-TI Phase 3 strengthening pass — substantive proofs
+  + mathematical-correctness fix)** — Deeper re-audit of the same-day
+  Phase 3 audit-pass landing identified two research-scope `Prop`s
+  that were tractable to convert to real theorems and one
+  mathematically-incorrect claim that needed dropping.
+
+  **Substantive proofs added (1):**
+
+  * `pathOnlyStructureTensor_isAssociative` (`PathOnlyTensor.lean`)
+    — substantively proven theorem that the path-only structure tensor
+    satisfies the associativity polynomial identity
+    `IsAssociativeTensor`.  Proof technique: `Equiv.sum_comp` re-
+    indexing of path-only sums, `Finset.univ_eq_attach` +
+    `Finset.sum_attach` to get plain Finset sums, `Finset.sum_subset`
+    to extend to univ sums (using new private helpers
+    `pathOnlySummand_zero_of_not_path_algebra` /`'` showing path/
+    padding-mixed terms vanish via `grochowQiaoEncode_padding_right`),
+    then `encoder_assoc_path` (Sub-task A.1.0).  Replaces the
+    research-scope `Prop` `PathOnlyTensorIsAssociative` (the alias
+    `PathOnlyTensorIsAssociative_proof` is retained as a consumer-
+    facing reference).
+
+  **Mathematical-correctness fix (1):**
+
+  * `IsAssociativeTensorPreservedByGL3` and
+    `isAssociativeTensorPreservedByGL3_identity_case`
+    (`TensorIdentityPreservation.lean`) — **dropped** as
+    mathematically incorrect for arbitrary GL³.  Generic GL³ does
+    not preserve associativity of the polynomial identity; only the
+    structure-tensor-preserving sub-class (`(P, P, P⁻ᵀ)`-shaped
+    triples corresponding to basis changes of the underlying algebra)
+    preserves it.  Counterexample: pick a non-associative T and find
+    `g` such that `g • T` is associative; reverse `g` to produce a
+    counterexample.  The module docstring now includes a
+    `Mathematical correctness` section documenting the actual
+    preservation structure (the Manin tensor-stabilizer subgroup),
+    and points at `GL3InducesAlgEquivOnPathSubspace` in
+    `AlgEquivFromGL3.lean` as the correct research-scope bundle for
+    the deep content.
+
+  **Honest scoreboard, post-strengthening.**  Of the four research-
+  scope `Prop`s introduced by the initial Phase 3 landing:
+  - `PathOnlyTensorIsAssociative` — **converted to substantively
+    proven theorem**.
+  - `IsAssociativeTensorPreservedByGL3` — **dropped** as
+    mathematically incorrect.
+  - `RestrictedGL3OnPathOnlyTensor` — retained (cardinality
+    preservation is genuinely deep content of Sub-task A.3).
+  - `GL3InducesAlgEquivOnPathSubspace` — retained (Manin theorem +
+    rigidity argument; ~80 pages on paper, ~1,800 LOC of Lean).
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**,
+  zero warnings, zero errors.  Phase 16 audit script runs cleanly
+  (exit code 0).  All Phase-3 declarations depend only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+
+  **Patch version.** `lakefile.lean` retains `0.1.24` (the
+  strengthening pass adds proofs but the public-API surface count is
+  unchanged net-net: -2 dropped declarations in
+  `TensorIdentityPreservation.lean` (the wrong Prop and its identity
+  case), +1 substantive theorem (`pathOnlyStructureTensor_isAssociative`)
+  + 1 alias (`PathOnlyTensorIsAssociative_proof`) + 2 private helpers
+  in `PathOnlyTensor.lean`).
+
 * **2026-04-28 (R-TI Phase 3 audit pass — theatrical-theorem
   fixes + naming-rule alignment)** — Targeted post-landing audit of
   the same-day Phase 3 partial-discharge landing surfaced four

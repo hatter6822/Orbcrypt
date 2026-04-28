@@ -3922,17 +3922,21 @@ end PathBlockSubspaceNonVacuity
 #print axioms Orbcrypt.GrochowQiao.encoder_off_diag_path_padding_zero
 #print axioms Orbcrypt.GrochowQiao.encoder_padding_diag_only
 
--- Sub-task A.2 — GL³ action preserves polynomial identities.
+-- Sub-task A.2 — Associativity polynomial identity for 3-tensors.
+-- (The earlier `IsAssociativeTensorPreservedByGL3` Prop has been removed
+-- as mathematically incorrect for arbitrary GL³; only structure-tensor-
+-- preserving subgroup actions preserve associativity, and that content
+-- is captured in the research-scope `GL3InducesAlgEquivOnPathSubspace`
+-- bundle in `AlgEquivFromGL3.lean`.)
 #print axioms Orbcrypt.GrochowQiao.IsAssociativeTensor
 #print axioms Orbcrypt.GrochowQiao.encoder_isAssociativeTensor_full_path
-#print axioms Orbcrypt.GrochowQiao.IsAssociativeTensorPreservedByGL3
-#print axioms Orbcrypt.GrochowQiao.isAssociativeTensorPreservedByGL3_identity_case
 
 -- Sub-task A.4 — Path-only structure tensor + restricted GL³.
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_apply
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_index_is_path_algebra
-#print axioms Orbcrypt.GrochowQiao.PathOnlyTensorIsAssociative
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_isAssociative
+#print axioms Orbcrypt.GrochowQiao.PathOnlyTensorIsAssociative_proof
 #print axioms Orbcrypt.GrochowQiao.RestrictedGL3OnPathOnlyTensor
 #print axioms Orbcrypt.GrochowQiao.restrictedGL3OnPathOnlyTensor_identity_case
 
@@ -4042,12 +4046,11 @@ example : IsAssociativeTensor (grochowQiaoEncode 1 (fun _ _ => true)) := by
   | vertex v => unfold isPathAlgebraSlot; rw [hi]
   | arrow u v => unfold isPathAlgebraSlot; rw [hi]
 
-/-- **Sub-task A.2 non-vacuity: identity GL³ preserves
-`IsAssociativeTensor`.** -/
-example (T : Tensor3 1 ℚ) (h : IsAssociativeTensor T) :
-    IsAssociativeTensor
-      ((1 : GL (Fin 1) ℚ × GL (Fin 1) ℚ × GL (Fin 1) ℚ) • T) :=
-  isAssociativeTensorPreservedByGL3_identity_case T h
+-- (The earlier identity-case-of-GL³-preservation test has been removed;
+-- generic GL³ does not preserve associativity, so the only honest
+-- witness is the trivial `IsAssociativeTensor T → IsAssociativeTensor
+-- ((1) • T)` which `one_smul` makes definitional and which adds no
+-- substantive content beyond `Equiv.refl`.)
 
 /-- **Sub-task A.4 non-vacuity: path-only-tensor index is path-algebra.**
 
@@ -4081,6 +4084,18 @@ example
       ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm j).val
       ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm k).val :=
   pathOnlyStructureTensor_apply 2 (fun _ _ => false) i j k
+
+/-- **Sub-task A.4 non-vacuity: `pathOnlyStructureTensor_isAssociative`
+proved on a non-trivial graph.**
+
+The path-only tensor of any graph satisfies the associativity polynomial
+identity `IsAssociativeTensor`.  Exercises the substantive proof on
+`m = 2` with the adjacency `adj := fun u v => decide (u.val ≠ v.val)`
+(complete graph minus self-loops, 2 present arrows). -/
+example :
+    IsAssociativeTensor
+      (pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val))) :=
+  pathOnlyStructureTensor_isAssociative 2 (fun u v => decide (u.val ≠ v.val))
 
 /-- **Sub-task A.4 non-vacuity: substantive `restrictedGL3OnPathOnlyTensor`
 identity case.**

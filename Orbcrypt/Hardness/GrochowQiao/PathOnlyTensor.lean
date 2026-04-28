@@ -60,14 +60,23 @@ identity-case witness landed as an unconditional theorem.
 * `pathOnlyStructureTensor_apply` — definitional unfolding.
 * `pathOnlyStructureTensor_index_is_path_algebra` — the path-algebra
   membership precondition for any `Fin (pathSlotIndices m adj).card`-
-  index quadruple (the structural fact the `Finset.sum_equiv`-re-
-  indexed path-only associativity identity consumes).
-* `PathOnlyTensorIsAssociative` (research-scope `Prop`) — the path-
-  only tensor satisfies `IsAssociativeTensor`, conditional on the
-  re-indexing argument.
+  index quadruple.
+* `pathOnlyStructureTensor_isAssociative` — **substantively proven**
+  theorem that the path-only tensor satisfies `IsAssociativeTensor`.
+  Proof: re-index path-only sums via `Equiv.sum_comp` +
+  `Finset.univ_eq_attach` + `Finset.sum_attach` to land on a Finset
+  sum over `pathSlotIndices`; extend to a univ sum via
+  `Finset.sum_subset` showing path/padding-mixed terms vanish (via
+  the auxiliary `pathOnlySummand_zero_of_not_path_algebra` helpers,
+  which apply `grochowQiaoEncode_padding_right`'s ambient-branch
+  evaluation); apply `encoder_assoc_path` (Sub-task A.1.0) on the
+  full universe.
+* `PathOnlyTensorIsAssociative_proof` — alias of
+  `pathOnlyStructureTensor_isAssociative` under the original name;
+  retained for consumer-facing reference.
 * `RestrictedGL3OnPathOnlyTensor` (research-scope `Prop`) — the
-  obligation that GL³ tensor isomorphisms restrict to the path-only
-  subspace.
+  obligation that GL³ tensor isomorphisms preserve path/padding
+  cardinality.
 * `restrictedGL3OnPathOnlyTensor_identity_case` — **substantive**
   identity-case witness: takes `(adj₁, adj₂)` and the hypothesis
   `1 • encode m adj₁ = encode m adj₂`, derives `adj₁ = adj₂` via the
@@ -78,11 +87,11 @@ identity-case witness landed as an unconditional theorem.
 ## Status
 
 Sub-task A.4 lands the **path-only tensor definition** + **apply
-lemma** + **index-is-path-algebra fact** unconditionally.  The
-**path-only-tensor-is-associative** content (originally part of A.4.2)
-and the **restricted-GL³-action equivariance** content are captured
-as research-scope `Prop`s consumed by `AlgEquivFromGL3.lean`.  The
-**substantive identity case** of `RestrictedGL3OnPathOnlyTensor`
+lemma** + **index-is-path-algebra fact** + **path-only associativity
+theorem** (substantively proven via `Finset.sum_equiv` re-indexing)
+all unconditionally.  The **restricted-GL³-action cardinality-
+preservation** content is captured as a research-scope `Prop` consumed
+by `AlgEquivFromGL3.lean`; the **substantive identity case**
 (consuming the hypothesis non-trivially via the diagonal-value
 classification) is landed as an unconditional theorem.
 
@@ -135,22 +144,198 @@ theorem pathOnlyStructureTensor_apply
       ((pathSlotIndices m adj).equivFin.symm k).val := rfl
 
 -- ============================================================================
--- Sub-task A.4.2 — Path-only tensor associativity (research-scope Prop).
+-- Sub-task A.4.2 — Path-only tensor associativity (substantively proved).
 -- ============================================================================
 
-/-- **Sub-task A.4.2 — Path-only-tensor associativity (research-scope `Prop`).**
+/-- **Helper: path-only-summand vanishes outside `pathSlotIndices`.**
 
-The detailed proof that `pathOnlyStructureTensor m adj` satisfies the
-associativity polynomial identity `IsAssociativeTensor` requires a
-`Finset.sum_equiv` re-indexing argument from the encoder's path-algebra
-associativity (`encoder_assoc_path`, Sub-task A.1.0) through the
-bijection `(pathSlotIndices m adj).equivFin.symm`.  This re-indexing is
-~50 LOC of standard sum manipulation but is captured here as a
-research-scope `Prop` since it is consumed only by Sub-task A.5
-(Manin's theorem) inside the bundled discharge of
-`GL3InducesAlgEquivOnPathSubspace`. -/
-def PathOnlyTensorIsAssociative (m : ℕ) (adj : Fin m → Fin m → Bool) : Prop :=
-  IsAssociativeTensor (pathOnlyStructureTensor m adj)
+For path-algebra `i', j'` and any `a : Fin (dimGQ m)`, the product
+`encode m adj i' j' a * encode m adj a k' l'` is zero whenever `a` is
+*not* a path-algebra slot (i.e., `a ∉ pathSlotIndices m adj`).
+
+**Proof.** When `a` is padding, the first factor `encode m adj i' j' a`
+has slot triple `(path, path, padding)`, which is mixed-class, hence
+the encoder takes the ambient branch.  The ambient constant
+`if i' = j' ∧ j' = a then 2 else 0` is zero unless `i' = j' = a`; but
+`i' = a` is impossible because `i'` is path-algebra while `a` is
+padding (`isPathAlgebraSlot` is `true` vs `false`).  Hence the first
+factor is zero, so the product is zero. -/
+private theorem pathOnlySummand_zero_of_not_path_algebra
+    (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (i' j' k' l' a : Fin (dimGQ m))
+    (_hi' : isPathAlgebraSlot m adj i' = true)
+    (hj' : isPathAlgebraSlot m adj j' = true)
+    (ha_not : isPathAlgebraSlot m adj a = false) :
+    grochowQiaoEncode m adj i' j' a *
+    grochowQiaoEncode m adj a k' l' = 0 := by
+  -- `encode m adj i' j' a = ambient (i', j', a) = 0` because j' ≠ a.
+  rw [grochowQiaoEncode_padding_right m adj i' j' a ha_not]
+  unfold ambientSlotStructureConstant
+  -- Goal: (if i' = j' ∧ j' = a then 2 else 0) * encode a k' l' = 0
+  rw [if_neg]
+  · simp
+  · rintro ⟨_hij, hja⟩
+    -- hja : j' = a; but j' is path-algebra, a is not → contradiction.
+    rw [hja] at hj'
+    rw [hj'] at ha_not
+    exact Bool.noConfusion ha_not
+
+/-- **Helper: dual form of the previous helper for the RHS-summand.** -/
+private theorem pathOnlySummand_zero_of_not_path_algebra'
+    (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (i' j' k' l' a : Fin (dimGQ m))
+    (_hj' : isPathAlgebraSlot m adj j' = true)
+    (hk' : isPathAlgebraSlot m adj k' = true)
+    (ha_not : isPathAlgebraSlot m adj a = false) :
+    grochowQiaoEncode m adj j' k' a *
+    grochowQiaoEncode m adj i' a l' = 0 := by
+  -- Same argument: `encode m adj j' k' a = ambient (j', k', a) = 0`
+  -- because j' ≠ a (j' path, a padding).
+  rw [grochowQiaoEncode_padding_right m adj j' k' a ha_not]
+  unfold ambientSlotStructureConstant
+  rw [if_neg]
+  · simp
+  · rintro ⟨_hjk, hka⟩
+    rw [hka] at hk'
+    rw [hk'] at ha_not
+    exact Bool.noConfusion ha_not
+
+/-- **Sub-task A.4.2 — Path-only-tensor associativity (proved).**
+
+The path-only structure tensor `pathOnlyStructureTensor m adj`
+satisfies the associativity polynomial identity `IsAssociativeTensor`.
+
+**Proof technique.**  Each `Fin (pathSlotIndices m adj).card`-index
+maps via the `equivFin.symm`-bijection to a path-algebra slot in
+`Fin (dimGQ m)` (Sub-task A.4 pre-lemma).  We re-index both sides of
+the path-only associativity sum as sums over `pathSlotIndices m adj`
+(via `Equiv.sum_comp` + `Finset.sum_attach`), then **extend** the sums
+to the full `Fin (dimGQ m)` universe by showing that path/padding-
+mixed terms contribute zero (via the auxiliary helpers
+`pathOnlySummand_zero_of_not_path_algebra`/`'` above, which apply
+`grochowQiaoEncode_padding_right`'s ambient-branch evaluation).
+Finally, we apply `encoder_assoc_path` (Sub-task A.1.0) on the full
+universe to conclude.
+
+This is the substantive proof of `PathOnlyTensorIsAssociative`; the
+pre-audit landing carried this as a research-scope `Prop` definition
+without proof, which the post-audit pass replaced with this real
+theorem. -/
+theorem pathOnlyStructureTensor_isAssociative
+    (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    IsAssociativeTensor (pathOnlyStructureTensor m adj) := by
+  intro i j k l
+  -- Underlying path-algebra slots.
+  set i' := ((pathSlotIndices m adj).equivFin.symm i).val with hi'_def
+  set j' := ((pathSlotIndices m adj).equivFin.symm j).val with hj'_def
+  set k' := ((pathSlotIndices m adj).equivFin.symm k).val with hk'_def
+  set l' := ((pathSlotIndices m adj).equivFin.symm l).val with hl'_def
+  have hi'_path : isPathAlgebraSlot m adj i' = true :=
+    (mem_pathSlotIndices_iff m adj _).mp
+      ((pathSlotIndices m adj).equivFin.symm i).property
+  have hj'_path : isPathAlgebraSlot m adj j' = true :=
+    (mem_pathSlotIndices_iff m adj _).mp
+      ((pathSlotIndices m adj).equivFin.symm j).property
+  have hk'_path : isPathAlgebraSlot m adj k' = true :=
+    (mem_pathSlotIndices_iff m adj _).mp
+      ((pathSlotIndices m adj).equivFin.symm k).property
+  have hl'_path : isPathAlgebraSlot m adj l' = true :=
+    (mem_pathSlotIndices_iff m adj _).mp
+      ((pathSlotIndices m adj).equivFin.symm l).property
+  -- Re-index the path-only sums via Equiv.sum_comp on equivFin.symm.
+  -- pathOnlyStructureTensor m adj i j k = encode m adj i' j' k'.
+  -- ∑ a : Fin S.card, encode m adj i' j' (e a).val * encode m adj (e a).val k' l'
+  --   = ∑ a : ↑S, encode m adj i' j' a.val * encode m adj a.val k' l'  (Equiv.sum_comp)
+  --   = ∑ a ∈ S.attach, encode m adj i' j' a.val * encode m adj a.val k' l'  (sum over subtype)
+  --   = ∑ a ∈ S, encode m adj i' j' a * encode m adj a k' l'  (Finset.sum_attach)
+  --   = ∑ a : Fin (dimGQ m), encode m adj i' j' a * encode m adj a k' l'  (sum_subset)
+  have h_lhs :
+      (∑ a : Fin (pathSlotIndices m adj).card,
+          pathOnlyStructureTensor m adj i j a *
+          pathOnlyStructureTensor m adj a k l) =
+      (∑ a : Fin (dimGQ m),
+          grochowQiaoEncode m adj i' j' a *
+          grochowQiaoEncode m adj a k' l') := by
+    -- Step 1: rewrite path-only entries using `pathOnlyStructureTensor_apply`.
+    simp only [pathOnlyStructureTensor_apply]
+    -- Step 2: re-index sum over `Fin S.card` to sum over `↥S` via
+    -- `Equiv.sum_comp` with σ = equivFin.symm : Fin S.card ≃ ↥S.
+    -- The lemma gives: ∑ x : Fin S.card, f (σ x) = ∑ x : ↥S, f x.
+    rw [Equiv.sum_comp (pathSlotIndices m adj).equivFin.symm
+          (fun b : ↥(pathSlotIndices m adj) =>
+            grochowQiaoEncode m adj i' j' b.val *
+            grochowQiaoEncode m adj b.val k' l')]
+    -- After re-indexing: sum over `↥(pathSlotIndices m adj)` (subtype).
+    -- Step 3a: convert Fintype-sum on `↥S` to Finset-sum on `S.attach`
+    -- via `Finset.univ_eq_attach`.
+    rw [show (∑ b : ↥(pathSlotIndices m adj),
+              grochowQiaoEncode m adj i' j' b.val *
+              grochowQiaoEncode m adj b.val k' l') =
+          (∑ b ∈ (pathSlotIndices m adj).attach,
+              grochowQiaoEncode m adj i' j' b.val *
+              grochowQiaoEncode m adj b.val k' l') from by
+          rw [← Finset.univ_eq_attach]]
+    -- Step 3b: convert attach-sum to plain Finset.sum via
+    -- `Finset.sum_attach`.
+    rw [Finset.sum_attach (pathSlotIndices m adj)
+          (fun b => grochowQiaoEncode m adj i' j' b *
+                    grochowQiaoEncode m adj b k' l')]
+    -- Step 4: extend Finset sum to univ sum via Finset.sum_subset.
+    apply Finset.sum_subset (Finset.subset_univ (pathSlotIndices m adj))
+    intro a _ha_univ ha_not_in
+    -- a ∈ univ but a ∉ pathSlotIndices m adj ⇒ a is padding.
+    have ha_pad : isPathAlgebraSlot m adj a = false := by
+      rw [Bool.eq_false_iff]
+      intro h_path
+      exact ha_not_in ((mem_pathSlotIndices_iff m adj a).mpr h_path)
+    exact pathOnlySummand_zero_of_not_path_algebra
+      m adj i' j' k' l' a hi'_path hj'_path ha_pad
+  have h_rhs :
+      (∑ a : Fin (pathSlotIndices m adj).card,
+          pathOnlyStructureTensor m adj j k a *
+          pathOnlyStructureTensor m adj i a l) =
+      (∑ a : Fin (dimGQ m),
+          grochowQiaoEncode m adj j' k' a *
+          grochowQiaoEncode m adj i' a l') := by
+    simp only [pathOnlyStructureTensor_apply]
+    rw [Equiv.sum_comp (pathSlotIndices m adj).equivFin.symm
+          (fun b : ↥(pathSlotIndices m adj) =>
+            grochowQiaoEncode m adj j' k' b.val *
+            grochowQiaoEncode m adj i' b.val l')]
+    rw [show (∑ b : ↥(pathSlotIndices m adj),
+              grochowQiaoEncode m adj j' k' b.val *
+              grochowQiaoEncode m adj i' b.val l') =
+          (∑ b ∈ (pathSlotIndices m adj).attach,
+              grochowQiaoEncode m adj j' k' b.val *
+              grochowQiaoEncode m adj i' b.val l') from by
+          rw [← Finset.univ_eq_attach]]
+    rw [Finset.sum_attach (pathSlotIndices m adj)
+          (fun b => grochowQiaoEncode m adj j' k' b *
+                    grochowQiaoEncode m adj i' b l')]
+    apply Finset.sum_subset (Finset.subset_univ (pathSlotIndices m adj))
+    intro a _ha_univ ha_not_in
+    have ha_pad : isPathAlgebraSlot m adj a = false := by
+      rw [Bool.eq_false_iff]
+      intro h_path
+      exact ha_not_in ((mem_pathSlotIndices_iff m adj a).mpr h_path)
+    exact pathOnlySummand_zero_of_not_path_algebra'
+      m adj i' j' k' l' a hj'_path hk'_path ha_pad
+  -- Combine: LHS = univ-LHS = univ-RHS = RHS, where univ-LHS = univ-RHS
+  -- is `encoder_assoc_path`.
+  rw [h_lhs, h_rhs]
+  exact encoder_assoc_path m adj i' j' k' l' hi'_path hj'_path hk'_path hl'_path
+
+/-- **Sub-task A.4.2 — Path-only-tensor associativity (alias).**
+
+`PathOnlyTensorIsAssociative m adj` is the predicate-level form
+of `IsAssociativeTensor (pathOnlyStructureTensor m adj)`; it now
+folds directly to `pathOnlyStructureTensor_isAssociative` and is
+no longer a research-scope obligation.  Retained as a
+consumer-facing alias under the original name. -/
+theorem PathOnlyTensorIsAssociative_proof
+    (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    IsAssociativeTensor (pathOnlyStructureTensor m adj) :=
+  pathOnlyStructureTensor_isAssociative m adj
 
 /-- **Path-only-tensor index-quadruple is path-algebra.**
 
