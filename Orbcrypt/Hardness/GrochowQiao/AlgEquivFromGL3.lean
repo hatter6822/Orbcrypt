@@ -86,20 +86,15 @@ research-scope obligation** replacing the v3-era pair
   then exhibits `AlgEquiv.refl`.  Mirrors the post-audit-pass-II
   refactoring of Stage 3's
   `gl3_preserves_partition_cardinalities_identity_case`.
-* `algEquivRefl_preserves_presentArrowsSubspace` — pure structural
-  sanity check that `AlgEquiv.refl` preserves
-  `presentArrowsSubspace`.  Renamed from `_self` to honestly describe
-  the content (no GL³ in the statement; no encoder hypothesis).
 
 ## Status
 
 Sub-task A.6 lands the **conditional headline** (consuming the
 research-scope `Prop`) + the **substantive identity case** (consuming
 the `1 • encode adj₁ = encode adj₂` hypothesis non-trivially via the
-diagonal-value classification) + the **AlgEquiv.refl structural
-sanity check**, all unconditional.  The research-scope `Prop`'s
-discharge is multi-month research effort and is tracked at
-`docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+diagonal-value classification), all unconditional.  The research-
+scope `Prop`'s discharge is multi-month research effort and is
+tracked at `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
 § R-15-residual-TI-reverse.
 
 ## Naming
@@ -226,26 +221,6 @@ theorem gl3_induces_algEquiv_on_pathSubspace_identity_case
   ext x
   simp
 
-/-- **AlgEquiv.refl preserves the present-arrows subspace.**
-
-Pure structural sanity check: the reflexive algebra equivalence
-`AlgEquiv.refl : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m`
-maps the present-arrows subspace `presentArrowsSubspace m adj` to
-itself.  Equivalent to `Set.image_id` on the subspace's underlying
-`Set`.  This is **not** a witness of `GL3InducesAlgEquivOnPathSubspace`
-(which universally quantifies over `(adj₁, adj₂)` distinct); it is
-a structural sanity check on the AlgEquiv-image-preservation
-machinery.  Renamed from `gl3_induces_algEquiv_on_pathSubspace_self`
-in the post-audit refinement to honestly describe its content
-(no GL³ in the statement; no encoder hypothesis). -/
-theorem algEquivRefl_preserves_presentArrowsSubspace
-    (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    (AlgEquiv.refl : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m) ''
-      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
-      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) := by
-  ext x
-  simp
-
 -- ============================================================================
 -- Sub-task A.6 — Status disclosure.
 -- ============================================================================
@@ -262,14 +237,19 @@ partial-closure status of R-TI Phase 3 in the codebase:
 
 * The **partial-discharge content** delivered:
   - Sub-task A.1 (encoder polynomial-identity catalogue) — unconditional.
-  - Sub-task A.2 (associative-tensor predicate + identity-GL³ case) —
-    unconditional.
-  - Sub-task A.4 (path-only structure tensor + restricted-GL³ Prop +
-    identity case) — unconditional + research-scope sub-Prop.
+  - Sub-task A.2 (associative-tensor predicate + encoder-is-associative-
+    on-full-adjacency theorem) — unconditional.  The earlier
+    `IsAssociativeTensorPreservedByGL3` `Prop` was dropped as
+    mathematically incorrect for arbitrary GL³.
+  - Sub-task A.4 (path-only structure tensor + apply lemma + index-
+    is-path-algebra precondition + **substantively proven path-only
+    associativity** + path-only diagonal classification + restricted-
+    GL³ research-scope `Prop` + substantive identity-case witness) —
+    unconditional + one research-scope sub-`Prop`.
   - Sub-task A.6 (conditional headline consuming the research-scope
-    `Prop` + substantive identity case + AlgEquiv.refl structural
-    sanity check) — conditional on the research-scope `Prop` for the
-    headline, unconditional for the identity case + sanity check.
+    `Prop` + substantive identity case) — conditional on the
+    research-scope `Prop` for the headline, unconditional for the
+    identity case.
 
 * The **research-scope discharge** of `GL3InducesAlgEquivOnPathSubspace`
   is multi-month research effort tracked at

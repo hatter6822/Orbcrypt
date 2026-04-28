@@ -3936,7 +3936,7 @@ end PathBlockSubspaceNonVacuity
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_apply
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_index_is_path_algebra
 #print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_isAssociative
-#print axioms Orbcrypt.GrochowQiao.PathOnlyTensorIsAssociative_proof
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_diagonal_in_zero_one
 #print axioms Orbcrypt.GrochowQiao.RestrictedGL3OnPathOnlyTensor
 #print axioms Orbcrypt.GrochowQiao.restrictedGL3OnPathOnlyTensor_identity_case
 
@@ -3944,7 +3944,6 @@ end PathBlockSubspaceNonVacuity
 #print axioms Orbcrypt.GrochowQiao.GL3InducesAlgEquivOnPathSubspace
 #print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace
 #print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace_identity_case
-#print axioms Orbcrypt.GrochowQiao.algEquivRefl_preserves_presentArrowsSubspace
 #print axioms Orbcrypt.GrochowQiao.gl3_algEquiv_partial_closure_status_disclosure
 
 -- ============================================================================
@@ -4031,6 +4030,33 @@ example :
         (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply]))]
   exact ⟨rfl, rfl⟩
 
+/-- **Sub-task A.1.3 non-vacuity: mixed-class triple vanishes.**
+
+For a mixed triple `(vertex, arrow-padding, vertex)` on `m = 2` with
+`adj := fun _ _ => false`, the encoder evaluates to zero.  The vertex
+slot is path-algebra, the arrow slot is padding (since `adj _ _ =
+false`); the triple has both classes present and is therefore
+mixed-class. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((slotEquiv 2).symm (.vertex 0))
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.vertex 0)) = 0 := by
+  apply encoder_off_diag_path_padding_zero
+  refine ⟨?_, ?_⟩
+  · -- not all-path: the middle slot is padding.
+    rintro ⟨_, h_mid, _⟩
+    revert h_mid
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    decide
+  · -- not all-padding: the first slot is a vertex (always path-algebra).
+    rintro ⟨h_first, _, _⟩
+    revert h_first
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    decide
+
 /-- **Sub-task A.2 non-vacuity: the encoder on the complete graph at
 m = 1 is associative.**
 
@@ -4097,6 +4123,19 @@ example :
       (pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val))) :=
   pathOnlyStructureTensor_isAssociative 2 (fun u v => decide (u.val ≠ v.val))
 
+/-- **Sub-task A.4 non-vacuity: path-only-tensor diagonal in `{0, 1}`.**
+
+The path-only structure tensor's diagonal value at any index is either
+`0` (corresponds to a present-arrow slot) or `1` (corresponds to a
+vertex slot).  Exercised on `m = 2` with the adjacency
+`adj := fun u v => decide (u.val ≠ v.val)`. -/
+example
+    (i : Fin (pathSlotIndices 2 (fun u v => decide (u.val ≠ v.val))).card) :
+    pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val)) i i i = 0 ∨
+    pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val)) i i i = 1 :=
+  pathOnlyStructureTensor_diagonal_in_zero_one 2
+    (fun u v => decide (u.val ≠ v.val)) i
+
 /-- **Sub-task A.4 non-vacuity: substantive `restrictedGL3OnPathOnlyTensor`
 identity case.**
 
@@ -4136,19 +4175,6 @@ example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
       ϕ '' (presentArrowsSubspace m adj₁ : Set (pathAlgebraQuotient m)) =
         (presentArrowsSubspace m adj₂ : Set (pathAlgebraQuotient m)) :=
   gl3_induces_algEquiv_on_pathSubspace_identity_case m adj₁ adj₂ h_eq
-
-/-- **Sub-task A.6 non-vacuity: `algEquivRefl_preserves_presentArrowsSubspace`
-sanity check.**
-
-Pure structural sanity check that `AlgEquiv.refl` preserves the
-present-arrows subspace.  Renamed from `_self` in the post-audit
-refinement to honestly describe its content (no GL³ in the
-statement; no encoder hypothesis). -/
-example (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    (AlgEquiv.refl : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m) ''
-      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) =
-      (presentArrowsSubspace m adj : Set (pathAlgebraQuotient m)) :=
-  algEquivRefl_preserves_presentArrowsSubspace m adj
 
 /-- **Sub-task A.6 non-vacuity: conditional headline.**
 

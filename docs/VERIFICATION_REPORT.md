@@ -1168,6 +1168,54 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-28 (R-TI Phase 3 cleanup pass — dead-code removal +
+  additional substantive content + stale-docstring fixes)** — Final
+  audit pass on the same-day Phase 3 strengthening landing.
+
+  **Dead-code removed (2 declarations):**
+
+  * `PathOnlyTensorIsAssociative_proof` — pure renaming alias of
+    `pathOnlyStructureTensor_isAssociative` with no consumers.
+  * `algEquivRefl_preserves_presentArrowsSubspace` — pure
+    `Set.image_id` specialisation that restated `AlgEquiv.refl`
+    preserves `presentArrowsSubspace`, with no consumers.
+
+  **Substantive content added (1 theorem):**
+
+  * `pathOnlyStructureTensor_diagonal_in_zero_one`
+    (`PathOnlyTensor.lean`) — at any diagonal index `i : Fin
+    (pathSlotIndices m adj).card`, the path-only tensor's diagonal
+    value is `0` (present-arrow slot) or `1` (vertex slot).  Direct
+    consequence of `encoder_diag_at_path_in_zero_one` after unfolding
+    `pathOnlyStructureTensor_apply` and observing the underlying
+    `Fin (dimGQ m)`-slot is path-algebra.  Phase 5's adjacency-recovery
+    argument (research-scope) consumes this distinction.
+
+  **Stale-docstring fixes (2):**
+
+  * `pathOnlyStructureTensor_index_is_path_algebra` docstring no
+    longer references the (since-removed) research-scope
+    `PathOnlyTensorIsAssociative` Prop.
+  * `gl3_algEquiv_partial_closure_status_disclosure` status listing
+    no longer references the (since-dropped) `IsAssociativeTensorPreservedByGL3`
+    Prop's identity-GL³ case; updated to reflect the post-strengthening
+    public surface.
+
+  **Audit-script test additions (2):**
+
+  * A.1.3 non-vacuity test for `encoder_off_diag_path_padding_zero`.
+  * A.4 path-only diagonal-in-{0,1} test on a non-trivial adjacency.
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**,
+  zero warnings, zero errors.  Phase 16 audit script runs cleanly
+  (exit code 0).  All Phase-3 declarations depend only on the
+  standard Lean trio.
+
+  **Patch version.** `lakefile.lean` retains `0.1.24` (cleanup
+  removes 2 dead declarations, adds 1 substantive theorem; the
+  public-API surface count drops by one; backwards compatibility
+  unaffected since removed declarations had no consumers).
+
 * **2026-04-28 (R-TI Phase 3 strengthening pass — substantive proofs
   + mathematical-correctness fix)** — Deeper re-audit of the same-day
   Phase 3 audit-pass landing identified two research-scope `Prop`s

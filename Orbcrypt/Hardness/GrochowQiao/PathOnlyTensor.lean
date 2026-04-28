@@ -71,9 +71,6 @@ identity-case witness landed as an unconditional theorem.
   which apply `grochowQiaoEncode_padding_right`'s ambient-branch
   evaluation); apply `encoder_assoc_path` (Sub-task A.1.0) on the
   full universe.
-* `PathOnlyTensorIsAssociative_proof` — alias of
-  `pathOnlyStructureTensor_isAssociative` under the original name;
-  retained for consumer-facing reference.
 * `RestrictedGL3OnPathOnlyTensor` (research-scope `Prop`) — the
   obligation that GL³ tensor isomorphisms preserve path/padding
   cardinality.
@@ -325,18 +322,6 @@ theorem pathOnlyStructureTensor_isAssociative
   rw [h_lhs, h_rhs]
   exact encoder_assoc_path m adj i' j' k' l' hi'_path hj'_path hk'_path hl'_path
 
-/-- **Sub-task A.4.2 — Path-only-tensor associativity (alias).**
-
-`PathOnlyTensorIsAssociative m adj` is the predicate-level form
-of `IsAssociativeTensor (pathOnlyStructureTensor m adj)`; it now
-folds directly to `pathOnlyStructureTensor_isAssociative` and is
-no longer a research-scope obligation.  Retained as a
-consumer-facing alias under the original name. -/
-theorem PathOnlyTensorIsAssociative_proof
-    (m : ℕ) (adj : Fin m → Fin m → Bool) :
-    IsAssociativeTensor (pathOnlyStructureTensor m adj) :=
-  pathOnlyStructureTensor_isAssociative m adj
-
 /-- **Path-only-tensor index-quadruple is path-algebra.**
 
 For every quadruple of `Fin (pathSlotIndices m adj).card`-indices,
@@ -344,10 +329,9 @@ the underlying `Fin (dimGQ m)`-values obtained via the
 `(pathSlotIndices m adj).equivFin.symm` bijection are all
 path-algebra slots (`isPathAlgebraSlot m adj _ = true`).
 
-This is the **path-algebra membership precondition** that the
-`Finset.sum_equiv`-re-indexed associativity identity for
-`pathOnlyStructureTensor` consumes; the re-indexed associativity
-itself is the research-scope `PathOnlyTensorIsAssociative` Prop.
+This is the **path-algebra membership precondition** that
+`pathOnlyStructureTensor_isAssociative` consumes when invoking
+`encoder_assoc_path` on the underlying `Fin (dimGQ m)`-values.
 The name describes the content (path-algebra membership of the
 index image), not the consumer (`encoder_assoc_path` inheritance) —
 a pre-audit version named this `_inherits_encoder_assoc` which
@@ -372,6 +356,38 @@ theorem pathOnlyStructureTensor_index_is_path_algebra
   all_goals
     rcases (pathSlotIndices m adj).equivFin.symm _ with ⟨val, hmem⟩
     exact (mem_pathSlotIndices_iff m adj val).mp hmem
+
+/-- **Path-only-tensor diagonal value is in `{0, 1}`.**
+
+For any diagonal index `i : Fin (pathSlotIndices m adj).card`, the
+path-only structure tensor's diagonal value
+`pathOnlyStructureTensor m adj i i i` is either `0` (the index
+corresponds to a present-arrow slot of the encoder) or `1` (the
+index corresponds to a vertex slot).
+
+**Proof.** The path-only tensor's diagonal at index `i` equals the
+encoder's diagonal at the underlying `Fin (dimGQ m)`-slot
+`(pathSlotIndices m adj).equivFin.symm i`, which is a path-algebra
+slot.  By `encoder_diag_at_path_in_zero_one` (Sub-task A.1.1), the
+encoder's diagonal value at a path-algebra slot is either `0` or `1`.
+
+This directly transfers the encoder's path-algebra diagonal
+classification to the path-only structure tensor.  Phase 5's
+adjacency-recovery argument (research-scope) consumes this
+distinction to separate vertex slots (diagonal `1`) from
+present-arrow slots (diagonal `0`) within the path-only image. -/
+theorem pathOnlyStructureTensor_diagonal_in_zero_one
+    (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (i : Fin (pathSlotIndices m adj).card) :
+    pathOnlyStructureTensor m adj i i i = 0 ∨
+    pathOnlyStructureTensor m adj i i i = 1 := by
+  rw [pathOnlyStructureTensor_apply]
+  -- The underlying slot is path-algebra (membership in pathSlotIndices).
+  have h_path : isPathAlgebraSlot m adj
+      ((pathSlotIndices m adj).equivFin.symm i).val = true :=
+    (mem_pathSlotIndices_iff m adj _).mp
+      ((pathSlotIndices m adj).equivFin.symm i).property
+  exact encoder_diag_at_path_in_zero_one m adj _ h_path
 
 -- ============================================================================
 -- Sub-task A.4.3 — Restricted GL³ action (research-scope Prop).
