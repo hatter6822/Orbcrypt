@@ -4191,3 +4191,97 @@ example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
   gl3_induces_algEquiv_on_pathSubspace m h_research adj₁ adj₂ g hg
 
 end AlgEquivFromGL3NonVacuity
+
+-- ============================================================================
+-- ## §15.19 R-TI Phase 3 — Final Prop discharge (audit 2026-04-28).
+-- ============================================================================
+
+-- A.1.5: Encoder unit-compatibility identity (prerequisite for Manin).
+#print axioms Orbcrypt.GrochowQiao.encoder_unit_compatibility
+
+-- A.5.1: Manin abstract algebra structure tensor.
+#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor
+#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor_apply
+#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor_recovers_mul
+
+-- A.5.2: Basis-change relation predicate (with identity-case witness).
+#print axioms Orbcrypt.GrochowQiao.Manin.IsBasisChangeRelated
+#print axioms Orbcrypt.GrochowQiao.Manin.IsBasisChangeRelated.id
+
+-- A.3.1: Padding trivial-algebra identity.
+#print axioms Orbcrypt.GrochowQiao.encoder_padding_trivial_algebra
+
+-- A.3.2: Padding-rank invariant.
+#print axioms Orbcrypt.GrochowQiao.IsConcentratedSlot
+#print axioms Orbcrypt.GrochowQiao.paddingRankInvariant
+#print axioms Orbcrypt.GrochowQiao.paddingRankInvariant_eq_paddingSlotIndices_card
+
+-- A.5.3: Manin tensor-stabilizer theorem (algebra hom).
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_basis
+#print axioms Orbcrypt.GrochowQiao.Manin.coefficient_match_of_basisChange
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_mul_basis
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_mul
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_one
+#print axioms Orbcrypt.GrochowQiao.Manin.IsUnitCompatible
+#print axioms Orbcrypt.GrochowQiao.Manin.algHomOfTensorIso
+#print axioms Orbcrypt.GrochowQiao.Manin.algHomOfTensorIso_basis
+
+-- A.5.4: AlgEquiv upgrade.
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_left_inv
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_right_inv
+#print axioms Orbcrypt.GrochowQiao.Manin.linearEquivOfBasisChange
+#print axioms Orbcrypt.GrochowQiao.Manin.algEquivOfTensorIso
+#print axioms Orbcrypt.GrochowQiao.Manin.algEquivOfTensorIso_basis
+
+-- A.6.3: Discharge bridges.
+#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermFun_mem_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermAlgEquiv_image_subset_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermAlgEquiv_image_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.Discharge.gl3InducesAlgEquivOnPathSubspace_of_rigidity
+#print axioms Orbcrypt.GrochowQiao.Discharge.isPresentArrowSlot_liftedSigma
+#print axioms Orbcrypt.GrochowQiao.Discharge.presentArrowSlotIndices_card_eq_of_graphIso
+#print axioms Orbcrypt.GrochowQiao.Discharge.restrictedGL3OnPathOnlyTensor_of_rigidity
+
+-- Top-level unified discharge under GrochowQiaoRigidity.
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_unified_discharge_under_rigidity
+
+namespace Phase3DischargeNonVacuity
+
+open Orbcrypt
+open GrochowQiao
+
+/-- **Phase 3 discharge non-vacuity: identity matrix is basis-change-related to itself.**
+
+The identity matrix gives an `IsBasisChangeRelated` witness when both
+algebras agree (here exemplified at `Bool` index over `ℚ`-trivial
+self-tensor). -/
+example (T : Bool → Bool → Bool → ℚ) :
+    Manin.IsBasisChangeRelated T T (1 : Matrix Bool Bool ℚ)
+                                   (1 : Matrix Bool Bool ℚ) :=
+  Manin.IsBasisChangeRelated.id T
+
+/-- **Phase 3 discharge non-vacuity: padding-rank invariant equals
+padding-slot count for the empty graph at `m = 2`.** -/
+example :
+    paddingRankInvariant
+      (grochowQiaoEncode 2 (fun _ _ => false)) =
+      (paddingSlotIndices 2 (fun _ _ => false)).card :=
+  paddingRankInvariant_eq_paddingSlotIndices_card 2 (fun _ _ => false)
+
+/-- **Phase 3 discharge non-vacuity: from `GrochowQiaoRigidity`, both
+Phase 3 Props discharge.** -/
+example (h_rigidity : GrochowQiaoRigidity) (m : ℕ) :
+    GL3InducesAlgEquivOnPathSubspace m ∧ RestrictedGL3OnPathOnlyTensor m :=
+  grochowQiao_phase3_discharge_under_rigidity h_rigidity m
+
+/-- **Phase 3 discharge non-vacuity: unified discharge (Karp + both
+Phase 3 Props) under `GrochowQiaoRigidity`.** -/
+example (h_rigidity : GrochowQiaoRigidity) :
+    @GIReducesToTI ℚ _ ∧
+    (∀ m, GL3InducesAlgEquivOnPathSubspace m) ∧
+    (∀ m, RestrictedGL3OnPathOnlyTensor m) :=
+  grochowQiao_unified_discharge_under_rigidity h_rigidity
+
+end Phase3DischargeNonVacuity
