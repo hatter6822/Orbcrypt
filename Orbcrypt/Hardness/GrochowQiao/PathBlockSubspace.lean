@@ -42,14 +42,15 @@ lemmas do not commit to a specific π.
 
 ## Layer 2.2 — Path-block matrix (parametric in π)
 
-* `permMatrixOf m π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ` —
-  the permutation matrix for an arbitrary slot permutation
-  `π : Equiv.Perm (Fin (dimGQ m))`, built directly from Mathlib's
-  `Equiv.Perm.permMatrix`. (`PermMatrix.lean` only exposes
-  `liftedSigmaMatrix m σ` for *vertex* permutations
-  `σ : Equiv.Perm (Fin m)` lifted through `liftedSigma m σ`; Phase 2
-  needs a permutation-matrix wrapper at the slot level, so we
-  introduce `permMatrixOf` directly here.)
+* `permMatrixOf` lives in `PermMatrix.lean` (alongside
+  `liftedSigmaMatrix`); it is the slot-level permutation-matrix
+  wrapper for an arbitrary `π : Equiv.Perm (Fin (dimGQ m))`. The
+  bridge `liftedSigmaMatrix_eq_permMatrixOf` exhibits
+  `liftedSigmaMatrix m σ = permMatrixOf m (liftedSigma m σ)` as a
+  `rfl`-level identification — both primitives unfold to
+  `(permutation).permMatrix ℚ`. Phase 2 uses `permMatrixOf` because
+  the slot permutation π that Phase 3 derives from algebra-iso
+  structure does not arise as a vertex-permutation lift.
 * `pathBlockMatrix m g π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ`
   — defined as `g.1.val * permMatrixOf m π⁻¹`. The `permMatrixOf m π⁻¹`
   factor "un-permutes" the columns: when `π` is the partition-
@@ -111,42 +112,13 @@ open scoped Matrix
 universe u
 
 -- ============================================================================
--- Layer 2.1.0 — Permutation-matrix wrapper for arbitrary slot permutations.
--- ============================================================================
-
-/-- Permutation matrix for an arbitrary slot permutation
-`π : Equiv.Perm (Fin (dimGQ m))`. Built directly from Mathlib's
-`Equiv.Perm.permMatrix`, parallel to `liftedSigmaMatrix m σ` (which
-specialises to `liftedSigma m σ` for vertex permutations σ).
-
-This lets Phase 2's `pathBlockMatrix` accept the slot permutation π
-directly, without going through `liftedSigma`. -/
-noncomputable def permMatrixOf (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m))) :
-    Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ :=
-  π.permMatrix ℚ
-
-/-- Explicit entry formula: `permMatrixOf m π i j = 1` iff `π i = j`,
-else `0`. Mirrors `liftedSigmaMatrix_apply`. -/
-theorem permMatrixOf_apply (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m)))
-    (i j : Fin (dimGQ m)) :
-    permMatrixOf m π i j = (if π i = j then (1 : ℚ) else 0) := by
-  unfold permMatrixOf
-  simp [Equiv.Perm.permMatrix, PEquiv.toMatrix_apply,
-    Equiv.toPEquiv_apply]
-
-/-- Determinant non-vanishing for `permMatrixOf` — same proof structure
-as `liftedSigmaMatrix_det_ne_zero`. -/
-theorem permMatrixOf_det_ne_zero (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m))) :
-    (permMatrixOf m π).det ≠ 0 := by
-  unfold permMatrixOf
-  rw [Matrix.det_permutation]
-  have h := Int.isUnit_iff.mp ((Equiv.Perm.sign π).isUnit)
-  rcases h with h | h
-  · rw [h]; norm_num
-  · rw [h]; norm_num
-
--- ============================================================================
--- Layer 2.1.1 — Path-block and padding subspaces (defined by support).
+-- Layer 2.1 — Path-block and padding subspaces (defined by support).
+--
+-- The slot-level permutation-matrix wrapper `permMatrixOf` and its
+-- `_apply` / `_det_ne_zero` lemmas were relocated to `PermMatrix.lean`
+-- (post-second-audit consolidation): `permMatrixOf` is foundational
+-- permutation-matrix infrastructure, parallel to `liftedSigmaMatrix`,
+-- and the bridge `liftedSigmaMatrix_eq_permMatrixOf` lives there.
 -- ============================================================================
 
 /-- The **path-block subspace** of `Fin (dimGQ m) → ℚ`: vectors that

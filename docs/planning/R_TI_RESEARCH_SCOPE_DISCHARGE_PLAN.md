@@ -570,6 +570,42 @@ The construction's spanning side is already established via the
 new `pathBlockSubspace_eq_indicator_span` theorem; only the linear-
 independence side remains. Tracked as an optional Phase-2 follow-up.
 
+**Third audit pass (2026-04-28, consolidation refactor).** The
+second audit pass weakened a docstring to match the existing code
+where it claimed `liftedSigmaMatrix` already accepted arbitrary
+`Equiv.Perm (Fin (dimGQ m))`. A follow-up review observed that the
+cleaner architectural fix is to **implement the stronger structure**
+rather than weaken the documentation:
+
+1. **Relocated** `permMatrixOf`, `permMatrixOf_apply`, and
+   `permMatrixOf_det_ne_zero` from `PathBlockSubspace.lean` to
+   `PermMatrix.lean` (new section `B.3`). Both primitives now live
+   alongside `liftedSigmaMatrix` as foundational permutation-matrix
+   infrastructure.
+
+2. **Added** `liftedSigmaMatrix_eq_permMatrixOf` (a `@[simp]
+   rfl`-level identification): `liftedSigmaMatrix m σ = permMatrixOf
+   m (liftedSigma m σ)`. This makes the architectural relationship
+   between the two primitives machine-checkable.
+
+3. The two definitions remain distinct (preserving the "lifted from a
+   vertex perm σ" semantic information in `liftedSigmaMatrix`'s
+   name; `permMatrixOf` is the generic slot-level wrapper) but are
+   now (a) co-located in `PermMatrix.lean`, (b) bridged by the
+   `rfl`-level lemma, and (c) `@[simp]`-rewritable to each other.
+
+Module-size posture: `PermMatrix.lean` 264 → 335 LOC (+71),
+`PathBlockSubspace.lean` 926 → 908 LOC (-18). Public declaration
+count unchanged at 46 for Phase 2 + 1 new bridge in `PermMatrix.lean`.
+Audit-script entries: `permMatrixOf` family relocated to `§ 15.10`
+Track B.3 of the audit script (alongside `liftedSigmaMatrix`); new
+entry for `liftedSigmaMatrix_eq_permMatrixOf` added there.
+
+Total audit-script declarations exercised: 834 → 835 (+1).
+Mathematical content unchanged — definitions of `permMatrixOf` and
+its lemmas are byte-identical to the pre-refactor versions; only the
+file location changed.
+
 **Goal.** Build the linear-algebra infrastructure needed by
 Phase 3: given a permutation `π : Equiv.Perm (Fin (dimGQ m))`
 (supplied as a free parameter; Phase 3 fixes it), construct

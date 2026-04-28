@@ -2340,6 +2340,12 @@ end PetrankRothLayer3NonVacuity
 #print axioms Orbcrypt.GrochowQiao.liftedSigmaMatrix_det_ne_zero
 #print axioms Orbcrypt.GrochowQiao.liftedSigmaGL
 #print axioms Orbcrypt.GrochowQiao.liftedSigmaGL_val
+-- B.3 — `permMatrixOf` slot-permutation matrix wrapper + bridge identity
+-- (relocated from PathBlockSubspace.lean in the post-second-audit refactor).
+#print axioms Orbcrypt.GrochowQiao.permMatrixOf
+#print axioms Orbcrypt.GrochowQiao.permMatrixOf_apply
+#print axioms Orbcrypt.GrochowQiao.permMatrixOf_det_ne_zero
+#print axioms Orbcrypt.GrochowQiao.liftedSigmaMatrix_eq_permMatrixOf
 #print axioms Orbcrypt.GrochowQiao.matMulTensor1_permMatrix
 #print axioms Orbcrypt.GrochowQiao.matMulTensor2_permMatrix
 #print axioms Orbcrypt.GrochowQiao.matMulTensor3_permMatrix
@@ -3561,8 +3567,11 @@ end EncoderSlabEvalNonVacuity
 -- ## §15.17 R-TI rigidity discharge — Phase 2: Path-block linear restriction.
 -- ============================================================================
 --
--- Layer 2.1.0: permutation-matrix wrapper for arbitrary slot permutations
--- (`permMatrixOf`, `permMatrixOf_apply`, `permMatrixOf_det_ne_zero`).
+-- Layer 2.1.0 (relocated to `PermMatrix.lean` post-second-audit):
+-- the `permMatrixOf` family of slot-permutation matrix wrappers and the
+-- bridge identity `liftedSigmaMatrix_eq_permMatrixOf` connecting them
+-- to `liftedSigmaMatrix`. The corresponding `#print axioms` entries are
+-- in `§ 15.10` Track B.3 above.
 --
 -- Layer 2.1.1–2.1.3: path-block + padding subspaces (defined by support),
 -- indicator-vector membership lemmas, the indicator-span characterisation
@@ -3607,11 +3616,13 @@ end EncoderSlabEvalNonVacuity
 --
 -- See `Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` for the full
 -- definitions and proofs.
+--
+-- NOTE: The `permMatrixOf` family (`permMatrixOf`, `permMatrixOf_apply`,
+-- `permMatrixOf_det_ne_zero`) was relocated to `PermMatrix.lean` in the
+-- post-second-audit consolidation; the corresponding `#print axioms`
+-- entries are now in section B.3 above (alongside `liftedSigmaMatrix`).
 -- ============================================================================
 
-#print axioms Orbcrypt.GrochowQiao.permMatrixOf
-#print axioms Orbcrypt.GrochowQiao.permMatrixOf_apply
-#print axioms Orbcrypt.GrochowQiao.permMatrixOf_det_ne_zero
 #print axioms Orbcrypt.GrochowQiao.pathBlockSubspace
 #print axioms Orbcrypt.GrochowQiao.mem_pathBlockSubspace_iff
 #print axioms Orbcrypt.GrochowQiao.paddingSubspace

@@ -5620,6 +5620,104 @@ the indicator family; the spanning is `pathBlockSubspace_eq_indicator_span`
 plumbing (~50–80 LOC). Tracked as an optional Phase-2 follow-up;
 Phase 3 does not block on it.
 
+R-TI Phase 2 — Third audit pass (2026-04-28, post-second-audit
+consolidation refactor). The second audit pass weakened a docstring
+to match the existing code where it claimed `liftedSigmaMatrix`
+already accepted arbitrary `Equiv.Perm (Fin (dimGQ m))`. A follow-up
+review observed that the cleaner architectural fix is to **implement
+the stronger structure** rather than weaken the documentation:
+co-locate `permMatrixOf` (the foundational slot-permutation matrix
+wrapper) alongside `liftedSigmaMatrix` in `PermMatrix.lean`, and
+exhibit the bridge identity that connects them.
+
+**Refactor (third audit pass).**
+
+1. **Relocated** `permMatrixOf`, `permMatrixOf_apply`, and
+   `permMatrixOf_det_ne_zero` from `PathBlockSubspace.lean` to
+   `PermMatrix.lean` (new section `B.3 — permMatrixOf` between the
+   existing `B.2` determinant section and the `B.4` axis-1 collapse
+   section). Both primitives now live alongside `liftedSigmaMatrix`
+   and `liftedSigmaGL` as foundational permutation-matrix
+   infrastructure.
+
+2. **Added** `liftedSigmaMatrix_eq_permMatrixOf` to `PermMatrix.lean`:
+   ```lean
+   @[simp] theorem liftedSigmaMatrix_eq_permMatrixOf (m : ℕ)
+       (σ : Equiv.Perm (Fin m)) :
+       liftedSigmaMatrix m σ = permMatrixOf m (liftedSigma m σ) := rfl
+   ```
+   This is `rfl`-level (both sides unfold to `(permutation).permMatrix ℚ`)
+   and machine-checks the architectural relationship between the two
+   primitives. The `@[simp]` annotation lets simp rewrite
+   `liftedSigmaMatrix` into the more general `permMatrixOf` form when
+   useful.
+
+3. **Updated** `PathBlockSubspace.lean`'s Layer 2.2 docstring to
+   describe `permMatrixOf` as a foundational primitive in
+   `PermMatrix.lean` (no longer redefining it locally). The Layer
+   2.1.0 section comment in `PathBlockSubspace.lean` now points to
+   `PermMatrix.lean` for the relocated declarations.
+
+4. **Updated** `scripts/audit_phase_16.lean`:
+   * Moved `#print axioms` entries for `permMatrixOf`,
+     `permMatrixOf_apply`, `permMatrixOf_det_ne_zero` from the
+     Phase-2 section (`§ 15.17`) to the Track-B section (`§ 15.10`)
+     — the section listing the rest of the `PermMatrix.lean`
+     declarations.
+   * Added `#print axioms` entry for the new bridge lemma
+     `liftedSigmaMatrix_eq_permMatrixOf` in the same section.
+   * The Phase-2 layer summary now points readers to `§ 15.10` Track
+     B.3 for the relocated declarations.
+
+**Why this is the better design choice.**
+
+The original docstring's spirit was "use the existing API — both
+primitives produce the same matrix". The first audit pass produced
+*two clearly-named primitives in two different files*; the second
+audit pass *documented* this honestly. The third audit pass
+**implements** the original architectural intent: foundational
+permutation-matrix primitives co-locate in `PermMatrix.lean`, with
+an explicit `rfl`-level bridge that makes their relationship
+machine-checkable.
+
+The two definitions remain distinct (`liftedSigmaMatrix` carries
+the "lifted from a vertex perm σ" semantic information in its
+name; `permMatrixOf` is the generic slot-level wrapper) but the
+relationship is now:
+* Architecturally — both live in `PermMatrix.lean`.
+* Mathematically — bridged by `liftedSigmaMatrix_eq_permMatrixOf`.
+* Practically — the `@[simp]` bridge lets simp unfold either form
+  to the other.
+
+This avoids both the awkwardness of having `permMatrixOf`
+isolated in `PathBlockSubspace.lean` (where it's not Phase-2-
+specific) and the false unification of merging `liftedSigmaMatrix`
+into `permMatrixOf` (which would lose the "lifted" semantic
+information).
+
+**Module-size posture (post-refactor).**
+
+* `PermMatrix.lean`: 264 → 335 LOC (+71 LOC: `permMatrixOf` family +
+  bridge lemma + section header + accompanying docstrings).
+* `PathBlockSubspace.lean`: 926 → 908 LOC (-18 LOC: removed
+  declarations partially offset by the explanatory section comment
+  pointing at the new home).
+
+**Public-declaration count (unchanged at 46 for Phase 2 file +1
+new bridge in `PermMatrix.lean`).** The Phase-2 file's effective
+public surface is still 43 declarations (46 - 3 relocated); the
+refactor adds 1 new declaration (`liftedSigmaMatrix_eq_permMatrixOf`)
+to the project. Total audit-script declarations exercised: 834 →
+835 (+1).
+
+**Verification:**
+* `lake build`: 3,406 jobs, zero warnings, zero errors.
+* Audit script: 835 declarations exercised (675 + 160), all on the
+  standard Lean trio. Zero `sorryAx`, zero custom axioms.
+* Mathematical content unchanged: definitions of `permMatrixOf` and
+  its lemmas are byte-identical to the pre-refactor versions; only
+  the file location changed.
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D

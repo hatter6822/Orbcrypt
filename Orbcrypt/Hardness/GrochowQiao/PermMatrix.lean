@@ -119,6 +119,78 @@ noncomputable def liftedSigmaGL (m : ℕ) (σ : Equiv.Perm (Fin m)) :
     (liftedSigmaGL m σ).val = liftedSigmaMatrix m σ := rfl
 
 -- ============================================================================
+-- B.3 — `permMatrixOf` — slot-permutation matrix wrapper (post-audit relocation).
+--
+-- `liftedSigmaMatrix m σ` is hard-wired to vertex permutations
+-- `σ : Equiv.Perm (Fin m)` lifted through `liftedSigma m σ`. Phase 2's
+-- path-block matrix construction needs the same matrix wrapper for an
+-- *arbitrary* slot permutation `π : Equiv.Perm (Fin (dimGQ m))` derived
+-- from algebra-iso structure rather than a graph isomorphism.
+-- `permMatrixOf m π` is that generic wrapper.
+--
+-- The two primitives are related by `liftedSigmaMatrix_eq_permMatrixOf`
+-- (a `rfl`-level identification): `liftedSigmaMatrix m σ` is precisely
+-- `permMatrixOf m (liftedSigma m σ)`. They are kept as separate
+-- definitions for naming clarity (the "lifted" prefix on
+-- `liftedSigmaMatrix` carries information about the source σ being a
+-- *vertex* permutation lifted to a slot permutation).
+-- ============================================================================
+
+/-- The permutation matrix corresponding to an arbitrary slot
+permutation `π : Equiv.Perm (Fin (dimGQ m))`. Built directly from
+Mathlib's `Equiv.Perm.permMatrix`.
+
+This is the generic slot-level wrapper that callers reach for when the
+slot permutation does *not* arise as `liftedSigma m σ` from a vertex
+permutation `σ`. Phase 2's `pathBlockMatrix` is the primary consumer:
+the partition-preserving slot permutation π that Phase 3 derives lives
+directly in `Equiv.Perm (Fin (dimGQ m))`, with no underlying vertex-
+permutation source to lift through.
+
+For the relationship to `liftedSigmaMatrix`, see
+`liftedSigmaMatrix_eq_permMatrixOf` below. -/
+noncomputable def permMatrixOf (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m))) :
+    Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ :=
+  π.permMatrix ℚ
+
+/-- Explicit entry formula: `permMatrixOf m π i j = 1` iff `π i = j`,
+else `0`. Mirrors `liftedSigmaMatrix_apply`. -/
+theorem permMatrixOf_apply (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m)))
+    (i j : Fin (dimGQ m)) :
+    permMatrixOf m π i j = (if π i = j then (1 : ℚ) else 0) := by
+  unfold permMatrixOf
+  simp [Equiv.Perm.permMatrix, PEquiv.toMatrix_apply,
+    Equiv.toPEquiv_apply]
+
+/-- Determinant non-vanishing for `permMatrixOf` — same proof structure
+as `liftedSigmaMatrix_det_ne_zero`. The determinant of a permutation
+matrix is the sign of the permutation, which is `±1` ≠ 0 in ℚ. -/
+theorem permMatrixOf_det_ne_zero (m : ℕ) (π : Equiv.Perm (Fin (dimGQ m))) :
+    (permMatrixOf m π).det ≠ 0 := by
+  unfold permMatrixOf
+  rw [Matrix.det_permutation]
+  have h := Int.isUnit_iff.mp ((Equiv.Perm.sign π).isUnit)
+  rcases h with h | h
+  · rw [h]; norm_num
+  · rw [h]; norm_num
+
+/-- **Bridge identity:** `liftedSigmaMatrix m σ` is the special case of
+`permMatrixOf m π` at `π = liftedSigma m σ`. Both unfold to
+`(permutation).permMatrix ℚ` applied to the appropriate slot
+permutation, so the equation is `rfl`.
+
+This identification is what makes the two-primitive design coherent —
+Phase 2's `pathBlockMatrix` consumes `permMatrixOf` directly, while
+R-TI Layer T3.6's GL³ matrix-action verification consumes
+`liftedSigmaMatrix` (where the input is specifically a vertex-
+permutation lift). Both consumers agree on the same underlying
+permutation matrix when the slot permutation has the form
+`liftedSigma m σ`. -/
+@[simp] theorem liftedSigmaMatrix_eq_permMatrixOf (m : ℕ)
+    (σ : Equiv.Perm (Fin m)) :
+    liftedSigmaMatrix m σ = permMatrixOf m (liftedSigma m σ) := rfl
+
+-- ============================================================================
 -- B.4 — Single-axis collapse (axis 1).
 -- ============================================================================
 
