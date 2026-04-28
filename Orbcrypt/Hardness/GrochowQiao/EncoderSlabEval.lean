@@ -352,13 +352,6 @@ def slotOfArrow (m : ℕ) (q : QuiverArrow m) : Fin (dimGQ m) :=
   unfold slotOfArrow
   rw [Equiv.apply_symm_apply, slotToArrow_arrowToSlot]
 
-/-- Round-trip on the other side: `slotOfArrow` of `slotToArrow` recovers
-the original slot index. -/
-@[simp] theorem slotOfArrow_slotToArrow_slotEquiv (m : ℕ) (a : Fin (dimGQ m)) :
-    slotOfArrow m (slotToArrow m (slotEquiv m a)) = a := by
-  unfold slotOfArrow
-  rw [arrowToSlot_slotToArrow, Equiv.symm_apply_apply]
-
 /-- The slot index assigned to an arrow basis element matches a free
 slot index `a` exactly when `slotToArrow (slotEquiv m a) = q`. -/
 theorem eq_slotOfArrow_iff {m : ℕ} (a : Fin (dimGQ m)) (q : QuiverArrow m) :

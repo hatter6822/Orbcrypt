@@ -219,15 +219,15 @@ After all six phases land:
 
 ---
 
-## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27, audited 2026-04-27 + 2026-04-28)**
+## Phase 1 — Encoder structural foundation (~600 LOC) — **COMPLETE (2026-04-27, audited 2026-04-27 + 2026-04-28 ×2)**
 
 **Status.** Landed in `Orbcrypt/Hardness/GrochowQiao/EncoderSlabEval.lean`
-(981 LOC after both post-landing audit passes).  All three layers are
+(974 LOC after three post-landing audit passes).  All three layers are
 unconditional; every public declaration depends only on the standard
 Lean trio (`propext`, `Classical.choice`, `Quot.sound`).  Full
 `lake build` succeeds (3405 jobs, zero warnings, zero errors).  Phase
-16 audit script's `#print axioms` total covers 19 Phase-1 declarations
-plus 13 non-vacuity `example` bindings under
+16 audit script's `#print axioms` covers 19 Phase-1 declarations plus
+16 non-vacuity `example` bindings under
 `§ 15.16 EncoderSlabEvalNonVacuity`, all at `m ∈ {1, 2}` with a
 non-trivial path-multiplication pattern.  `lakefile.lean` bumped from
 `0.1.21` to `0.1.22` for the new public-API module.
@@ -281,6 +281,26 @@ four substantive issues, all fixed:
    names and statements, plus a new "distinguishability witness"
    test combining vertex-slot `≥ 1` with present-arrow `= 0` on
    the complete graph at `m = 2`.
+
+**Third post-landing audit pass (2026-04-28).** Targeted re-audit
+surfaced one remaining dead-code issue, fixed in this pass:
+
+* **Dead-code `@[simp]` round-trip lemma.** The public `@[simp]`
+  lemma `slotOfArrow_slotToArrow_slotEquiv` (the symmetric
+  round-trip identity `slotOfArrow ∘ slotToArrow ∘ slotEquiv =
+  id`) was unused both in the file and elsewhere — only its
+  definition and the audit script's `#print axioms` line referenced
+  it.  Per CLAUDE.md's "If you are certain that something is unused,
+  you can delete it completely" + "Don't design for hypothetical
+  future requirements" rules, removed.  Phase 2 / 3 can re-add if
+  a downstream proof requires the symmetric round-trip; the
+  in-use `slotToArrow_slotEquiv_slotOfArrow` (the other direction)
+  remains.
+
+* Added a substantive non-vacuity test for `eq_slotOfArrow_iff`
+  (the iff-form of the slot/arrow correspondence, used internally
+  by the LHS / RHS closed-form proofs but lacking a direct audit-
+  script test).
 
 **Goal.** Establish per-slot evaluation lemmas for the
 encoder, derived from the actual code's structure-tensor

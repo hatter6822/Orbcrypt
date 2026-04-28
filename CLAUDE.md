@@ -4966,9 +4966,8 @@ structural foundation, EncoderSlabEval) has been completed:
     `@[simp]`) — mutual inversion.
   * `slotOfArrow m : QuiverArrow m → Fin (dimGQ m)` — the unique slot
     index assigned to a basis arrow (`(slotEquiv).symm ∘ arrowToSlot`).
-  * `slotToArrow_slotEquiv_slotOfArrow`,
-    `slotOfArrow_slotToArrow_slotEquiv` (both `@[simp]`) — round-trip
-    identities through `slotEquiv`.
+  * `slotToArrow_slotEquiv_slotOfArrow` (`@[simp]`) — round-trip
+    identity through `slotEquiv`.
   * `eq_slotOfArrow_iff` — characteristic identity
     `a = slotOfArrow m q ↔ slotToArrow m (slotEquiv m a) = q`.
   * `slotOfArrow_pathMul_isPathAlgebra` — **path-algebra closure**:
@@ -5154,6 +5153,26 @@ structural foundation, EncoderSlabEval) has been completed:
   +36 from adding the diagonal-trace theorems and
   `encoder_nonneg` helper, minus the removed
   `encoder_double_sum_at_present_arrow_slot` proof).
+
+- **Third post-landing audit pass (2026-04-28).** Targeted
+  re-audit surfaced one remaining issue:
+  1. **Dead-code `@[simp]` lemma `slotOfArrow_slotToArrow_slotEquiv`**
+     — defined as the round-trip identity
+     `slotOfArrow m (slotToArrow m (slotEquiv m a)) = a`, parallel
+     to the in-use `slotToArrow_slotEquiv_slotOfArrow`.  The
+     symmetric lemma had no consumers in the file or anywhere in
+     the codebase.  Per `CLAUDE.md`'s "Don't design for
+     hypothetical future requirements" + "If you are certain that
+     something is unused, you can delete it completely" rules,
+     this `@[simp]` lemma was removed.  Phase 2 / 3 can re-add if
+     a downstream proof needs the round-trip.
+
+  Added a substantive non-vacuity test for `eq_slotOfArrow_iff`
+  (which IS used internally by the LHS / RHS closed-form proofs
+  but lacked a direct test in the audit script).
+
+  Module size after third audit: 974 LOC (down from 981 — net
+  -7 from removing the unused round-trip lemma and its docstring).
 
 - **`Orbcrypt.lean`** root file extended with a new import
   `Orbcrypt.Hardness.GrochowQiao.EncoderSlabEval`.

@@ -3229,7 +3229,6 @@ end RigidityNonVacuity
 #print axioms Orbcrypt.GrochowQiao.arrowToSlot_slotToArrow
 #print axioms Orbcrypt.GrochowQiao.slotOfArrow
 #print axioms Orbcrypt.GrochowQiao.slotToArrow_slotEquiv_slotOfArrow
-#print axioms Orbcrypt.GrochowQiao.slotOfArrow_slotToArrow_slotEquiv
 #print axioms Orbcrypt.GrochowQiao.eq_slotOfArrow_iff
 #print axioms Orbcrypt.GrochowQiao.slotOfArrow_pathMul_isPathAlgebra
 #print axioms Orbcrypt.GrochowQiao.encoder_at_vertex_vertex_vertex_eq_one
@@ -3375,6 +3374,18 @@ slotEquiv`. -/
 example (m : ℕ) (q : QuiverArrow m) :
     slotToArrow m (slotEquiv m (slotOfArrow m q)) = q :=
   slotToArrow_slotEquiv_slotOfArrow m q
+
+/-- **Layer 1.2.0 helper non-vacuity witness — `eq_slotOfArrow_iff`
+distinguishes a slot index from a non-matching arrow.**
+
+At `m = 2`, the slot index `(slotEquiv 2).symm (.vertex 0)` corresponds
+to `slotOfArrow 2 (.id 0)` (the vertex idempotent at vertex 0); the
+iff lemma's forward direction proves `slotToArrow (slotEquiv _) = .id 0`. -/
+example :
+    ((slotEquiv 2).symm (.vertex 0) : Fin (dimGQ 2)) = slotOfArrow 2 (.id 0) := by
+  rw [eq_slotOfArrow_iff]
+  -- slotToArrow (slotEquiv ((slotEquiv 2).symm (.vertex 0))) = .id 0.
+  simp [Equiv.apply_symm_apply, slotToArrow]
 
 /-- **Layer 1.2.0 helper non-vacuity witness — path-algebra closure
 under `pathMul`.**
