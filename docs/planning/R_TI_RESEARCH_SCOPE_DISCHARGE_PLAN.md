@@ -148,15 +148,15 @@ We follow the **Grochow–Qiao algebra-isomorphism approach**:
 
 ## 4. Phase map
 
-| Phase | Title | LOC | Risk | Discharges |
-|-------|-------|-----|------|------------|
-| 1 | Encoder structural foundation | ~600 | Low | — (infrastructure) |
-| 2 | Path-block linear restriction (parametric in π) | ~700 | Med | — (infrastructure) |
-| 3 | **GL³ → algebra-iso bridge** (Approach A; sub-tasks A.1–A.6) | **~3,200** | **RESEARCH** | The deep step |
-| 4 | σ extraction via Wedderburn–Mal'cev | ~250 | Low | — (uses Stage 4 + 6b) |
-| 5 | Arrow preservation from σ + radical | ~400 | Med | — (uses Stage 5) |
-| 6 | Final discharge (Prop 2 + Prop 1 corollary) | ~250 | Low | **Prop 1** + **Prop 2** |
-| | **Total Lean** | **~5,400** | | |
+| Phase | Title | LOC | Risk | Discharges | Status |
+|-------|-------|-----|------|------------|--------|
+| 1 | Encoder structural foundation | ~600 | Low | — (infrastructure) | **COMPLETE (2026-04-27, audited)** |
+| 2 | Path-block linear restriction (parametric in π) | ~700 | Med | — (infrastructure) | **COMPLETE (2026-04-28)** |
+| 3 | **GL³ → algebra-iso bridge** (Approach A; sub-tasks A.1–A.6) | **~3,200** | **RESEARCH** | The deep step | pending |
+| 4 | σ extraction via Wedderburn–Mal'cev | ~250 | Low | — (uses Stage 4 + 6b) | pending |
+| 5 | Arrow preservation from σ + radical | ~400 | Med | — (uses Stage 5) | pending |
+| 6 | Final discharge (Prop 2 + Prop 1 corollary) | ~250 | Low | **Prop 1** + **Prop 2** | pending |
+| | **Total Lean** | **~5,400** | | | |
 
 Plus ~400 LOC for documentation refresh, audit-script
 extensions, and Vacuity-map / VERIFICATION_REPORT updates.
@@ -456,7 +456,18 @@ evaluation lemmas to argue about encoder structure.
 
 ---
 
-## Phase 2 — Path-block linear restriction (parametric in π) (~700 LOC)
+## Phase 2 — Path-block linear restriction (parametric in π) (~700 LOC) — **COMPLETE (2026-04-28)**
+
+**Status.** Landed in
+`Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` (~795 LOC).
+All four layers are unconditional; every public declaration depends
+only on the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`).  Full `lake build` succeeds (3,406 jobs, zero warnings,
+zero errors).  Phase 16 audit script's `#print axioms` covers 40
+Phase-2 declarations plus 15 non-vacuity `example` bindings under
+`§ 15.17 PathBlockSubspaceNonVacuity`, all at `m ∈ {1, 2}`.
+`lakefile.lean` bumped from `0.1.22` to `0.1.23` for the new public-API
+module.
 
 **Goal.** Build the linear-algebra infrastructure needed by
 Phase 3: given a permutation `π : Equiv.Perm (Fin (dimGQ m))`

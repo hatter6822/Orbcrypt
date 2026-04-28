@@ -5199,6 +5199,184 @@ structural foundation, EncoderSlabEval) has been completed:
   5 (arrow preservation from σ + radical) use the per-slot
   evaluation lemmas to argue about encoder structure.
 
+R-TI Research-Scope Discharge — Phase 2 (Audit 2026-04-28 — Path-block
+linear restriction, parametric in π) has been completed:
+
+- **One new module.**
+  `Orbcrypt/Hardness/GrochowQiao/PathBlockSubspace.lean` (~795 LOC,
+  NEW) — linear-algebra infrastructure that **Phase 3's GL³ →
+  algebra-iso bridge** consumes. The infrastructure is **parametric in
+  a slot permutation `π : Equiv.Perm (Fin (dimGQ m))`** because
+  Phase 3 derives π from algebra-iso structure — Phase 2's lemmas do
+  not commit to a specific π. Full `lake build` succeeds across
+  3,406 jobs with zero warnings, zero errors. Every public
+  declaration depends only on the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`); zero `sorry`, zero custom
+  axioms.
+
+- **Layer 2.0 — Permutation-matrix wrapper for arbitrary slot
+  permutations (~30 LOC).**
+  * `permMatrixOf m π : Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ`
+    — built directly from Mathlib's `Equiv.Perm.permMatrix`,
+    parallel to `liftedSigmaMatrix m σ` (which specialises to vertex
+    permutations). Lets Phase 2's `pathBlockMatrix` accept any slot
+    permutation π directly, without going through `liftedSigma`.
+  * `permMatrixOf_apply` — explicit entry formula
+    `permMatrixOf m π i j = if π i = j then 1 else 0`.
+  * `permMatrixOf_det_ne_zero` — invertibility (sign of `π` is
+    `±1` ≠ 0 in ℚ).
+
+- **Layer 2.1 — Path-block + padding subspaces (defined by support)
+  (~200 LOC).**
+  * `pathBlockSubspace m adj : Submodule ℚ (Fin (dimGQ m) → ℚ)` —
+    vectors that vanish outside `pathSlotIndices m adj`.
+  * `paddingSubspace m adj` — symmetric for padding slots.
+  * `mem_pathBlockSubspace_iff`, `mem_paddingSubspace_iff` —
+    membership characterizations.
+  * `pi_single_mem_pathBlockSubspace` — indicator vector at a path
+    slot lies in the path-block subspace.
+  * `pi_single_mem_paddingSubspace` — symmetric for padding slots.
+  * `pathBlockSubspace_disjoint_paddingSubspace` —
+    `pathBlockSubspace ⊓ paddingSubspace = ⊥` (disjointness).
+  * `pathBlock_padding_decomposition` — every `f : Fin (dimGQ m) → ℚ`
+    splits as a path part plus a padding part.
+  * `pathBlockSubspace_sup_paddingSubspace_eq_top` —
+    `pathBlockSubspace ⊔ paddingSubspace = ⊤` (covering).
+  * `pathBlockSubspace_isCompl_paddingSubspace` — the two subspaces
+    form a direct-sum decomposition (`IsCompl`).
+
+- **Layer 2.2 — Path-block matrix (parametric in π) (~80 LOC).**
+  * `pathBlockMatrix m g π := g.1.val * permMatrixOf m π⁻¹` —
+    the first GL component of `g` composed (on the right) with the
+    inverse of π's permutation matrix.
+  * `pathBlockMatrix_apply` — definitional unfolding to the matrix
+    product.
+  * `pathBlockMatrix_apply_eq_g_at_pi` — the central simplification:
+    `(pathBlockMatrix m g π) i j = g.1.val(i, π j)`. Proved by
+    `Finset.sum_eq_single (π j)` collapsing the inner sum.
+  * `pathBlockMatrix_one` — at the identity slot permutation,
+    `pathBlockMatrix m g 1 = g.1.val`.
+  * `pathBlockMatrix_det_ne_zero` — invertibility (composition of
+    two invertible matrices).
+
+- **Layer 2.3 — Conditional linear restriction (~210 LOC).**
+  * `IsPathBlockDiagonal m adj₁ adj₂ M` — `Prop`-valued helper:
+    the matrix has zero entries when the row is a padding slot of
+    `adj₂` and the column is a path slot of `adj₁`. This is the
+    hypothesis Phase 3 establishes for `M = pathBlockMatrix m g π`
+    when π is the partition-preserving slot permutation derived from
+    the algebra-iso structure.
+  * `IsPaddingBlockDiagonal m adj₁ adj₂ M` — symmetric padding-to-path
+    block-vanishing predicate (used for `LinearEquiv` upgrade).
+  * `IsFullyPathBlockDiagonal` — combined predicate.
+  * `mulVec_mem_pathBlockSubspace_of_isPathBlockDiagonal` — the
+    matrix's `mulVec` action takes vectors in `pathBlockSubspace m
+    adj₁` to vectors in `pathBlockSubspace m adj₂`. Proof case-splits
+    on whether the output index `i` is path or padding (using the
+    partition theorem from Layer 2.1) and threads the support
+    constraint of `v` and the block hypothesis of `M`.
+  * `pathBlockRestrict m adj₁ adj₂ M h_block` — the restriction as
+    a `LinearMap` between the two `pathBlockSubspace`s.
+  * `pathBlockRestrict_apply` — definitional unfolding.
+  * `gl3_restrict_to_pathBlock m adj₁ adj₂ g π h_block` —
+    specialises `pathBlockRestrict` to `M = pathBlockMatrix m g π`.
+
+- **Layer 2.4 — Bridge `pathBlockSubspace ≃ₗ presentArrowsSubspace`
+  (~280 LOC).**
+  * `presentArrowsSubspace m adj : Submodule ℚ (pathAlgebraQuotient
+    m)` — vectors that vanish outside `presentArrows m adj`. This is
+    the natural codomain of the algebra-iso construction in Phase 3.
+  * `mem_presentArrowsSubspace_iff` — membership characterization.
+  * `vertexIdempotent_mem_presentArrowsSubspace` — `vertexIdempotent
+    m v ∈ presentArrowsSubspace m adj` for any `adj`.
+  * `arrowElement_mem_presentArrowsSubspace` — `arrowElement m u v ∈
+    presentArrowsSubspace m adj` iff `adj u v = true`.
+  * `pathBlockToPresentArrowsFun` — push-forward
+    `v : Fin (dimGQ m) → ℚ` through the `slotEquiv` /
+    `slotToArrow` correspondence:
+    `f a := if a ∈ presentArrows m adj then v (slotOfArrow m a)
+    else 0`.
+  * `presentArrowsToPathBlockFun` — pull-back
+    `f : QuiverArrow m → ℚ`:
+    `v i := if i ∈ pathSlotIndices m adj
+    then f (slotToArrow m (slotEquiv m i)) else 0`.
+  * `slotToArrow_mem_presentArrows_of_path` —
+    `slotToArrow m (slotEquiv m i) ∈ presentArrows m adj` for
+    `i ∈ pathSlotIndices m adj`.
+  * `slotOfArrow_mem_pathSlotIndices_of_present` — converse.
+  * `pathBlockToPresentArrowsFun_mem`,
+    `presentArrowsToPathBlockFun_mem` — the forward and reverse
+    maps' images lie in the corresponding subspaces (unconditional —
+    the piecewise definitions make zero outside the support
+    automatic, no support hypothesis needed).
+  * `presentArrowsToPathBlockFun_pathBlockToPresentArrowsFun`,
+    `pathBlockToPresentArrowsFun_presentArrowsToPathBlockFun` —
+    round-trip identities (these DO require the support hypothesis
+    because the off-support case is discharged via the assumed
+    support).
+  * `pathBlockToPresentArrows m adj : pathBlockSubspace m adj ≃ₗ[ℚ]
+    presentArrowsSubspace m adj` — the bridge `LinearEquiv`. Phase
+    3's algebra-iso construction will lift the path-block restriction
+    (Layer 2.3) to a linear map between `presentArrowsSubspace m
+    adj₁` and `presentArrowsSubspace m adj₂` via this bridge.
+  * `pathBlockToPresentArrows_apply`,
+    `pathBlockToPresentArrows_symm_apply` — apply lemmas.
+
+- **Audit script.** `scripts/audit_phase_16.lean` extended with **40
+  new `#print axioms` entries** plus **15 new non-vacuity `example`
+  bindings** under the `PathBlockSubspaceNonVacuity` namespace at
+  `m ∈ {1, 2}`, exercising every public Phase-2 declaration:
+  * Layer 2.0: identity slot permutation has identity permutation
+    matrix at `m = 1`.
+  * Layer 2.1: zero vector in both subspaces, vertex / padding
+    indicator vectors in the appropriate subspaces, complementarity
+    (`IsCompl`) of the two subspaces.
+  * Layer 2.2: identity-permutation reduction (`pathBlockMatrix g 1
+    = g.1.val`), invertibility for arbitrary `g` and `π`.
+  * Layer 2.3: zero matrix is path-block-diagonal, GL³ restriction
+    type-elaborates under any path-block-diagonal hypothesis.
+  * Layer 2.4: vertex idempotent membership for arbitrary `adj`,
+    arrow element membership on the complete graph at `m = 2`,
+    bridge `LinearEquiv` type-elaborates, round-trip identity
+    `symm ∘ pathBlockToPresentArrows = id` on a concrete vector.
+  Total declarations exercised: 828 (up from 788 — +40 from
+  Phase 2). Every new declaration depends only on the standard Lean
+  trio.
+
+- **`Orbcrypt.lean`** root file extended with one new import
+  `Orbcrypt.Hardness.GrochowQiao.PathBlockSubspace`.
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.22` to
+  `0.1.23` for Phase 2 — one new public-API module adds new public
+  declarations (40 new public `def`/`theorem`/`structure` decls),
+  warranting the patch-version bump per `CLAUDE.md`'s
+  version-bump discipline. The pre-Phase-2 module total (63) rises
+  to 64 (verified via `find Orbcrypt -name '*.lean' | wc -l`); the
+  zero-sorry / zero-custom-axiom posture and the standard-trio-only
+  axiom-dependency posture are both preserved.
+
+- **Phase 2 deliverables and gates (all met).**
+  * One new `.lean` module (`PathBlockSubspace.lean`).
+  * `Orbcrypt.lean` extended with one new import.
+  * `scripts/audit_phase_16.lean` extended with `#print axioms` for
+    every new public declaration; 15 non-vacuity examples on
+    `m ∈ {1, 2}`.
+  * CLAUDE.md change-log entry (this snapshot).
+  * `lakefile.lean` version bumped (`0.1.22 → 0.1.23`).
+  * Lake build succeeds (3,406 jobs, zero warnings, zero errors);
+    audit script clean.
+
+- **Consumer.** Phase 3 (the GL³ → algebra-iso bridge) supplies the
+  partition-preserving slot permutation π and discharges the
+  `IsPathBlockDiagonal` hypothesis, then composes
+  `gl3_restrict_to_pathBlock` with `pathBlockToPresentArrows` to
+  obtain a `LinearEquiv` between
+  `presentArrowsSubspace m adj₁` and
+  `presentArrowsSubspace m adj₂`. Phase 3 then upgrades this linear
+  equivalence to an `AlgEquiv` of the path algebras
+  `pathAlgebraQuotient m` (using the encoder's polynomial
+  identities from Phase 1).
+
 **Formalization exit criteria (all met):**
 - `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
   modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
