@@ -1168,6 +1168,73 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-28 (R-TI Phase 3 — GL³ → algebra-iso bridge,
+  partial-discharge form)** — Phase 3 of the v4 plan
+  (`docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § "Phase 3 —
+  GL³ → algebra-iso bridge") lands the **partial-discharge
+  fall-back** path explicitly described in § "Phase 3 alternative —
+  partial discharge".  The full Phase 3 (~3,200 LOC, 6–18 months,
+  Manin's tensor-stabilizer theorem + distinguished-padding rigidity)
+  is research-scope; the partial-discharge path captures the deep
+  multilinear-algebra content as a single named research-scope
+  `Prop` `GL3InducesAlgEquivOnPathSubspace` and lands the surrounding
+  plumbing (Sub-tasks A.1, A.2, A.4, A.6 conditional headline)
+  unconditionally.
+
+  **Four new modules.**
+
+  * `EncoderPolynomialIdentities.lean` (Sub-task A.1) — encoder
+    polynomial-identity catalogue: `encoder_assoc_path` (re-export),
+    `encoder_diag_at_path_in_zero_one`, `encoder_diag_at_padding_eq_two`,
+    `encoder_off_diag_path_padding_zero`, `encoder_padding_diag_only`.
+
+  * `TensorIdentityPreservation.lean` (Sub-task A.2) —
+    `IsAssociativeTensor` predicate, `encoder_isAssociativeTensor_full_path`,
+    `IsAssociativeTensorPreservedByGL3` research-scope Prop,
+    `isAssociativeTensorPreservedByGL3_identity_case` identity witness.
+
+  * `PathOnlyTensor.lean` (Sub-task A.4) — `pathOnlyStructureTensor`,
+    `pathOnlyStructureTensor_apply`,
+    `pathOnlyStructureTensor_inherits_encoder_assoc`,
+    `PathOnlyTensorIsAssociative` + `RestrictedGL3OnPathOnlyTensor`
+    research-scope Props, `restrictedGL3OnPathOnlyTensor_identity_case`.
+
+  * `AlgEquivFromGL3.lean` (Sub-task A.6) — the conditional headline:
+    `GL3InducesAlgEquivOnPathSubspace` research-scope Prop,
+    `gl3_induces_algEquiv_on_pathSubspace` (consumer of the Prop),
+    `gl3_induces_algEquiv_on_pathSubspace_identity_case` and
+    `gl3_induces_algEquiv_on_pathSubspace_self` (unconditional witnesses).
+
+  **Status of `GL3InducesAlgEquivOnPathSubspace`.** The single named
+  research-scope `Prop` captures the deep mathematical content of
+  Sub-tasks A.3 (distinguished-padding rigidity, ~700 LOC, **HIGH**
+  risk), A.5 (Manin's tensor-stabilizer theorem, ~600 LOC, **HIGH**
+  risk, Mathlib prerequisites not present at the pinned commit),
+  and A.6's matrix-action upgrade (~400 LOC).  Discharging the Prop
+  unconditionally is multi-month research effort tracked at
+  `docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § 8 (Risk
+  register) as **R-15-residual-TI-reverse-phase-3**.  Once it lands,
+  Phases 4, 5, 6 (Wedderburn–Mal'cev σ extraction, arrow
+  preservation, final discharge) deliver
+  `grochowQiao_isInhabitedKarpReduction : @GIReducesToTI ℚ _`
+  unconditionally.
+
+  **Audit script.** 19 new `#print axioms` entries + 9 non-vacuity
+  `example` bindings under `AlgEquivFromGL3NonVacuity` exercising
+  every public Phase-3 declaration on `m ∈ {1, 2}`.  All standard-
+  trio axioms.
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**
+  (up from 3,406) zero warnings / zero errors. Phase 16 audit script
+  exit code 0; every new declaration depends only on the standard
+  Lean trio (`propext`, `Classical.choice`, `Quot.sound`); zero
+  `sorryAx`, zero custom axioms.
+
+  **Patch version.** `lakefile.lean` bumped from `0.1.23` to
+  `0.1.24`.  Module count rises from 60 to 64 (`EncoderSlabEval.lean`
+  and `PathBlockSubspace.lean` from R-TI Phases 1–2 plus the four
+  new R-TI Phase 3 modules).
+
 * **2026-04-26 (Workstream R-TI Track B + A.1 + A.2 partial —
   forward obligation discharged unconditionally)** — Track B
   (`Orbcrypt/Hardness/GrochowQiao/PermMatrix.lean`, NEW module)

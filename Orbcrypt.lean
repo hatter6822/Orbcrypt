@@ -64,6 +64,11 @@ import Orbcrypt.Hardness.GrochowQiao.AlgEquivLift
 import Orbcrypt.Hardness.GrochowQiao.WMSigmaExtraction
 import Orbcrypt.Hardness.GrochowQiao.AdjacencyInvariance
 import Orbcrypt.Hardness.GrochowQiao.Rigidity
+-- Phase 3 / Sub-tasks A.1, A.2, A.4, A.6 (partial-discharge form):
+import Orbcrypt.Hardness.GrochowQiao.EncoderPolynomialIdentities
+import Orbcrypt.Hardness.GrochowQiao.TensorIdentityPreservation
+import Orbcrypt.Hardness.GrochowQiao.PathOnlyTensor
+import Orbcrypt.Hardness.GrochowQiao.AlgEquivFromGL3
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling

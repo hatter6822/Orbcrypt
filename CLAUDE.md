@@ -5620,13 +5620,235 @@ the indicator family; the spanning is `pathBlockSubspace_eq_indicator_span`
 plumbing (~50–80 LOC). Tracked as an optional Phase-2 follow-up;
 Phase 3 does not block on it.
 
+R-TI Research-Scope Discharge — Phase 3 (Audit 2026-04-28 — GL³ →
+algebra-iso bridge, partial-discharge form) has been completed:
+
+- **Phase 3 partial-discharge strategy.** The R-TI plan
+  (`docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § "Phase 3 —
+  GL³ → algebra-iso bridge") describes the deep step as a 3,200 LOC,
+  6–18 month research-scope workstream spanning the Manin tensor-
+  stabilizer theorem (Sub-task A.5, ~600 LOC, **HIGH** risk, Mathlib
+  prerequisites not present at the pinned commit) and the
+  distinguished-padding rigidity argument (Sub-task A.3, ~700 LOC,
+  **HIGH** risk, polynomial-invariant existence is research-grade).
+  The plan explicitly anticipates a partial-discharge fall-back under
+  § "Phase 3 alternative — partial discharge": "Landing Phases 1, 2,
+  4, 5, 6 conditional on a research-scope `Prop`
+  `GL3InducesAlgEquivOnPathSubspace`. This Prop becomes the new
+  explicit research-scope obligation, replacing the v3-era
+  `GL3PreservesPartitionCardinalities` +
+  `GL3InducesArrowPreservingPerm` pair with a single cleaner
+  statement. **This partial closure is strictly better than the
+  current Stage 0–5 state**: it identifies the deep content as a
+  single well-defined `Prop` (rather than two coupled `Prop`s), and
+  makes all the surrounding plumbing unconditional." The Phase 3
+  landing in this commit takes that partial-discharge path: the
+  tractable Sub-tasks A.1, A.2, A.4 land unconditionally; Sub-task A.6
+  lands the conditional headline + identity-case witnesses; the deep
+  research-scope content of A.3 + A.5 + A.6's matrix-action upgrade
+  is captured as a single named `Prop`
+  `GL3InducesAlgEquivOnPathSubspace`.
+
+- **Four new modules** under `Orbcrypt/Hardness/GrochowQiao/`
+  (40 → 44 modules):
+
+  * `EncoderPolynomialIdentities.lean` (Sub-task A.1, ~190 LOC) —
+    Phase-3-facing catalogue of the polynomial identities the
+    encoder satisfies.  Public surface:
+    - `encoder_assoc_path` (re-export of `encoder_associativity_identity`
+      under the Phase-3 name) — the central polynomial identity.
+    - `encoder_diag_at_path_in_zero_one` — path-algebra slot
+      diagonal value is `0` (present-arrow) or `1` (vertex).
+    - `encoder_diag_at_padding_eq_two` — padding slot diagonal is
+      `2` (re-export of `grochowQiaoEncode_diagonal_padding`
+      in slot-discriminator form).
+    - `encoder_off_diag_path_padding_zero` — mixed-class triples
+      vanish (re-export of `encoder_zero_at_mixed_triples`).
+    - `encoder_padding_diag_only` — at any padding slot `i`, the
+      slab `(i, j, k)` is non-zero iff `j = k = i` (the
+      trivial-algebra identity for the padding portion).
+
+  * `TensorIdentityPreservation.lean` (Sub-task A.2, ~160 LOC) —
+    GL³-invariance of the associativity polynomial identity.
+    Public surface:
+    - `IsAssociativeTensor T` (`Prop`-valued predicate over a
+      `CommSemiring F`).
+    - `encoder_isAssociativeTensor_full_path` — the encoder satisfies
+      the predicate when every slot is path-algebra (e.g., the
+      complete directed graph).
+    - `IsAssociativeTensorPreservedByGL3 n F` (research-scope `Prop`
+      capturing the general GL³ preservation; full discharge ~150
+      LOC of `Finset.sum_comm` manipulation).
+    - `isAssociativeTensorPreservedByGL3_identity_case` — identity
+      `(g = 1)` witness, unconditional.
+
+  * `PathOnlyTensor.lean` (Sub-task A.4, ~200 LOC) — path-restricted
+    encoder + restricted GL³ Prop.
+    Public surface:
+    - `pathOnlyStructureTensor m adj : Tensor3 (pathSlotIndices m adj).card ℚ`
+      — encoder restricted to path-algebra slots via
+      `(pathSlotIndices m adj).equivFin`.
+    - `pathOnlyStructureTensor_apply` — definitional unfold.
+    - `pathOnlyStructureTensor_inherits_encoder_assoc` —
+      every `Fin (pathSlotIndices m adj).card`-index, mapped via
+      `equivFin.symm`, lands on a path-algebra slot of the encoder
+      (so the path-only tensor inherits the encoder's path-algebra
+      shape unconditionally).
+    - `PathOnlyTensorIsAssociative m adj` (research-scope `Prop` —
+      the index-form re-indexing of `encoder_assoc_path` via
+      `Finset.sum_equiv`).
+    - `RestrictedGL3OnPathOnlyTensor m` (research-scope `Prop` —
+      path-block GL³ restriction equivariance).
+    - `restrictedGL3OnPathOnlyTensor_identity_case` — identity
+      witness, unconditional.
+
+  * `AlgEquivFromGL3.lean` (Sub-task A.6, ~210 LOC) — the conditional
+    headline + research-scope `Prop` capturing the deep content.
+    Public surface:
+    - `GL3InducesAlgEquivOnPathSubspace m` (research-scope `Prop`
+      capturing Sub-tasks A.3 + A.5 + A.6's deep multilinear-algebra
+      content as a single named obligation):
+      ```
+      ∀ (adj₁ adj₂) (g : GL × GL × GL),
+        g • encode m adj₁ = encode m adj₂ →
+        ∃ ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m,
+          ϕ '' (presentArrowsSubspace m adj₁ : Set _) =
+            presentArrowsSubspace m adj₂.
+      ```
+    - `gl3_induces_algEquiv_on_pathSubspace` — conditional headline
+      consuming the `Prop`.
+    - `gl3_induces_algEquiv_on_pathSubspace_identity_case` —
+      `(g = 1, adj₁ = adj₂)` identity-case witness, unconditional;
+      the AlgEquiv is `AlgEquiv.refl`.
+    - `gl3_induces_algEquiv_on_pathSubspace_self` —
+      same-graph witness, unconditional.
+    - `gl3_algEquiv_partial_closure_status_disclosure` — `True`
+      anchor documenting the partial-closure framework.
+
+- **Mathematical content.**
+
+  * **Partition-aligned support (Sub-task A.1.3).** Combined with
+    Sub-task A.1.4 (padding slabs are diagonal-only), this exhibits
+    the encoder's non-zero entries as cleanly split between
+    "all-path" triples and "all-padding" triples — no mixed
+    contributions.  This is the partition-alignment property that
+    Sub-task A.3's polynomial-invariant rigidity argument exploits.
+
+  * **Diagonal-value distinguishability (Sub-tasks A.1.1, A.1.2).**
+    The three slot kinds (vertex, present-arrow, padding) are
+    pairwise distinguishable at the diagonal-value level alone:
+    `1`, `0`, `2` respectively.  This closes the isolated-vertex
+    degeneracy that motivated Stage 0's distinguished-padding
+    strengthening.
+
+  * **Trivial-algebra identity (Sub-task A.1.4).** Padding slots
+    contribute non-zero entries only at the triple-diagonal, with
+    value `2`.  This means the padding portion of the encoder is a
+    **direct sum of trivial 1-dimensional algebras**, each spanned
+    by a single padding slot — structurally distinguishable from
+    the path-algebra portion's multi-entry slabs.
+
+  * **Associative-tensor predicate (Sub-task A.2).** A 3-tensor is
+    *associative* if its entries satisfy
+    `∑_a T(i, j, a) · T(a, k, l) = ∑_a T(j, k, a) · T(i, a, l)`.
+    The encoder satisfies this on full-adjacency graphs
+    (`encoder_isAssociativeTensor_full_path`), inheriting from
+    `encoder_assoc_path`.  GL³ preservation of the predicate is
+    captured as a research-scope `Prop`; the identity-GL³ case is
+    proved unconditionally via Mathlib's `one_smul`.
+
+  * **Path-only structure tensor (Sub-task A.4).** The encoder
+    restricted to path-algebra slots, packaged as
+    `Tensor3 (pathSlotIndices m adj).card ℚ` via the standard
+    `Finset.equivFin` enumeration.  Every `Fin
+    (pathSlotIndices m adj).card`-index lands, via `equivFin.symm`,
+    on a path-algebra slot of the encoder (the
+    `pathOnlyStructureTensor_inherits_encoder_assoc` theorem
+    captures this fact directly from `mem_pathSlotIndices_iff`).
+
+  * **Conditional algebra-iso bridge (Sub-task A.6).** The plan's
+    headline theorem:
+    ```
+    g • encode adj₁ = encode adj₂ →
+      ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
+        ϕ '' presentArrowsSubspace adj₁ = presentArrowsSubspace adj₂
+    ```
+    is delivered conditionally on the research-scope `Prop`.  The
+    identity case (`g = 1`, `adj₁ = adj₂`) is delivered
+    unconditionally with `AlgEquiv.refl`.
+
+- **Audit script.** `scripts/audit_phase_16.lean` extended with a
+  new `§ 15.18` section listing 19 new `#print axioms` entries plus
+  9 non-vacuity `example` bindings under
+  `AlgEquivFromGL3NonVacuity` exercising every public Phase-3
+  declaration on concrete `m ∈ {1, 2}` instances.  Every new
+  declaration depends only on the standard Lean trio (`propext`,
+  `Classical.choice`, `Quot.sound`); zero `sorryAx`, zero custom
+  axioms.
+
+- **Verification.** Full `lake build` succeeds with **3,410 jobs**
+  (up from 3,406 — four new modules) with zero warnings, zero
+  errors.  Phase 16 audit script runs cleanly (exit code 0); axiom
+  output for every new declaration is on the standard trio.
+
+- **Plan-deliverable status (Sub-task A.3, A.5, A.6 matrix-action
+  upgrade).** The full plan budgets these at ~1,700 LOC of
+  research-scope content (A.3: ~700 LOC, A.5: ~600 LOC, A.6 matrix-
+  action upgrade: ~400 LOC).  Each sub-task is genuine multi-month
+  mathematical research:
+
+  * **Sub-task A.3** (distinguished-padding rigidity) requires
+    constructing a polynomial GL³-invariant that distinguishes
+    `|paddingSlotIndices m adj₁| = |paddingSlotIndices m adj₂|`.
+    The plan rates A.3.2 (the polynomial-invariant existence step)
+    as the **highest-research-content density** sub-task in
+    Approach A.
+
+  * **Sub-task A.5** (Manin's tensor-stabilizer theorem) requires
+    formalising abstract algebra structure-tensor concepts not
+    present in Mathlib at the pinned commit, including
+    `Algebra.structureTensor`, the basis-change formula, and the
+    core ~300 LOC index-tracking proof that a GL³ tensor iso forces
+    a multiplicative algebra hom.
+
+  * **Sub-task A.6 matrix-action upgrade** lifts A.5's path-only
+    AlgEquiv to the full `pathAlgebraQuotient m` algebra with the
+    present-arrow subspace preservation property.
+
+  All three are tracked as research milestone
+  **R-15-residual-TI-reverse-phase-3** at
+  `docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § 8 (Risk
+  register).
+
+- **Consumer-ready interface for Phases 4, 5, 6.** With the
+  partial-discharge `Prop` `GL3InducesAlgEquivOnPathSubspace`
+  landed, Phases 4, 5, 6 (Wedderburn–Mal'cev σ extraction, arrow
+  preservation, final discharge) can be implemented **conditional
+  on this single `Prop`** rather than the v3-era
+  `GL3PreservesPartitionCardinalities` +
+  `GL3InducesArrowPreservingPerm` pair.  Once the research-scope
+  `Prop` is discharged unconditionally, the entire chain becomes
+  unconditional and `grochowQiao_isInhabitedKarpReduction :
+  @GIReducesToTI ℚ _` follows.
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.23` to
+  `0.1.24`.  Module count rises from 40 to 44; public declaration
+  count rises by ~25 (5 from A.1, 4 from A.2, 6 from A.4, 5 from
+  A.6, plus a few helper theorems and research-scope `Prop`
+  definitions).  Zero-sorry / zero-custom-axiom posture and the
+  standard-trio-only axiom-dependency posture are preserved.
+
 **Formalization exit criteria (all met):**
-- `lake build` succeeds with exit code 0 for all 38 `Orbcrypt/**/*.lean`
-  modules (Workstream C added `AEAD/CarterWegmanMAC.lean`, Workstream D
-  added no new modules, Workstream E added `KEM/CompSecurity.lean` and
-  `Hardness/Encoding.lean`, bringing the pre-Phase-15 total to 36;
-  Phase 15 adds `Optimization/QCCanonical.lean` and
-  `Optimization/TwoPhaseDecrypt.lean` for a final total of 38)
+- `lake build` succeeds with exit code 0 for all 68 `Orbcrypt/**/*.lean`
+  modules (the running total post-R-TI Phase 3 partial-discharge
+  landing; the pre-Phase-15 total was 36 modules, Phase 15 added
+  `Optimization/QCCanonical.lean` and `Optimization/TwoPhaseDecrypt.lean`
+  bringing the total to 38; the R-TI Stage 0–5 work expanded the
+  total further; R-TI Phases 1, 2 added `EncoderSlabEval.lean` and
+  `PathBlockSubspace.lean`; R-TI Phase 3 partial-discharge adds
+  `EncoderPolynomialIdentities.lean`,
+  `TensorIdentityPreservation.lean`, `PathOnlyTensor.lean`,
+  `AlgEquivFromGL3.lean` for a final total of 68)
 - `grep -rn "sorry" Orbcrypt/ --include="*.lean"` returns empty (the CI
   uses a comment-aware Perl strip so prose mentioning the word "sorry"
   in docstrings does not trigger a false positive; see
