@@ -75,6 +75,7 @@ import Orbcrypt.Hardness.GrochowQiao.Manin.StructureTensor
 import Orbcrypt.Hardness.GrochowQiao.Manin.BasisChange
 import Orbcrypt.Hardness.GrochowQiao.Manin.TensorStabilizer
 import Orbcrypt.Hardness.GrochowQiao.PaddingInvariant
+import Orbcrypt.Hardness.GrochowQiao.PathOnlyAlgebra
 import Orbcrypt.Hardness.GrochowQiao.Discharge
 import Orbcrypt.Hardness.GrochowQiao
 

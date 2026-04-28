@@ -4348,3 +4348,103 @@ example :
         (b default) = (1 : ℚ) := by simp
 
 end Phase3DischargeNonVacuity
+
+-- ============================================================================
+-- ## §15.20 R-TI Phase 3 — PathOnlyAlgebra (Manin path connection).
+-- ============================================================================
+
+-- A.5.5: Path-only Subalgebra structure.
+#print axioms Orbcrypt.GrochowQiao.pathMul_some_mem_presentArrows
+#print axioms Orbcrypt.GrochowQiao.presentArrowsSubspace_mul_mem
+#print axioms Orbcrypt.GrochowQiao.one_mem_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraSubalgebra
+#print axioms Orbcrypt.GrochowQiao.mem_pathOnlyAlgebraSubalgebra_iff
+
+-- A.5.5: Basis construction.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraEquivFun
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_repr_apply
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_apply_underlying
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_mul_underlying
+
+-- A.6.1: Bridge to pathOnlyStructureTensor.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor
+
+-- A.6.2: Manin-chain identity-case witnesses.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_basisChangeRelated_self
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_unitCompatible_self
+
+-- Path B: Manin-route research-scope obligation + discharges.
+#print axioms Orbcrypt.GrochowQiao.Discharge.GrochowQiaoRigidityViaMan
+#print axioms Orbcrypt.GrochowQiao.Discharge.grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity
+#print axioms Orbcrypt.GrochowQiao.Discharge.gl3InducesAlgEquivOnPathSubspace_via_manin
+#print axioms Orbcrypt.GrochowQiao.Discharge.restrictedGL3OnPathOnlyTensor_via_manin
+#print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlyAlgebra_manin_trivial
+
+namespace PathOnlyAlgebraNonVacuity
+
+open Orbcrypt
+open GrochowQiao
+
+/-- **Path-only Subalgebra non-vacuity at `m = 2` empty graph.**
+
+The path-only Subalgebra of `pathAlgebraQuotient 2` under the empty
+graph `(fun _ _ => false)` exists as a Subalgebra over `ℚ`.  This
+exercises the unconditional `pathOnlyAlgebraSubalgebra` constructor. -/
+noncomputable example :
+    Subalgebra ℚ (pathAlgebraQuotient 2) :=
+  pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)
+
+/-- **Multiplicative closure non-vacuity.**
+
+The product of two zero elements (which trivially live in the
+subspace) lives in the subspace. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (0 : pathAlgebraQuotient m) * 0 ∈ presentArrowsSubspace m adj := by
+  apply presentArrowsSubspace_mul_mem
+  · exact (presentArrowsSubspace m adj).zero_mem
+  · exact (presentArrowsSubspace m adj).zero_mem
+
+/-- **Unit membership non-vacuity.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (1 : pathAlgebraQuotient m) ∈ presentArrowsSubspace m adj :=
+  one_mem_presentArrowsSubspace m adj
+
+/-- **Bridge non-vacuity at `m = 2` empty graph: Manin's structureTensor of
+the path-only basis equals pathOnlyStructureTensor.** -/
+example :
+    Manin.structureTensor (pathOnlyAlgebraBasis 2 (fun _ _ => false)) =
+      pathOnlyStructureTensor 2 (fun _ _ => false) :=
+  pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor 2 _
+
+/-- **Identity-case basis-change witness.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    Manin.IsBasisChangeRelated
+        (pathOnlyStructureTensor m adj)
+        (pathOnlyStructureTensor m adj)
+        1 1 :=
+  pathOnlyStructureTensor_basisChangeRelated_self m adj
+
+/-- **Identity-case unit-compatibility witness.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    Manin.IsUnitCompatible
+        (pathOnlyAlgebraBasis m adj) (pathOnlyAlgebraBasis m adj) 1 :=
+  pathOnlyAlgebraBasis_unitCompatible_self m adj
+
+/-- **Path B's research-scope obligation iff the original.** -/
+example : Discharge.GrochowQiaoRigidityViaMan ↔ GrochowQiaoRigidity :=
+  Discharge.grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity
+
+/-- **Path B discharge of `GL3InducesAlgEquivOnPathSubspace`.** -/
+example (h_rig : Discharge.GrochowQiaoRigidityViaMan) (m : ℕ) :
+    GL3InducesAlgEquivOnPathSubspace m :=
+  Discharge.gl3InducesAlgEquivOnPathSubspace_via_manin h_rig m
+
+/-- **Manin chain non-vacuity: end-to-end algebra-equiv construction
+on the path-only Subalgebra at the trivial instance.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj)) :=
+  Discharge.pathOnlyAlgebra_manin_trivial m adj
+
+end PathOnlyAlgebraNonVacuity

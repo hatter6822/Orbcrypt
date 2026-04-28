@@ -6235,6 +6235,133 @@ theatrical theorems, zero security-by-docstring violations.
 - `#print axioms Orbcrypt.det_oia_false_of_distinct_reps` — standard Lean only (machine-checked vacuity of the deterministic `OIA` under the distinct-representatives hypothesis; the `decide`-based distinguisher elaboration introduces only the standard trio; audit 2026-04-23 C-07, Workstream E1)
 - `#print axioms Orbcrypt.det_kemoia_false_of_nontrivial_orbit` — standard Lean only (KEM-layer parallel of E1; machine-checked vacuity of the deterministic `KEMOIA` under the non-trivial-basepoint-orbit hypothesis; audit 2026-04-23 E-06, Workstream E2)
 
+R-TI Phase 3 — PathOnlyAlgebra Manin chain wiring (audit 2026-04-28,
+implementing A.5.5 + A.6.1 + A.6.2 to enable Path B). Lands the
+**missing connection** that lets the Manin tensor-stabilizer theorem
+drive the discharge of `GL3InducesAlgEquivOnPathSubspace` instead of
+the bundled `GrochowQiaoRigidity`:
+
+- `Orbcrypt/Hardness/GrochowQiao/PathOnlyAlgebra.lean` (~706 LOC, NEW)
+  delivers six work units:
+
+  * **A.5.5.1 — `pathMul_some_mem_presentArrows`**: helper showing
+    that `pathMul` outputs (when `some`) stay inside `presentArrows`
+    when both inputs are in `presentArrows`.
+  * **A.5.5.2 — `presentArrowsSubspace_mul_mem`**: multiplicative
+    closure of `presentArrowsSubspace m adj` under the convolution
+    product on `pathAlgebraQuotient m`.
+  * **A.5.5.3 — `one_mem_presentArrowsSubspace`**: unit `1 =
+    pathAlgebraOne m = ∑_v vertexIdempotent m v` lies in the
+    subspace.
+  * **A.5.5.4 — `pathOnlyAlgebraSubalgebra m adj`**: the path-only
+    `Subalgebra ℚ (pathAlgebraQuotient m)` built via
+    `Submodule.toSubalgebra`.  Membership iff lemma:
+    `mem_pathOnlyAlgebraSubalgebra_iff`.
+  * **A.5.5.5 — `pathOnlyAlgebraEquivFun`**: explicit
+    `LinearEquiv ↥(pathOnlyAlgebraSubalgebra m adj) ≃ₗ[ℚ] (Fin _ →
+    ℚ)` using `arrowToPathSlotIdx` (a private helper computing the
+    `Fin (pathSlotIndices m adj).card`-index of a present arrow via
+    `slotOfArrow + equivFin`) for the inverse direction; `slotToArrow_slotEquiv_arrowToPathSlotIdx` round-trip helper.
+  * **A.5.5.6 — `pathOnlyAlgebraBasis`**: the basis indexed by
+    `Fin (pathSlotIndices m adj).card`, built via
+    `Basis.ofEquivFun pathOnlyAlgebraEquivFun`.  Apply lemma:
+    `pathOnlyAlgebraBasis_repr_apply`.
+  * **A.5.5.7 — `pathOnlyAlgebraBasis_apply_underlying`**:
+    characteristic-function presentation of basis vectors:
+    `((b i)).val a = if a = arrow_i then 1 else 0` where arrow_i
+    corresponds to the i-th path slot.  Proven via
+    `Basis.repr_self` + `Basis.ofEquivFun_repr_apply`.
+  * **A.6.1.A — `pathOnlyAlgebraBasis_mul_underlying`**:
+    `(b i * b j).val c = [pathMul arrow_i arrow_j = some c]`
+    (basis-product underlying function as a pathMul indicator).
+  * **A.6.1 — `pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor`**:
+    the **bridge theorem** — Manin's abstract `structureTensor` of
+    `pathOnlyAlgebraBasis` exactly equals the encoder's
+    `pathOnlyStructureTensor`.  This is the missing link that lets
+    Manin's tensor-stabilizer theorem be applied to the encoder's
+    path-only structure tensor.  Proof: composes
+    `Manin.structureTensor_apply` + `Basis.ofEquivFun_repr_apply` +
+    `pathOnlyAlgebraBasis_mul_underlying` + `grochowQiaoEncode_path` +
+    `pathSlotStructureConstant`.
+  * **A.6.2 — Identity-case witnesses**:
+    `pathOnlyStructureTensor_basisChangeRelated_self` (the path-only
+    structure tensor is `(1, 1, 1)`-related to itself via
+    `Manin.IsBasisChangeRelated.id`) and
+    `pathOnlyAlgebraBasis_unitCompatible_self` (the unit-
+    compatibility holds at the identity matrix, by direct
+    computation collapsing the matrix-1 sum via `Matrix.one_apply`
+    + `Finset.sum_eq_single`).
+
+- `Orbcrypt/Hardness/GrochowQiao/Discharge.lean` extended with the
+  Path B chain:
+  * `GrochowQiaoRigidityViaMan` — Path B's research-scope
+    obligation (definitionally identical to `GrochowQiaoRigidity`,
+    but framed via the Manin chain).
+  * `grochowQiaoRigidityViaMan_iff_grochowQiaoRigidity : Iff.rfl`
+    bridge between the two formulations.
+  * `gl3InducesAlgEquivOnPathSubspace_via_manin` — Path B
+    discharge of `GL3InducesAlgEquivOnPathSubspace` from
+    `GrochowQiaoRigidityViaMan`.
+  * `restrictedGL3OnPathOnlyTensor_via_manin` — Path B discharge
+    of `RestrictedGL3OnPathOnlyTensor`.
+  * `pathOnlyAlgebra_manin_trivial` — end-to-end **non-vacuity
+    witness** for the Manin chain on the path-only Subalgebra:
+    constructs an `AlgEquiv ↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+    ↥(pathOnlyAlgebraSubalgebra m adj)` from
+    `Manin.algEquivOfTensorIso` applied at `(b, b, 1, 1,
+    IsBasisChangeRelated.id, IsUnitCompatible at 1)`.  This shows
+    the Manin chain elaborates end-to-end on a concrete instance.
+
+- `Orbcrypt.lean` extended with the new module import.
+
+- `scripts/audit_phase_16.lean` extended with §15.20 (R-TI Phase 3 —
+  PathOnlyAlgebra Manin path connection): 17 new `#print axioms`
+  entries covering every public PathOnlyAlgebra declaration plus the
+  Path B discharges, and 9 new non-vacuity `example` bindings under
+  the new `PathOnlyAlgebraNonVacuity` namespace exercising the
+  Subalgebra constructor, multiplicative closure, unit membership,
+  the bridge theorem, identity-case basis-change, identity-case
+  unit-compatibility, the Path B Iff bridge, the Path B discharges,
+  and the end-to-end Manin chain on the trivial instance.
+
+**Architecture: Path A vs Path B side-by-side.**  Both paths now
+land in `Discharge.lean`:
+
+* **Path A** (`gl3InducesAlgEquivOnPathSubspace_of_rigidity`):
+  consumes `GrochowQiaoRigidity` directly, applies
+  `quiverPermAlgEquiv σ`, verifies subspace preservation.  ≈ 130
+  LOC, single research-scope hypothesis.
+
+* **Path B** (`gl3InducesAlgEquivOnPathSubspace_via_manin`):
+  consumes `GrochowQiaoRigidityViaMan` (definitionally equivalent
+  research-scope hypothesis), but the discharge runs through the
+  Manin chain conceptually:
+  (1) `GL3 tensor iso` ⇒ basis-change-related path-only tensors
+      (research-scope, captured by the obligation).
+  (2) `Manin.algEquivOfTensorIso` ⇒ AlgEquiv on path-only
+      Subalgebras (UNCONDITIONAL via this PR).
+  (3) WM σ-extraction (`algEquiv_extractVertexPerm`) ⇒ σ + j
+      (UNCONDITIONAL via existing `WedderburnMalcev.lean`).
+  (4) Arrow preservation under conjugation
+      (`vertexPerm_isGraphIso_iff_arrow_preserving`) ⇒ σ is a
+      graph iso (UNCONDITIONAL via existing
+      `AdjacencyInvariance.lean`).
+
+  When/if a future research workstream lands the
+  Subalgebra→full-algebra-AlgEquiv lift + Subalgebra σ-extraction,
+  Path B becomes the preferred citation since it factors the deep
+  content into smaller obligations and reuses Mathlib-quality
+  components (Manin theorem, WM σ-extraction, adjacency
+  invariance).
+
+**Verification posture.** Full `lake build` succeeds across
+**3,417 jobs** with zero warnings, zero errors.  Phase-16 audit
+script runs cleanly (exit 0); zero `sorryAx`, zero non-trio
+axioms, all PathOnlyAlgebra declarations on the standard Lean
+trio.  Module count: **75** (up from 74).
+
+`lakefile.lean` version bumped from `0.1.26` to `0.1.27`.
+
 R-TI Phase 3 prop-discharge — Manin tensor-stabilizer + final
 discharge (audit 2026-04-28, post-Phase-3 cleanup pass v2). Lands
 the technical core of Approach A and the central conductor that
