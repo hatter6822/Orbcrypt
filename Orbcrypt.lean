@@ -72,6 +72,7 @@ import Orbcrypt.Hardness.GrochowQiao.AlgEquivFromGL3
 -- Phase 3 / Final discharge: A.1.5 prerequisite + Manin foundations:
 import Orbcrypt.Hardness.GrochowQiao.EncoderUnitCompatibility
 import Orbcrypt.Hardness.GrochowQiao.Manin.StructureTensor
+import Orbcrypt.Hardness.GrochowQiao.Manin.BasisChange
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling
