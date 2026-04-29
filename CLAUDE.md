@@ -6730,6 +6730,208 @@ from `Discharge.lean`:
   — `algEquivLifted_isGraphIso` removed in audit pass; net new
   declarations: 24).
 
+### CLAUDE.md changelog: post-Path-B documentation cluster (2026-04-28 / 2026-04-29)
+
+This dual-bump entry closes audit finding A-02 / L-03a (MEDIUM) of
+the 2026-04-29 comprehensive audit
+(`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+Workstream **A4**), which flagged the absence of CLAUDE.md
+changelog entries for the two intermediate version bumps that
+landed between the post-Path-B-Sub-task-A.6.4 entry (`0.1.28 →
+0.1.29`, recorded above) and the on-disk `lakefile.lean` value of
+`0.2.0`.
+
+- **`0.1.29 → 0.1.30`** (commit `42b7e03`, "Audit pass:
+  PathOnlyAlgEquivSigma cleanup + extended tests + docs"):
+  patch-level bump landed alongside the post-A.6.4 audit-pass
+  cleanup of the Path-B σ-extraction module
+  (`PathOnlyAlgEquivSigma.lean`).  The audit-pass commit removed
+  one duplicate wrapper (`algEquivLifted_isGraphIso`), one dead
+  exploratory `have := h_cA` artefact, one unused `set_option
+  linter.unusedSectionVars false` silencing, and rewrote a few
+  `noncomm_ring`-driven rewrite chains into compact form; it also
+  fixed a stale docstring reference to a never-existent name and
+  restructured the module-level docstring to reflect the
+  obligation-by-obligation Path B factoring (Path B obligation 2
+  UNCONDITIONAL; Path B obligation 1 CONDITIONAL on
+  `GrochowQiaoRigidity`).  The patch bump captures the
+  cleanup-cluster status; no Lean source semantics changed
+  net-net beyond the duplicate-wrapper removal.
+
+- **`0.1.30 → 0.2.0`** (commit `9f4b9ec`, "Bump minor version:
+  0.1.30 → 0.2.0"): minor-version bump signalling the feature-
+  complete state of the post-R-TI-Phase-3 partial-discharge
+  cluster.  The cluster encompasses: R-TI Stages 0–5 (rigidity
+  discharge plumbing); R-TI Phase 1 (`EncoderSlabEval.lean` —
+  encoder slab evaluation); R-TI Phase 2 (`PathBlockSubspace.lean`
+  — path-block linear restriction parametric in π, plus the
+  bridge to `presentArrowsSubspace`); R-TI Phase 3 partial-
+  discharge (the conditional GL³ → AlgEquiv-on-path-subspace
+  bridge with the two named research-scope Props
+  `GL3InducesAlgEquivOnPathSubspace` and
+  `RestrictedGL3OnPathOnlyTensor`); the Manin tensor-stabilizer
+  machinery (`Manin/StructureTensor.lean`,
+  `Manin/BasisChange.lean`, `Manin/TensorStabilizer.lean`); the
+  PathOnlyAlgebra Path-B factoring (`PathOnlyAlgebra.lean`,
+  `PathOnlyAlgEquivSigma.lean`, `Discharge.lean`); the audit-pass-
+  v2 cleanup of theatrical Path-B aliases.  Per semver,
+  `0.x → 0.(x+1)` minor bumps signal a cohesive feature cluster;
+  the post-Path-B work qualifies.
+
+  At the time the minor bump landed, the running counts were:
+  75-module total (post-Path-B-A.6.4); 767+ audit-script `#print
+  axioms` entries; zero-sorry / zero-custom-axiom posture
+  preserved; standard-trio-only axiom-dependency posture
+  preserved; full `lake build` succeeded with 3,418 jobs, zero
+  warnings, zero errors.
+
+- **Subsequent `0.2.0` work (audit 2026-04-29 Workstream A,
+  this landing).**  The Workstream-A documentation parity
+  reconciliation pass (audit findings G-02 / L-04 / A-07-J-02 /
+  A-02-L-03a) is documentation-only and does not warrant a
+  further version bump per CLAUDE.md's version-bump discipline
+  ("triggered by API-breaking changes or new public
+  declarations").  `lakefile.lean` retains `0.2.0`.
+
+Audit 2026-04-29 — Workstream A (release-blocking documentation
+parity) has been completed (2026-04-29):
+
+- **A1 — `PetrankRoth.lean` module docstring overclaim fix.**  The
+  module-header `/- ... -/` block (the file's preamble docstring)
+  and the "## Layer organisation" subsection inside the `/-! … -/`
+  module docstring of `Orbcrypt/Hardness/PetrankRoth.lean` previously
+  declared Layers 5/6/7 as present in this file, naming
+  `prEncode_iff`, `prEncode_codeSize_pos`, `prEncode_card_eq`, and
+  `petrankRoth_isInhabitedKarpReduction` as available declarations.
+  Pre-A1 verification confirmed those identifiers existed ONLY as
+  docstring/comment text, never as Lean declarations
+  (`grep -E "^(theorem|def|...)
+  +(prEncode_iff|prEncode_codeSize_pos|prEncode_card_eq|petrankRoth_isInhabitedKarpReduction)"
+  Orbcrypt/Hardness/**/*.lean` returned zero matches).
+  The docstrings are rewritten with per-layer status markers
+  (`(LANDED)` for Layers 1, 2, 3; `(RESEARCH-SCOPE — R-15-residual-CE-reverse)`
+  for Layers 4, 5, 6, 7), the file's preamble explicitly
+  discloses the partial-closure status, and the four identifier
+  names are declared as "placeholder names tracked for the
+  research-scope work" rather than as available declarations.  The
+  rewrite mirrors the disclosure style already used in
+  `Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean` (lines 17-26
+  and 73-95).  Closes audit finding **G-02** (HIGH, source audit
+  `docs/audits/LEAN_MODULE_AUDIT_2026-04-29_COMPREHENSIVE.md` § G).
+
+- **A2 — `docs/VERIFICATION_REPORT.md` headline numbers refresh.**
+  The auditor-facing document carried headline numbers 2-9× stale
+  (38 → 76 modules, 342 → 928 audit-script entries, 5 → 48 private
+  declarations, snapshot date 2026-04-21 → 2026-04-29).  The
+  header table is restructured per the Strategy a + b hybrid:
+  ephemeral metrics now cross-reference CLAUDE.md as the
+  canonical running-state source, and only invariants (zero-
+  sorry / zero-custom-axiom posture; standard-trio-only axioms;
+  per-public-declaration docstrings; build-success status) are
+  listed in the report.  A "Snapshot anchor" paragraph records
+  the 2026-04-29 totals (76 modules, 928 audit-script entries,
+  ≈ 930 public declarations, 48 private helpers, 3,418 build
+  jobs) for archeological reference; subsequent landings shift
+  these counts.  The body sweep refreshes the **6 current-state
+  references** (the audit-method "Step 5 prints …" prose, the
+  Method section header for the audit body, the Method
+  continuation, the module-docstring Result line, the Root-import
+  "imports all 36 modules" claim, and the Theorem-inventory
+  closing prose) without disturbing the **13 historical-snapshot
+  references** inside per-Workstream / per-Phase / Document-history
+  bullets.  The Document history section gains a 2026-04-29
+  Workstream-A2 entry recording the refresh.  The "Verdict"
+  section is augmented with a sentence acknowledging that the
+  post-2026-04-21 Workstream-G/H/J/K/L/M/N (audit 2026-04-21),
+  Workstream-A/B/C/D/E (audit 2026-04-23), Workstream-F/G (audit
+  2026-04-23 preferred slate), and the R-CE / R-TI Karp-reduction
+  subtree expansion all preserve the same posture (zero-sorry /
+  zero-custom-axiom / standard-trio-only).  Closes audit finding
+  **L-04** (HIGH).
+
+- **A3 — `Orbcrypt.lean` Phase 16 snapshot section refresh.**  The
+  "Phase 16 Verification Audit Snapshot (2026-04-21)" section
+  (the consumer-facing in-source block at the end of the
+  `/-! … -/` module-header docstring) is refreshed to 2026-04-29
+  reality:
+  * Snapshot header date `2026-04-21` → `2026-04-29`.
+  * Module count `36` → `76` (75 imported by the root file +
+    the un-imported transient `_ApiSurvey.lean`, slated for
+    removal in Workstream **B1**).
+  * `lake build` jobs `3,364` → `3,418`.
+  * Audit-script `#print axioms` count `342` → `928`.
+  * Public-declaration count `343` → `≈ 930` (verified at
+    A3-implementation time via the grep recipe inlined in the
+    snapshot itself; the README.md headline figure "358+" is
+    retained for stability).
+  * `private`-helper count `5` → `48` (verified via the same
+    grep recipe; the pre-2026-04-21 5-helper enumeration is
+    preserved as a cross-reference, with the additional ~43
+    private helpers attributed to post-2026-04-21 R-CE / R-TI /
+    Manin / Path-B / Discharge / EncoderSlabEval /
+    PathBlockSubspace / PathOnlyAlgebra / Wedderburn–Mal'cev /
+    AlgebraWrapper modules).
+  * The "Prop-valued security assumption" enumeration is
+    extended with the post-2026-04-21 research-scope Props
+    (`GrochowQiaoRigidity`, `GL3PreservesPartitionCardinalities`,
+    `GL3InducesArrowPreservingPerm`,
+    `GL3InducesAlgEquivOnPathSubspace`,
+    `RestrictedGL3OnPathOnlyTensor`, `PathOnlyAlgEquivObligation`,
+    `PathOnlySubalgebraGraphIsoObligation`).
+  * A new closing line directs future maintainers to CLAUDE.md
+    for the running snapshot of metrics; the in-source block is
+    refreshed only at audit boundaries.
+  Closes audit finding **A-07 / J-02** (HIGH).
+
+- **A4 — `lakefile.lean` version reconciliation.**  The on-disk
+  `version := v!"0.2.0"` was unrecorded in CLAUDE.md's
+  per-workstream changelog (the most recent prior entry was the
+  `0.1.28 → 0.1.29` Patch-version block from R-TI Phase 3 — Path B
+  Sub-task A.6.4).  CLAUDE.md gains a new dual-bump changelog
+  entry (immediately above this snapshot) documenting the
+  `0.1.29 → 0.1.30` patch bump (commit `42b7e03`, audit-pass
+  cleanup of `PathOnlyAlgEquivSigma.lean`) and the
+  `0.1.30 → 0.2.0` minor bump (commit `9f4b9ec`) signalling the
+  feature-complete state of the post-R-TI-Phase-3 partial-
+  discharge cluster (R-TI Stages 0–5 + Phase 1 + Phase 2 +
+  Phase 3 partial discharge + Manin chain + PathOnlyAlgebra
+  Path-B factoring).  `lakefile.lean` itself is unchanged
+  (preserves `0.2.0`).  Closes audit finding **A-02 / L-03a**
+  (MEDIUM).
+
+**Verification.** Workstream A is documentation-only; no Lean
+source semantics changed.  Every edit is inside a `/- … -/` /
+`/-! … -/` docstring block, a markdown file, or the
+`lakefile.lean`'s comment metadata.  No declaration is added,
+removed, or modified.  `lake build` succeeds with 3,418 jobs
+(verified post-A on `claude/audit-codebase-planning-CYmv2`;
+unchanged from pre-A baseline at the same commit), zero
+warnings, zero errors.  `scripts/audit_phase_16.lean` runs
+cleanly (exit code 0); standard-trio-only axioms across all
+928 `#print axioms` checks; zero `sorryAx`; zero non-standard
+axioms.  The 76-module total, the zero-sorry / zero-custom-
+axiom posture, and the standard-trio-only axiom-dependency
+posture are all preserved.
+
+Files touched:
+- `Orbcrypt/Hardness/PetrankRoth.lean` (A1, two docstring blocks
+  inside `/- … -/` and `/-! … -/`).
+- `docs/VERIFICATION_REPORT.md` (A2, header + 6 current-state
+  body references + Verdict augmentation + Document history
+  entry).
+- `Orbcrypt.lean` (A3, the Phase 16 snapshot section inside the
+  root `/-! … -/` docstring block).
+- `CLAUDE.md` (A4, dual-bump version changelog entry; this
+  Workstream-A snapshot block; Workstream-A status-tracker
+  checkboxes).
+- `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+  (Workstream-A status-tracker checkboxes ticked under § 10.1
+  and Appendix B).
+
+**Patch version.** `lakefile.lean` retains `0.2.0`; Workstream A
+is documentation-only and adds no new Lean declarations.  Public
+declaration count unchanged; module count unchanged at 76.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

@@ -1323,47 +1323,95 @@ non-trivial inhabitants of the iff remain research-scope (R-15).
 No `sorryAx` should appear in any output. If it does, there is a hidden
 `sorry` in the dependency chain.
 
-## Phase 16 Verification Audit Snapshot (2026-04-21)
+## Phase 16 Verification Audit Snapshot (2026-04-29)
 
 Phase 16 (Formal Verification of New Components) consolidated the
 per-workstream `#print axioms` checks into a single comprehensive audit
 script (`scripts/audit_phase_16.lean`) and produced a prose verification
 report (`docs/VERIFICATION_REPORT.md`).
 
-The Phase 16 snapshot at the time of landing:
+The Phase 16 snapshot at the 2026-04-29 Workstream-A3 anchor (audit
+2026-04-29 — release-blocking documentation parity refresh, finding
+A-07 / J-02 HIGH; the exact running counts shift with each
+workstream landing and track `CLAUDE.md`'s most recent
+per-workstream changelog entry):
 
-* **36** Lean source modules under `Orbcrypt/`, all building successfully
-  via `lake build Orbcrypt` (3,364 jobs, zero errors, zero warnings).
+* **76** Lean source modules under `Orbcrypt/` (75 imported by this
+  root file + the un-imported transient `_ApiSurvey.lean`, slated
+  for removal in Workstream **B1** of the 2026-04-29 audit plan),
+  all building successfully via `lake build Orbcrypt` (3,418 jobs
+  as of the post-Workstream-A3 verification run on
+  `claude/audit-codebase-planning-CYmv2`, zero errors, zero
+  warnings).
 * **0** uses of `sorry` anywhere in `Orbcrypt/**/*.lean` (verified by the
   comment-aware Perl strip used by CI).
 * **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every
   `Prop`-valued security assumption (OIA, KEMOIA, ConcreteOIA, ConcreteKEMOIA,
   ConcreteTensorOIA, ConcreteCEOIA, ConcreteGIOIA, CompOIA,
   ObliviousSamplingPerfectHiding, ObliviousSamplingConcreteHiding,
-  ConcreteHardnessChain, …) is a `Prop`-valued
-  *definition* carried as an explicit hypothesis on the theorems that
-  use it.
-* **342** declarations exercised by `scripts/audit_phase_16.lean` via
+  ConcreteHardnessChain, GrochowQiaoRigidity,
+  GL3PreservesPartitionCardinalities, GL3InducesArrowPreservingPerm,
+  GL3InducesAlgEquivOnPathSubspace, RestrictedGL3OnPathOnlyTensor,
+  PathOnlyAlgEquivObligation, PathOnlySubalgebraGraphIsoObligation,
+  …) is a `Prop`-valued *definition* carried as an explicit
+  hypothesis on the theorems that use it.
+* **928** declarations exercised by `scripts/audit_phase_16.lean` via
   `#print axioms` — every public `def`, `theorem`, `structure`,
   `class`, `instance`, and `abbrev` declared under
-  `Orbcrypt/**/*.lean`. **All 342** depend only on the standard Lean
-  axioms (`propext`, `Classical.choice`, `Quot.sound`); 133 depend on
-  *no* axioms at all. **No `sorryAx`** appears in any output. The CI
-  parser de-wraps Lean's multi-line axiom lists before scanning, so a
-  custom axiom cannot hide on a continuation line.
-* **343** public (non-`private`) declarations across the source tree;
-  every one carries a `/-- … -/` docstring (Phase 6 standards retained
-  through Phases 7–14).
-* **5** intentionally `private` helper declarations
+  `Orbcrypt/**/*.lean`, plus the research-scope and partial-
+  closure declarations landed by the post-2026-04-21
+  Workstream-G/H/J/K/L/M/N (audit 2026-04-21), Workstream-A/B/C/D/E
+  (audit 2026-04-23), Workstream-F/G (audit 2026-04-23 preferred
+  slate), and the R-CE / R-TI Karp-reduction subtree (Stages 0–5
+  + R-TI Phases 1, 2, 3 partial-discharge + the Manin chain +
+  PathOnlyAlgebra Path-B factoring). **All 928** depend only on the
+  standard Lean axioms (`propext`, `Classical.choice`,
+  `Quot.sound`); a substantial fraction depend on *no* axioms at
+  all (the precise count tracks the per-Workstream summary in
+  CLAUDE.md). **No `sorryAx`** appears in any output. The CI
+  parser de-wraps Lean's multi-line axiom lists before scanning,
+  so a custom axiom cannot hide on a continuation line.
+* **≈ 930** public (non-`private`) declarations across the source
+  tree (verified at A3-implementation time via the grep recipe
+  below; the README.md headline figure "358+" is a deliberate
+  floor estimate retained for stability across PRs); every one
+  carries a `/-- … -/` docstring (Phase 6 standards retained
+  through Phases 7–14, the post-2026-04-21 audit work, the R-CE /
+  R-TI Karp-reduction subtree, and the Manin chain + PathOnlyAlgebra
+  Path-B factoring landings). The exact running count is recorded
+  in CLAUDE.md's most recent per-workstream changelog entry. The
+  grep recipe used at A3 implementation time:
+  ```bash
+  PUB=$(grep -rE "^(theorem|def|structure|class|instance|abbrev|lemma|noncomputable) " \
+        Orbcrypt --include="*.lean" \
+        | grep -vE "^[^:]+:(private|@\[)" | wc -l)
+  PRIV=$(grep -rE "^private " Orbcrypt --include="*.lean" | wc -l)
+  echo "Public: $PUB; Private: $PRIV"
+  ```
+* **48** intentionally `private` helper declarations across the
+  source tree (verified at A3-implementation time via the grep
+  recipe above), all private-by-design and deliberately not part
+  of the public API. The pre-2026-04-21 5-helper enumeration
   (`Probability.Advantage.hybrid_argument_nat`,
   `AEAD.AEAD.{authDecaps_none_of_verify_false, keyDerive_canon_eq_of_mem_orbit}`,
-  `PublicKey.CombineImpossibility.{probTrue_map_id_eq, probTrue_orbitDist_eq}`).
-  Private-by-design, deliberately not part of the public API.
+  `PublicKey.CombineImpossibility.{probTrue_map_id_eq, probTrue_orbitDist_eq}`)
+  is preserved; the additional ≈ 43 private helpers were
+  introduced by post-2026-04-21 R-CE / R-TI / Manin / Path-B /
+  Discharge / EncoderSlabEval / PathBlockSubspace /
+  PathOnlyAlgebra / Wedderburn–Mal'cev / AlgebraWrapper modules.
 
 See `docs/VERIFICATION_REPORT.md` for the full per-headline breakdown,
 the theorem inventory, the Phase 8 `sorry` classification, and the
 known-limitations log (HSP / concrete tensor witness / research-scope
 concrete Karp-encoding follow-ups).
+
+See `CLAUDE.md`'s per-workstream changelog and
+`docs/VERIFICATION_REPORT.md`'s Document history for the running
+snapshot of metrics; this in-source block is refreshed only at
+audit boundaries (the 2026-04-21 → 2026-04-29 refresh closed audit
+finding A-07 / J-02 HIGH per
+`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+Workstream **A3**).
 
 ## Workstream G Snapshot (audit 2026-04-21, finding H1)
 

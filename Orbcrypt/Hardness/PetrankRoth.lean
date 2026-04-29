@@ -7,15 +7,32 @@
 -/
 
 /-
-Petrank–Roth (1997) Karp reduction GI ≤ CE.
+Petrank–Roth (1997) Karp reduction GI ≤ CE — partial closure.
 
-Top-level encoder, forward direction (Layer 2), iff assembly (Layer 5),
-non-degeneracy bridge (Layer 6), and `GIReducesToCE` inhabitant
-(Layer 7).  The reverse direction (Layers 3, 4) lives in
-`Orbcrypt/Hardness/PetrankRoth/MarkerForcing.lean`.
+This module lands the **forward direction** (Layer 2) of the
+Petrank–Roth Karp reduction: the encoder `prEncode`, its
+cardinality theorem `prEncode_card`, and the headline forward
+theorem `prEncode_forward`.  The Layer-3 column-weight invariance
+machinery (`MarkerForcing.lean`) is also landed and exercised by
+the surjectivity bridge `prEncode_surjectivity`.
 
-See `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` for
-the full design and the layer-by-layer landing plan.
+**Status: partial closure.**  Layers 4 (reverse direction —
+marker-forcing endpoint recovery), 5 (iff assembly
+`prEncode_iff`), 6 (non-degeneracy bridge
+`prEncode_codeSize_pos` / `prEncode_card_eq`), and 7 (the
+`GIReducesToCE` inhabitant `petrankRoth_isInhabitedKarpReduction`)
+are **research-scope** and **not yet landed**, tracked as
+`R-15-residual-CE-reverse` in CLAUDE.md and at
+`docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+Layer-4 obligations § 4.1–4.10 / § 5 / § 6 / § 7.  The
+identifiers `prEncode_iff`, `prEncode_codeSize_pos`,
+`prEncode_card_eq`, and `petrankRoth_isInhabitedKarpReduction`
+named in the layer organisation below **do not yet exist** as
+Lean declarations; they are placeholder names tracked for the
+research-scope work.
+
+See `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+for the full design and the layer-by-layer landing plan.
 -/
 
 import Mathlib.Data.Finset.Basic
@@ -37,19 +54,40 @@ column-weight invariant and marker-forcing reverse direction live in
 
 ## Layer organisation
 
-* **Layer 1** — codeword constructors (`vertexCodeword`,
-  `edgeCodeword`, `markerCodeword`, `sentinelCodeword`), the encoder
-  `prEncode`, evaluation lemmas, and `prEncode_card`.
-* **Layer 2** — forward direction: vertex-permutation σ ∈
+* **Layer 1 (LANDED)** — codeword constructors (`vertexCodeword`,
+  `edgeCodeword`, `markerCodeword`, `sentinelCodeword`), the
+  encoder `prEncode`, evaluation lemmas, and `prEncode_card`.
+* **Layer 2 (LANDED)** — forward direction: vertex-permutation σ ∈
   `Equiv.Perm (Fin m)` lifts to `Equiv.Perm (Fin (dimPR m))` via
-  `liftAut`, and `prEncode_forward` exhibits the lift as a witness of
-  `ArePermEquivalent (prEncode m adj₁) (prEncode m adj₂)`.
-* **Layer 5** — `prEncode_iff` assembling forward (Layer 2) with the
-  reverse direction (Layer 4, `MarkerForcing.lean`).
-* **Layer 6** — non-degeneracy bridge (`prEncode_codeSize_pos`,
-  `prEncode_card_eq`).
-* **Layer 7** — `petrankRoth_isInhabitedKarpReduction` discharging
-  the strengthened `GIReducesToCE` Prop.
+  `liftAut`, and `prEncode_forward` exhibits the lift as a witness
+  of `ArePermEquivalent (prEncode m adj₁) (prEncode m adj₂)`.
+* **Layer 3 (LANDED in `MarkerForcing.lean`)** — column-weight
+  invariance machinery used by Layer 4.  The four per-family
+  column-weight signatures (`colWeight_prEncode_at_vertex`, …,
+  `colWeight_prEncode_at_sentinel`) and the surjectivity bridge
+  `prEncode_surjectivity` are exercised here.
+* **Layer 4 (RESEARCH-SCOPE — `R-15-residual-CE-reverse`)** — the
+  full marker-forcing reverse direction: vertex-permutation
+  extraction (`extractVertexPerm` and bijectivity); edge-permutation
+  extraction (`extractEdgePerm`); the `extractEdgePerm =
+  liftedEdgePerm extractVertexPerm` identification core; marker-
+  block freedom; adjacency recovery; empty-graph case.  Multi-week
+  formalisation work; see
+  `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md`
+  sub-tasks 4.1–4.10.
+* **Layer 5 (RESEARCH-SCOPE)** — `prEncode_iff` assembling Layer 2's
+  forward direction with the Layer-4 reverse direction.  **Not yet
+  in the codebase**; the identifier `prEncode_iff` does not exist.
+* **Layer 6 (RESEARCH-SCOPE)** — non-degeneracy bridge
+  (`prEncode_codeSize_pos`, `prEncode_card_eq`).  **Not yet in the
+  codebase.**
+* **Layer 7 (RESEARCH-SCOPE)** — `petrankRoth_isInhabitedKarpReduction`
+  discharging the strengthened `GIReducesToCE` Prop.  **Not yet in
+  the codebase.**  The pre-Layer-7 inhabitant of `GIReducesToCE`
+  (a singleton-encoder non-degeneracy witness retained as
+  `_card_nondegeneracy_witness` in
+  `Orbcrypt/Hardness/CodeEquivalence.lean`) is the type-level
+  placeholder until Layer 7 lands.
 
 ## Encoder design — directed-edge semantics
 

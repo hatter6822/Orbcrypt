@@ -9,7 +9,7 @@
 # Orbcrypt Formal Verification Report
 
 **Phase 16 — Formal Verification of New Components.**
-*Snapshot: 2026-04-21.* *Branch: `claude/review-phase-16-verification-7nN9o`.*
+*Snapshot: 2026-04-29.* *Branch: `claude/audit-codebase-planning-CYmv2`.*
 
 ---
 
@@ -22,33 +22,61 @@ extension scaffolding) and confirms that the project's zero-`sorry`,
 zero-custom-axiom standard from Phase 6 has been preserved through all the
 post-Phase-6 work.
 
-**Headline numbers.**
+**Headline posture (Strategy a + b hybrid, audit 2026-04-29 Workstream A2).**
 
-| Metric | Value |
-|---|---:|
-| Lean source modules | 38 |
-| Lines of Lean source | 8,156+ (Workstream K adds ≈ 130 lines across four existing modules) |
-| Public declarations | 347 |
-| Public declarations carrying a `/-- … -/` docstring | 347 (100 %) |
-| `theorem` declarations | 220 |
-| `def` declarations | 105 |
-| `structure` declarations | 20 |
-| `class` / `instance` / `abbrev` declarations | 1 / 3 / 3 |
-| `private` declarations (intentional helpers) | 5 |
-| Uses of `sorry` in source | **0** |
-| Custom `axiom` declarations | **0** |
-| `lake build` jobs (full project) | 3,366 |
-| `lake build` warnings | 0 |
-| Public declarations checked by `scripts/audit_phase_16.lean` | 346 |
-| Declarations depending on `sorryAx` | **0** |
-| Declarations depending on a non-standard axiom | **0** |
-| Declarations depending on *no* axioms | 133+ (Workstream K4's `indCPAAdvantage_collision_zero` depends only on `propext` / `Classical.choice` / `Quot.sound` via `advantage_self`; other K additions compose standard-trio ancestors) |
+For current running counts (module total, public-declaration
+total, audit-script `#print axioms` total, `lake build` job
+total), consult `CLAUDE.md`'s most recent per-workstream
+changelog entry — that document is the canonical source for
+ephemeral metrics and is updated continuously per the
+"Documentation rules" guidance. This report carries only the
+**invariants** below, which are guaranteed at every snapshot:
+
+| Invariant | Status |
+|-----------|--------|
+| `lake build Orbcrypt` succeeds with exit 0 | ✅ |
+| Zero `sorry` occurrences across `Orbcrypt/**/*.lean` (comment-aware Perl strip) | ✅ |
+| Zero custom `axiom` declarations across `Orbcrypt/**/*.lean` | ✅ |
+| Every `#print axioms` result on standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`) or "does not depend on any axioms" | ✅ |
+| Every public declaration carries a `/-- … -/` docstring | ✅ |
+| Phase-16 audit script `scripts/audit_phase_16.lean` runs cleanly (exit code 0) | ✅ |
+| CI workflow `.github/workflows/lean4-build.yml` enforces all of the above | ✅ |
+
+**Snapshot anchor (2026-04-29 reality, ephemeral — for current
+totals consult `CLAUDE.md`).** At Workstream-A2 landing time the
+running counts were: 76 Lean source modules under `Orbcrypt/`
+(75 imported by the root file + the un-imported transient
+`_ApiSurvey.lean`, slated for removal in Workstream **B1**); 928
+declarations exercised by `scripts/audit_phase_16.lean` via
+`#print axioms`; ≈ 930 public declarations across the source
+tree (verified at A2-implementation time via the grep recipe in
+the Phase 16 snapshot section); 48 intentionally `private`
+helper declarations; `lake build` succeeds with 3,418 jobs
+(verified post-A2 on `claude/audit-codebase-planning-CYmv2`;
+the audit plan's pre-implementation estimate of 3,426 was
+itself a slightly-stale carry-over from the audit-time
+snapshot — the precise current count tracks `CLAUDE.md`'s
+most recent per-workstream changelog).  Subsequent workstream
+landings shift these counts; the anchor above is informational
+only.
 
 **Verdict.** Phase 16 exit criteria are all met. The formal verification
 posture established at the end of Phase 6 — zero `sorry`, zero custom axioms,
 all theorems carrying their cryptographic assumptions as explicit hypotheses —
 extends unchanged through Phases 7–14, and now also through the Workstream A/B/
 C/D/E audit follow-ups.
+
+Subsequent post-2026-04-21 work (Workstream G/H/J/K/L/M/N of the
+2026-04-21 audit; Workstream A/B/C/D/E of the 2026-04-23 audit;
+Workstream F/G of the 2026-04-23 audit's preferred slate; the
+R-CE / R-TI Karp-reduction subtree expansion; the R-TI Phase 1 /
+2 / 3 partial-discharge work including the Manin tensor-stabilizer
+chain and the PathOnlyAlgebra Path-B factoring; and the Workstream
+A documentation-parity reconciliation of the 2026-04-29 audit)
+preserves the same posture — every Lean source change since the
+2026-04-21 snapshot has been verified to maintain zero-sorry /
+zero-custom-axiom / standard-trio-only axioms by the unchanged
+Phase-16 audit script and CI workflow.
 
 ---
 
@@ -75,14 +103,19 @@ done; echo "PASS: zero sorry"
 source ~/.elan/env && lake env lean scripts/audit_phase_16.lean
 ```
 
-Step 5 prints `#print axioms` for 342 declarations — every public `def`,
+Step 5 prints `#print axioms` for 928 declarations — every public `def`,
 `theorem`, `structure`, `class`, `instance`, and `abbrev` in
-`Orbcrypt/**/*.lean`. CI fails if any line mentions `sorryAx` or any
-axiom outside the standard Lean trio (`propext`, `Classical.choice`,
-`Quot.sound`). The CI parser first de-wraps multi-line axiom lists
-(Lean wraps long `[propext, Classical.choice, Quot.sound]` outputs
-across three lines) so a custom axiom cannot hide on a continuation
-line.
+`Orbcrypt/**/*.lean`, including all post-2026-04-21 R-CE / R-TI
+Karp-reduction additions, the Manin tensor-stabilizer chain, and
+the PathOnlyAlgebra Path-B factoring. CI fails if any line
+mentions `sorryAx` or any axiom outside the standard Lean trio
+(`propext`, `Classical.choice`, `Quot.sound`). The CI parser
+first de-wraps multi-line axiom lists (Lean wraps long
+`[propext, Classical.choice, Quot.sound]` outputs across three
+lines) so a custom axiom cannot hide on a continuation line.
+The exact running count tracks `CLAUDE.md`'s most recent
+per-workstream changelog entry; "928" is the 2026-04-29
+Workstream-A2 anchor.
 
 ---
 
@@ -452,11 +485,15 @@ discharged by Workstream E (E1, E5, E8) as documented above.
 
 ## Axiom audit (work unit 16.5)
 
-**Method.** `scripts/audit_phase_16.lean` runs `#print axioms` on 342
+**Method.** `scripts/audit_phase_16.lean` runs `#print axioms` on 928
 declarations — every public `def`, `theorem`, `structure`, `class`,
 `instance`, and `abbrev` in `Orbcrypt/**/*.lean`, including all
-Phase 2–14 foundations and the Workstream A/B/C/D/E follow-ups. CI
-first de-wraps multi-line axiom lists (Lean wraps long
+Phase 2–14 foundations, the Workstream A/B/C/D/E follow-ups, and
+the post-2026-04-21 additions (Workstream G/H/J/K/L/M/N of the
+2026-04-21 audit; Workstream A/B/C/D/E/F/G of the 2026-04-23
+audit; the R-CE / R-TI Karp-reduction subtree expansion; the R-TI
+Phase 1 / 2 / 3 partial-discharge cluster). CI first de-wraps
+multi-line axiom lists (Lean wraps long
 `[propext, Classical.choice, Quot.sound]` outputs across three lines,
 so a naive line-oriented scan would miss a custom axiom on a
 continuation line), then parses each depends-on line and rejects:
@@ -469,12 +506,20 @@ continuation line), then parses each depends-on line and rejects:
 **Result.**
 
 ```
-342 declarations exercised (every public declaration in Orbcrypt/**/*.lean)
- 133 depend on no axioms at all
- 209 depend only on a subset of {propext, Classical.choice, Quot.sound}
-   0 depend on any non-standard axiom
+928 declarations exercised (every public declaration in Orbcrypt/**/*.lean)
    0 depend on `sorryAx`
+   0 depend on any non-standard axiom
+ every dependency lies in the standard Lean trio
+   {propext, Classical.choice, Quot.sound}
+ a substantial fraction depend on no axioms at all
 ```
+
+The exact running totals (axiom-free count, standard-trio count,
+running declaration count) track `CLAUDE.md`'s most recent
+per-workstream changelog entry — that document is updated
+continuously per the project's "Documentation rules" guidance and
+is the canonical source for ephemeral metrics. "928" is the
+2026-04-29 Workstream-A2 anchor.
 
 The full `#print axioms` per-declaration breakdown is reproduced in
 `Orbcrypt.lean`'s axiom transparency report (§"Verification" near the
@@ -491,21 +536,36 @@ end of the file).
    `structure`, `class`, `instance`, or `abbrev` is preceded by a
    `/-- … -/` documentation comment.
 
-**Result.** All 36 modules carry a `/-! … -/` module docstring. All 343
-public declarations carry a `/-- … -/` docstring (a single grep false
-positive at `Orbcrypt/Hardness/Encoding.lean:20` is plain text inside
-the wrapped module-level docstring, not an actual declaration).
+**Result.** All 76 modules under `Orbcrypt/` carry a `/-! … -/`
+module docstring (75 imported by the root file plus the
+un-imported transient `_ApiSurvey.lean`, slated for removal in
+Workstream **B1** of the 2026-04-29 audit plan). Every public
+declaration across the source tree (≈ 930 as of the 2026-04-29
+Workstream-A2 anchor; the exact running count tracks
+`CLAUDE.md`'s most recent per-workstream changelog entry) carries
+a `/-- … -/` docstring (a small number of grep false positives
+inside wrapped module-level docstrings are plain text, not
+actual declarations).
 
-Phase 6's docstring standards are preserved unchanged through Phases
-7–14.
+Phase 6's docstring standards are preserved unchanged through
+Phases 7–14, the Workstream A/B/C/D/E follow-ups of the
+2026-04-23 audit, the post-2026-04-21 Workstream-G/H/J/K/L/M/N
+work, and the R-CE / R-TI Karp-reduction subtree.
 
 ---
 
 ## Root-import / dependency-graph audit (work unit 16.7)
 
-`Orbcrypt.lean` imports all 36 modules. Building `lake build Orbcrypt`
-exercises the complete graph (3,364 jobs including Mathlib
-dependencies, zero errors, zero warnings).
+`Orbcrypt.lean` imports all 75 modules under `Orbcrypt/` that are
+intended for the public-API graph (the un-imported transient
+`_ApiSurvey.lean` is intentionally excluded and is a Workstream-
+**B1** removal target of the 2026-04-29 audit plan; the source
+tree contains 76 `.lean` files in total). Building `lake build
+Orbcrypt` exercises the complete graph (3,418 jobs including
+Mathlib dependencies as of the 2026-04-29 Workstream-A2 anchor,
+zero errors, zero warnings; the exact running count shifts with
+each module addition and tracks `CLAUDE.md`'s most recent
+per-workstream changelog entry).
 
 The ASCII dependency graph in `Orbcrypt.lean`'s docstring already
 covers every Phase 7–13 module. Phase 16 added a new "Phase 16
@@ -592,12 +652,18 @@ included in the global totals row but not broken out here to keep the
 table compact; see the per-phase verification matrix above for the
 detailed counts per file.)
 
-The 342 declarations exercised by `scripts/audit_phase_16.lean` cover
-every public `def`, `theorem`, `structure`, `class`, `instance`, and
-`abbrev` under `Orbcrypt/**/*.lean`. This includes every headline
-result a downstream consumer would care about (every phase, every
-workstream) plus every supporting lemma, simp rule, typeclass
-instance, and namespace-qualified field accessor.
+The 928 declarations exercised by `scripts/audit_phase_16.lean`
+(2026-04-29 Workstream-A2 anchor; the exact running count tracks
+`CLAUDE.md`'s most recent per-workstream changelog entry) cover
+every public `def`, `theorem`, `structure`, `class`, `instance`,
+and `abbrev` under `Orbcrypt/**/*.lean`. This includes every
+headline result a downstream consumer would care about (every
+phase, every workstream) plus every supporting lemma, simp rule,
+typeclass instance, and namespace-qualified field accessor; the
+post-2026-04-21 R-CE / R-TI Karp-reduction subtree expansion, the
+Manin tensor-stabilizer chain, the PathOnlyAlgebra Path-B
+factoring, and the Workstream-A documentation parity additions
+of the 2026-04-29 audit are all covered.
 
 ---
 
@@ -1184,6 +1250,63 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-29 (Audit 2026-04-29 — Workstream A2 documentation
+  parity refresh)** — `docs/VERIFICATION_REPORT.md` headline
+  numbers refreshed to 2026-04-29 reality per the
+  `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+  Strategy a + b hybrid.  This landing closes audit finding L-04
+  (HIGH).
+
+  **Header refresh.**  Snapshot date updated from `2026-04-21`
+  to `2026-04-29`.  The "Headline numbers" table replaced with a
+  cross-reference paragraph + invariants table: ephemeral metrics
+  (module count, public-declaration count, audit-script
+  `#print axioms` count, `lake build` job count) now point at
+  `CLAUDE.md`'s most recent per-workstream changelog entry as the
+  canonical running-state source; only invariants (zero-sorry /
+  zero-custom-axiom posture, standard-trio-only axioms,
+  per-public-declaration docstrings, build-success status) are
+  carried in this report.  A "Snapshot anchor" paragraph records
+  the 2026-04-29 totals (76 modules, 928 audit-script entries,
+  ≈ 930 public declarations, 48 private helpers, 3,418 build
+  jobs) for archeological reference; subsequent landings shift
+  these counts.
+
+  **Body sweep — current-state references refreshed.**  Six
+  current-state references inside the audit-method sections were
+  refreshed to the 2026-04-29 anchor (was: 342 declarations / 36
+  modules / 343 public / 3,364 jobs; now: 928 / 76 / ≈ 930 /
+  3,418).  The references touched are all top-level descriptions
+  of what the audit script does NOW and what its current output
+  is.
+
+  **Historical-snapshot references preserved (per-Workstream /
+  per-Phase / Document-history bullets).**  Every per-Workstream
+  / per-Phase snapshot entry inside the per-Workstream
+  Verification subsections and the prior Document-history
+  entries is **preserved verbatim**.  These entries describe the
+  state at the time of the corresponding workstream landing;
+  refreshing them would erase the audit-trail traceability.  The
+  disambiguation rule (per the 2026-04-29 plan): a reference is
+  HISTORICAL iff it appears inside a `* **YYYY-MM-DD …** —`
+  Document-history bullet or a per-Workstream / per-Phase
+  snapshot subsection; every other stale reference is a
+  CURRENT-STATE claim.  All historical bullets are byte-identical
+  to their pre-A2 state.
+
+  **Verdict augmentation.**  The "Verdict" section now records
+  that the post-2026-04-21 Workstream-G/H/J/K/L/M/N (audit
+  2026-04-21), Workstream-A/B/C/D/E (audit 2026-04-23),
+  Workstream-F/G (audit 2026-04-23 preferred slate), and the
+  R-CE / R-TI Phase 1 / 2 / 3 partial-discharge expansion all
+  preserve the same posture (zero-sorry / zero-custom-axiom /
+  standard-trio-only).
+
+  **Verification.** Workstream A2 is documentation-only; no Lean
+  source files modified.  `lake build` posture and audit-script
+  posture unchanged.  Patch version: `lakefile.lean` retains
+  `0.2.0` (Workstream A is markdown-only).
 
 * **2026-04-28 (R-TI Phase 3 cleanup pass — dead-code removal +
   additional substantive content + stale-docstring fixes)** — Final
