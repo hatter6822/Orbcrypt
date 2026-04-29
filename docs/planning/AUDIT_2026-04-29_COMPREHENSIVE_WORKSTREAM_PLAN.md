@@ -397,11 +397,18 @@ policy (ABSOLUTE)":
    script entry count, private-helper count) are **2-9× stale**
    relative to current reality:
    - Snapshot date: `2026-04-21` → reality: `2026-04-29`.
-   - Modules: `38` → reality: `76`.
-   - Public declarations: `347` → reality: 358+.
-   - Audit-script entries: `342` → reality: `928`.
-   - `private` declarations: `5` → reality: 47 (≈ 9× stale).
-   The stale numbers appear at ~17 places in the document body.
+   - Modules: `38` → reality: `76` (drops to `75` post-Workstream-B1).
+   - Public declarations: `347` → reality: ≈ 800-900 (the
+     README's floor estimate of `358+` is itself understated per
+     L-01; the precise count must be verified at implementation
+     time via the grep recipe in A3 Step 4).
+   - Audit-script entries: `342` → reality: `928` (verified by
+     `grep -c "^#print axioms" scripts/audit_phase_16.lean`).
+   - `private` declarations: `5` → reality: ≈ 47 (≈ 9× stale).
+   The stale numbers appear at ≈ 19 grep matches in the document
+   body, of which **6** are current-state references that need
+   refreshing and **13** are inside historical-snapshot bullets
+   that MUST be preserved (see A2 below for the disambiguation).
 
 3. **A-07 / J-02:** `Orbcrypt.lean`'s "Phase 16 Verification Audit
    Snapshot" section (lines 1279-1314) records the same stale
@@ -414,10 +421,14 @@ policy (ABSOLUTE)":
    `CLAUDE.md`'s changelog is the R-TI Phase 3 — Path B Sub-task
    A.6.4 entry, which records `0.1.28 → 0.1.29`. There is no
    `CLAUDE.md` snapshot recording the subsequent jumps `0.1.29 →
-   0.1.30 → 0.2.0`. The git log confirms two intermediate commits
-   (one `0.1.30` bump in commit `5b665e6` and one `0.2.0` bump in
-   commit `9f4b9ec` titled "Bump minor version: 0.1.30 → 0.2.0"),
-   but neither bump has a corresponding CLAUDE.md changelog entry.
+   0.1.30 → 0.2.0`. The git log (verified via `git log --oneline
+   --all -- lakefile.lean` followed by per-commit
+   `git show <hash>:lakefile.lean | grep version`) shows two
+   intermediate version-bumping commits: `42b7e03` ("Audit pass:
+   PathOnlyAlgEquivSigma cleanup + extended tests + docs"), which
+   bumped `0.1.29 → 0.1.30`, and `9f4b9ec` ("Bump minor version:
+   0.1.30 → 0.2.0"). Neither bump has a corresponding CLAUDE.md
+   changelog entry.
 
 ### 5.2 Fix scope
 
@@ -428,10 +439,15 @@ pass** with these explicit deliverables:
    `Orbcrypt/Hardness/PetrankRoth.lean` to mirror the honest
    disclosure pattern already established by `MarkerForcing.lean`.
 2. **A2 (L-04).** Refresh `docs/VERIFICATION_REPORT.md`'s headline
-   numbers, snapshot date, and the ~17 in-document stale references.
-   Two strategies are evaluated; the chosen strategy (b) restructures
-   the document to reference `CLAUDE.md` as the canonical running-
-   state source, then carries only invariants in the report.
+   numbers, snapshot date, and the **6 current-state in-document
+   references** (lines 78, 455, 472, 494, 506, 595). The
+   **13 historical-snapshot references** inside per-Workstream /
+   Document-history bullets MUST be preserved (lines 165, 1722,
+   1801, 1902, 1988, 2057, 2154, 2156, 2218, 2302, 2390, 2481,
+   2489). Two strategies are evaluated for the header table; the
+   chosen Strategy (b) restructures the table to reference
+   `CLAUDE.md` as the canonical running-state source, then carries
+   only invariants in the report.
 3. **A3 (A-07 / J-02).** Refresh the `Orbcrypt.lean` Phase 16
    snapshot section to current numbers and the `2026-04-29` date.
 4. **A4 (A-02 / L-03a).** Add a `CLAUDE.md` per-workstream changelog
@@ -609,34 +625,77 @@ docstring blocks + verify).
 **Severity.** HIGH (release-blocking).
 
 **Problem.** The auditor-facing document carries headline numbers
-that are 2-9× stale. Stale references found by audit verification:
+that are 2-9× stale. **Critical disambiguation:** the document
+contains *two distinct categories* of stale-looking references —
+**current-state claims** (which describe the audit's CURRENT method
+/ result / verdict and DO need refreshing) and **historical-
+snapshot content** (per-Workstream / per-Phase entries inside the
+"Document history" section that record state AT THE TIME of each
+landing and MUST NOT be refreshed, on pain of erasing the audit
+trail).
 
-| Location | Stale value | Current value |
-|----------|-------------|---------------|
-| Line 12 (snapshot date header) | `2026-04-21` | `2026-04-29` |
-| Line 78 (Step 5 prose) | `342 declarations` | `928 declarations` (audit script `#print axioms` count) |
-| Line 165 (post-Workstream-K body) | `38-module total and the 347 public-` | `76-module total, 358+ public-` |
-| Line 455 (Method header) | `runs #print axioms on 342` | `runs #print axioms on 928` |
-| Line 472 | `342 declarations exercised` | `928 declarations exercised` |
-| Line 494 | `All 36 modules carry a /-! …` | `All 76 modules carry a /-! …` |
-| Line 506 | `Orbcrypt.lean imports all 36 modules` | `Orbcrypt.lean imports all 75 modules (76 source modules under Orbcrypt/, minus _ApiSurvey.lean which is intentionally not imported and is a Workstream-B removal target)` |
-| Line 595 | `The 342 declarations exercised` | `The 928 declarations exercised` |
-| Line 1722 | `342 #print axioms checks` | `928 #print axioms checks` |
-| Lines 1801, 1902, 1988, 2057, 2218, 2302, 2390, 2481 | `38 modules build clean` | `76 modules build clean` |
-| Lines 2154, 2156, 2390 | `347 public-` | `358+ public-` |
-| Lines 2154, 2489 | `342 #print axioms` | `928 #print axioms` |
+A blanket `sed -i` over every stale-looking string would damage
+the historical record. The implementer must apply edits ONLY to
+the current-state subset.
 
-The header table at lines 28-48 also requires holistic refresh:
+**Current-state references (REFRESH).** These are top-level
+descriptions of what the audit script does NOW and what its
+current output is.
 
-| Pre-fix | Post-fix |
-|---------|----------|
-| Lean source modules | 38 | Lean source modules | 76 |
-| Public declarations | 347 | Public declarations | 358+ |
-| Public declarations checked by audit script | 346 | Public declarations checked by audit script | 928 |
-| `theorem` declarations | 220 | `theorem` declarations | 466+ |
-| `def` declarations | 105 | `def` declarations | ~150+ |
-| `private` declarations | 5 | `private` declarations | 47 |
-| `lake build` jobs | 3,366 | `lake build` jobs | 3,426 |
+| Line | Section | Stale value | Current value |
+|------|---------|-------------|---------------|
+| 12 | Snapshot-date header | `2026-04-21` | `2026-04-29` |
+| 28-48 | Headline numbers table | various | rewrite per Strategy a + b hybrid |
+| 49-55 | Verdict | factually still true | augment per Step 3 |
+| 78 | "How to reproduce the audit" Step 5 prose | `342 declarations` | `928 declarations` (start-of-line `#print axioms` count) |
+| 455 | "Method." section header for the audit body | `runs #print axioms on 342` | `runs #print axioms on 928` |
+| 472 | Method continuation | `342 declarations exercised` | `928 declarations exercised` |
+| 494 | "Result." section header | `All 36 modules carry a /-! …` | `All 76 modules carry a /-! …` (or 75 post-B1) |
+| 506 | Method continuation (root file imports) | `Orbcrypt.lean imports all 36 modules` | `Orbcrypt.lean imports all 75 modules (76 source modules under Orbcrypt/, minus _ApiSurvey.lean — intentionally not imported and a Workstream-B1 removal target)` |
+| 595 | Method conclusion | `The 342 declarations exercised` | `The 928 declarations exercised` |
+
+**Historical-snapshot references (PRESERVE).** These appear inside
+the "Document history" section's per-Workstream / per-Phase
+bullets. Each describes the state at the time of THAT workstream's
+landing; refreshing them would erase the audit-trail traceability.
+
+| Line | Snapshot owner | Why preserved |
+|------|----------------|---------------|
+| 165 | Workstream D (audit 2026-04-23) snapshot | "The 38-module total and the 347 public-declaration count are unchanged" describes the post-D state correctly. |
+| 1722 | "2026-04-21 — Phase 16 verification report authored" Document-history entry | Records the original Phase 16 landing's `342 #print axioms` count. |
+| 1801 | Workstream K (audit 2026-04-21, distinct-IND-1-CPA) snapshot | "All 38 modules build clean" describes the post-K state. |
+| 1902 | Workstream L snapshot | post-L state |
+| 1988 | Workstream M snapshot | post-M state |
+| 2057 | Workstream N snapshot | post-N state |
+| 2154, 2156 | Workstream A (audit 2026-04-23) snapshot | post-A state for that audit |
+| 2218 | Workstream B (audit 2026-04-23) snapshot | post-B state for that audit |
+| 2302 | Workstream C (audit 2026-04-23) snapshot | post-C state for that audit |
+| 2390 | Workstream D (audit 2026-04-23) snapshot — second mention | post-D state |
+| 2481 | Workstream E (audit 2026-04-23) snapshot | post-E state |
+| 2489 | Workstream E (audit 2026-04-23) snapshot — second mention | "rises from 342 to 344" records the literal delta, not the current count |
+
+**Disambiguation rule.** A reference is **historical** iff it
+appears inside a `* **YYYY-MM-DD …** —` Document-history bullet
+or inside a per-Workstream / per-Phase snapshot subsection. Every
+other stale reference is a **current-state** claim and must be
+refreshed.
+
+The header table at lines 28-48 also requires holistic refresh.
+Strategy (b) (see below) replaces the entire table with a
+cross-reference paragraph, so the per-cell delta below is
+*illustrative* of the staleness rather than a literal post-A2
+target table. Implementers adopting Strategy (a) instead should
+verify each post-fix value at implementation time:
+
+| Pre-fix value | Post-fix value (verify at impl time) |
+|---------------|--------------------------------------|
+| Lean source modules: 38 | 76 (or 75 post-B1); `find Orbcrypt -name '*.lean' \| wc -l` |
+| Public declarations: 347 | ≈ 800-900 (verified grep recipe; README "358+" is itself understated) |
+| Public declarations checked by audit script: 346 | 928; `grep -c "^#print axioms" scripts/audit_phase_16.lean` |
+| `theorem` declarations: 220 | ≈ 622; `grep -rE "^theorem [a-zA-Z]" Orbcrypt --include="*.lean" \| wc -l` |
+| `def` declarations: 105 | ≈ 168; `grep -rE "^def [a-zA-Z]" Orbcrypt --include="*.lean" \| wc -l` |
+| `private` declarations: 5 | ≈ 47; verified grep recipe |
+| `lake build` jobs: 3,366 | 3,426 (or 3,425 post-B1); `lake build` final summary line |
 
 **Strategy decision.** The audit recommends two strategies:
 
@@ -689,10 +748,42 @@ counts). Rationale:
   | Every public declaration carries a `/-- … -/` docstring | ✅ |
   ```
 
-* **Step 2 — body sweep (Strategy a).** Rewrite each of the ~17
-  stale references identified in the table above. Use exact `sed
-  -i` or `Edit`-tool replacements; do not paraphrase — preserve
-  the surrounding prose intact and only update the count cells.
+* **Step 2 — body sweep (Strategy a, current-state references
+  only).** Rewrite ONLY the current-state references identified in
+  the "REFRESH" table above (lines 78, 455, 472, 494, 506, 595).
+  Use exact `Edit`-tool replacements with sufficient surrounding
+  context to disambiguate from the historical-snapshot references
+  on the same numerical pattern. **Do not** apply a blanket
+  `sed -i` substitution — that would corrupt the historical
+  Document-history bullets. Each refresh preserves the surrounding
+  prose intact and only updates the count cells.
+
+  **Per-line refresh recipe (illustrative — implementer adjusts to
+  actual line content):**
+
+  - **Line 78:** `342 declarations` → `928 declarations`. Preserve
+    the surrounding `Step 5 prints #print axioms for ...` prose.
+  - **Line 455:** `runs #print axioms on 342` → `runs #print
+    axioms on 928`.
+  - **Line 472:** `342 declarations exercised` → `928 declarations
+    exercised`.
+  - **Line 494:** `All 36 modules carry a /-! …` → `All 75 modules
+    carry a /-! …` (post-B1; or 76 if B1 has not landed).
+  - **Line 506:** Update the "imports all 36 modules" claim to
+    reflect the post-B1 count of 75 imports (the un-imported
+    `_ApiSurvey.lean` was deleted; the root file imports all 75
+    remaining modules).
+  - **Line 595:** `The 342 declarations exercised` → `The 928
+    declarations exercised`.
+
+  **Verification of disambiguation.** After Step 2, run:
+  ```bash
+  grep -n "342\|36 modules\|38 modules\|347 public" docs/VERIFICATION_REPORT.md
+  ```
+  Expected output: only the lines listed in the "PRESERVE" table
+  above (165, 1722, 1801, 1902, 1988, 2057, 2154, 2156, 2218,
+  2302, 2390, 2481, 2489). If any line listed in the "REFRESH"
+  table still appears in the grep output, Step 2 is incomplete.
 
 * **Step 3 — body verdict refresh.** The "Verdict" section
   (lines 49-55) currently reads "Phase 16 exit criteria are all
@@ -716,19 +807,31 @@ counts). Rationale:
 
 **Acceptance criteria.**
 
-* **Mechanical:** `grep -n "342\|36 modules\|38 modules\|347 public"
-  docs/VERIFICATION_REPORT.md` returns **zero** matches at headline /
-  count-cell positions (matches at strictly historical positions
-  describing prior snapshot states are acceptable).
+* **Mechanical (current-state refreshed):** Lines 78, 455, 472,
+  494, 506, 595 no longer carry `342 declarations` / `36 modules`
+  / `38 modules` / `347 public` claims; they reflect 2026-04-29
+  reality.
+* **Mechanical (historical snapshots preserved):** Lines 165,
+  1722, 1801, 1902, 1988, 2057, 2154, 2156, 2218, 2302, 2390,
+  2481, 2489 are **byte-identical** to their pre-A2 state. The
+  historical Workstream / Phase snapshot bullets are preserved
+  verbatim.
 * **Mechanical:** The header date reads `Snapshot: 2026-04-29`.
+* **Mechanical:** The headline-numbers table (lines 28-48) is
+  rewritten per Strategy a + b hybrid (cross-references CLAUDE.md
+  for ephemeral metrics; carries only invariants explicitly).
 * **Semantic:** A reader of the refreshed document does not
-  encounter a numerical claim that contradicts the current
-  reality. Numbers either reflect 2026-04-29 reality or are
-  cross-referenced to CLAUDE.md.
+  encounter a CURRENT-STATE numerical claim that contradicts the
+  current reality. Historical-snapshot bullets continue to record
+  state at the time of the corresponding workstream landing.
 * **Build:** Document is markdown-only; no Lean build impact.
 
-**Regression safeguard.** None — markdown-only edit. The audit
-script and `lake build` outputs are unaffected.
+**Regression safeguard.** The historical-snapshot disambiguation
+rule (PRESERVE table above) is the primary safeguard. Reviewers
+of the A2 PR should `git diff` the touched lines and verify each
+diff hunk is in the REFRESH list, not the PRESERVE list. A
+diff against any line in the PRESERVE table is a review-blocking
+regression.
 
 **Estimated effort.** 1.5 hours (multiple pass: 30 min header
 restructure, 45 min body sweep across ~17 references, 15 min
@@ -749,7 +852,7 @@ section records:
 | 0 `sorry` (still true) | 0 (still true) |
 | 0 custom axiom (still true) | 0 (still true) |
 | 342 declarations | 928 |
-| 343 public (non-`private`) declarations | 358+ |
+| 343 public (non-`private`) declarations | ≈ 800-900 (verified at impl time; README's floor `358+` understated) |
 | 5 intentionally `private` helper declarations | 47 |
 | 3,364 `lake build` jobs | 3,426 |
 | `(2026-04-21)` date | `(2026-04-29)` |
@@ -846,15 +949,38 @@ catalogued as `pending`. Rationale:
     through Phases 7–14).
   ```
 
-  is rewritten to:
+  is rewritten using a count verified at A3-implementation-time
+  via:
+  ```bash
+  PUB=$(grep -rE "^(theorem|def|structure|class|instance|abbrev) [a-zA-Z]" \
+        Orbcrypt --include="*.lean" | wc -l)
+  PRIV=$(grep -rE "^private (theorem|def|lemma|structure|class|instance|abbrev|noncomputable)" \
+         Orbcrypt --include="*.lean" | wc -l)
+  echo "Public: $PUB; Private: $PRIV"
+  ```
+
+  Note the README.md's headline "358+" is acknowledged by the
+  audit (L-01) as "likely understated"; the snapshot should
+  reflect the verified `$PUB` value at the time A3 lands. As of
+  the planning-document drafting, `$PUB ≈ 840` (622 theorems +
+  168 defs + 50 structures/classes/instances/abbrevs); the
+  noncomputable-prefixed declarations (~83) further extend the
+  total. The actual snapshot writes:
 
   ```
-  * **358+** public (non-`private`) declarations across the source tree;
-    every one carries a `/-- … -/` docstring (Phase 6 standards retained
-    through Phases 7–14, the post-2026-04-21 audit work, and the R-CE /
-    R-TI / Manin chain landing). The exact running count is recorded
-    in CLAUDE.md's most recent per-workstream changelog entry.
+  * **<verified-count>** public (non-`private`) declarations across
+    the source tree (verified via the grep recipe at A3 implementation
+    time; expected ≈ 800-900 as of 2026-04-29); every one carries a
+    `/-- … -/` docstring (Phase 6 standards retained through Phases
+    7–14, the post-2026-04-21 audit work, and the R-CE / R-TI / Manin
+    chain landing). The exact running count is recorded in CLAUDE.md's
+    most recent per-workstream changelog entry; the README.md headline
+    figure ("358+") is a deliberate floor estimate retained for
+    stability across PRs.
   ```
+
+  The `<verified-count>` placeholder is filled in by the
+  implementer after running the grep recipe above.
 
 * **Step 5 — refresh private-helper count.** Lines 1309-1313:
 
@@ -866,22 +992,27 @@ catalogued as `pending`. Rationale:
     Private-by-design, deliberately not part of the public API.
   ```
 
-  is rewritten to:
+  is rewritten to (using the verified `$PRIV` count from
+  Step 4's grep recipe; ≈ 47 as of audit 2026-04-29):
 
   ```
-  * **47** intentionally `private` helper declarations across the
-    source tree, all private-by-design and deliberately not part of
-    the public API. The pre-2026-04-21 5-helper enumeration
+  * **<verified-private-count>** intentionally `private` helper
+    declarations across the source tree (verified via the grep
+    recipe in Step 4; ≈ 47 as of 2026-04-29), all private-by-
+    design and deliberately not part of the public API. The
+    pre-2026-04-21 5-helper enumeration
     (`Probability.Advantage.hybrid_argument_nat`,
     `AEAD.AEAD.{authDecaps_none_of_verify_false, keyDerive_canon_eq_of_mem_orbit}`,
     `PublicKey.CombineImpossibility.{probTrue_map_id_eq, probTrue_orbitDist_eq}`)
-    is preserved; the additional ~42 private helpers were introduced
-    by post-2026-04-21 R-CE / R-TI / Manin / Path-B / Discharge /
-    EncoderSlabEval / PathBlockSubspace / PathOnlyAlgebra /
-    Wedderburn–Mal'cev / AlgebraWrapper modules. The exact running
-    enumeration is in `scripts/audit_phase_16.lean`'s NonVacuityWitnesses
-    section.
+    is preserved; the additional ≈ 42 private helpers were
+    introduced by post-2026-04-21 R-CE / R-TI / Manin / Path-B /
+    Discharge / EncoderSlabEval / PathBlockSubspace /
+    PathOnlyAlgebra / Wedderburn–Mal'cev / AlgebraWrapper
+    modules.
   ```
+
+  The `<verified-private-count>` placeholder is filled in by the
+  implementer after running the grep recipe in Step 4.
 
 * **Step 6 — add Workstream-A snapshot pointer.** Append a single
   line at the end of the section directing future maintenance to
@@ -896,8 +1027,16 @@ catalogued as `pending`. Rationale:
 **Acceptance criteria.**
 
 * **Mechanical:** `sed -n '1279,1340p' Orbcrypt.lean` displays the
-  refreshed snapshot dated `2026-04-29` with current numbers (76,
-  928, 358+, 47, 3,426).
+  refreshed snapshot dated `2026-04-29` with current numbers
+  (verified at A3-implementation-time):
+  - 76 (or 75 post-B1) Lean source modules
+  - 928 audit-script `#print axioms` entries
+  - **verified** public-declaration count from the Step-4 grep
+    recipe (≈ 800-900 expected; the README-style "358+" floor
+    estimate is also acceptable for a stable headline figure)
+  - **verified** private-declaration count from the Step-4 grep
+    recipe (≈ 47 expected)
+  - 3,426 (or 3,425 post-B1) `lake build` jobs.
 * **Semantic:** A reader of the root file no longer encounters
   numerical claims that conflict with current reality.
 * **Build:** `lake build Orbcrypt` succeeds (the change is inside
@@ -923,18 +1062,19 @@ last `CLAUDE.md` per-workstream version-bump entry records
 **no `CLAUDE.md` snapshot** recording either of the two intermediate
 bumps:
 
-* `0.1.29 → 0.1.30`: The git log shows commit `5b665e6` ("Reorganize
-  README, refresh USE_CASES docs, add copyright header") landed
-  during the period after the Path B Sub-task A.6.4 entry; that
-  commit's title does not directly say "version bump", but it
-  precedes the explicit `0.1.30 → 0.2.0` commit. Reviewing the
-  intermediate commit history (`git log --oneline -- lakefile.lean`)
-  confirms a single `0.1.29 → 0.1.30` bump landed without a
+* `0.1.29 → 0.1.30`: Verified via `git show 42b7e03:lakefile.lean
+  | grep version` to be commit `42b7e03` ("Audit pass:
+  PathOnlyAlgEquivSigma cleanup + extended tests + docs"). The
+  commit's title does not directly say "version bump", but the
+  `lakefile.lean` diff shows the version-string change. The
+  patch-level bump landed alongside the audit-pass cleanup of the
+  Path-B σ-extraction module without a corresponding CLAUDE.md
   changelog entry.
-* `0.1.30 → 0.2.0`: The git log shows commit `9f4b9ec` ("Bump minor
-  version: 0.1.30 → 0.2.0") landed without a corresponding
-  `CLAUDE.md` Workstream-status-tracker checkbox or per-workstream
-  snapshot.
+* `0.1.30 → 0.2.0`: Verified via `git show 9f4b9ec:lakefile.lean
+  | grep version` to be commit `9f4b9ec` ("Bump minor version:
+  0.1.30 → 0.2.0"). The minor-version bump landed without a
+  corresponding `CLAUDE.md` Workstream-status-tracker checkbox
+  or per-workstream snapshot.
 
 The audit characterises this as a "release messaging gap — external
 readers comparing the on-disk `0.2.0` against the Workstream-K
@@ -1023,11 +1163,12 @@ snapshot's `version retains 0.1.5` or the Workstream-N1 `0.1.4 →
     feature cluster; the post-Path-B work qualifies. Module
     count delta from post-A.6.4 (75) to post-`0.2.0`
     (`<verify with find>`, currently 76); public-declaration
-    count delta from post-A.6.4 (~358) to post-`0.2.0`
-    (`<verify against CLAUDE.md>`, currently 358+); audit-
-    script `#print axioms` count delta from post-A.6.4 to
-    post-`0.2.0` (`<verify with grep -c "^#print axioms"
-    scripts/audit_phase_16.lean>`, currently 928). The zero-
+    count delta is consistent with the post-Path-B feature
+    additions; the absolute count requires an A4-time grep
+    recipe (see A3 Step 4 for the canonical command). The
+    audit-script `#print axioms` count delta from post-A.6.4
+    to post-`0.2.0` is verified with `grep -c "^#print axioms"
+    scripts/audit_phase_16.lean` (currently 928). The zero-
     sorry / zero-custom-axiom posture is preserved across both
     bumps; the standard-trio-only axiom-dependency posture is
     preserved.
@@ -2036,19 +2177,25 @@ The following four items must land before tagging v1.0:
   Update the snapshot date to `2026-04-29`; rewrite the headline-
   numbers table per Strategy a + b hybrid (cross-reference
   CLAUDE.md for ephemeral metrics; carry only invariants in this
-  document); refresh ~17 in-document stale references; append
-  Document-history entry. Acceptance: `grep -n "342\|36
-  modules\|38 modules\|347 public" docs/VERIFICATION_REPORT.md`
-  returns zero matches at non-historical positions; header reads
-  `Snapshot: 2026-04-29`.
+  document); refresh **6 current-state references** (lines 78,
+  455, 472, 494, 506, 595) **without disturbing the 13 historical-
+  snapshot references** (lines 165, 1722, 1801, 1902, 1988, 2057,
+  2154, 2156, 2218, 2302, 2390, 2481, 2489) inside per-Workstream
+  / Document-history bullets; append Document-history entry.
+  Acceptance: `grep -n "342\|36 modules\|38 modules\|347 public"
+  docs/VERIFICATION_REPORT.md` returns matches **only** at the
+  historical-snapshot lines listed above; header reads `Snapshot:
+  2026-04-29`.
 
 - [ ] **A3 — Refresh `Orbcrypt.lean` Phase 16 snapshot section.**
-  Update lines 1279-1314 to current numbers (76 modules, 928
-  audit-script entries, 358+ public declarations, 47 private
-  helpers, 3,426 `lake build` jobs) and date `2026-04-29`. Add
-  Workstream-A snapshot pointer at the end of the section.
-  Acceptance: `sed -n '1279,1340p' Orbcrypt.lean` displays the
-  refreshed snapshot.
+  Update lines 1279-1314 to current numbers verified at A3-
+  implementation-time via the grep recipe in A3 Step 4 (76 or
+  75-post-B1 modules, 928 audit-script entries, ≈ 800-900 public
+  declarations [README's "358+" floor estimate is also acceptable
+  for stability], ≈ 47 private helpers, 3,426 or 3,425-post-B1
+  `lake build` jobs) and date `2026-04-29`. Add Workstream-A
+  snapshot pointer at the end of the section. Acceptance: `sed
+  -n '1279,1340p' Orbcrypt.lean` displays the refreshed snapshot.
 
 - [ ] **A4 — Reconcile `lakefile.lean` version with CLAUDE.md
   changelog.** Add a new CLAUDE.md per-workstream changelog entry
@@ -2371,23 +2518,30 @@ parity) has been completed (<<< merge-date >>>):
 - **A2 — `docs/VERIFICATION_REPORT.md` refresh.** The auditor-
   facing document carried headline numbers 2-9× stale (38 →
   76 modules, 342 → 928 audit-script entries, 5 → 47 private
-  declarations, snapshot date 2026-04-21 → 2026-04-29) at
-  ~17 in-document positions. The header table is restructured
-  per the Strategy a + b hybrid: ephemeral metrics now cross-
-  reference CLAUDE.md as the canonical running-state source,
-  and only invariants (zero-sorry / zero-custom-axiom posture;
-  standard-trio-only axioms; per-public-declaration docstrings;
-  build-success status) are listed in the report. The body
-  sweep refreshes ~17 in-document references; the Document
-  history section gains a `<<< merge-date >>>` entry. Closes
-  audit finding L-04 (HIGH).
+  declarations, snapshot date 2026-04-21 → 2026-04-29). The
+  header table is restructured per the Strategy a + b hybrid:
+  ephemeral metrics now cross-reference CLAUDE.md as the
+  canonical running-state source, and only invariants (zero-
+  sorry / zero-custom-axiom posture; standard-trio-only axioms;
+  per-public-declaration docstrings; build-success status) are
+  listed in the report. The body sweep refreshes the **6
+  current-state references** (lines 78, 455, 472, 494, 506,
+  595) without disturbing the **13 historical-snapshot
+  references** inside per-Workstream / Document-history
+  bullets (lines 165, 1722, 1801, 1902, 1988, 2057, 2154,
+  2156, 2218, 2302, 2390, 2481, 2489). The Document history
+  section gains a `<<< merge-date >>>` entry. Closes audit
+  finding L-04 (HIGH).
 
 - **A3 — `Orbcrypt.lean` Phase 16 snapshot section refresh.**
   The "Phase 16 Verification Audit Snapshot (2026-04-21)"
   section at lines 1279-1314 of the root file is refreshed to
   the 2026-04-29 reality: 76 modules (down to 75 if Workstream
-  B1 has also merged), 928 audit-script entries, 358+ public
-  declarations, 47 private helpers, 3,426 `lake build` jobs.
+  B1 has also merged), 928 audit-script entries, the verified
+  public-declaration count from the grep recipe in A3 Step 4
+  (≈ 800-900 expected; the README's "358+" floor estimate is
+  retained for stability), 47 private helpers, 3,426 `lake
+  build` jobs.
   A new closing line directs future maintainers to CLAUDE.md
   for the running snapshot. Closes audit finding A-07 / J-02
   (HIGH).
