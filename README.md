@@ -32,7 +32,7 @@ post-quantum hard.
 | **Post-quantum hardness chain** | TI-hardness → CE-hardness → GI-hardness → IND-1-CPA, machine-checked end-to-end (`hardness_chain_implies_security`). |
 | **Compact ciphertexts** | At λ = 128 balanced: 32 B keys, 43 B ciphertexts — competitive with AES-GCM, far smaller than Kyber's 2.4 kB / 1.1 kB. |
 
-The cryptographic primitive is small, but three of its operations
+The cryptographic primitive is small, but five of it's capabilities
 (`canon`, bundle-mediated `OrbitalRandomizers`, `commute`-style
 `CommGroupAction`) enable applications that are awkward with AEAD or
 lattice KEMs — see [`docs/USE_CASES.md`](docs/USE_CASES.md) and
