@@ -1346,15 +1346,28 @@ per-workstream changelog entry):
 * **0** uses of `sorry` anywhere in `Orbcrypt/**/*.lean` (verified by the
   comment-aware Perl strip used by CI).
 * **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every
-  `Prop`-valued security assumption (OIA, KEMOIA, ConcreteOIA, ConcreteKEMOIA,
-  ConcreteTensorOIA, ConcreteCEOIA, ConcreteGIOIA, CompOIA,
-  ObliviousSamplingPerfectHiding, ObliviousSamplingConcreteHiding,
-  ConcreteHardnessChain, GrochowQiaoRigidity,
-  GL3PreservesPartitionCardinalities, GL3InducesArrowPreservingPerm,
-  GL3InducesAlgEquivOnPathSubspace, RestrictedGL3OnPathOnlyTensor,
-  PathOnlyAlgEquivObligation, PathOnlySubalgebraGraphIsoObligation,
-  …) is a `Prop`-valued *definition* carried as an explicit
-  hypothesis on the theorems that use it.
+  security assumption is encoded as a defined entity that downstream
+  theorems consume as an explicit hypothesis — never as a
+  Lean-level `axiom`.  Specifically:
+  - `Prop`-valued definitions (`def Foo : Prop := …`): OIA,
+    KEMOIA, ConcreteOIA, ConcreteKEMOIA, ConcreteTensorOIA,
+    ConcreteCEOIA, ConcreteGIOIA, CompOIA,
+    ObliviousSamplingPerfectHiding,
+    ObliviousSamplingConcreteHiding, GrochowQiaoRigidity,
+    GL3PreservesPartitionCardinalities,
+    GL3InducesArrowPreservingPerm,
+    GL3InducesAlgEquivOnPathSubspace,
+    RestrictedGL3OnPathOnlyTensor,
+    PathOnlyAlgEquivObligation,
+    PathOnlySubalgebraGraphIsoObligation, ….
+  - `structure`s bundling `Prop`-valued fields:
+    `ConcreteHardnessChain`, `ConcreteKEMHardnessChain`, ….
+  Both forms are consumed at the theorem-level by binding the
+  whole assumption (or its individual fields) as an explicit
+  hypothesis, e.g.
+  `theorem foo (hOIA : OIA scheme) : IsSecure scheme := …`.  No
+  `axiom` declaration anywhere in the codebase asserts any of the
+  above.
 * **928** declarations exercised by `scripts/audit_phase_16.lean` via
   `#print axioms` — every public `def`, `theorem`, `structure`,
   `class`, `instance`, and `abbrev` declared under

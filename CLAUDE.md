@@ -6778,12 +6778,13 @@ landed between the post-Path-B-Sub-task-A.6.4 entry (`0.1.28 →
   `0.x → 0.(x+1)` minor bumps signal a cohesive feature cluster;
   the post-Path-B work qualifies.
 
-  At the time the minor bump landed, the running counts were:
-  75-module total (post-Path-B-A.6.4); 767+ audit-script `#print
-  axioms` entries; zero-sorry / zero-custom-axiom posture
-  preserved; standard-trio-only axiom-dependency posture
-  preserved; full `lake build` succeeded with 3,418 jobs, zero
-  warnings, zero errors.
+  At the time the minor bump landed, the running counts (verified
+  by direct inspection of the file tree at commit `9f4b9ec`) were:
+  76-module total under `Orbcrypt/`; 928 audit-script `#print
+  axioms` entries in `scripts/audit_phase_16.lean`; zero-sorry /
+  zero-custom-axiom posture preserved; standard-trio-only
+  axiom-dependency posture preserved; full `lake build` succeeded
+  with 3,418 jobs, zero warnings, zero errors.
 
 - **Subsequent `0.2.0` work (audit 2026-04-29 Workstream A,
   this landing).**  The Workstream-A documentation parity

@@ -85,7 +85,7 @@ column-weight invariant and marker-forcing reverse direction live in
   discharging the strengthened `GIReducesToCE` Prop.  **Not yet in
   the codebase.**  The pre-Layer-7 inhabitant of `GIReducesToCE`
   (a singleton-encoder non-degeneracy witness retained as
-  `_card_nondegeneracy_witness` in
+  `GIReducesToCE_card_nondegeneracy_witness` in
   `Orbcrypt/Hardness/CodeEquivalence.lean`) is the type-level
   placeholder until Layer 7 lands.
 

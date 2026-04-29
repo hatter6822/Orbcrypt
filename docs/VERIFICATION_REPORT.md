@@ -536,16 +536,29 @@ end of the file).
    `structure`, `class`, `instance`, or `abbrev` is preceded by a
    `/-- … -/` documentation comment.
 
-**Result.** All 76 modules under `Orbcrypt/` carry a `/-! … -/`
-module docstring (75 imported by the root file plus the
-un-imported transient `_ApiSurvey.lean`, slated for removal in
-Workstream **B1** of the 2026-04-29 audit plan). Every public
-declaration across the source tree (≈ 930 as of the 2026-04-29
-Workstream-A2 anchor; the exact running count tracks
+**Result.** Every one of the 76 modules under `Orbcrypt/` opens
+with a module-header comment block.  Of those, 74 use the
+project-standard `/-! … -/` markdown form (per CLAUDE.md's "Every
+`.lean` file begins with a `/-! … -/` module docstring"
+convention); two modules — the transient
+`Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (slated for
+removal in Workstream **B1** of the 2026-04-29 audit plan) and
+`Orbcrypt/Hardness/GrochowQiao/WedderburnMalcev.lean` — currently
+open with `/- … -/` regular block comments rather than the `/-!`
+markdown form.  This is a minor pre-existing convention deviation
+(both files carry substantive narrative content; only the
+`/-` vs `/-!` marker differs).  It does not affect the build, the
+audit script, the standard-trio axiom posture, or the public-API
+surface; the `/-!` upgrade is tracked as an in-line follow-up to
+the 2026-04-29 audit's findings register and may be paired with
+Workstream **B1** when `_ApiSurvey.lean` is removed.
+
+Every public declaration across the source tree (≈ 930 as of the
+2026-04-29 Workstream-A2 anchor; the exact running count tracks
 `CLAUDE.md`'s most recent per-workstream changelog entry) carries
 a `/-- … -/` docstring (a small number of grep false positives
-inside wrapped module-level docstrings are plain text, not
-actual declarations).
+inside wrapped module-level docstrings are plain text, not actual
+declarations).
 
 Phase 6's docstring standards are preserved unchanged through
 Phases 7–14, the Workstream A/B/C/D/E follow-ups of the
