@@ -1,3 +1,11 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Audit 2026-04-18 — Workstream Resolution Plan
 
 **Source audit:** `docs/audits/LEAN_MODULE_AUDIT_2026-04-18.md` (22 findings, 1,374 lines)

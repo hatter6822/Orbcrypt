@@ -1,149 +1,196 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Orbcrypt
 
-Symmetry-Keyed Encryption with Formal Verification in Lean 4
+**Symmetry-Keyed Encryption with Formal Verification in Lean 4**
 
-## Overview
+Orbcrypt is a research-stage symmetric-key encryption scheme whose security
+arises from hiding the *equivalence relation* (orbit structure) that makes
+data meaningful — not from hiding the data itself. A message is the
+identity of an orbit under a secret permutation group `G ≤ S_n`; a
+ciphertext is a uniformly random element of that orbit. The hardness
+assumption (OIA) reduces to **Graph Isomorphism on Cai–Furer–Immerman
+graphs** and to **Permutation Code Equivalence**, both believed
+post-quantum hard.
 
-Orbcrypt is a research-stage symmetric-key encryption scheme where security
-arises from hiding the equivalence relation (orbit structure) that makes data
-meaningful. A message is the identity of an orbit under a secret permutation
-group G <= S_n; a ciphertext is a uniformly random element of that orbit.
+---
 
-The project includes machine-checked proofs in Lean 4 (using Mathlib) of
-correctness, the invariant attack theorem, conditional IND-1-CPA security
-under the Orbit Indistinguishability Assumption (OIA), KEM reformulation,
-probabilistic security foundations, key compression with nonce-based
-encryption, authenticated encryption (AEAD + KEM/DEM), hardness-chain
-alignment with NIST PQC candidates (LESS/MEDS/TI), and public-key extension
-scaffolding (oblivious sampling, KEM agreement, CSIDH-style commutative
-actions).
+## What makes Orbcrypt novel
+
+| Property | Why it matters |
+|----------|----------------|
+| **Symmetry-keyed structure** | The key *is* the equivalence relation. Without `G`, ciphertexts are computationally indistinguishable; with `G`, recovery is one canonical-form lookup. |
+| **Batch-openable commitments** | A single `G` reveal opens *every* commitment ever made under it, atomically. No per-commitment opening data. |
+| **Bundle-mediated rotation** | Non-`G`-holders rotate ciphertexts only inside a provisioned bundle (`OrbitalRandomizers`); free public re-randomization is provably blocked (`CombineImpossibility`). |
+| **Canonical-form-as-query** | Functional queries (membership, equality, clustering) factor through `canon`, exposing exactly orbit structure and nothing more. |
+| **Post-quantum hardness chain** | TI-hardness → CE-hardness → GI-hardness → IND-1-CPA, machine-checked end-to-end (`hardness_chain_implies_security`). |
+| **Compact ciphertexts** | At λ = 128 balanced: 32 B keys, 43 B ciphertexts — competitive with AES-GCM, far smaller than Kyber's 2.4 kB / 1.1 kB. |
+
+The cryptographic primitive is small, but three of its operations
+(`canon`, bundle-mediated `OrbitalRandomizers`, `commute`-style
+`CommGroupAction`) enable applications that are awkward with AEAD or
+lattice KEMs — see [`docs/USE_CASES.md`](docs/USE_CASES.md) and
+[`docs/MORE_USE_CASES.md`](docs/MORE_USE_CASES.md).
+
+---
 
 ## Status
 
-**Formalization Complete — Phases 1–14 and Phase 16 Done**
+**Phases 1–14 + Phase 16 complete.** Every public declaration is
+machine-checked with **zero `sorry`**, **zero custom axioms**, **zero
+build warnings**.
 
-Phase 14 (Parameter Selection & Benchmarks) published concrete
-parameter tables, a security-margin analysis against four attack
-vectors, a cross-scheme comparison, and three-tier parameter
-recommendations (`conservative`, `balanced`, `aggressive`) across
-λ ∈ {80, 128, 192, 256}. See [`docs/PARAMETERS.md`](docs/PARAMETERS.md)
-and the raw data under [`docs/benchmarks/`](docs/benchmarks/).
+| Metric | Value |
+|--------|-------|
+| Lean source modules | 76 (+ root import file) |
+| Public declarations | 358+, all with docstrings |
+| Phase-16 audit script | 382+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
+| Build | `lake build` runs ~3,400 jobs successfully |
+| Toolchain | Lean 4 v4.30.0-rc1 + Mathlib pinned at commit `fa6418a8` |
+| CI | GitHub Actions on every push: build + sorry scan + axiom-decl scan + Phase-16 regression sentinel |
+| Package version | `0.2.0` |
 
-Phase 16 (Formal Verification of New Components) published the
-consolidated end-to-end verification report in
-[`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md), the
-comprehensive `#print axioms` audit script in
-[`scripts/audit_phase_16.lean`](scripts/audit_phase_16.lean) exercising
-every public declaration (358+ total post-Workstream-F, zero `sorryAx`,
-zero custom axioms), and a CI regression sentinel that de-wraps Lean's
-multi-line axiom lists before scanning so a custom axiom cannot hide on
-a continuation line.
+The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
+*hypothesis*, not a Lean `axiom` — verify with
+`#print axioms Orbcrypt.<theorem_name>`.
 
-Workstream K (audit 2026-04-21, finding M1) threaded the classical
-distinct-challenge IND-1-CPA game shape (`IsSecureDistinct`) through
-the downstream security chain: the `_distinct`-suffixed corollaries
-(`oia_implies_1cpa_distinct`,
-`hardness_chain_implies_security_distinct`,
-`concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`)
-compose their uniform-game ancestors with
-`isSecure_implies_isSecureDistinct` (Workstream B1); the
-`indCPAAdvantage_collision_zero` lemma formalises why the probabilistic
-bound `≤ ε` holds unconditionally for every adversary (collision
-branch contributes advantage 0). The KEM layer deliberately omits a
-`_distinct` corollary because its game parameterises adversaries by
-group elements rather than messages (see the extended docstring on
-`kemoia_implies_secure`).
+---
 
-All headline results are machine-checked with zero `sorry`, zero warnings, zero custom axioms:
+## Headline theorems
 
-| # | Theorem | File | Axiom Dependencies |
-|---|---------|------|--------------------|
-| 1 | `correctness` — `decrypt(encrypt(g, m)) = some m` | `Theorems/Correctness.lean` | Standard Lean only |
-| 2 | `invariant_attack` — separating invariant implies `∃ A, hasAdvantage` (existence of one distinguishing adversary; informal shorthand: "complete break" — see row #2 of `CLAUDE.md`'s "Three core theorems" for the three-convention advantage catalogue) | `Theorems/InvariantAttack.lean` | Standard Lean only |
-| 3 | `oia_implies_1cpa` — OIA implies IND-1-CPA security | `Theorems/OIAImpliesCPA.lean` | Zero custom axioms (OIA is a hypothesis) |
-| 4 | `kem_correctness` — KEM decaps recovers encapsulated key | `KEM/Correctness.lean` | Standard Lean only (rfl) |
-| 5 | `kemoia_implies_secure` — KEMOIA implies KEM security | `KEM/Security.lean` | Zero custom axioms (KEMOIA is a hypothesis) |
-| 6 | `concrete_oia_implies_1cpa` — ConcreteOIA(ε) implies advantage ≤ ε | `Crypto/CompSecurity.lean` | Zero custom axioms |
-| 7 | `seed_kem_correctness` — seed-based KEM is correct | `KeyMgmt/SeedKey.lean` | Standard Lean only |
-| 8 | `nonce_reuse_leaks_orbit` — cross-KEM nonce reuse leaks orbits | `KeyMgmt/Nonce.lean` | Standard Lean only |
-| 9 | `aead_correctness` — authenticated KEM correctness | `AEAD/AEAD.lean` | Standard Lean only |
-| 10 | `hybrid_correctness` — KEM+DEM hybrid correctness | `AEAD/Modes.lean` | Standard Lean only |
-| 11 | `hardness_chain_implies_security` — TI-hardness → IND-1-CPA | `Hardness/Reductions.lean` | Zero custom axioms (HardnessChain is a hypothesis) |
-| 12 | `oblivious_sample_in_orbit` — oblivious sampling preserves orbits | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
-| 13 | `kem_agreement_correctness` — two-party orbit-KEM agreement | `PublicKey/KEMAgreement.lean` | Standard Lean only |
-| 14 | `csidh_correctness` — `a • b • x = b • a • x` under `CommGroupAction` | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` (typeclass axiom) |
-| 15 | `comm_pke_correctness` — CSIDH-style public-key encryption correctness | `PublicKey/CommutativeAction.lean` | `CommGroupAction.comm` + `pk_valid` |
-| 16 | `two_phase_correct` — fast (cyclic ∘ residual) canonical form agrees with full IF the strong `TwoPhaseDecomposition` predicate holds | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` carried as a hypothesis; not satisfied by the default fallback group) |
-| 17 | `two_phase_kem_correctness` — two-phase KEM decapsulation recovers the encapsulated key (conditional on `TwoPhaseDecomposition`; **not satisfied by the default GAP fallback group** — production GAP correctness runs through row #18 `fast_kem_round_trip` via orbit-constancy) | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`TwoPhaseDecomposition` is a hypothesis) |
-| 18 | `fast_kem_round_trip` — actual KEM correctness for `(FastEncaps, FastDecaps)`: orbit-constancy of `fastCanon` suffices | `Optimization/TwoPhaseDecrypt.lean` | Zero custom axioms (`IsOrbitConstant` is a hypothesis; satisfied by the GAP `FastCanonicalImage` whenever the cyclic subgroup is normal in G) |
-| 19 | `oia_implies_1cpa_distinct` — classical distinct-challenge IND-1-CPA from OIA (Workstream K1) | `Theorems/OIAImpliesCPA.lean` | Zero custom axioms (OIA is a hypothesis; composes `oia_implies_1cpa` with `isSecure_implies_isSecureDistinct`) |
-| 20 | `hardness_chain_implies_security_distinct` — classical distinct-challenge form of the TI-hardness chain (Workstream K3) | `Hardness/Reductions.lean` | Zero custom axioms (HardnessChain is a hypothesis) |
-| 21 | `indCPAAdvantage_collision_zero` — collision-case adversaries yield probabilistic IND-1-CPA advantage `0`; formalises the free transfer of the `≤ ε` bound to the classical game (Workstream K4) | `Crypto/CompSecurity.lean` | Standard Lean only (one-line corollary of `advantage_self`) |
-| 22 | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` — probabilistic chain bound in classical-game form (Workstream K4 companion) | `Hardness/Reductions.lean` | Zero custom axioms (ConcreteHardnessChain is a hypothesis) |
+| Theorem | Statement | Status |
+|---------|-----------|--------|
+| `correctness` | `decrypt(encrypt(g, m)) = some m` | Standalone |
+| `invariant_attack` | A separating G-invariant yields `∃ A, hasAdvantage scheme A` | Standalone |
+| `kem_correctness` | `decaps(encaps(g).1) = encaps(g).2` | Standalone |
+| `concrete_oia_implies_1cpa` | `ConcreteOIA(ε) → IND-1-CPA advantage ≤ ε` | Quantitative |
+| `concrete_hardness_chain_implies_1cpa_advantage_bound` | TI-hardness → IND-1-CPA bound (with explicit surrogate + encoders) | Quantitative |
+| `concrete_kem_hardness_chain_implies_kem_advantage_bound` | KEM-layer ε-smooth hardness chain | Quantitative |
+| `aead_correctness`, `hybrid_correctness` | AEAD round-trip + KEM+DEM hybrid correctness | Standalone |
+| `authEncrypt_is_int_ctxt` | INT-CTXT for `AuthOrbitKEM` (unconditional post-Workstream-B) | Standalone |
+| `csidh_correctness`, `comm_pke_correctness` | CSIDH-style commutative action + PKE | Standalone |
 
-### Axiom Transparency
+The full release-messaging classification (Standalone / Quantitative /
+Conditional / Scaffolding) is in
+[`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) and the
+`CLAUDE.md` "Three core theorems" table.
 
-This formalization introduces **zero custom axioms**. The Orbit Indistinguishability
-Assumption (OIA) is a `Prop`-valued definition carried as an explicit hypothesis,
-not a Lean `axiom`. Verify with `#print axioms Orbcrypt.<theorem_name>`.
+---
 
-### Module Summary
+## Performance (HGOE GAP reference, λ = 128)
 
-| Layer | Modules | Content |
-|-------|---------|---------|
-| Group Actions | `GroupAction/{Basic, Canonical, CanonicalLexMin, Invariant}` | Orbit/stabilizer API, canonical forms (abstract + concrete `ofLexMin` constructor matching GAP's `CanonicalImage`, Workstream F), G-invariant functions |
-| Crypto Framework | `Crypto/{Scheme, Security, OIA, CompOIA, CompSecurity}` | Scheme, adversary, OIA, probabilistic security |
-| Core Theorems | `Theorems/{Correctness, InvariantAttack, OIAImpliesCPA}` | Three headline results + contrapositive direction |
-| KEM | `KEM/{Syntax, Encapsulate, Correctness, Security, CompSecurity}` | KEM reformulation, KEMOIA, KEM security, probabilistic KEM security (Workstream E1) |
-| Probability | `Probability/{Monad, Negligible, Advantage}` | PMF wrappers, negligible functions, hybrid argument |
-| Key Management | `KeyMgmt/{SeedKey, Nonce}` | Seed-based key compression, nonce-based encryption |
-| Concrete Construction | `Construction/{Permutation, HGOE, HGOEKEM}` | S_n on bitstrings, HGOE instance, HGOE-KEM |
-| AEAD | `AEAD/{MAC, AEAD, Modes, CarterWegmanMAC}` | MAC, Encrypt-then-MAC authenticated KEM, KEM+DEM hybrid, concrete `verify_inj` witness (Workstream C4) |
-| Hardness | `Hardness/{CodeEquivalence, TensorAction, Encoding, Reductions}` | CE/TI problems, orbit-preserving encoding interface, reduction chain to IND-1-CPA |
-| Public-Key Extension | `PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction, CombineImpossibility}` | Orbital randomizers, two-party KEM agreement, CSIDH-style `CommGroupAction` and `CommOrbitPKE`, equivariant-combiner obstruction (Workstream E6) |
+| Metric | Orbcrypt (HGOE) | AES-256-GCM | Kyber-768 |
+|--------|-----------------|-------------|-----------|
+| Public key / KEM-key size | 32 B | 32 B | **2,400 B** |
+| Ciphertext (KEM only) | **43 B** | n + 28 B | 1,088 B |
+| Encrypt (μs) | 314,000 | 0.05 | 30 |
+| Decrypt (μs) | 348,000 | 0.05 | 25 |
+| Post-quantum secure | conjectured (GI/CE/TI) | no | yes (MLWE) |
 
-### Build Stats
+**Headline take-away.** Orbcrypt wins on key/ciphertext size by 1–2
+orders of magnitude over lattice/code-based PQ KEMs, and is competitive
+with AES-GCM. It loses by 4–5 orders of magnitude on encrypt/decrypt
+time at the current GAP reference parameters — Phase 15 (decryption
+optimisation in C/C++) is the next major workstream targeting this gap.
 
-- 39 Lean source files + root import file (Workstream F of the
-  2026-04-23 audit added `GroupAction/CanonicalLexMin.lean` for the
-  concrete `CanonicalForm.ofLexMin` constructor)
-- 358 public declarations (def / theorem / structure / class /
-  instance / abbrev), all with docstrings
-- 382 declarations exercised by `scripts/audit_phase_16.lean` with
-  `#print axioms` (every public declaration plus auto-generated
-  field accessors and non-vacuity witnesses; all depend only on the
-  standard Lean trio `propext` / `Classical.choice` / `Quot.sound`,
-  or on *no* axioms at all)
-- Zero `sorry`, zero custom axioms, zero warnings
-- `lake build Orbcrypt` runs 3,368 jobs successfully
-- Mathlib pinned to commit `fa6418a8` (Lean 4 v4.30.0-rc1; see [Toolchain decision](docs/VERIFICATION_REPORT.md#toolchain-decision-workstream-d) — Workstream D, Scenario C, ships v1.0 off the rc, stable upgrade deferred to v1.1)
-- `lakefile.lean` defensively pins `linter.unusedVariables := true` (Lean core, defensive) and `linter.docPrime := true` (Mathlib, meaningful enable — Workstream D / D3)
-- GitHub Actions CI on every push (build + sorry scan + axiom-decl scan + Phase 16 audit regression sentinel)
-- Package version: `0.1.11` (see `lakefile.lean`; latest bump by Workstream F of the 2026-04-23 audit, V1-10 / F-04 — concrete `CanonicalForm.ofLexMin` constructor matching GAP's `CanonicalImage` convention)
+Three parameter tiers across λ ∈ {80, 128, 192, 256} are documented in
+[`docs/PARAMETERS.md`](docs/PARAMETERS.md). Raw benchmark CSVs live
+under [`docs/benchmarks/`](docs/benchmarks/).
+
+---
+
+## Project layout
+
+```
+Orbcrypt/
+├── Orbcrypt.lean                 Root import file (axiom-transparency report)
+├── Orbcrypt/                     Lean 4 source tree (76 modules)
+│   ├── GroupAction/              Orbits, stabilizers, canonical forms (incl. `ofLexMin`)
+│   ├── Crypto/                   AOE scheme, IND-CPA game, OIA, ConcreteOIA
+│   ├── Theorems/                 Correctness, invariant attack, OIA → IND-1-CPA
+│   ├── KEM/                      KEM reformulation + probabilistic security
+│   ├── Probability/              PMF wrappers, negligible functions, hybrid arg
+│   ├── KeyMgmt/                  Seed-key compression, nonce-based encryption
+│   ├── Construction/             S_n on bitstrings, HGOE instance, HGOE-KEM
+│   ├── AEAD/                     MAC, Encrypt-then-MAC AEAD, KEM+DEM, Carter–Wegman
+│   ├── Hardness/                 CE / TI problems, GI reductions, hardness chain
+│   │   ├── PetrankRoth/          Forward direction of GI ≤ CE (Workstream R-CE)
+│   │   └── GrochowQiao/          Forward direction of GI ≤ TI + Manin theorem
+│   ├── PublicKey/                Oblivious sampling, KEM agreement, CSIDH-style
+│   └── Optimization/             Two-phase decryption + orbit-constancy
+├── implementation/gap/           GAP reference: keygen, KEM, params, tests, sweep
+├── docs/
+│   ├── HARDNESS_ANALYSIS.md      LESS / MEDS / TI alignment
+│   ├── PUBLIC_KEY_ANALYSIS.md    Public-key feasibility (Phase 13)
+│   ├── PARAMETERS.md             Three-tier parameter recommendations (Phase 14)
+│   ├── VERIFICATION_REPORT.md    End-to-end verification report (Phase 16)
+│   ├── USE_CASES.md              Application catalogue (cryptocurrency, DAOs, DEXes, social)
+│   ├── MORE_USE_CASES.md         Anonymous dev-platform architecture
+│   ├── benchmarks/               Phase-14 sweep CSVs + cross-scheme comparison
+│   ├── audits/                   Per-cycle Lean module audit reports
+│   ├── planning/                 Workstream + phase planning documents
+│   └── research/                 Mathematical-research reading notes
+├── formalization/                Master Lean 4 roadmap + per-phase plans
+├── scripts/                      Setup + audit scripts (incl. `audit_phase_16.lean`)
+├── lakefile.lean                 Lake build config (Mathlib pin, linter pins)
+├── lean-toolchain                Lean version pin (v4.30.0-rc1)
+├── DEVELOPMENT.md                Master scheme specification (~56 KB)
+├── CLAUDE.md                     Development guidance + per-workstream change log
+├── COUNTEREXAMPLE.md             Invariant-attack vulnerability analysis
+├── POE.md                        High-level concept exposition
+└── LICENSE                       MIT
+```
+
+---
 
 ## Build
 
 ```bash
-# Automated setup (installs elan + Lean toolchain)
+# Automated setup (installs elan + pinned Lean toolchain, with SHA-256
+# verification of elan-init.sh)
 ./scripts/setup_lean_env.sh
 
-# Or if Lean is already installed:
+# Or, if Lean is already installed:
 source ~/.elan/env && lake build
+
+# Build a specific module
+source ~/.elan/env && lake build Orbcrypt.GroupAction.Basic
+
+# Download Mathlib precompiled cache (speeds up first build)
+lake exe cache get
 ```
 
-## Documentation
+The CI pipeline runs the same commands plus a comment-aware `sorry`
+strip, an `^axiom` declaration scan, and the consolidated
+`scripts/audit_phase_16.lean` regression sentinel.
 
-| Document | Purpose |
-|----------|---------|
-| [DEVELOPMENT.md](DEVELOPMENT.md) | Full scheme specification and security analysis |
-| [COUNTEREXAMPLE.md](COUNTEREXAMPLE.md) | Invariant attack vulnerability analysis |
-| [POE.md](POE.md) | High-level concept exposition |
-| [formalization/FORMALIZATION_PLAN.md](formalization/FORMALIZATION_PLAN.md) | Lean 4 formalization roadmap |
-| [docs/HARDNESS_ANALYSIS.md](docs/HARDNESS_ANALYSIS.md) | Phase 12 — hardness reduction chain and NIST PQC alignment |
-| [docs/PUBLIC_KEY_ANALYSIS.md](docs/PUBLIC_KEY_ANALYSIS.md) | Phase 13 — public-key feasibility analysis |
-| [docs/PARAMETERS.md](docs/PARAMETERS.md) | Phase 14 — parameter recommendations (3 tiers × 4 security levels) |
-| [docs/VERIFICATION_REPORT.md](docs/VERIFICATION_REPORT.md) | Phase 16 — end-to-end verification report (sorry audit, axiom audit, headline results table, exit-criteria checklist) |
+---
+
+## Documentation map
+
+| Audience | Start here |
+|----------|-----------|
+| **First-time reader** | [`POE.md`](POE.md) — high-level concept exposition (≈ 6 KB) |
+| **Cryptographer** | [`DEVELOPMENT.md`](DEVELOPMENT.md) — full scheme specification + security analysis |
+| **Vulnerability researcher** | [`COUNTEREXAMPLE.md`](COUNTEREXAMPLE.md) — invariant attack analysis |
+| **Application designer** | [`docs/USE_CASES.md`](docs/USE_CASES.md), [`docs/MORE_USE_CASES.md`](docs/MORE_USE_CASES.md) |
+| **Implementor** | [`implementation/README.md`](implementation/README.md), [`docs/PARAMETERS.md`](docs/PARAMETERS.md) |
+| **Lean developer** | [`formalization/FORMALIZATION_PLAN.md`](formalization/FORMALIZATION_PLAN.md), [`CLAUDE.md`](CLAUDE.md) |
+| **Auditor** | [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) — sorry/axiom audit, headline-results table, exit-criteria checklist |
+| **Hardness reviewer** | [`docs/HARDNESS_ANALYSIS.md`](docs/HARDNESS_ANALYSIS.md), [`docs/PUBLIC_KEY_ANALYSIS.md`](docs/PUBLIC_KEY_ANALYSIS.md) |
+
+---
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).
+
+This program comes with **ABSOLUTELY NO WARRANTY**. This is free
+software, and you are welcome to redistribute it under certain
+conditions.

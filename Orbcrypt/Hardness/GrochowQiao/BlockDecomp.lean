@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Block decomposition under GL³ (Stage 3 / T-API-4, R-TI rigidity discharge).
 
 This module captures the **block-decomposition theorem** of the Grochow–Qiao

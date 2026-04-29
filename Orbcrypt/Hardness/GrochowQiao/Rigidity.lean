@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Final rigidity composition (Stage 5 / T-API-10, R-TI rigidity discharge).
 
 This module composes the Stage 1–4 infrastructure with Stage 5

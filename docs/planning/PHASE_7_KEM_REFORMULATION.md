@@ -1,3 +1,11 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Phase 7 — KEM Reformulation
 
 ## Weeks 17–19 | 8 Work Units | ~24 Hours

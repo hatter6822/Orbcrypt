@@ -1,3 +1,11 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Phase 8 — Probabilistic Foundations
 
 ## Weeks 18–22 | 10 Work Units | ~40 Hours

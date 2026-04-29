@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Path-only structure tensor and restricted GL³ action
 (R-TI Phase 3 / Sub-task A.4).
 

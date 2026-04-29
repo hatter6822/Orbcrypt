@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Top-level Grochow–Qiao (2021) GI ≤ TI Karp reduction module.
 
 R-TI Layer T6 (Sub-tasks T6.1 through T6.4) — re-export the

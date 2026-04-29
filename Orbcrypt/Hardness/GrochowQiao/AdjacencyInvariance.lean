@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Adjacency invariance via σ-induced AlgEquiv (Stage 5 / T-API-9, R-TI rigidity discharge).
 
 Given a vertex permutation `σ : Equiv.Perm (Fin m)`, this module
