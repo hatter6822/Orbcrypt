@@ -2162,7 +2162,8 @@ release-blocking; items in § 10.2 are recommended-for-v1.0; items in
 
 The following four items must land before tagging v1.0:
 
-- [ ] **A1 — Fix `PetrankRoth.lean` module docstring overclaim.**
+- [x] **A1 — Fix `PetrankRoth.lean` module docstring overclaim.**
+  *Closed 2026-04-29 on branch `claude/audit-codebase-planning-CYmv2`.*
   Rewrite `Orbcrypt/Hardness/PetrankRoth.lean:9-19` and lines
   38-52 to honestly disclose Layer 5/6/7 status (research-scope,
   `R-15-residual-CE-reverse`, declarations not yet present).
@@ -2173,7 +2174,8 @@ The following four items must land before tagging v1.0:
   docstring uses per-layer status markers
   (`(LANDED)` / `(RESEARCH-SCOPE — <id>)`).
 
-- [ ] **A2 — Refresh `docs/VERIFICATION_REPORT.md` headline numbers.**
+- [x] **A2 — Refresh `docs/VERIFICATION_REPORT.md` headline numbers.**
+  *Closed 2026-04-29 on branch `claude/audit-codebase-planning-CYmv2`.*
   Update the snapshot date to `2026-04-29`; rewrite the headline-
   numbers table per Strategy a + b hybrid (cross-reference
   CLAUDE.md for ephemeral metrics; carry only invariants in this
@@ -2187,7 +2189,8 @@ The following four items must land before tagging v1.0:
   historical-snapshot lines listed above; header reads `Snapshot:
   2026-04-29`.
 
-- [ ] **A3 — Refresh `Orbcrypt.lean` Phase 16 snapshot section.**
+- [x] **A3 — Refresh `Orbcrypt.lean` Phase 16 snapshot section.**
+  *Closed 2026-04-29 on branch `claude/audit-codebase-planning-CYmv2`.*
   Update lines 1279-1314 to current numbers verified at A3-
   implementation-time via the grep recipe in A3 Step 4 (76 or
   75-post-B1 modules, 928 audit-script entries, ≈ 800-900 public
@@ -2197,8 +2200,10 @@ The following four items must land before tagging v1.0:
   snapshot pointer at the end of the section. Acceptance: `sed
   -n '1279,1340p' Orbcrypt.lean` displays the refreshed snapshot.
 
-- [ ] **A4 — Reconcile `lakefile.lean` version with CLAUDE.md
-  changelog.** Add a new CLAUDE.md per-workstream changelog entry
+- [x] **A4 — Reconcile `lakefile.lean` version with CLAUDE.md
+  changelog.**
+  *Closed 2026-04-29 on branch `claude/audit-codebase-planning-CYmv2`.*
+  Add a new CLAUDE.md per-workstream changelog entry
   documenting the `0.1.29 → 0.1.30 → 0.2.0` chain. Lakefile
   version unchanged (preserves `0.2.0`). Acceptance: CLAUDE.md
   contains the dual-bump entry; `grep -n "0\.1\.30\|0\.2\.0"
@@ -2455,10 +2460,10 @@ merge). At plan-issuance time, all workstreams are pending.
 
 | Workstream | Status | Branch | Closed date |
 |------------|--------|--------|-------------|
-| **A1** (PetrankRoth docstring fix) | pending | — | — |
-| **A2** (VERIFICATION_REPORT.md refresh) | pending | — | — |
-| **A3** (Orbcrypt.lean snapshot refresh) | pending | — | — |
-| **A4** (Lakefile / CLAUDE.md reconciliation) | pending | — | — |
+| **A1** (PetrankRoth docstring fix) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
+| **A2** (VERIFICATION_REPORT.md refresh) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
+| **A3** (Orbcrypt.lean snapshot refresh) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
+| **A4** (Lakefile / CLAUDE.md reconciliation) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
 | **B1** (Delete `_ApiSurvey.lean`) | pending | — | — |
 | **B2** (Relocate legacy audit scripts) | pending | — | — |
 | **B3** (README audit-script count refresh) | pending | — | — |
