@@ -3904,3 +3904,717 @@ example (f : presentArrowsSubspace 2 (fun _ _ => false)) :
   (pathBlockToPresentArrows 2 (fun _ _ => false)).right_inv f
 
 end PathBlockSubspaceNonVacuity
+
+-- ============================================================================
+-- §15.18  R-TI Phase 3 (partial-discharge form): GL³ → algebra-iso bridge.
+--
+-- Sub-tasks A.1, A.2, A.4, A.6 land the tractable infrastructure
+-- unconditionally; the deep multilinear-algebra content of Sub-tasks
+-- A.3 + A.5 (Manin's tensor-stabilizer theorem + distinguished-padding
+-- rigidity) is captured as the single research-scope `Prop`
+-- `GL3InducesAlgEquivOnPathSubspace`.
+-- ============================================================================
+
+-- Sub-task A.1 — Encoder polynomial-identity catalogue.
+#print axioms Orbcrypt.GrochowQiao.encoder_assoc_path
+#print axioms Orbcrypt.GrochowQiao.encoder_diag_at_path_in_zero_one
+#print axioms Orbcrypt.GrochowQiao.encoder_diag_at_padding_eq_two
+#print axioms Orbcrypt.GrochowQiao.encoder_off_diag_path_padding_zero
+#print axioms Orbcrypt.GrochowQiao.encoder_padding_diag_only
+
+-- Sub-task A.2 — Associativity polynomial identity for 3-tensors.
+-- (The earlier `IsAssociativeTensorPreservedByGL3` Prop has been removed
+-- as mathematically incorrect for arbitrary GL³; only structure-tensor-
+-- preserving subgroup actions preserve associativity, and that content
+-- is captured in the research-scope `GL3InducesAlgEquivOnPathSubspace`
+-- bundle in `AlgEquivFromGL3.lean`.)
+#print axioms Orbcrypt.GrochowQiao.IsAssociativeTensor
+#print axioms Orbcrypt.GrochowQiao.encoder_isAssociativeTensor_full_path
+
+-- Sub-task A.4 — Path-only structure tensor + restricted GL³.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_apply
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_index_is_path_algebra
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_isAssociative
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_diagonal_in_zero_one
+#print axioms Orbcrypt.GrochowQiao.RestrictedGL3OnPathOnlyTensor
+#print axioms Orbcrypt.GrochowQiao.restrictedGL3OnPathOnlyTensor_identity_case
+
+-- Sub-task A.6 — Conditional headline + research-scope Prop.
+#print axioms Orbcrypt.GrochowQiao.GL3InducesAlgEquivOnPathSubspace
+#print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace
+#print axioms Orbcrypt.GrochowQiao.gl3_induces_algEquiv_on_pathSubspace_identity_case
+#print axioms Orbcrypt.GrochowQiao.gl3_algEquiv_partial_closure_status_disclosure
+
+-- ============================================================================
+-- §15.18 non-vacuity witnesses
+-- ============================================================================
+
+namespace AlgEquivFromGL3NonVacuity
+
+open Orbcrypt
+open Orbcrypt.GrochowQiao
+
+/-- **Sub-task A.1.0 non-vacuity at m = 1.**
+
+At a vertex-slot quadruple `(v0, v0, v0, v0)` of the single-vertex
+graph, the LHS sum collapses to `T(v0, v0, v0) * T(v0, v0, v0) = 1`
+and the RHS sum collapses to the same value, so the associativity
+identity holds with both sides equal to `1`.  Exercises
+`encoder_assoc_path` on a concrete instance whose result is non-trivial
+(both sides collapse to a single non-zero contribution rather than
+being identically zero). -/
+example :
+    (∑ a : Fin (dimGQ 1), grochowQiaoEncode 1 (fun _ _ => true)
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0)) a *
+        grochowQiaoEncode 1 (fun _ _ => true) a
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0))) =
+    (∑ a : Fin (dimGQ 1), grochowQiaoEncode 1 (fun _ _ => true)
+        ((slotEquiv 1).symm (.vertex 0))
+        ((slotEquiv 1).symm (.vertex 0)) a *
+        grochowQiaoEncode 1 (fun _ _ => true)
+        ((slotEquiv 1).symm (.vertex 0)) a
+        ((slotEquiv 1).symm (.vertex 0))) :=
+  encoder_assoc_path 1 (fun _ _ => true)
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    ((slotEquiv 1).symm (.vertex 0))
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+
+/-- **Sub-task A.1.1 non-vacuity: vertex slot diagonal is in {0, 1}.**
+
+At a vertex slot of `m = 1`, the diagonal value is `1`. -/
+example :
+    grochowQiaoEncode 1 (fun _ _ => false)
+      ((slotEquiv 1).symm (.vertex 0))
+      ((slotEquiv 1).symm (.vertex 0))
+      ((slotEquiv 1).symm (.vertex 0)) = 0 ∨
+    grochowQiaoEncode 1 (fun _ _ => false)
+      ((slotEquiv 1).symm (.vertex 0))
+      ((slotEquiv 1).symm (.vertex 0))
+      ((slotEquiv 1).symm (.vertex 0)) = 1 :=
+  encoder_diag_at_path_in_zero_one 1 (fun _ _ => false) _
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+
+/-- **Sub-task A.1.2 non-vacuity: padding slot diagonal is exactly 2.**
+
+At a padding slot (arrow with `adj _ _ = false`) on `m = 2`, the
+diagonal value is `2`. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1)) = 2 :=
+  encoder_diag_at_padding_eq_two 2 (fun _ _ => false) _
+    (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply])
+
+/-- **Sub-task A.1.4 non-vacuity: padding slab is non-zero only at the diagonal.**
+
+At a padding slot `i = .arrow 0 1` on `m = 2`, the slab `(i, j, k)`
+is non-zero iff `j = k = i`. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.arrow 0 1)) ≠ 0 := by
+  rw [(encoder_padding_diag_only 2 (fun _ _ => false)
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        ((slotEquiv 2).symm (.arrow 0 1))
+        (by unfold isPathAlgebraSlot; rw [Equiv.apply_symm_apply]))]
+  exact ⟨rfl, rfl⟩
+
+/-- **Sub-task A.1.3 non-vacuity: mixed-class triple vanishes.**
+
+For a mixed triple `(vertex, arrow-padding, vertex)` on `m = 2` with
+`adj := fun _ _ => false`, the encoder evaluates to zero.  The vertex
+slot is path-algebra, the arrow slot is padding (since `adj _ _ =
+false`); the triple has both classes present and is therefore
+mixed-class. -/
+example :
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((slotEquiv 2).symm (.vertex 0))
+      ((slotEquiv 2).symm (.arrow 0 1))
+      ((slotEquiv 2).symm (.vertex 0)) = 0 := by
+  apply encoder_off_diag_path_padding_zero
+  refine ⟨?_, ?_⟩
+  · -- not all-path: the middle slot is padding.
+    rintro ⟨_, h_mid, _⟩
+    revert h_mid
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    decide
+  · -- not all-padding: the first slot is a vertex (always path-algebra).
+    rintro ⟨h_first, _, _⟩
+    revert h_first
+    unfold isPathAlgebraSlot
+    rw [Equiv.apply_symm_apply]
+    decide
+
+/-- **Sub-task A.2 non-vacuity: the encoder on the complete graph at
+m = 1 is associative.**
+
+When every slot is path-algebra, the encoder satisfies the
+associativity polynomial identity. -/
+example : IsAssociativeTensor (grochowQiaoEncode 1 (fun _ _ => true)) := by
+  apply encoder_isAssociativeTensor_full_path
+  intro i
+  -- m = 1: dimGQ 1 = 1 + 1 = 2, slots = {.vertex 0, .arrow 0 0}.
+  -- All vertex slots are path-algebra; arrow (0, 0) is path-algebra
+  -- because adj 0 0 = true.
+  cases hi : slotEquiv 1 i with
+  | vertex v => unfold isPathAlgebraSlot; rw [hi]
+  | arrow u v => unfold isPathAlgebraSlot; rw [hi]
+
+-- (The earlier identity-case-of-GL³-preservation test has been removed;
+-- generic GL³ does not preserve associativity, so the only honest
+-- witness is the trivial `IsAssociativeTensor T → IsAssociativeTensor
+-- ((1) • T)` which `one_smul` makes definitional and which adds no
+-- substantive content beyond `Equiv.refl`.)
+
+/-- **Sub-task A.4 non-vacuity: path-only-tensor index is path-algebra.**
+
+For every quadruple of `Fin (pathSlotIndices m adj).card`-indices, the
+underlying `Fin (dimGQ m)`-values obtained via the
+`(pathSlotIndices m adj).equivFin.symm` bijection are all path-algebra
+slots.  Exercised on `m = 2` with the adjacency `adj := fun u v =>
+decide (u.val ≠ v.val)` (complete graph minus self-loops, which has 2
+present arrows). -/
+example
+    (i j k l : Fin (pathSlotIndices 2 (fun u v => decide (u.val ≠ v.val))).card) :
+    let adj : Fin 2 → Fin 2 → Bool := fun u v => decide (u.val ≠ v.val)
+    let i' := ((pathSlotIndices 2 adj).equivFin.symm i).val
+    let j' := ((pathSlotIndices 2 adj).equivFin.symm j).val
+    let k' := ((pathSlotIndices 2 adj).equivFin.symm k).val
+    let l' := ((pathSlotIndices 2 adj).equivFin.symm l).val
+    isPathAlgebraSlot 2 adj i' = true ∧
+    isPathAlgebraSlot 2 adj j' = true ∧
+    isPathAlgebraSlot 2 adj k' = true ∧
+    isPathAlgebraSlot 2 adj l' = true :=
+  pathOnlyStructureTensor_index_is_path_algebra 2
+    (fun u v => decide (u.val ≠ v.val)) i j k l
+
+/-- **Sub-task A.4 non-vacuity: `pathOnlyStructureTensor_apply` simp
+lemma fires.** -/
+example
+    (i j k : Fin (pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).card) :
+    pathOnlyStructureTensor 2 (fun _ _ => false) i j k =
+    grochowQiaoEncode 2 (fun _ _ => false)
+      ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm i).val
+      ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm j).val
+      ((pathSlotIndices 2 (fun _ _ => false : Fin 2 → Fin 2 → Bool)).equivFin.symm k).val :=
+  pathOnlyStructureTensor_apply 2 (fun _ _ => false) i j k
+
+/-- **Sub-task A.4 non-vacuity: `pathOnlyStructureTensor_isAssociative`
+proved on a non-trivial graph.**
+
+The path-only tensor of any graph satisfies the associativity polynomial
+identity `IsAssociativeTensor`.  Exercises the substantive proof on
+`m = 2` with the adjacency `adj := fun u v => decide (u.val ≠ v.val)`
+(complete graph minus self-loops, 2 present arrows). -/
+example :
+    IsAssociativeTensor
+      (pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val))) :=
+  pathOnlyStructureTensor_isAssociative 2 (fun u v => decide (u.val ≠ v.val))
+
+/-- **Sub-task A.4 non-vacuity: path-only-tensor diagonal in `{0, 1}`.**
+
+The path-only structure tensor's diagonal value at any index is either
+`0` (corresponds to a present-arrow slot) or `1` (corresponds to a
+vertex slot).  Exercised on `m = 2` with the adjacency
+`adj := fun u v => decide (u.val ≠ v.val)`. -/
+example
+    (i : Fin (pathSlotIndices 2 (fun u v => decide (u.val ≠ v.val))).card) :
+    pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val)) i i i = 0 ∨
+    pathOnlyStructureTensor 2 (fun u v => decide (u.val ≠ v.val)) i i i = 1 :=
+  pathOnlyStructureTensor_diagonal_in_zero_one 2
+    (fun u v => decide (u.val ≠ v.val)) i
+
+/-- **Sub-task A.4 non-vacuity: substantive `restrictedGL3OnPathOnlyTensor`
+identity case.**
+
+At `g = 1` between two distinct adjacencies `(adj₁, adj₂)` such that
+`1 • encode m adj₁ = encode m adj₂`, the identity-case witness derives
+`adj₁ = adj₂` via the diagonal-value classification, hence the
+present-arrow cardinalities match.
+
+Exercises the substantive version of
+`restrictedGL3OnPathOnlyTensor_identity_case` (the post-audit-pass
+version that consumes the hypothesis non-trivially). -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+              GL (Fin (dimGQ m)) ℚ) • grochowQiaoEncode m adj₁ =
+              grochowQiaoEncode m adj₂) :
+    (presentArrowSlotIndices m adj₁).card =
+      (presentArrowSlotIndices m adj₂).card :=
+  restrictedGL3OnPathOnlyTensor_identity_case m adj₁ adj₂ h_eq
+
+/-- **Sub-task A.6 non-vacuity: substantive identity-case AlgEquiv
+on the path subspace.**
+
+At `g = 1` between two distinct adjacencies `(adj₁, adj₂)` such that
+`1 • encode m adj₁ = encode m adj₂`, the identity-case witness derives
+`adj₁ = adj₂` via the diagonal-value classification, hence
+`AlgEquiv.refl` preserves `presentArrowsSubspace m adj₁ =
+presentArrowsSubspace m adj₂`.
+
+Exercises the substantive version of
+`gl3_induces_algEquiv_on_pathSubspace_identity_case` (the post-audit-
+pass version that consumes the hypothesis non-trivially). -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_eq : (1 : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+              GL (Fin (dimGQ m)) ℚ) • grochowQiaoEncode m adj₁ =
+              grochowQiaoEncode m adj₂) :
+    ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
+      ϕ '' (presentArrowsSubspace m adj₁ : Set (pathAlgebraQuotient m)) =
+        (presentArrowsSubspace m adj₂ : Set (pathAlgebraQuotient m)) :=
+  gl3_induces_algEquiv_on_pathSubspace_identity_case m adj₁ adj₂ h_eq
+
+/-- **Sub-task A.6 non-vacuity: conditional headline.**
+
+Under the research-scope `Prop`, the conditional headline produces an
+AlgEquiv between any two adjacencies whose encoders are GL³-related. -/
+example (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_research : GL3InducesAlgEquivOnPathSubspace m)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ ×
+         GL (Fin (dimGQ m)) ℚ)
+    (hg : g • grochowQiaoEncode m adj₁ = grochowQiaoEncode m adj₂) :
+    ∃ (ϕ : pathAlgebraQuotient m ≃ₐ[ℚ] pathAlgebraQuotient m),
+      ϕ '' (presentArrowsSubspace m adj₁ : Set (pathAlgebraQuotient m)) =
+        (presentArrowsSubspace m adj₂ : Set (pathAlgebraQuotient m)) :=
+  gl3_induces_algEquiv_on_pathSubspace m h_research adj₁ adj₂ g hg
+
+end AlgEquivFromGL3NonVacuity
+
+-- ============================================================================
+-- ## §15.19 R-TI Phase 3 — Final Prop discharge (audit 2026-04-28).
+-- ============================================================================
+
+-- A.1.5: Encoder unit-compatibility identity (prerequisite for Manin).
+#print axioms Orbcrypt.GrochowQiao.encoder_unit_compatibility
+
+-- A.5.1: Manin abstract algebra structure tensor.
+#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor
+#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor_apply
+#print axioms Orbcrypt.GrochowQiao.Manin.structureTensor_recovers_mul
+
+-- A.5.2: Basis-change relation predicate (with identity-case witness).
+#print axioms Orbcrypt.GrochowQiao.Manin.IsBasisChangeRelated
+#print axioms Orbcrypt.GrochowQiao.Manin.IsBasisChangeRelated.id
+
+-- A.3.1: Padding trivial-algebra identity.
+#print axioms Orbcrypt.GrochowQiao.encoder_padding_trivial_algebra
+
+-- A.3.2: Padding-rank invariant.
+#print axioms Orbcrypt.GrochowQiao.IsConcentratedSlot
+#print axioms Orbcrypt.GrochowQiao.paddingRankInvariant
+#print axioms Orbcrypt.GrochowQiao.paddingRankInvariant_eq_paddingSlotIndices_card
+
+-- A.5.3: Manin tensor-stabilizer theorem (algebra hom).
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_basis
+#print axioms Orbcrypt.GrochowQiao.Manin.coefficient_match_of_basisChange
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_mul_basis
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_mul
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_one
+#print axioms Orbcrypt.GrochowQiao.Manin.IsUnitCompatible
+#print axioms Orbcrypt.GrochowQiao.Manin.algHomOfTensorIso
+#print axioms Orbcrypt.GrochowQiao.Manin.algHomOfTensorIso_basis
+
+-- A.5.4: AlgEquiv upgrade.
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_left_inv
+#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_right_inv
+#print axioms Orbcrypt.GrochowQiao.Manin.linearEquivOfBasisChange
+#print axioms Orbcrypt.GrochowQiao.Manin.algEquivOfTensorIso
+#print axioms Orbcrypt.GrochowQiao.Manin.algEquivOfTensorIso_basis
+
+-- A.6.3: Discharge bridges.
+#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermFun_mem_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermAlgEquiv_image_subset_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermAlgEquiv_image_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.Discharge.gl3InducesAlgEquivOnPathSubspace_of_rigidity
+#print axioms Orbcrypt.GrochowQiao.Discharge.isPresentArrowSlot_liftedSigma
+#print axioms Orbcrypt.GrochowQiao.Discharge.presentArrowSlotIndices_card_eq_of_graphIso
+#print axioms Orbcrypt.GrochowQiao.Discharge.restrictedGL3OnPathOnlyTensor_of_rigidity
+
+-- Top-level unified discharge under GrochowQiaoRigidity.
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_unified_discharge_under_rigidity
+
+namespace Phase3DischargeNonVacuity
+
+open Orbcrypt
+open GrochowQiao
+
+/-- **Phase 3 discharge non-vacuity: identity matrix is basis-change-related to itself.**
+
+The identity matrix gives an `IsBasisChangeRelated` witness when both
+algebras agree (here exemplified at `Bool` index over `ℚ`-trivial
+self-tensor). -/
+example (T : Bool → Bool → Bool → ℚ) :
+    Manin.IsBasisChangeRelated T T (1 : Matrix Bool Bool ℚ)
+                                   (1 : Matrix Bool Bool ℚ) :=
+  Manin.IsBasisChangeRelated.id T
+
+/-- **Phase 3 discharge non-vacuity: padding-rank invariant equals
+padding-slot count for the empty graph at `m = 2`.** -/
+example :
+    paddingRankInvariant
+      (grochowQiaoEncode 2 (fun _ _ => false)) =
+      (paddingSlotIndices 2 (fun _ _ => false)).card :=
+  paddingRankInvariant_eq_paddingSlotIndices_card 2 (fun _ _ => false)
+
+/-- **Phase 3 discharge non-vacuity: from `GrochowQiaoRigidity`, both
+Phase 3 Props discharge.** -/
+example (h_rigidity : GrochowQiaoRigidity) (m : ℕ) :
+    GL3InducesAlgEquivOnPathSubspace m ∧ RestrictedGL3OnPathOnlyTensor m :=
+  grochowQiao_phase3_discharge_under_rigidity h_rigidity m
+
+/-- **Phase 3 discharge non-vacuity: unified discharge (Karp + both
+Phase 3 Props) under `GrochowQiaoRigidity`.** -/
+example (h_rigidity : GrochowQiaoRigidity) :
+    @GIReducesToTI ℚ _ ∧
+    (∀ m, GL3InducesAlgEquivOnPathSubspace m) ∧
+    (∀ m, RestrictedGL3OnPathOnlyTensor m) :=
+  grochowQiao_unified_discharge_under_rigidity h_rigidity
+
+-- ----------------------------------------------------------------------------
+-- Concrete Manin theorem evaluations on `ℚ` as a 1-dimensional ℚ-algebra.
+-- Exercises the full Manin tensor-stabilizer pipeline at the smallest
+-- non-trivial instance (single-element basis indexed by `PUnit`).
+-- ----------------------------------------------------------------------------
+
+/-- **Manin non-vacuity: structure tensor at singleton basis evaluates to `1`.**
+
+For the basis of `ℚ` over itself (the singleton basis at `PUnit`), the
+structure tensor at the unique basis element is `1` — reflecting
+`1 * 1 = 1` in `ℚ`. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    Manin.structureTensor b default default default = (1 : ℚ) := by
+  simp [Manin.structureTensor]
+
+/-- **Manin non-vacuity: structure tensor recovers multiplication.**
+
+Exercises `structureTensor_recovers_mul` on `ℚ` viewed as a
+1-dimensional ℚ-algebra. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    b default * b default = ∑ k, Manin.structureTensor b default default k • b k :=
+  Manin.structureTensor_recovers_mul (Module.Basis.singleton PUnit ℚ) default default
+
+/-- **Manin non-vacuity: unit-compatibility holds at identity matrix.**
+
+For the singleton basis, `IsUnitCompatible` with `P = 1` is
+discharged by direct computation. -/
+example :
+    Manin.IsUnitCompatible (Module.Basis.singleton PUnit ℚ)
+      (Module.Basis.singleton PUnit ℚ)
+      (1 : Matrix PUnit PUnit ℚ) := by
+  intro _; simp
+
+/-- **Manin non-vacuity: algHomOfTensorIso constructs a valid AlgHom on
+the singleton basis at the identity matrix.**
+
+Evaluating the constructed AlgHom on the basis element `b default = 1`
+yields `1 : ℚ`, confirming the construction agrees with the identity
+algebra hom at the smallest non-trivial instance. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    let h_unit : Manin.IsUnitCompatible b b 1 := by intro _; simp
+    Manin.algHomOfTensorIso b b 1 1
+        (Manin.IsBasisChangeRelated.id (Manin.structureTensor b)) h_unit
+        (b default) = (1 : ℚ) := by simp
+
+/-- **Manin non-vacuity: algEquivOfTensorIso constructs a valid AlgEquiv
+on the singleton basis at the identity matrix.**
+
+Evaluating the constructed AlgEquiv on the basis element `b default = 1`
+yields `1 : ℚ`, confirming the construction agrees with the identity
+algebra equivalence at the smallest non-trivial instance. This is the
+end-to-end exercise of the Manin tensor-stabilizer construction
+(A.5.1 → A.5.2 → A.5.3 → A.5.4) at a concrete instance. -/
+example :
+    let b : Module.Basis PUnit ℚ ℚ := Module.Basis.singleton PUnit ℚ
+    let h_unit : Manin.IsUnitCompatible b b 1 := by intro _; simp
+    Manin.algEquivOfTensorIso b b 1 1
+        (Manin.IsBasisChangeRelated.id (Manin.structureTensor b)) h_unit
+        (b default) = (1 : ℚ) := by simp
+
+end Phase3DischargeNonVacuity
+
+-- ============================================================================
+-- ## §15.20 R-TI Phase 3 — PathOnlyAlgebra (Manin path connection).
+-- ============================================================================
+
+-- A.5.5: Path-only Subalgebra structure.
+#print axioms Orbcrypt.GrochowQiao.pathMul_some_mem_presentArrows
+#print axioms Orbcrypt.GrochowQiao.presentArrowsSubspace_mul_mem
+#print axioms Orbcrypt.GrochowQiao.one_mem_presentArrowsSubspace
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraSubalgebra
+#print axioms Orbcrypt.GrochowQiao.mem_pathOnlyAlgebraSubalgebra_iff
+
+-- A.5.5: Basis construction.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraEquivFun
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_repr_apply
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_apply_underlying
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_mul_underlying
+
+-- A.6.1: Bridge to pathOnlyStructureTensor.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor
+
+-- A.6.2: Manin-chain identity-case witnesses.
+#print axioms Orbcrypt.GrochowQiao.pathOnlyStructureTensor_basisChangeRelated_self
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgebraBasis_unitCompatible_self
+
+-- Path B: Genuine factoring through path-only Subalgebra AlgEquiv.
+-- (The earlier `_via_manin` aliases — definitionally equal to Path A —
+-- were removed as theatrical in the post-landing audit; replaced with
+-- the substantive obligation factoring below.)
+#print axioms Orbcrypt.GrochowQiao.Discharge.PathOnlyAlgEquivObligation
+#print axioms Orbcrypt.GrochowQiao.Discharge.PathOnlySubalgebraGraphIsoObligation
+#print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlyAlgEquivObligation_id
+#print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlySubalgebraGraphIsoObligation_id
+#print axioms Orbcrypt.GrochowQiao.Discharge.grochowQiaoRigidity_via_path_only_algEquiv_chain
+#print axioms Orbcrypt.GrochowQiao.Discharge.pathOnlyAlgebra_manin_trivial
+
+namespace PathOnlyAlgebraNonVacuity
+
+open Orbcrypt
+open GrochowQiao
+
+/-- **Path-only Subalgebra non-vacuity at `m = 2` empty graph.**
+
+The path-only Subalgebra of `pathAlgebraQuotient 2` under the empty
+graph `(fun _ _ => false)` exists as a Subalgebra over `ℚ`.  This
+exercises the unconditional `pathOnlyAlgebraSubalgebra` constructor. -/
+noncomputable example :
+    Subalgebra ℚ (pathAlgebraQuotient 2) :=
+  pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)
+
+/-- **Multiplicative closure non-vacuity.**
+
+The product of two zero elements (which trivially live in the
+subspace) lives in the subspace. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (0 : pathAlgebraQuotient m) * 0 ∈ presentArrowsSubspace m adj := by
+  apply presentArrowsSubspace_mul_mem
+  · exact (presentArrowsSubspace m adj).zero_mem
+  · exact (presentArrowsSubspace m adj).zero_mem
+
+/-- **Unit membership non-vacuity.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    (1 : pathAlgebraQuotient m) ∈ presentArrowsSubspace m adj :=
+  one_mem_presentArrowsSubspace m adj
+
+/-- **Bridge non-vacuity at `m = 2` empty graph: Manin's structureTensor of
+the path-only basis equals pathOnlyStructureTensor.** -/
+example :
+    Manin.structureTensor (pathOnlyAlgebraBasis 2 (fun _ _ => false)) =
+      pathOnlyStructureTensor 2 (fun _ _ => false) :=
+  pathOnlyAlgebraBasis_structureTensor_eq_pathOnlyStructureTensor 2 _
+
+/-- **Identity-case basis-change witness.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    Manin.IsBasisChangeRelated
+        (pathOnlyStructureTensor m adj)
+        (pathOnlyStructureTensor m adj)
+        1 1 :=
+  pathOnlyStructureTensor_basisChangeRelated_self m adj
+
+/-- **Identity-case unit-compatibility witness.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    Manin.IsUnitCompatible
+        (pathOnlyAlgebraBasis m adj) (pathOnlyAlgebraBasis m adj) 1 :=
+  pathOnlyAlgebraBasis_unitCompatible_self m adj
+
+/-- **Path B obligation 1 identity-case witness.**
+
+When adj₁ = adj₂, the AlgEquiv obligation discharges to `AlgEquiv.refl`. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (g : GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ × GL (Fin (dimGQ m)) ℚ)
+    (h_eq : g • grochowQiaoEncode m adj = grochowQiaoEncode m adj) :
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj)) :=
+  Discharge.pathOnlyAlgEquivObligation_id m adj g h_eq
+
+/-- **Path B obligation 2 identity-case witness.**
+
+For adj₁ = adj₂, σ = identity is a graph iso. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool)
+    (h : Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                    ↥(pathOnlyAlgebraSubalgebra m adj))) :
+    ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj i j = adj (σ i) (σ j) :=
+  Discharge.pathOnlySubalgebraGraphIsoObligation_id m adj h
+
+/-- **Path B factoring composition: under both Path B obligations,
+`GrochowQiaoRigidity` follows.** -/
+example (m : ℕ)
+    (h_in : Discharge.PathOnlyAlgEquivObligation m)
+    (h_out : Discharge.PathOnlySubalgebraGraphIsoObligation m)
+    (adj₁ adj₂ : Fin m → Fin m → Bool)
+    (h_iso : AreTensorIsomorphic
+              (grochowQiaoEncode m adj₁) (grochowQiaoEncode m adj₂)) :
+    ∃ σ : Equiv.Perm (Fin m), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j) :=
+  Discharge.grochowQiaoRigidity_via_path_only_algEquiv_chain
+    m h_in h_out adj₁ adj₂ h_iso
+
+/-- **Manin chain non-vacuity: end-to-end algebra-equiv construction
+on the path-only Subalgebra at the trivial instance.** -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    Nonempty (↥(pathOnlyAlgebraSubalgebra m adj) ≃ₐ[ℚ]
+                ↥(pathOnlyAlgebraSubalgebra m adj)) :=
+  Discharge.pathOnlyAlgebra_manin_trivial m adj
+
+end PathOnlyAlgebraNonVacuity
+
+-- ============================================================================
+-- §15.21 — Path B Subalgebra σ-extraction (Sub-task A.6.4).
+-- ============================================================================
+
+/-! ## §15.21 — Path B obligations: substantive discharge
+
+Path B's two research-scope obligations:
+* `PathOnlySubalgebraGraphIsoObligation` — discharged UNCONDITIONALLY
+  via `pathOnlySubalgebraGraphIsoObligation_discharge` using
+  Wedderburn–Mal'cev σ-extraction + adjacency invariance from arrow
+  preservation.
+* `PathOnlyAlgEquivObligation` — discharged CONDITIONALLY on
+  `GrochowQiaoRigidity` via `pathOnlyAlgEquivObligation_under_rigidity`.
+  The conditional discharge is *necessary*: `PathOnlyAlgEquivObligation`
+  is provably equivalent to `GrochowQiaoRigidity` (modulo the
+  unconditional WM σ-extraction).  Discharging it unconditionally
+  would solve the deep open problem of Grochow–Qiao SIAM J. Comp.
+  2023 §4.3 (the partition-rigidity argument).
+
+Every new declaration depends only on the standard Lean trio. -/
+
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotentSubalgebra
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotentSubalgebra_ne_zero
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotentSubalgebra_completeOrthogonalIdempotents
+#print axioms Orbcrypt.GrochowQiao.algEquiv_image_vertexIdempotentSubalgebra_COI
+#print axioms Orbcrypt.GrochowQiao.algEquiv_image_vertexIdempotentSubalgebra_ne_zero
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_completeOrthogonalIdempotents
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_ne_zero
+#print axioms Orbcrypt.GrochowQiao.pathOnlySubalgebraAlgEquiv_extractVertexPerm
+#print axioms Orbcrypt.GrochowQiao.arrowElementSubalgebra
+#print axioms Orbcrypt.GrochowQiao.arrowElementSubalgebra_ne_zero
+#print axioms Orbcrypt.GrochowQiao.nilpotent_mem_pathAlgebraRadical
+#print axioms Orbcrypt.GrochowQiao.innerAut_sandwich_radical
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_mem_radical
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_sandwich
+#print axioms Orbcrypt.GrochowQiao.radical_apply_id_eq_zero
+#print axioms Orbcrypt.GrochowQiao.radical_sandwich_eq_arrow_scalar
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_eq_scalar
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_scalar_ne_zero
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_isGraphIso_forward
+#print axioms Orbcrypt.GrochowQiao.pathOnlySubalgebraGraphIsoObligation_discharge
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgEquiv_of_graph_iso
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgEquivObligation_under_rigidity
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoRigidity_via_pathB_chain
+
+namespace PathOnlyAlgEquivSigmaNonVacuity
+
+open Orbcrypt
+open GrochowQiao
+
+/-- **Path B Sub-task A.6.4 non-vacuity (1): vertex idempotent in
+Subalgebra at `m = 2`.**
+
+The lifted vertex idempotent inhabits the path-only Subalgebra. -/
+noncomputable example :
+    ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) :=
+  vertexIdempotentSubalgebra 2 (fun _ _ => false) 0
+
+/-- **Non-vacuity (2): COI structure on lifted vertex idempotents.**
+
+For any `m, adj`, the family of lifted vertex idempotents forms a
+`CompleteOrthogonalIdempotents` structure in the path-only Subalgebra. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    CompleteOrthogonalIdempotents (vertexIdempotentSubalgebra m adj) :=
+  vertexIdempotentSubalgebra_completeOrthogonalIdempotents m adj
+
+/-- **Non-vacuity (3): nilpotent ⇒ radical at `m = 2`.**
+
+The arrow element `α(0, 1)` is nilpotent and hence lies in the radical. -/
+example : arrowElement 2 0 1 ∈ pathAlgebraRadical 2 := by
+  apply nilpotent_mem_pathAlgebraRadical
+  exact arrow_mul_arrow_eq_zero 2 0 1 0 1
+
+/-- **Non-vacuity (4): radical-sandwich-arrow-scalar reduction at `m = 2`.**
+
+For any `A ∈ J` and any vertices `x, y`, `e_x * A * e_y = A(.edge x y) • α(x, y)`. -/
+example (A : pathAlgebraQuotient 2) (h_A : A ∈ pathAlgebraRadical 2) :
+    vertexIdempotent 2 0 * A * vertexIdempotent 2 1 =
+      A (.edge 0 1) • arrowElement 2 0 1 :=
+  radical_sandwich_eq_arrow_scalar 2 h_A 0 1
+
+/-- **Non-vacuity (5): `PathOnlySubalgebraGraphIsoObligation` discharged
+at `m = 2`.** -/
+example : Discharge.PathOnlySubalgebraGraphIsoObligation 2 :=
+  pathOnlySubalgebraGraphIsoObligation_discharge 2
+
+/-- **Non-vacuity (6): `pathOnlyAlgEquiv_of_graph_iso` with σ = id at
+`m = 2` empty graph.** -/
+noncomputable example :
+    ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) ≃ₐ[ℚ]
+      ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) :=
+  pathOnlyAlgEquiv_of_graph_iso 2 (fun _ _ => false) (fun _ _ => false) 1
+    (fun i j => by simp)
+
+/-- **Non-vacuity (7): conditional discharge of
+`PathOnlyAlgEquivObligation` from `GrochowQiaoRigidity`.** -/
+example (h_rig : GrochowQiaoRigidity) :
+    Discharge.PathOnlyAlgEquivObligation 2 :=
+  pathOnlyAlgEquivObligation_under_rigidity h_rig 2
+
+/-- **Non-vacuity (8): Path B end-to-end Karp reduction under
+`GrochowQiaoRigidity`.** -/
+example (h_rig : GrochowQiaoRigidity)
+    (adj₁ adj₂ : Fin 2 → Fin 2 → Bool)
+    (h_iso : AreTensorIsomorphic
+              (grochowQiaoEncode 2 adj₁) (grochowQiaoEncode 2 adj₂)) :
+    ∃ σ : Equiv.Perm (Fin 2), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j) :=
+  grochowQiaoRigidity_via_pathB_chain h_rig 2 adj₁ adj₂ h_iso
+
+/-- **Non-vacuity (9): vertex idempotent in Subalgebra is non-zero.** -/
+example : vertexIdempotentSubalgebra 2 (fun _ _ => false) 0 ≠ 0 :=
+  vertexIdempotentSubalgebra_ne_zero 2 (fun _ _ => false) 0
+
+/-- **Non-vacuity (10): radical_apply_id_eq_zero on a concrete radical
+element at `m = 2`.** -/
+example (z : Fin 2) : arrowElement 2 0 1 (.id z) = 0 :=
+  radical_apply_id_eq_zero 2 (arrowElement_mem_pathAlgebraRadical 2 0 1) z
+
+/-- **Non-vacuity (11): inner-conjugation sandwich identity at `j = 0`,
+`A = α(0, 1)`.** -/
+example (c d : pathAlgebraQuotient 2) :
+    ((1 + (0 : pathAlgebraQuotient 2)) * c * (1 - 0)) * arrowElement 2 0 1 *
+        ((1 + 0) * d * (1 - 0)) =
+      c * arrowElement 2 0 1 * d :=
+  innerAut_sandwich_radical 2
+    (Submodule.zero_mem _)
+    (arrowElement_mem_pathAlgebraRadical 2 0 1) c d
+
+/-- **Non-vacuity (12): σ-extraction from a Subalgebra AlgEquiv at the
+identity case.** -/
+example : ∃ (σ : Equiv.Perm (Fin 2)) (j : pathAlgebraQuotient 2),
+    j ∈ pathAlgebraRadical 2 ∧
+    ∀ v : Fin 2,
+      (1 + j) * vertexIdempotent 2 (σ v) * (1 - j) =
+      ((AlgEquiv.refl :
+          ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) ≃ₐ[ℚ]
+            ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)))
+        (vertexIdempotentSubalgebra 2 (fun _ _ => false) v)).val :=
+  pathOnlySubalgebraAlgEquiv_extractVertexPerm 2 (fun _ _ => false)
+    (fun _ _ => false) AlgEquiv.refl
+
+end PathOnlyAlgEquivSigmaNonVacuity

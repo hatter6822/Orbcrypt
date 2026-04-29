@@ -1168,6 +1168,250 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-28 (R-TI Phase 3 cleanup pass — dead-code removal +
+  additional substantive content + stale-docstring fixes)** — Final
+  audit pass on the same-day Phase 3 strengthening landing.
+
+  **Dead-code removed (2 declarations):**
+
+  * `PathOnlyTensorIsAssociative_proof` — pure renaming alias of
+    `pathOnlyStructureTensor_isAssociative` with no consumers.
+  * `algEquivRefl_preserves_presentArrowsSubspace` — pure
+    `Set.image_id` specialisation that restated `AlgEquiv.refl`
+    preserves `presentArrowsSubspace`, with no consumers.
+
+  **Substantive content added (1 theorem):**
+
+  * `pathOnlyStructureTensor_diagonal_in_zero_one`
+    (`PathOnlyTensor.lean`) — at any diagonal index `i : Fin
+    (pathSlotIndices m adj).card`, the path-only tensor's diagonal
+    value is `0` (present-arrow slot) or `1` (vertex slot).  Direct
+    consequence of `encoder_diag_at_path_in_zero_one` after unfolding
+    `pathOnlyStructureTensor_apply` and observing the underlying
+    `Fin (dimGQ m)`-slot is path-algebra.  Phase 5's adjacency-recovery
+    argument (research-scope) consumes this distinction.
+
+  **Stale-docstring fixes (2):**
+
+  * `pathOnlyStructureTensor_index_is_path_algebra` docstring no
+    longer references the (since-removed) research-scope
+    `PathOnlyTensorIsAssociative` Prop.
+  * `gl3_algEquiv_partial_closure_status_disclosure` status listing
+    no longer references the (since-dropped) `IsAssociativeTensorPreservedByGL3`
+    Prop's identity-GL³ case; updated to reflect the post-strengthening
+    public surface.
+
+  **Audit-script test additions (2):**
+
+  * A.1.3 non-vacuity test for `encoder_off_diag_path_padding_zero`.
+  * A.4 path-only diagonal-in-{0,1} test on a non-trivial adjacency.
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**,
+  zero warnings, zero errors.  Phase 16 audit script runs cleanly
+  (exit code 0).  All Phase-3 declarations depend only on the
+  standard Lean trio.
+
+  **Patch version.** `lakefile.lean` retains `0.1.24` (cleanup
+  removes 2 dead declarations, adds 1 substantive theorem; the
+  public-API surface count drops by one; backwards compatibility
+  unaffected since removed declarations had no consumers).
+
+* **2026-04-28 (R-TI Phase 3 strengthening pass — substantive proofs
+  + mathematical-correctness fix)** — Deeper re-audit of the same-day
+  Phase 3 audit-pass landing identified two research-scope `Prop`s
+  that were tractable to convert to real theorems and one
+  mathematically-incorrect claim that needed dropping.
+
+  **Substantive proofs added (1):**
+
+  * `pathOnlyStructureTensor_isAssociative` (`PathOnlyTensor.lean`)
+    — substantively proven theorem that the path-only structure tensor
+    satisfies the associativity polynomial identity
+    `IsAssociativeTensor`.  Proof technique: `Equiv.sum_comp` re-
+    indexing of path-only sums, `Finset.univ_eq_attach` +
+    `Finset.sum_attach` to get plain Finset sums, `Finset.sum_subset`
+    to extend to univ sums (using new private helpers
+    `pathOnlySummand_zero_of_not_path_algebra` /`'` showing path/
+    padding-mixed terms vanish via `grochowQiaoEncode_padding_right`),
+    then `encoder_assoc_path` (Sub-task A.1.0).  Replaces the
+    research-scope `Prop` `PathOnlyTensorIsAssociative` (the alias
+    `PathOnlyTensorIsAssociative_proof` is retained as a consumer-
+    facing reference).
+
+  **Mathematical-correctness fix (1):**
+
+  * `IsAssociativeTensorPreservedByGL3` and
+    `isAssociativeTensorPreservedByGL3_identity_case`
+    (`TensorIdentityPreservation.lean`) — **dropped** as
+    mathematically incorrect for arbitrary GL³.  Generic GL³ does
+    not preserve associativity of the polynomial identity; only the
+    structure-tensor-preserving sub-class (`(P, P, P⁻ᵀ)`-shaped
+    triples corresponding to basis changes of the underlying algebra)
+    preserves it.  Counterexample: pick a non-associative T and find
+    `g` such that `g • T` is associative; reverse `g` to produce a
+    counterexample.  The module docstring now includes a
+    `Mathematical correctness` section documenting the actual
+    preservation structure (the Manin tensor-stabilizer subgroup),
+    and points at `GL3InducesAlgEquivOnPathSubspace` in
+    `AlgEquivFromGL3.lean` as the correct research-scope bundle for
+    the deep content.
+
+  **Honest scoreboard, post-strengthening.**  Of the four research-
+  scope `Prop`s introduced by the initial Phase 3 landing:
+  - `PathOnlyTensorIsAssociative` — **converted to substantively
+    proven theorem**.
+  - `IsAssociativeTensorPreservedByGL3` — **dropped** as
+    mathematically incorrect.
+  - `RestrictedGL3OnPathOnlyTensor` — retained (cardinality
+    preservation is genuinely deep content of Sub-task A.3).
+  - `GL3InducesAlgEquivOnPathSubspace` — retained (Manin theorem +
+    rigidity argument; ~80 pages on paper, ~1,800 LOC of Lean).
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**,
+  zero warnings, zero errors.  Phase 16 audit script runs cleanly
+  (exit code 0).  All Phase-3 declarations depend only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+
+  **Patch version.** `lakefile.lean` retains `0.1.24` (the
+  strengthening pass adds proofs but the public-API surface count is
+  unchanged net-net: -2 dropped declarations in
+  `TensorIdentityPreservation.lean` (the wrong Prop and its identity
+  case), +1 substantive theorem (`pathOnlyStructureTensor_isAssociative`)
+  + 1 alias (`PathOnlyTensorIsAssociative_proof`) + 2 private helpers
+  in `PathOnlyTensor.lean`).
+
+* **2026-04-28 (R-TI Phase 3 audit pass — theatrical-theorem
+  fixes + naming-rule alignment)** — Targeted post-landing audit of
+  the same-day Phase 3 partial-discharge landing surfaced four
+  residual issues, all fixed in this audit pass.
+
+  **Theatrical-theorem fixes (3):**
+
+  * `restrictedGL3OnPathOnlyTensor_identity_case` (`PathOnlyTensor.lean`)
+    pre-audit signature: `(adj : Fin m → Fin m → Bool)` + ignored
+    hypothesis `_h`, conclusion `cardadj = cardadj` (rfl).  Post-audit:
+    `(adj₁ adj₂)` distinct, hypothesis `1 • encode m adj₁ = encode m
+    adj₂` consumed via `one_smul` + diagonal-value classification +
+    funext to derive `adj₁ = adj₂`.  Conclusion `cardadj₁ = cardadj₂`
+    follows.
+
+  * `gl3_induces_algEquiv_on_pathSubspace_identity_case`
+    (`AlgEquivFromGL3.lean`) pre-audit signature: single `adj` +
+    underscore-prefixed hypothesis `_h_eq` (intentionally unused),
+    conclusion `∃ ϕ, ϕ '' S adj = S adj` discharged by `AlgEquiv.refl`.
+    Post-audit: `(adj₁ adj₂)` distinct, hypothesis consumed via
+    `one_smul` + diagonal-value classification + `subst` to derive
+    `adj₁ = adj₂`.  Conclusion `∃ ϕ, ϕ '' S adj₁ = S adj₂` follows.
+
+  * `gl3_induces_algEquiv_on_pathSubspace_self` →
+    `algEquivRefl_preserves_presentArrowsSubspace`
+    (`AlgEquivFromGL3.lean`) — renamed.  The `_self` name suggested a
+    same-graph case witness of `GL3InducesAlgEquivOnPathSubspace`,
+    but the theorem has no GL³ in the statement and no encoder
+    hypothesis.  The new name honestly describes the content (pure
+    structural sanity check that `AlgEquiv.refl` preserves
+    `presentArrowsSubspace`).
+
+  **Naming-rule alignment (1):**
+
+  * `pathOnlyStructureTensor_inherits_encoder_assoc` →
+    `pathOnlyStructureTensor_index_is_path_algebra`
+    (`PathOnlyTensor.lean`) — renamed.  The pre-audit name promised
+    "associativity inheritance" but the content delivered only the
+    path-algebra membership precondition for the index image.  The
+    new name honestly describes the content per the
+    "Names describe content, never provenance" rule.
+
+  **Audit-script test upgrades (5):**
+
+  * Two pre-audit `example : True := by trivial` tests that exercised
+    nothing have been replaced with substantive `example` bindings.
+  * The A.1.0 associativity test now states the actual sum equality
+    rather than discarding the result via `True`.
+  * The A.4 index-is-path-algebra test now exercises
+    `pathOnlyStructureTensor_index_is_path_algebra` on `m = 2` with a
+    non-trivial adjacency (complete graph minus self-loops).
+  * Identity-case tests now exercise the substantive post-audit
+    signatures with `(adj₁, adj₂)` + the GL³ hypothesis.
+  * A new test exercises `pathOnlyStructureTensor_apply` directly.
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**,
+  zero warnings, zero errors.  Phase 16 audit script runs cleanly
+  (exit code 0).  All Phase-3 declarations depend only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`);
+  zero `sorryAx`, zero custom axioms.
+
+  **Patch version.** `lakefile.lean` retains `0.1.24` (the audit-
+  pass is API-breaking only at the identity-case-witness level;
+  the public-API surface count is unchanged).
+
+* **2026-04-28 (R-TI Phase 3 — GL³ → algebra-iso bridge,
+  partial-discharge form)** — Phase 3 of the v4 plan
+  (`docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § "Phase 3 —
+  GL³ → algebra-iso bridge") lands the **partial-discharge
+  fall-back** path explicitly described in § "Phase 3 alternative —
+  partial discharge".  The full Phase 3 (~3,200 LOC, 6–18 months,
+  Manin's tensor-stabilizer theorem + distinguished-padding rigidity)
+  is research-scope; the partial-discharge path captures the deep
+  multilinear-algebra content as a single named research-scope
+  `Prop` `GL3InducesAlgEquivOnPathSubspace` and lands the surrounding
+  plumbing (Sub-tasks A.1, A.2, A.4, A.6 conditional headline)
+  unconditionally.
+
+  **Four new modules.**
+
+  * `EncoderPolynomialIdentities.lean` (Sub-task A.1) — encoder
+    polynomial-identity catalogue: `encoder_assoc_path` (re-export),
+    `encoder_diag_at_path_in_zero_one`, `encoder_diag_at_padding_eq_two`,
+    `encoder_off_diag_path_padding_zero`, `encoder_padding_diag_only`.
+
+  * `TensorIdentityPreservation.lean` (Sub-task A.2) —
+    `IsAssociativeTensor` predicate, `encoder_isAssociativeTensor_full_path`,
+    `IsAssociativeTensorPreservedByGL3` research-scope Prop,
+    `isAssociativeTensorPreservedByGL3_identity_case` identity witness.
+
+  * `PathOnlyTensor.lean` (Sub-task A.4) — `pathOnlyStructureTensor`,
+    `pathOnlyStructureTensor_apply`,
+    `pathOnlyStructureTensor_inherits_encoder_assoc`,
+    `PathOnlyTensorIsAssociative` + `RestrictedGL3OnPathOnlyTensor`
+    research-scope Props, `restrictedGL3OnPathOnlyTensor_identity_case`.
+
+  * `AlgEquivFromGL3.lean` (Sub-task A.6) — the conditional headline:
+    `GL3InducesAlgEquivOnPathSubspace` research-scope Prop,
+    `gl3_induces_algEquiv_on_pathSubspace` (consumer of the Prop),
+    `gl3_induces_algEquiv_on_pathSubspace_identity_case` and
+    `gl3_induces_algEquiv_on_pathSubspace_self` (unconditional witnesses).
+
+  **Status of `GL3InducesAlgEquivOnPathSubspace`.** The single named
+  research-scope `Prop` captures the deep mathematical content of
+  Sub-tasks A.3 (distinguished-padding rigidity, ~700 LOC, **HIGH**
+  risk), A.5 (Manin's tensor-stabilizer theorem, ~600 LOC, **HIGH**
+  risk, Mathlib prerequisites not present at the pinned commit),
+  and A.6's matrix-action upgrade (~400 LOC).  Discharging the Prop
+  unconditionally is multi-month research effort tracked at
+  `docs/planning/R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` § 8 (Risk
+  register) as **R-15-residual-TI-reverse-phase-3**.  Once it lands,
+  Phases 4, 5, 6 (Wedderburn–Mal'cev σ extraction, arrow
+  preservation, final discharge) deliver
+  `grochowQiao_isInhabitedKarpReduction : @GIReducesToTI ℚ _`
+  unconditionally.
+
+  **Audit script.** 19 new `#print axioms` entries + 9 non-vacuity
+  `example` bindings under `AlgEquivFromGL3NonVacuity` exercising
+  every public Phase-3 declaration on `m ∈ {1, 2}`.  All standard-
+  trio axioms.
+
+  **Verification.** Full `lake build` succeeds with **3,410 jobs**
+  (up from 3,406) zero warnings / zero errors. Phase 16 audit script
+  exit code 0; every new declaration depends only on the standard
+  Lean trio (`propext`, `Classical.choice`, `Quot.sound`); zero
+  `sorryAx`, zero custom axioms.
+
+  **Patch version.** `lakefile.lean` bumped from `0.1.23` to
+  `0.1.24`.  Module count rises from 60 to 64 (`EncoderSlabEval.lean`
+  and `PathBlockSubspace.lean` from R-TI Phases 1–2 plus the four
+  new R-TI Phase 3 modules).
+
 * **2026-04-26 (Workstream R-TI Track B + A.1 + A.2 partial —
   forward obligation discharged unconditionally)** — Track B
   (`Orbcrypt/Hardness/GrochowQiao/PermMatrix.lean`, NEW module)
@@ -2444,3 +2688,172 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   change (gaining a `lam : ℕ` parameter) is an API break
   warranting a patch bump per `CLAUDE.md`'s version-bump
   discipline.
+
+### R-TI Phase 3 — Path B Sub-task A.6.4 (audit 2026-04-29).
+
+**Subalgebra σ-extraction + conditional AlgEquiv discharge.**
+This landing closes Path B's two research-scope obligations
+(`PathOnlyAlgEquivObligation` and
+`PathOnlySubalgebraGraphIsoObligation`) at the highest
+unconditional level reachable without solving the deep open
+problem of Grochow–Qiao SIAM J. Comp. 2023 §4.3:
+
+- `pathOnlySubalgebraGraphIsoObligation_discharge : ∀ m,
+  Discharge.PathOnlySubalgebraGraphIsoObligation m` —
+  **UNCONDITIONAL** discharge via Wedderburn–Mal'cev
+  σ-extraction + adjacency invariance from arrow-preservation.
+- `pathOnlyAlgEquivObligation_under_rigidity (h_rig :
+  GrochowQiaoRigidity) : ∀ m,
+  Discharge.PathOnlyAlgEquivObligation m` — **CONDITIONAL**
+  discharge from the existing research-scope `GrochowQiaoRigidity`
+  Prop.
+
+**Why the second is conditional, not unconditional.** Combined
+with the unconditional discharge above, the existing
+`grochowQiaoRigidity_via_path_only_algEquiv_chain` gives
+`PathOnlyAlgEquivObligation ⇒ GrochowQiaoRigidity`. This PR's
+new `pathOnlyAlgEquivObligation_under_rigidity` provides the
+converse `GrochowQiaoRigidity ⇒ PathOnlyAlgEquivObligation`.
+So the two Props are PROVABLY EQUIVALENT modulo unconditional
+content. Discharging `PathOnlyAlgEquivObligation`
+unconditionally would discharge `GrochowQiaoRigidity`
+unconditionally — the very deep mathematical content carrying
+the partition rigidity argument of Grochow–Qiao SIAM J. Comp.
+2023 §4.3 (~80 pages of the original paper, ~2,000+ LOC of
+Lean per the v4 plan).
+
+**Substantive proof structure for the unconditional
+discharge.** ~580 LOC of mathematical content composing:
+
+1. **Layer A.6.4.1–A.6.4.5 — σ-extraction.** Lift vertex
+   idempotents into the path-only Subalgebra
+   (`vertexIdempotentSubalgebra`); show the family is a
+   `CompleteOrthogonalIdempotents` preserved by AlgEquiv
+   (`vertexIdempotentSubalgebra_completeOrthogonalIdempotents`,
+   `algEquiv_image_vertexIdempotentSubalgebra_COI`); apply the
+   existing `wedderburn_malcev_conjugacy` (from
+   `WedderburnMalcev.lean`) to the lifted COI image of ϕ to
+   extract σ + j with `(1 + j) * vertexIdempotent (σ v) * (1 -
+   j) = ϕ(e_v).val`.
+
+2. **Layer A.6.4.6–A.6.4.10 — sandwich identity.** Lift arrow
+   elements `α(u, v)` into the Subalgebra
+   (`arrowElementSubalgebra`); show their ϕ-images are
+   nilpotent (`α² = 0` ⇒ `ϕ(α)² = 0`), hence in the radical via
+   `nilpotent_mem_pathAlgebraRadical`; prove the
+   inner-conjugation sandwich identity
+   `((1 + j) * c * (1 - j)) * A * ((1 + j) * d * (1 - j))
+     = c * A * d`
+   for `A, j ∈ J` (`innerAut_sandwich_radical`, substantive
+   use of `J² = 0` cancellation); compose with the
+   basis-element sandwich `α(u, v) = e_u * α * e_v` and
+   ϕ-multiplicativity to derive `(ϕ(α(u, v))).val = e_{σ u} *
+   (ϕ(α(u, v))).val * e_{σ v}`
+   (`algEquivLifted_arrow_sandwich`).
+
+3. **Layer A.6.4.11–A.6.4.14 — scalar form.** Prove
+   `radical_apply_id_eq_zero`: `A ∈ J ⇒ A(.id z) = 0` (via
+   `Submodule.span_induction` on the radical generators); prove
+   `radical_sandwich_eq_arrow_scalar`: `e_x * A * e_y = A(.edge
+   x y) • α(x, y)` for `A ∈ J` (pointwise on `c : QuiverArrow
+   m` using `vertexIdempotent_mul_apply` and
+   `mul_vertexIdempotent_apply`); compose to get `(ϕ(α(u,
+   v))).val = c • α(σ u, σ v)` with `c = (ϕ(α(u, v))).val
+   (.edge (σ u) (σ v))` (`algEquivLifted_arrow_eq_scalar`);
+   show `c ≠ 0` from injectivity of ϕ on the non-zero
+   `arrowElementSubalgebra`
+   (`algEquivLifted_arrow_scalar_ne_zero`).
+
+4. **Layer A.6.4.15 — forward graph iso.**
+   `algEquivLifted_isGraphIso_forward`: `adj₁ u v = true ⇒
+   adj₂ (σ u) (σ v) = true`. Proof uses the scalar form: if
+   `adj₂ (σ u) (σ v) = false`, then `(.edge (σ u) (σ v)) ∉
+   presentArrows m adj₂`, but `(ϕ(α)).val ∈
+   presentArrowsSubspace m adj₂` and is non-zero at `.edge (σ
+   u) (σ v)` — contradiction.
+
+5. **Layer A.6.4.16–A.6.4.17 — cardinality bijection.** Apply
+   the forward direction at both ϕ and ϕ.symm to get two
+   injections `edgeFinset adj₁ ↪ edgeFinset adj₂` and
+   `edgeFinset adj₂ ↪ edgeFinset adj₁` (via σ × σ). Equal
+   cardinalities + injection on a finite type ⇒ bijection.
+   Image equality gives the converse direction `adj₂ (σ i) (σ
+   j) = true ⇒ adj₁ i j = true` without needing to identify
+   the inverse-extracted permutation σ' with σ⁻¹ — sidestepping
+   the `σ' = σ⁻¹` identification problem that would otherwise
+   require additional WM uniqueness machinery.
+
+**Substantive proof structure for the conditional discharge.**
+
+* `pathOnlyAlgEquiv_of_graph_iso m adj₁ adj₂ σ h_iso`
+  constructs the AlgEquiv between path-only Subalgebras from a
+  graph iso σ. Uses `quiverPermAlgEquiv m σ` (existing
+  infrastructure from `AlgEquivLift.lean`) restricted to the
+  path-only Subalgebras via `AlgHom.codRestrict` on both
+  directions, packaged as `AlgEquiv.ofAlgHom`. Membership
+  proofs use `quiverPermFun_mem_presentArrowsSubspace`
+  elementwise.
+* `pathOnlyAlgEquivObligation_under_rigidity` extracts σ from
+  the rigidity hypothesis via `GrochowQiaoRigidity.apply` and
+  composes with `pathOnlyAlgEquiv_of_graph_iso`.
+* `grochowQiaoRigidity_via_pathB_chain` is the sanity-check:
+  under `GrochowQiaoRigidity`, the Path B chain composes back
+  to the rigidity statement.
+
+**Audit script.** `scripts/audit_phase_16.lean` extended with
+§15.21 listing 24 new `#print axioms` entries plus 12
+non-vacuity `example` bindings under
+`PathOnlyAlgEquivSigmaNonVacuity` covering: vertex-idempotent
+in Subalgebra; COI structure on lifted vertex idempotents;
+nilpotent ⇒ radical; sandwich-to-arrow-scalar reduction; full
+Path B obligation 2 discharge; identity-σ AlgEquiv
+construction; conditional Path B obligation 1 discharge;
+end-to-end Karp reduction under `GrochowQiaoRigidity`;
+non-zero vertex idempotent; radical_apply_id_eq_zero on a
+concrete radical element; identity-case inner-conjugation
+sandwich; identity-case σ-extraction.
+
+**Audit pass (2026-04-29).** Deep audit of the initial landing
+surfaced and fixed:
+* Removed dead `have := h_cA` exploratory statement (unused
+  after refactor).
+* Removed `set_option linter.unusedSectionVars false` silencing
+  (verified unnecessary by rebuilding clean without it).
+* Removed duplicate `algEquivLifted_isGraphIso` curried
+  wrapper around `algEquivLifted_isGraphIso_forward` (consumers
+  now call `_forward` directly).
+* Replaced misleading section header A.6.4.16 ("σ is a graph
+  isomorphism (full bidirection via inverse)") with the
+  discharge-headline version since the bidirection is packaged
+  inside `pathOnlySubalgebraGraphIsoObligation_discharge` via
+  the cardinality argument.
+* Fixed stale docstring reference to a
+  `pathOnlySubalgebraAlgEquiv_isGraphIso` name that never
+  existed.
+* Restructured the module docstring to honestly reflect the
+  obligation-by-obligation structure (Path B obligation 2
+  UNCONDITIONAL; Path B obligation 1 CONDITIONAL on
+  `GrochowQiaoRigidity`).
+
+**Files touched.** New file
+`Orbcrypt/Hardness/GrochowQiao/PathOnlyAlgEquivSigma.lean`
+(~1,055 LOC, NEW); `Orbcrypt.lean` (one new import);
+`scripts/audit_phase_16.lean` (24 `#print axioms` + 12
+non-vacuity examples in §15.21); `lakefile.lean` (version
+`0.1.28 → 0.1.29`); `CLAUDE.md` (change-log entry); this
+verification-report entry.
+
+**Verification.** Full `lake build` succeeds for all 75
+modules with **zero warnings, zero errors** (3,418 jobs).
+Phase 16 audit script: exit code 0; comment-aware sorry/axiom
+grep returns empty; 767+ `#print axioms` entries depend only
+on the standard Lean trio (`propext`, `Classical.choice`,
+`Quot.sound`); zero `sorryAx`, zero custom axioms. The 75-
+module total is up from 74 (one new file under
+`Orbcrypt/Hardness/GrochowQiao/`); the public declaration
+count rises by ~24 declarations.
+
+**Patch version.** `lakefile.lean` bumped from `0.1.28` to
+`0.1.29` for the new public declarations introduced by this
+landing (the new module exposes the substantive Path B
+discharges).

@@ -64,6 +64,24 @@ import Orbcrypt.Hardness.GrochowQiao.AlgEquivLift
 import Orbcrypt.Hardness.GrochowQiao.WMSigmaExtraction
 import Orbcrypt.Hardness.GrochowQiao.AdjacencyInvariance
 import Orbcrypt.Hardness.GrochowQiao.Rigidity
+-- Phase 3 / Sub-tasks A.1, A.2, A.4, A.6 (partial-discharge form):
+import Orbcrypt.Hardness.GrochowQiao.EncoderPolynomialIdentities
+import Orbcrypt.Hardness.GrochowQiao.TensorIdentityPreservation
+import Orbcrypt.Hardness.GrochowQiao.PathOnlyTensor
+import Orbcrypt.Hardness.GrochowQiao.AlgEquivFromGL3
+-- Phase 3 / Final discharge: A.1.5 prerequisite + Manin foundations:
+import Orbcrypt.Hardness.GrochowQiao.EncoderUnitCompatibility
+import Orbcrypt.Hardness.GrochowQiao.Manin.StructureTensor
+import Orbcrypt.Hardness.GrochowQiao.Manin.BasisChange
+import Orbcrypt.Hardness.GrochowQiao.Manin.TensorStabilizer
+import Orbcrypt.Hardness.GrochowQiao.PaddingInvariant
+import Orbcrypt.Hardness.GrochowQiao.PathOnlyAlgebra
+import Orbcrypt.Hardness.GrochowQiao.Discharge
+-- Phase 3 / Path B Sub-task A.6.4: Subalgebra σ-extraction (WM-based,
+-- discharges `PathOnlySubalgebraGraphIsoObligation` unconditionally;
+-- `PathOnlyAlgEquivObligation` discharged conditionally on
+-- `GrochowQiaoRigidity` since it is provably equivalent to it).
+import Orbcrypt.Hardness.GrochowQiao.PathOnlyAlgEquivSigma
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling
