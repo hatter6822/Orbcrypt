@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Abstract algebra structure tensor (R-TI Phase 3 / Sub-task A.5.1).
 
 Defines `Manin.structureTensor (b : Basis I F A) : I → I → I → F`, the

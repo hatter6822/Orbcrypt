@@ -1,3 +1,11 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Phase 16 — Formal Verification of New Components
 
 ## Weeks 30–36 | 10 Work Units | ~36 Hours

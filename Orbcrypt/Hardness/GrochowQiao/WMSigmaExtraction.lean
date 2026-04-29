@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Wedderburn–Mal'cev σ-extraction (Stage 4 / T-API-8, R-TI rigidity discharge).
 
 Composes Stage 4 T-API-7's σ-induced AlgEquiv (`quiverPermAlgEquiv`)

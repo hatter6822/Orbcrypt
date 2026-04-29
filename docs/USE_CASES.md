@@ -1,6 +1,14 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Novel Use Cases for Orbcrypt
 
-**Status:** exploratory design notes — last updated 2026-04-18.
+**Status:** exploratory design notes — last updated 2026-04-29.
 
 This document catalogues application designs that genuinely exploit
 Orbcrypt's distinctive primitives rather than treating it as a drop-in
@@ -12,7 +20,13 @@ particular which Phase-13 limitations bite.
 Readers unfamiliar with the scheme should first skim `POE.md` (concept),
 `DEVELOPMENT.md` §§4–6 (specification), and `docs/PUBLIC_KEY_ANALYSIS.md`
 (public-key feasibility). The Lean theorem numbers referenced here match
-`CLAUDE.md`'s theorem registry.
+`CLAUDE.md`'s theorem registry; theorem **Status** classifications
+(`Standalone` / `Quantitative` / `Conditional` / `Scaffolding`) follow
+the release-messaging policy in `CLAUDE.md`'s Key Conventions and the
+`Status` column of its "Three core theorems" table. **Quantitative**
+theorems must be cited with an explicit ε; **Conditional** theorems
+must be cited with their hypothesis disclosed; **Scaffolding** theorems
+must not be cited as standalone security claims.
 
 ---
 
@@ -81,12 +95,12 @@ substantially smaller than a lattice-KEM ciphertext (Kyber-768 is
 ≈8.7 kbit). On the scanner side, each candidate UTXO requires one
 `canon` call.
 
-**Formalization handle.** `kem_correctness` (Theorem 4) plus
-`encrypt_mem_orbit` and `canon_encrypt` (from `Correctness.lean`)
+**Formalization handle.** `kem_correctness` (Theorem 4, **Standalone**)
+plus `encrypt_mem_orbit` and `canon_encrypt` (from `Correctness.lean`)
 together guarantee that a correctly posted payment canonicalizes to the
 recipient's advertised `canon(bp)`. Unlinkability reduces to
-`ConcreteOIA(ε)` via `concrete_oia_implies_1cpa` (Theorem 6) for the
-bitstring action.
+`ConcreteOIA(ε)` via `concrete_oia_implies_1cpa` (Theorem 6,
+**Quantitative** — cite with explicit ε) for the bitstring action.
 
 **Open — sender sampling.** Sender-side sampling without knowledge of
 `G` is exactly the oblivious-sampling problem. `CombineImpossibility`
@@ -125,9 +139,12 @@ reveals this is precisely the semantics wanted. VDFs give strong
 timing bounds but are a timing primitive, not a batch-opener — the
 two are composable (VDF-gate the `G` reveal) rather than substitutes.
 
-**Formalization handle.** Binding follows from `canon_eq_implies_orbit_eq`;
-hiding from `concreteOIA_zero_implies_perfect` (perfect at ε=0) and
-`concrete_oia_implies_1cpa` (computational at ε>0).
+**Formalization handle.** Binding follows from `canon_eq_implies_orbit_eq`
+(Standalone); hiding from `concreteOIA_zero_implies_perfect` (perfect
+limit at ε = 0; non-vacuously inhabited on subsingleton-message schemes
+via `concreteOIA_zero_of_subsingleton_message`, Workstream I1) and
+`concrete_oia_implies_1cpa` (Theorem 6, **Quantitative**: ε > 0
+parameterises concrete security).
 
 **Open.** Trust-minimizing the reveal authority — threshold-sharing `G`
 over the permutation representation — is natural but not yet
@@ -139,9 +156,9 @@ formalized. Phase 13's `refresh_depends_only_on_epoch_range` is a partial step.
 commutative action on a shared base point: Alice posts `a • x₀`, Bob
 posts `b • x₀`, and each applies their own secret to the other's post,
 arriving at `a • (b • x₀) = b • (a • x₀)` by `csidh_correctness`
-(Theorem 17). The common orbit element is a post-quantum
-Diffie–Hellman shared secret; `CommOrbitPKE` (Theorem 18) wraps this
-into a KEM-style PKE interface.
+(Theorem 17, **Standalone**). The common orbit element is a
+post-quantum Diffie–Hellman shared secret; `CommOrbitPKE` (Theorem 18,
+**Standalone**) wraps this into a KEM-style PKE interface.
 
 **Why orbit-based wins.** Pre-quantum DH is broken by Shor; CSIDH is
 an established small-key post-quantum replacement. Orbcrypt's
@@ -161,12 +178,20 @@ verifies the algebraic relation). Orbit key agreement is the *DH
 analogue*, not the *hashlock analogue*.
 
 **Formalization handle.** `csidh_correctness`, `csidh_views_agree`,
-`comm_pke_correctness` are machine-checked. The missing piece is a
-concrete `CommGroupAction` with a plausible hardness assumption;
-`docs/PUBLIC_KEY_ANALYSIS.md` §3 records the open instantiation. The
-OIA/TI hardness chain (Theorem 14) does *not* directly underwrite the
-commutative variant — CSIDH-style security is a *separate* hypothesis
-on the commutative structure, not a consequence of tensor-isomorphism
+`comm_pke_correctness` are machine-checked (all **Standalone**). The
+missing piece is a concrete `CommGroupAction` with a plausible
+hardness assumption; `docs/PUBLIC_KEY_ANALYSIS.md` §3 records the open
+instantiation. The OIA/TI hardness chain (Theorem 14
+`hardness_chain_implies_security`, classified **Scaffolding** because
+deterministic OIA is `False` on every non-trivial scheme — see
+`det_oia_false_of_distinct_reps`, Workstream E1, audit 2026-04-23 /
+finding C-07) does *not* directly underwrite the commutative variant.
+The non-vacuous *quantitative* analogue of Theorem 14 is
+`concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27,
+**Quantitative**), which delivers an ε-bound from a caller-supplied
+surrogate + encoder profile; it likewise does not cover the commutative
+variant. CSIDH-style security is a *separate* hypothesis on the
+commutative structure, not a consequence of tensor-isomorphism
 hardness.
 
 ### 1.4 Confidential asset tags with public equivalence
@@ -508,12 +533,15 @@ information.
 
 **Caveat.** The service must *not* compute any separating invariant of
 `G`. If the service can run `hammingWeight` (or any other separating
-function), `invariant_attack` (Theorem 2) witnesses an adversary with
-`hasAdvantage` — a specific `(g₀, g₁)` pair on which the adversary
-distinguishes perfectly (informal shorthand: "advantage 1/2 / complete
-break"; see `CLAUDE.md` row #2 for the full three-convention advantage
-catalogue). The privacy
-collapses. This constrains the kinds of recommendation logic
+function), `invariant_attack` (Theorem 2, **Standalone**) witnesses an
+adversary with `hasAdvantage` — a specific `(g₀, g₁)` pair on which
+the adversary's two guesses disagree. Informal shorthand: "complete
+break under a separating G-invariant"; the formal conclusion is
+`∃ A, hasAdvantage scheme A` (existence of one distinguishing
+adversary), not a quantitative "advantage = 1/2" claim. See `CLAUDE.md`
+row #2 for the full three-convention advantage catalogue (deterministic
+= 1, two-distribution = 1, centred = 1/2). The privacy collapses
+either way. This constrains the kinds of recommendation logic
 permissible: clustering on `canon` is safe; clustering on any
 non-invariant feature destroys the guarantee. Designers must state
 explicitly which invariants the service may compute.
@@ -577,26 +605,44 @@ representative", and where post-quantum hardness matters.
 ## 6. Alignment with the formalization, and what is still open
 
 The table below maps each application to the theorems it rests on and
-to the open problems that currently block a full deployment.
+to the open problems that currently block a full deployment. Theorem
+numbers reference the registry in `CLAUDE.md`'s "Three core theorems"
+table; statuses follow the release-messaging policy (Standalone =
+unconditional; Quantitative = ε-bounded probabilistic; Conditional =
+hypothesis must be disclosed; Scaffolding = vacuously true on
+non-trivial schemes, do not cite as a security claim).
 
-| Application | Rests on (theorem #) | Open problem |
-|-------------|----------------------|--------------|
-| 1.1 stealth addresses | 4, 6 | sender-side sampling without `G` |
-| 1.2 batched commitments | `canon_idem`, 6, 7 | threshold share of `G` |
-| 1.3 CSIDH pair-keys | 17, 18 | concrete `CommGroupAction` instance; atomic-swap needs adaptor-signature layer |
-| 1.4 asset tags | 1, `canon_eq_implies_orbit_eq` | regulator trust model |
-| 2.1 glass-ballot voting | `canon_eq_of_mem_orbit`, 6, hybrid arg | coercion resistance |
-| 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` | bundle provisioning discipline |
+| Application | Rests on (theorem # / Lean handle / Status) | Open problem |
+|-------------|----------------------------------------------|--------------|
+| 1.1 stealth addresses | #4 (Standalone), #6 (Quantitative) | sender-side sampling without `G` |
+| 1.2 batched commitments | `canon_idem` (Standalone), #6 (Quantitative), #9 seed-key correctness (Standalone) | threshold share of `G` |
+| 1.3 CSIDH pair-keys | #17, #18 (both Standalone) | concrete `CommGroupAction` instance; atomic-swap needs adaptor-signature layer |
+| 1.4 asset tags | #1 (Standalone), `canon_eq_implies_orbit_eq` (Standalone) | regulator trust model |
+| 2.1 glass-ballot voting | `canon_eq_of_mem_orbit` (Standalone), #6 (Quantitative), `hybrid_argument_uniform` | coercion resistance |
+| 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` (all Standalone) | bundle provisioning discipline |
 | 2.3 staged budgets | same as 1.2 | threshold share of `G_p` |
-| 2.4 delegation trees | `subgroupBitstringAction`, `canon_eq_of_mem_orbit` | subgroup rotation UX |
-| 3.1 MEV-sealed auctions | `concreteOIA_zero_implies_perfect`, `canon_encrypt` | sequencer censorship |
-| 3.2 dark pools | `invariant_const_on_orbit`, OIA | operator trust model |
-| 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` | bundle provisioning / refresh economics |
-| 3.4 swap routing | 17, 18 | same as 1.3 |
-| 4.1 orbit follows | `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range`, OIA | bundle distribution; graph-level metadata |
-| 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` | deniability class bounded by public invariants; key distribution out of scope |
-| 4.3 private recs | `canonical_isGInvariant` | service must be invariant-free |
-| 4.4 group PSI | `canon_eq_implies_orbit_eq` | delegated canonicalization model |
+| 2.4 delegation trees | `subgroupBitstringAction`, `canon_eq_of_mem_orbit` (Standalone) | subgroup rotation UX |
+| 3.1 MEV-sealed auctions | `concreteOIA_zero_implies_perfect`, `canon_encrypt` (Standalone) | sequencer censorship |
+| 3.2 dark pools | `invariant_const_on_orbit` (Standalone), OIA-bounded view | operator trust model |
+| 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` (Standalone) | bundle provisioning / refresh economics |
+| 3.4 swap routing | #17, #18 (Standalone) | same as 1.3 |
+| 4.1 orbit follows | `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` (Standalone), OIA-bounded view | bundle distribution; graph-level metadata |
+| 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` (perfect limit at ε = 0); witness `concreteOIA_zero_of_subsingleton_message` | deniability class bounded by public invariants; key distribution out of scope |
+| 4.3 private recs | `canonical_isGInvariant` (Standalone) | service must be invariant-free |
+| 4.4 group PSI | `canon_eq_implies_orbit_eq` (Standalone) | delegated canonicalization model |
+
+For *quantitative* security citations, use the probabilistic chain:
+`concrete_oia_implies_1cpa` (#6, Quantitative) at the scheme layer,
+`concrete_hardness_chain_implies_1cpa_advantage_bound` (#27,
+Quantitative) for end-to-end TI-hardness → IND-1-CPA, and
+`concrete_kem_hardness_chain_implies_kem_advantage_bound` (#29,
+Quantitative) for the KEM layer. The deterministic counterparts
+(#3, #5, #8, #14, deterministic half of #30) are **Scaffolding** —
+their `OIA`/`KEMOIA`/`HardnessChain` hypotheses are `False` on every
+non-trivial scheme (witnessed unconditionally by
+`det_oia_false_of_distinct_reps` and
+`det_kemoia_false_of_nontrivial_orbit`, Workstream E of audit
+2026-04-23) and must not be cited as standalone security claims.
 
 Three structural gaps recur:
 
@@ -616,10 +662,10 @@ Three structural gaps recur:
 * **Invariant hygiene.** Applications that let the service or
   contract compute *anything* about ciphertexts risk introducing a
   separating invariant and collapsing privacy by `invariant_attack`
-  (Theorem 2). Design review must verify that every on-chain /
-  server-side function factors through `canon`. A linter — a "taint
-  tracker" from ciphertext to non-`canon` invocations — would
-  substantially reduce this risk.
+  (Theorem 2, **Standalone**). Design review must verify that every
+  on-chain / server-side function factors through `canon`. A linter —
+  a "taint tracker" from ciphertext to non-`canon` invocations —
+  would substantially reduce this risk.
 
 ---
 
@@ -748,3 +794,53 @@ lemmas (`canon_idem`, `canon_eq_implies_orbit_eq`,
 `oblivious_sample_in_orbit`, `hybrid_argument`,
 `subgroupBitstringAction`, `same_weight_not_separating`) are all
 present in the sources at the locations cited.
+
+---
+
+## 10. Audit changelog (2026-04-29)
+
+A second pass aligned the document with the release-messaging policy
+introduced by Workstream A of the 2026-04-23 pre-release audit
+(`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § "Workstream A"),
+and with the renames + Lean theorem additions landed by Workstreams
+A–G of that audit and by Workstream R-CE / R-TI.
+
+* **Header.** Cross-references the release-messaging policy and the
+  four-class Status taxonomy (Standalone / Quantitative / Conditional
+  / Scaffolding) so readers know how to read the inline tags below.
+* **§1.1, §1.2, §1.3.** Theorem citations now carry their Status
+  label inline. `concrete_oia_implies_1cpa` and the hardness-chain
+  references are explicitly tagged **Quantitative** (cite with
+  ε); `csidh_correctness`, `comm_pke_correctness`, and
+  `kem_correctness` are tagged **Standalone**;
+  `hardness_chain_implies_security` (Theorem 14) is now disclosed as
+  **Scaffolding**, with the non-vacuous quantitative analogue
+  `concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27)
+  named explicitly.
+* **§1.2 (batched commitments).** Added cross-reference to
+  `concreteOIA_zero_of_subsingleton_message` (Workstream I1, audit
+  2026-04-23 finding C-15) — the non-vacuity witness for
+  `concreteOIA_zero_implies_perfect` at the perfect ε = 0 limit.
+* **§4.3 (private recommendations).** Tightened the
+  `invariant_attack` framing per Workstream A of audit 2026-04-23
+  finding D13: the formal conclusion is `∃ A, hasAdvantage scheme A`
+  (existence of one distinguishing adversary), not a quantitative
+  "advantage = 1/2" claim. The three-convention catalogue (deterministic
+  = 1, two-distribution = 1, centred = 1/2) is named explicitly.
+* **§6 alignment table.** Each row now carries its Status label;
+  added a closing paragraph naming the canonical **Quantitative**
+  citations (#6, #27, #29) and the **Scaffolding** rows (#3, #5, #8,
+  #14, deterministic half of #30) that must not be cited as
+  standalone security claims. The deterministic vacuity is now
+  machine-checked unconditionally by `det_oia_false_of_distinct_reps`
+  (Workstream E1) and `det_kemoia_false_of_nontrivial_orbit`
+  (Workstream E2) — so this is no longer a prose disclosure but a
+  Lean theorem.
+* **§7 (anti-use cases).** Already correct as of the 2026-04-18
+  audit (it referenced `sessionKey_expands_to_canon_form`, the
+  current name post-Workstream-L4 of audit 2026-04-21). No further
+  change required in this pass.
+
+No design-level claims were weakened in this pass; the changes are
+purely classification + naming alignment with the post-Workstream-A
+release-messaging policy.

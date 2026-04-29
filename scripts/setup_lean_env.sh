@@ -1,4 +1,12 @@
 #!/usr/bin/env bash
+#
+# Orbcrypt  - Symmetry Keyed Encryption
+# Copyright (C) 2026  Adam Hall
+# This program comes with ABSOLUTELY NO WARRANTY.
+# This is free software, and you are welcome to redistribute it
+# under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+#
+
 # Orbcrypt — Lean 4 Environment Setup
 # Adapted from seLe4n (https://github.com/hatter6822/seLe4n)
 # Sets up elan, Lean 4 toolchain, and Mathlib for the Orbcrypt project.

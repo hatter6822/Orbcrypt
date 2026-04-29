@@ -1,4 +1,12 @@
 /-
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-/
+
+/-
 Manin tensor-stabilizer theorem (R-TI Phase 3 / Sub-tasks A.5.3 + A.5.4).
 
 Constructs an algebra homomorphism `A →ₐ[F] B` from a basis-change

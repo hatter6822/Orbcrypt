@@ -1,6 +1,14 @@
+<!--
+  Orbcrypt  - Symmetry Keyed Encryption
+  Copyright (C) 2026  Adam Hall
+  This program comes with ABSOLUTELY NO WARRANTY.
+  This is free software, and you are welcome to redistribute it
+  under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
+-->
+
 # Orbcrypt for an Anonymous Software Development Platform
 
-**Status:** exploratory design notes — last updated 2026-04-18.
+**Status:** exploratory design notes — last updated 2026-04-29.
 
 This document applies the primitives catalogued in `docs/USE_CASES.md` to
 the specific setting of an **anonymous software development platform**
@@ -9,7 +17,11 @@ re-derive the Orbcrypt primitives; readers should first skim `POE.md`
 (concept), `docs/USE_CASES.md` §0 (the four primitives), and
 `docs/PUBLIC_KEY_ANALYSIS.md` (feasibility) so that references to
 `canon`, `encaps`, `OrbitalRandomizers`, and the `CombineImpossibility`
-no-go are familiar. Theorem numbers below match `CLAUDE.md`'s registry.
+no-go are familiar. Theorem numbers below match `CLAUDE.md`'s registry;
+status classifications (`Standalone` / `Quantitative` / `Conditional`
+/ `Scaffolding`) follow the release-messaging policy introduced by
+Workstream A of the 2026-04-23 audit (see `CLAUDE.md`'s Key
+Conventions § "Release messaging policy").
 
 The focus is the three-way intersection:
 
@@ -67,20 +79,20 @@ The table below matches platform-layer concepts to Orbcrypt primitives
 from `USE_CASES.md` §0, and names the Lean 4 definitions and theorems
 that certify correctness or hiding for each.
 
-| Platform concept | Orbit primitive | Lean handle |
-|------------------|-----------------|-------------|
-| Per-project access tier | Subgroup action `G_P ≤ S_n` | `subgroupBitstringAction` |
-| Project identifier (what project a commit belongs to) | Orbit class `canon_{G_P}` | `canon_eq_of_mem_orbit` (helper to Theorem 1) |
-| Pseudonymous contributor token | Bundle element from `OrbitalRandomizers G_C t` issued by the project | `oblivious_sample_in_orbit`, `refresh_depends_only_on_epoch_range` |
-| Session / ephemeral key for a DEM payload | KEM key `encaps(g).2` | Theorem 4 (`kem_correctness`) |
-| Coordinated vulnerability embargo | Batch-openable commitment (reveal `G_E`) | `canon_eq_implies_orbit_eq`, Theorem 6 |
-| Severity-class-private bug report | Orbit label under a triage-secret group | `concrete_oia_implies_1cpa`, Theorem 6 |
-| Reviewer capability (role) | Chain of nested subgroups | `subgroupBitstringAction` composed |
-| Per-hop LLM session key | CSIDH-style shared secret | Theorem 17, gated on open `CommGroupAction` instantiation (`PUBLIC_KEY_ANALYSIS.md` §3) |
-| Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 (`seed_kem_correctness`) |
-| Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 + nonce caveat below |
-| Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 (`aead_correctness`) |
-| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — proved for honest compositions with `MAC.verify_inj`. Post-2026-04-23 Workstream B (landed 2026-04-24), the orbit-cover condition lives on the `INT_CTXT` game as a per-challenge well-formedness precondition, not as a theorem-level hypothesis; `authEncrypt_is_int_ctxt` now discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | Theorem 19 (`authEncrypt_is_int_ctxt`, status **Standalone**) + Theorem 20 (`carterWegmanMAC_int_ctxt` witness, status **Conditional** — requires `X = ZMod p × ZMod p`, incompatible with HGOE's `Bitstring n`, research R-13); Workstream C (audit F-07), Workstream B (audit 2026-04-23) |
+| Platform concept | Orbit primitive | Lean handle (Status) |
+|------------------|-----------------|----------------------|
+| Per-project access tier | Subgroup action `G_P ≤ S_n` | `subgroupBitstringAction` (Standalone) |
+| Project identifier (what project a commit belongs to) | Orbit class `canon_{G_P}` | `canon_eq_of_mem_orbit` (Standalone, helper to Theorem 1) |
+| Pseudonymous contributor token | Bundle element from `OrbitalRandomizers G_C t` issued by the project | `oblivious_sample_in_orbit`, `refresh_depends_only_on_epoch_range` (both Standalone) |
+| Session / ephemeral key for a DEM payload | KEM key `encaps(g).2` | Theorem 4 `kem_correctness` (Standalone) |
+| Coordinated vulnerability embargo | Batch-openable commitment (reveal `G_E`) | `canon_eq_implies_orbit_eq` (Standalone), Theorem 6 (Quantitative) |
+| Severity-class-private bug report | Orbit label under a triage-secret group | `concrete_oia_implies_1cpa`, Theorem 6 (Quantitative — cite with explicit ε) |
+| Reviewer capability (role) | Chain of nested subgroups | `subgroupBitstringAction` composed (Standalone) |
+| Per-hop LLM session key | CSIDH-style shared secret | Theorem 17 (Standalone), gated on open `CommGroupAction` instantiation (`PUBLIC_KEY_ANALYSIS.md` §3) |
+| Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 `seed_kem_correctness` (Standalone) |
+| Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 (Standalone) + nonce caveat below |
+| Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 `aead_correctness` (Standalone) |
+| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — game-shape refactor (Workstream B of audit 2026-04-23, landed 2026-04-24) absorbed the orbit-cover condition into a per-challenge well-formedness precondition `hOrbit`; `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | Theorem 19 `authEncrypt_is_int_ctxt` (**Standalone** post-Workstream-B); Theorem 20 `carterWegmanMAC_int_ctxt` witness (**Conditional** — requires `X = ZMod p × ZMod p`, incompatible with HGOE's `Bitstring n`, research R-13). Workstream C (audit F-07), Workstream B (audit 2026-04-23). |
 
 Two caveats recur and must be stated once:
 
@@ -253,36 +265,25 @@ KEM. The build manifest records the list of commit canonical forms
 that went into the build; a verifier holding `G_P` can recompute the
 canonical forms of the commits and cross-check. An attacker who
 substitutes a binary without access to `G_P` cannot forge a
-canonicalization match, and a substitution that breaks the AEAD
-tag is rejected by `authDecaps` — and this rejection is now a
-*theorem*, `authEncrypt_is_int_ctxt` (`AEAD/AEAD.lean`, Theorem 19;
-status **Standalone** post-Workstream-B per `CLAUDE.md`'s
-release-messaging policy), which discharges the `INT_CTXT`
-predicate for every `AuthOrbitKEM`. Pre-2026-04-23 the theorem
-carried an `hOrbitCover` hypothesis asserting the ciphertext space
-covers a single orbit of the base point — **false on production
-HGOE** (where `|Bitstring n| = 2^n` exceeds the base-point orbit by
-the orbit-stabiliser bound) — so the theorem was vacuously
-applicable there. The 2026-04-23 pre-release audit's Workstream
-**B** (landed 2026-04-24) refactored `INT_CTXT` to carry the
-orbit-cover condition as the game's per-challenge well-formedness
-precondition `hOrbit`, not as a theorem-level assumption. Out-of-
-orbit ciphertexts are rejected by the `INT_CTXT` game itself;
-`authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on
-every `AuthOrbitKEM`. The in-proof sibling
-`keyDerive_canon_eq_of_mem_orbit` is the orbit-restricted
-key-uniqueness lemma at the heart of the argument and is
-unconditionally true (audit F-07, Workstream C2; refined by
-Workstream B of audit 2026-04-23).
-`carterWegmanMAC_int_ctxt` (Theorem 20; status **Conditional**) is the
-concrete Carter–Wegman witness demonstrating the composition is
-inhabitable — but it is typed over `X = ZMod p × ZMod p` and is
-**not** directly compatible with HGOE's `Bitstring n` ciphertext
-space without a `Bitstring n → ZMod p` adapter (research R-13).
-Cite `carterWegmanHash_isUniversal` (`AEAD/CarterWegmanMAC.lean`)
-when a standalone universal-hash statement is wanted.
-`aead_correctness` (Theorem 12; **Standalone**) is the
-round-trip correctness complement and is unconditional.
+canonicalization match; a substitution that breaks the AEAD tag is
+rejected by `authDecaps`, and this rejection is now a *theorem*:
+`authEncrypt_is_int_ctxt` (Theorem 19, **Standalone** post-Workstream-B
+of audit 2026-04-23) discharges `INT_CTXT` unconditionally on every
+`AuthOrbitKEM`. The orbit-cover condition lives on the `INT_CTXT`
+game as a per-challenge well-formedness precondition `hOrbit`, not as
+a theorem-level assumption — out-of-orbit ciphertexts are rejected as
+ill-formed at game level, matching the real-world KEM model.
+
+* **Concrete witness.** `carterWegmanMAC_int_ctxt` (Theorem 20,
+  **Conditional**) demonstrates the composition is inhabitable, but is
+  typed over `X = ZMod p × ZMod p` and is **not** directly compatible
+  with HGOE's `Bitstring n` ciphertext space without a `Bitstring n →
+  ZMod p` adapter (research milestone R-13). Cite
+  `carterWegmanHash_isUniversal` when a standalone universal-hash
+  statement is wanted (proven `(1/p)`-universal at `[Fact (Nat.Prime p)]`,
+  Workstream L2 of audit 2026-04-21).
+* **Round-trip complement.** `aead_correctness` (Theorem 12,
+  **Standalone**) is unconditional.
 
 ### 3.5 Dependency-graph privacy
 
@@ -902,3 +903,51 @@ were cross-checked against their Lean sources and the theorem
 registry in `CLAUDE.md`. All exist with the stated meanings.
 Benchmark figures (canon: 172 / 320 / 1186 ms at λ=80/128/256)
 were cross-checked against `implementation/gap/orbcrypt_benchmarks.csv`.
+
+---
+
+## 14. Audit changelog (2026-04-29)
+
+A second pass aligned the document with the release-messaging policy
+introduced by Workstream A of the 2026-04-23 pre-release audit
+(`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § "Workstream A").
+This is a classification + naming alignment pass; no design-level
+claims were weakened.
+
+* **Header.** Cross-references the four-class Status taxonomy
+  (Standalone / Quantitative / Conditional / Scaffolding) and points
+  to the policy in `CLAUDE.md`'s Key Conventions § "Release messaging
+  policy".
+* **§1 (primitive map).** Each row now carries its Lean handle's
+  Status label inline: `concrete_oia_implies_1cpa` is **Quantitative**
+  (cite with explicit ε); `kem_correctness`, `aead_correctness`,
+  `hybrid_correctness`, `seed_kem_correctness`, `csidh_correctness`,
+  and the `canon_*` helpers are **Standalone**;
+  `authEncrypt_is_int_ctxt` is **Standalone** post-Workstream-B;
+  `carterWegmanMAC_int_ctxt` is **Conditional** with the `X = ZMod p
+  × ZMod p` incompatibility noted (research milestone R-13).
+* **§3.4 (build binding).** Trimmed the Workstream-B
+  framing into a more compact form. The mathematical content is
+  unchanged: `authEncrypt_is_int_ctxt` discharges `INT_CTXT`
+  unconditionally on every `AuthOrbitKEM`; the orbit-cover condition
+  lives on the `INT_CTXT` game itself as `hOrbit`. The Carter–Wegman
+  witness's `X = ZMod p × ZMod p` incompatibility with HGOE
+  `Bitstring n` is documented (research R-13). The post-Workstream-L2
+  upgrade of `carterWegmanHash_isUniversal` to a proven `(1/p)`-
+  universal hash at `[Fact (Nat.Prime p)]` is referenced where a
+  standalone universal-hash claim is wanted.
+* **§7 (architectures), §8 (anonymity stack), §9 (threat model),
+  §10 (open problems), §11 (incremental path), §12 (summary).** No
+  classification updates needed — these sections do not cite
+  individual theorems by status. The §8 PQ-Noise qualification from
+  the 2026-04-18 pass remains accurate (no change in the underlying
+  Noise pattern analysis since the audit).
+* **No new theorem citations.** The 2026-04-29 pass did not introduce
+  references to additional Lean theorems beyond those already cited
+  in the 2026-04-18 pass, so the cross-check footnote above remains
+  authoritative.
+
+The Status taxonomy is the canonical machine-readable
+release-messaging tag; readers wanting the full table of which
+theorems are Standalone vs Quantitative vs Conditional vs Scaffolding
+should consult `CLAUDE.md`'s "Three core theorems" table directly.
