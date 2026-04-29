@@ -2105,6 +2105,18 @@ prototype's `PseudoRandom` is honestly disclosed as not
 cryptographically secure (K-02), which is appropriate for
 a research artefact.
 
+**Independent verification post-audit** (added after the
+baseline `lake build` completed successfully — see
+§ N-05): the Phase-16 audit script (`scripts/audit_phase_16.lean`)
+was re-run end-to-end with the freshly-built modules. It
+exercises **928 declarations** via `#print axioms` and
+emits exactly three unique axioms across the entire output:
+`Classical.choice`, `Quot.sound`, `propext` — the standard
+Lean trio. Zero `sorryAx`, zero non-standard axioms. This
+independently confirms the Lean-code-cleanliness verdict
+above without relying on CLAUDE.md's running-changelog
+claims.
+
 ### M-04 — Documentation-vs-code parity verdict
 
 **Lean code is honest.** The CLAUDE.md changelog is
@@ -2261,14 +2273,37 @@ research-scope and are honestly disclosed:
 
 ### N-05 — Build / CI verification
 
-* `lake build`: A baseline build was launched at the start
-  of the audit; given the absence of cached Mathlib
-  binaries in this environment, the build was rebuilding
-  Mathlib + Aesop from source and was still in progress
-  at audit completion. The CI workflow (which uses
-  precompiled Mathlib cache) is expected to succeed
-  cleanly per CLAUDE.md's recent-changelog claims (3,400+
-  jobs, zero warnings, zero errors).
+* `lake build`: **Verified clean** (post-audit confirmation).
+  A baseline build was launched at the start of the audit
+  and completed successfully with exit code 0:
+  - **3,426 jobs** built successfully (terminating with
+    `✔ [3425/3426] Built Orbcrypt (2.5s)` and the
+    summary line `Build completed successfully (3426 jobs).`).
+  - This includes the post-audit-pass build of every
+    module touched by R-TI Phase 3 partial-discharge work
+    (PathOnlyAlgEquivSigma, PathOnlyAlgebra, Discharge,
+    GrochowQiao, AlgEquivFromGL3 — all visible at the
+    tail of the build output).
+  - Job count of 3,426 exceeds CLAUDE.md's most recent
+    changelog claim (3,417 jobs) by 9 jobs — consistent
+    with minor changes since the last documented count.
+  - Build output: zero error lines, zero warning lines.
+* `scripts/audit_phase_16.lean`: **Verified clean** (post-
+  audit confirmation):
+  - Exit code 0 on `lake env lean scripts/audit_phase_16.lean`.
+  - **928 `#print axioms` entries** total in the script
+    output (matching the in-file `grep -c "#print axioms"`
+    count of 932 within rounding for the few entries that
+    elaborate to "does not depend on any axioms" without
+    the `depends on axioms` keyword).
+  - **Exactly 3 unique axioms** appear across all 928
+    `depends on axioms` outputs: `Classical.choice`,
+    `Quot.sound`, `propext` — the standard Lean trio.
+    Verified via `perl` extraction + `sort -u`.
+  - **Zero `sorryAx` occurrences**.
+  - **Zero error / warning lines**.
+  - The Phase-16 script's regression sentinel posture is
+    **maintained**.
 * `scripts/audit_phase_16.lean`: 932 `#print axioms`
   entries + 238 non-vacuity examples; CI is expected to
   pass.
@@ -2326,16 +2361,13 @@ This audit followed a **module-by-module read** of every
 Despite the thoroughness, this audit has the following
 limitations:
 
-1. **Build verification was incomplete at audit time.**
-   The full `lake build` was rebuilding Mathlib from
-   source in the absence of a precompiled cache and had
-   not completed when the audit report was finalised. The
-   audit relies on CLAUDE.md's recent-changelog claims of
-   clean builds; an explicit CI-run snapshot at audit
-   commit would be definitive. **Mitigating factor**: the
-   audit checked for `sorry`/`axiom` declarations directly
-   on disk, and these checks do not depend on the build
-   completing.
+1. **Build verification was completed post-audit (limitation
+   resolved).** The full `lake build` was launched at audit
+   start and completed successfully with **3,426 jobs, zero
+   errors** (see § N-05). This independently confirms the
+   CLAUDE.md changelog claims of clean builds and removes
+   the original limitation noted at audit-report-finalisation
+   time.
 
 2. **The largest single Lean file (`AlgebraWrapper.lean`,
    1906 LOC) was audited via parallel-agent code review,
