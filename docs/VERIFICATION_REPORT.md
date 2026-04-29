@@ -43,16 +43,24 @@ ephemeral metrics and is updated continuously per the
 | CI workflow `.github/workflows/lean4-build.yml` enforces all of the above | ✅ |
 
 **Snapshot anchor (2026-04-29 reality, ephemeral — for current
-totals consult `CLAUDE.md`).** At Workstream-A2 landing time the
-running counts were: 76 Lean source modules under `Orbcrypt/`
-(75 imported by the root file + the un-imported transient
-`_ApiSurvey.lean`, slated for removal in Workstream **B1**); 928
-declarations exercised by `scripts/audit_phase_16.lean` via
-`#print axioms`; ≈ 930 public declarations across the source
-tree (verified at A2-implementation time via the grep recipe in
-the Phase 16 snapshot section); 48 intentionally `private`
-helper declarations; `lake build` succeeds with 3,418 jobs
-(verified post-A2 on `claude/audit-codebase-planning-CYmv2`;
+totals consult `CLAUDE.md`).** At Workstream-B landing time the
+running counts were: 75 Lean source modules under `Orbcrypt/`
+(all imported by the root file; pre-Workstream-B1 the count was
+76, with the un-imported transient `_ApiSurvey.lean` carrying
+the count, deleted by B1 after the live `PathAlgebra.lean` /
+`StructureTensor.lean` modules superseded its regression-
+sentinel purpose); 928 declarations exercised by
+`scripts/audit_phase_16.lean` via `#print axioms`; ≈ 930 public
+declarations across the source tree (verified at A2-
+implementation time via the grep recipe in the Phase 16
+snapshot section); 48 intentionally `private` helper
+declarations; `lake build` succeeds with 3,418 jobs (verified
+post-Workstream-B on `claude/audit-workstream-planning-nOC9R`;
+the deleted `_ApiSurvey.lean` shared most of its dependency graph
+with the live R-TI modules, and Lake's job count is dominated by
+Mathlib transitive build artefacts, so the 76 → 75 source-file
+drop did not produce a corresponding 3,418 → 3,417 job-count
+drop;
 the audit plan's pre-implementation estimate of 3,426 was
 itself a slightly-stale carry-over from the audit-time
 snapshot — the precise current count tracks `CLAUDE.md`'s
@@ -536,22 +544,23 @@ end of the file).
    `structure`, `class`, `instance`, or `abbrev` is preceded by a
    `/-- … -/` documentation comment.
 
-**Result.** Every one of the 76 modules under `Orbcrypt/` opens
+**Result.** Every one of the 75 modules under `Orbcrypt/` opens
 with a module-header comment block.  Of those, 74 use the
 project-standard `/-! … -/` markdown form (per CLAUDE.md's "Every
 `.lean` file begins with a `/-! … -/` module docstring"
-convention); two modules — the transient
-`Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (slated for
-removal in Workstream **B1** of the 2026-04-29 audit plan) and
+convention); the remaining module —
 `Orbcrypt/Hardness/GrochowQiao/WedderburnMalcev.lean` — currently
-open with `/- … -/` regular block comments rather than the `/-!`
-markdown form.  This is a minor pre-existing convention deviation
-(both files carry substantive narrative content; only the
-`/-` vs `/-!` marker differs).  It does not affect the build, the
-audit script, the standard-trio axiom posture, or the public-API
-surface; the `/-!` upgrade is tracked as an in-line follow-up to
-the 2026-04-29 audit's findings register and may be paired with
-Workstream **B1** when `_ApiSurvey.lean` is removed.
+opens with a `/- … -/` regular block comment rather than the
+`/-!` markdown form.  This is a minor pre-existing convention
+deviation (the file carries substantive narrative content; only
+the `/-` vs `/-!` marker differs).  It does not affect the
+build, the audit script, the standard-trio axiom posture, or the
+public-API surface; the `/-!` upgrade is tracked as an in-line
+follow-up to the 2026-04-29 audit's findings register.
+(Pre-Workstream-B1 of the same audit plan, a second
+`/- … -/`-headed module — the transient
+`Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` — also fell
+under this convention deviation; B1 deleted it.)
 
 Every public declaration across the source tree (≈ 930 as of the
 2026-04-29 Workstream-A2 anchor; the exact running count tracks
@@ -569,16 +578,22 @@ work, and the R-CE / R-TI Karp-reduction subtree.
 
 ## Root-import / dependency-graph audit (work unit 16.7)
 
-`Orbcrypt.lean` imports all 75 modules under `Orbcrypt/` that are
-intended for the public-API graph (the un-imported transient
-`_ApiSurvey.lean` is intentionally excluded and is a Workstream-
-**B1** removal target of the 2026-04-29 audit plan; the source
-tree contains 76 `.lean` files in total). Building `lake build
-Orbcrypt` exercises the complete graph (3,418 jobs including
-Mathlib dependencies as of the 2026-04-29 Workstream-A2 anchor,
-zero errors, zero warnings; the exact running count shifts with
-each module addition and tracks `CLAUDE.md`'s most recent
-per-workstream changelog entry).
+`Orbcrypt.lean` imports all 75 modules under `Orbcrypt/`, which is
+the complete public-API graph (post-Workstream-B1 of the
+2026-04-29 audit plan; pre-B1 the source tree contained 76
+`.lean` files, with the un-imported transient `_ApiSurvey.lean`
+intentionally excluded from the graph and deleted by B1 after
+the live `PathAlgebra.lean` / `StructureTensor.lean` modules
+superseded its regression-sentinel purpose). Building `lake
+build Orbcrypt` exercises the complete graph (3,418 jobs
+including Mathlib dependencies as of the 2026-04-29 Workstream-B
+anchor, zero errors, zero warnings; the deleted `_ApiSurvey.lean`
+shared most of its dependency graph with the live R-TI modules
+and Lake's job count is dominated by Mathlib transitive build
+artefacts, so the 76 → 75 source-file drop did not produce a
+corresponding 3,418 → 3,417 job-count drop. The exact running
+count shifts with each module addition and tracks `CLAUDE.md`'s
+most recent per-workstream changelog entry).
 
 The ASCII dependency graph in `Orbcrypt.lean`'s docstring already
 covers every Phase 7–13 module. Phase 16 added a new "Phase 16
@@ -1263,6 +1278,56 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-29 (Audit 2026-04-29 — Workstream B recommended
+  pre-release polish)** — `docs/VERIFICATION_REPORT.md` updated in
+  three sections to reflect the post-Workstream-B reality of the
+  source tree.  This landing closes audit finding A-01 / H-03a
+  (LOW) cross-reference fallout from Workstream B1.
+
+  **Snapshot-anchor refresh.**  The "Snapshot anchor" paragraph
+  near the top of the document is updated from the post-Workstream-A2
+  state (76 modules, with the un-imported transient
+  `_ApiSurvey.lean` carrying the count) to the post-Workstream-B
+  state (75 modules, all imported by the root file; B1 deleted
+  the transient survey stub after the live R-TI modules
+  superseded its regression-sentinel role).  The build-job count
+  is unchanged at 3,418 (the deleted module shared most of its
+  dependency graph with the live R-TI modules; Lake's job count
+  is dominated by Mathlib transitive build artefacts and so the
+  source-file count drops without a corresponding job-count
+  drop).
+
+  **Module-docstring audit refresh.**  The lines describing the
+  74-vs-2 `/-! … -/` vs `/- … -/` convention split (which
+  previously named both `_ApiSurvey.lean` and
+  `WedderburnMalcev.lean` as the two modules opening with the
+  regular `/- … -/` form) are updated to name only
+  `WedderburnMalcev.lean` (the post-B1 reality), with a
+  parenthetical historical note recording that pre-B1 the
+  transient `_ApiSurvey.lean` also fell under this convention
+  deviation.
+
+  **Root-import / dependency-graph audit refresh.**  The
+  paragraph documenting that `Orbcrypt.lean` imports all 75
+  modules under `Orbcrypt/` is updated to reflect that this is
+  now the *complete* public-API graph (post-B1; pre-B1 the
+  source tree contained 76 `.lean` files with the transient
+  excluded from the graph).
+
+  **Historical-snapshot references preserved.**  Per the
+  post-2026-04-29 disambiguation rule (Document-history bullets
+  + per-Workstream / per-Phase snapshot subsections describe
+  state-at-time and are preserved verbatim), the 2026-04-26 R-TI
+  Layer T0–T3 partial-closure entry's mention of
+  `_ApiSurvey.lean` is left intact — it correctly describes
+  what landed at that 2026-04-26 anchor.
+
+  **Verification.** Workstream B is file-relocation and prose-edit
+  only; no Lean source semantics changed.  `lake build` posture
+  and audit-script posture unchanged.  Patch version:
+  `lakefile.lean` retains `0.2.0` (Workstream B adds no new Lean
+  declarations).
 
 * **2026-04-29 (Audit 2026-04-29 — Workstream A2 documentation
   parity refresh)** — `docs/VERIFICATION_REPORT.md` headline

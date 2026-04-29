@@ -1336,13 +1336,20 @@ A-07 / J-02 HIGH; the exact running counts shift with each
 workstream landing and track `CLAUDE.md`'s most recent
 per-workstream changelog entry):
 
-* **76** Lean source modules under `Orbcrypt/` (75 imported by this
-  root file + the un-imported transient `_ApiSurvey.lean`, slated
-  for removal in Workstream **B1** of the 2026-04-29 audit plan),
-  all building successfully via `lake build Orbcrypt` (3,418 jobs
-  as of the post-Workstream-A3 verification run on
-  `claude/audit-codebase-planning-CYmv2`, zero errors, zero
-  warnings).
+* **75** Lean source modules under `Orbcrypt/`, all imported by this
+  root file (the post-Workstream-B1 state of the 2026-04-29 audit
+  plan; pre-B1 the count was 76 with the un-imported transient
+  `_ApiSurvey.lean` carrying the count, deleted by B1 after the
+  live `PathAlgebra.lean` / `StructureTensor.lean` modules
+  superseded its regression-sentinel purpose). All 75 modules build
+  successfully via `lake build Orbcrypt` (3,418 jobs as of the
+  post-Workstream-B verification run on
+  `claude/audit-workstream-planning-nOC9R`, zero errors, zero
+  warnings; the deleted `_ApiSurvey.lean` shared most of its
+  dependency graph with the live R-TI modules, and Lake's job
+  count is dominated by Mathlib transitive build artefacts, so
+  the 76 → 75 source-file drop did not produce a corresponding
+  3,418 → 3,417 job-count drop).
 * **0** uses of `sorry` anywhere in `Orbcrypt/**/*.lean` (verified by the
   comment-aware Perl strip used by CI).
 * **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every
@@ -3048,10 +3055,10 @@ strengthening (Decisions GQ-A through GQ-D in the plan):
 
 ### What landed (this commit, partial closure)
 
-**Layer T0 — paper synthesis (4 markdown documents + 1 transient
-Lean stub).** Decision GQ-D's defensive measure: every R-TI design
-choice cites a specific Grochow–Qiao 2021 paper section as
-justification, before any Lean implementation begins. Files:
+**Layer T0 — paper synthesis (4 markdown documents).** Decision
+GQ-D's defensive measure: every R-TI design choice cites a specific
+Grochow–Qiao 2021 paper section as justification, before any Lean
+implementation begins. Files:
 
 * `docs/research/grochow_qiao_path_algebra.md` — radical-2 path
   algebra structure note (~200 lines markdown, Decision GQ-A).
@@ -3063,9 +3070,11 @@ justification, before any Lean implementation begins. Files:
 * `docs/research/grochow_qiao_reading_log.md` — bibliography +
   per-decision paper-citation cross-reference (~150 lines markdown,
   Decision GQ-D).
-* `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (transient,
-  deletable at end of Layer T1 once the API has been exercised by
-  the live `PathAlgebra.lean` / `StructureTensor.lean` imports).
+* (Pre-Workstream-B1, the Layer T0 deliverable also included a
+  transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` Lean
+  stub. Workstream B1 of the 2026-04-29 audit plan deleted that
+  stub after the live `PathAlgebra.lean` / `StructureTensor.lean`
+  modules superseded its regression-sentinel purpose.)
 
 **Layer T1 — `Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean` (~370
 lines).** Sub-tasks T1.1, T1.2, T1.4, T1.5, T1.6 (basis-element
@@ -3192,11 +3201,14 @@ follows by direct assembly. Pre-rigidity, the existence of the
 **Module count.** `Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean`,
 `Orbcrypt/Hardness/GrochowQiao/StructureTensor.lean`,
 `Orbcrypt/Hardness/GrochowQiao/Forward.lean`, and
-`Orbcrypt/Hardness/GrochowQiao.lean` — four new public modules.
-The transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` is the
-Layer-T0.2 deliverable; deletable at end of Layer T1 (kept for
-this landing as the API survey is still informative pre-T5). New
-total module count: 47 (43 pre-R-TI plus 4 new).
+`Orbcrypt/Hardness/GrochowQiao.lean` — four new public modules. New
+total module count at the R-TI Phase-3 partial-closure landing: 47
+(43 pre-R-TI plus 4 new). Pre-Workstream-B1 of the 2026-04-29
+audit plan, the count also included the transient Layer-T0.2
+deliverable `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`; that
+file was deleted by B1 after the live `PathAlgebra.lean` /
+`StructureTensor.lean` modules superseded its regression-sentinel
+purpose.
 
 **`#print axioms`.** Every public R-TI declaration depends only on
 the standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`)

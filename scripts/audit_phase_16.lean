@@ -32,10 +32,15 @@ sentinel*: any future change that hides a `sorry` behind an opaque
 definition, or that introduces a custom axiom, will produce a mismatched
 axiom list and trip the CI parser.
 
-The script supersedes per-workstream audit files (`audit_b_workstream`,
-`audit_c_workstream`, ...) by covering every public declaration in a
-single pass. Those per-workstream scripts remain for historical
-reference but are not exercised by CI.
+The script supersedes per-workstream audit files
+(`scripts/legacy/audit_b_workstream.lean`,
+`scripts/legacy/audit_c_workstream.lean`, ...) by covering every
+public declaration in a single pass. Those per-workstream scripts
+are archived under `scripts/legacy/` (relocated by Workstream **B2**
+of the 2026-04-29 audit plan); see `scripts/legacy/README.md` for
+the archive's file index and the rationale for retention versus
+deletion. The legacy scripts remain for historical reference but
+are not exercised by CI.
 
 See `docs/VERIFICATION_REPORT.md` for the prose summary that pairs with
 this script.
@@ -1347,8 +1352,10 @@ local instance permActionZMod2_forE2 :
     constant, and `mem_orbit` / `orbit_iff` are discharged via the
     transitive-action witness `Equiv.swap x 0`. Parallels the
     Workstream-C `toyKEMZMod2` fixture (which lives in
-    `scripts/audit_c_workstream.lean`) but is re-materialised here
-    so `audit_phase_16.lean` remains a self-contained audit script.
+    `scripts/legacy/audit_c_workstream.lean`, relocated by
+    Workstream B2 of the 2026-04-29 audit plan) but is
+    re-materialised here so `audit_phase_16.lean` remains a
+    self-contained audit script.
     Used as the concrete target for
     `det_kemoia_false_of_nontrivial_orbit`. -/
 def trivialKEM_PermZMod2 :
@@ -2230,9 +2237,12 @@ end PetrankRothLayer3NonVacuity
 -- §15.4  Workstream R-TI (audit 2026-04-25, GI ≤ TI Karp reduction)
 --
 -- Layer T0 paper synthesis (4 markdown documents in
--- `docs/research/grochow_qiao_*.md`, plus this file's transient
--- `_ApiSurvey.lean` companion) precedes the Lean implementation as
--- Decision GQ-D. Layer T1 (`PathAlgebra.lean`) implements the
+-- `docs/research/grochow_qiao_*.md`; pre-Workstream-B1 of the
+-- 2026-04-29 audit plan a transient `_ApiSurvey.lean` companion
+-- also accompanied them, deleted by B1 after the live PathAlgebra
+-- / StructureTensor modules superseded its regression-sentinel
+-- purpose) precedes the Lean implementation as Decision GQ-D.
+-- Layer T1 (`PathAlgebra.lean`) implements the
 -- radical-2 truncated path algebra `F[Q_G] / J²` (Decision GQ-A).
 -- Layer T2 (`StructureTensor.lean`) implements the dimension-`m + m * m`
 -- tensor encoder with distinguished padding (Decision GQ-B). Layer

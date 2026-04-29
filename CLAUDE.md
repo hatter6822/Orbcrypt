@@ -291,13 +291,17 @@ implementation/
   README.md                           GAP prototype installation, usage, reproducibility guide
   gap/                                GAP source files for HGOE reference implementation
 scripts/
-  audit_phase_16.lean                 Phase 16 consolidated `#print axioms` audit script
-  audit_print_axioms.lean             Per-headline `#print axioms` script (Workstream A historical baseline)
-  audit_b_workstream.lean             Workstream B audit script (historical, F-02 + F-15)
-  audit_c_workstream.lean             Workstream C audit script (historical, F-07)
-  audit_d_workstream.lean             Workstream D audit script (historical, F-08 + F-16)
-  audit_e_workstream.lean             Workstream E audit script (historical, F-01 + F-10 + F-11 + F-17 + F-20)
+  audit_phase_16.lean                 Phase 16 consolidated `#print axioms` audit script (current sentinel)
   setup_lean_env.sh                   Lean environment setup with elan SHA-256 verification
+  legacy/                             Archived per-workstream audit scripts (Workstream B2 of audit 2026-04-29)
+    README.md                         Archive index, retention rationale, re-running instructions
+    audit_a7_defeq.lean               Workstream A7 defeq checks (historical, 2026-04-18)
+    audit_b_workstream.lean           Workstream B audit script (historical, F-02 + F-15)
+    audit_c_workstream.lean           Workstream C audit script (historical, F-07)
+    audit_d_workstream.lean           Workstream D audit script (historical, F-08 + F-16)
+    audit_e_workstream.lean           Workstream E audit script (historical, F-01 + F-10 + F-11 + F-17 + F-20)
+    audit_phase15.lean                Phase 15 axiom-transparency baseline (historical, 2026-04-20)
+    audit_print_axioms.lean           Per-headline `#print axioms` script (Workstream A historical baseline)
 ```
 
 ## Reading large files
@@ -3598,8 +3602,12 @@ been completed (2026-04-26):
     rigidity proof sketch (the Layer T5.4 design contract).
   * `grochow_qiao_reading_log.md` — bibliography +
     per-decision paper-citation cross-reference.
-  Plus the transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`
-  Lean stub exercising the Mathlib API at the planned types.
+  Plus a transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`
+  Lean stub (subsequently deleted by Workstream **B1** of the
+  2026-04-29 audit plan after the live `PathAlgebra.lean` /
+  `StructureTensor.lean` modules superseded its regression-
+  sentinel purpose) exercising the Mathlib API at the planned
+  types.
 
 - **Layer T1 — `Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean`.**
   Sub-tasks T1.1, T1.2, T1.4, T1.5, T1.6 (basis-element form):
@@ -6932,6 +6940,173 @@ Files touched:
 **Patch version.** `lakefile.lean` retains `0.2.0`; Workstream A
 is documentation-only and adds no new Lean declarations.  Public
 declaration count unchanged; module count unchanged at 76.
+
+Audit 2026-04-29 — Workstream B (recommended pre-release polish)
+has been completed (2026-04-29):
+
+- **B1 — Transient `_ApiSurvey.lean` deletion (A-01 / H-03a).**
+  `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (110 LOC) was
+  documented as transient by its own header docstring ("This
+  file is **transient**: per Decision GQ-D, it should be deleted
+  at the end of Layer T1") and by `CLAUDE.md`'s R-TI Phase 1 /
+  Layer T0 entry, but remained in the source tree post-Layer-T1.
+  The file was not imported by any module and was picked up by
+  `lake build` only through the `srcDir := "."` glob, inflating
+  module counts and confusing the dependency-graph documentation.
+  Deleted via `git rm` per CLAUDE.md's "If you are certain that
+  something is unused, you can delete it completely" rule.
+  Cross-references refreshed in five surfaces: CLAUDE.md's
+  Layer T0 entry (now describes the deletion), `Orbcrypt.lean`'s
+  Phase 16 snapshot (module count 76 → 75), `Orbcrypt.lean`'s
+  R-TI dependency-graph file listing (the transient bullet is
+  superseded by a deletion note), `Orbcrypt.lean`'s R-TI
+  Verification subsection (the in-prose mention is updated),
+  `scripts/audit_phase_16.lean`'s § 15.4 Layer T0 prose
+  comment, `docs/VERIFICATION_REPORT.md`'s Snapshot anchor +
+  module-docstring audit + Root-import section, and
+  `docs/research/grochow_qiao_mathlib_api.md` (both Status
+  paragraph and Self-audit / exit-criterion section).
+  Document-history entries inside historical Workstream / Phase
+  snapshots that mention `_ApiSurvey.lean` are deliberately
+  preserved (they describe state-at-the-time, which was correct
+  when those snapshots landed).  Module count: 76 → 75. Closes
+  audit finding A-01 / H-03a (LOW).
+
+- **B2 — Legacy per-workstream audit script relocation (A-06).**
+  Seven superseded scripts moved from `scripts/` to
+  `scripts/legacy/` via `git mv` (preserving history attribution):
+  `audit_a7_defeq.lean`, `audit_b_workstream.lean`,
+  `audit_c_workstream.lean`, `audit_d_workstream.lean`,
+  `audit_e_workstream.lean`, `audit_phase15.lean`, and
+  `audit_print_axioms.lean`. CI was already running only
+  `scripts/audit_phase_16.lean` (the current sentinel), so no
+  workflow edit was required (the workflow's invocation at
+  `.github/workflows/lean4-build.yml:137` continues to use the
+  unchanged path `scripts/audit_phase_16.lean`). A new
+  `scripts/legacy/README.md` documents the archive status, file
+  index (one row per moved script with workstream + audit-cycle
+  + status columns), re-running instructions for archeological
+  purposes, retention rationale, and a pointer to the
+  authoritative current sentinel `scripts/audit_phase_16.lean`.
+  The audit script's own preamble is updated: the "supersedes
+  per-workstream audit files" sentence now references
+  `scripts/legacy/audit_b_workstream.lean` /
+  `scripts/legacy/audit_c_workstream.lean` paths and points
+  readers at `scripts/legacy/README.md`. The intra-script
+  reference to the Workstream-C `toyKEMZMod2` fixture (in
+  `audit_phase_16.lean`'s `trivialKEM_PermZMod2` docstring at
+  the post-B-line 1355 region) is also updated to the
+  `scripts/legacy/audit_c_workstream.lean` path.
+  `CLAUDE.md`'s "scripts/" directory listing
+  is restructured to surface the new layout: `audit_phase_16.lean`
+  + `setup_lean_env.sh` at the top level, with a nested
+  `legacy/` subdirectory enumerating the seven moved files plus
+  the `README.md`. Historical narrative blocks describing
+  per-workstream verification at landing-time (e.g., the
+  Workstream-D2 + Workstream-E + Workstream-G snapshots'
+  references to `scripts/audit_X_workstream.lean` paths) are
+  deliberately preserved — those describe state-at-the-time
+  which was correct when those snapshots originally landed.
+  Closes audit finding A-06 (LOW).
+
+- **B3 — `README.md` audit-script count refresh (L-01).**
+  `README.md` line 53's "Phase-16 audit script | 382+ #print
+  axioms checks" updated to "900+" (deliberately imprecise to
+  resist per-PR staleness; the precise count is tracked in
+  `CLAUDE.md`'s most recent per-workstream changelog entry).
+  Verified at landing time: `grep -c "^#print axioms"
+  scripts/audit_phase_16.lean` returns 928. The "Lean source
+  modules" row on line 51 also dropped from 76 to 75 to match
+  the post-B1 reality. Closes audit finding L-01 (LOW).
+
+- **B4 — Compact post-Workstream-I deletion comment (C-13b).**
+  `Orbcrypt/KEM/CompSecurity.lean:392-405` 14-line `--`-comment
+  block compacted to 6 lines while preserving all four reference
+  points (pre-I lemma name `concreteKEMOIA_one_meaningful`,
+  audit-finding ID `E-11`, post-I theatrical-deletion timestamp
+  `2026-04-25`, current honest non-vacuity witness
+  `concreteKEMOIA_uniform_one`). Saves 8 lines of vertical
+  space without losing traceability. The `Orbcrypt.KEM.CompSecurity`
+  module rebuilds cleanly after the comment-only edit. Closes
+  audit finding C-13b (LOW).
+
+**Verification.** Workstream B is file-relocation and prose-edit
+only; no Lean source semantics changed (no `def` / `theorem` /
+`structure` added, removed, or modified; only one Lean source
+file deleted, none modified beyond docstring / comment edits).
+
+* `lake build` succeeds (3,418 jobs, zero warnings, zero
+  errors) — verified post-B on
+  `claude/audit-workstream-planning-nOC9R`. The pre-B and
+  post-B job counts coincide because the deleted
+  `_ApiSurvey.lean` shared most of its dependency graph with
+  the live R-TI modules, and Lake's job count is dominated by
+  Mathlib transitive build artefacts; the change manifests in
+  the source-file count (76 → 75) rather than the build-job
+  count.
+* `scripts/audit_phase_16.lean` runs cleanly (exit code 0); the
+  preamble is updated to reflect the relocated legacy scripts
+  and the deleted `_ApiSurvey.lean`. All 928 `#print axioms`
+  entries continue to depend only on the standard Lean trio
+  (`propext`, `Classical.choice`, `Quot.sound`); zero `sorryAx`;
+  zero non-standard axioms.
+* The post-B running module count under `Orbcrypt/` is **75**
+  (down from 76: B1 deleted the un-imported transient
+  `_ApiSurvey.lean` after the live `PathAlgebra.lean` /
+  `StructureTensor.lean` modules superseded its regression-
+  sentinel role).  No new module was added by any of B1–B4.
+  The public-declaration count is unchanged (the deleted file
+  contained only `example` blocks — never a `def` / `theorem` /
+  `structure` / `class` / `instance` / `abbrev`); the zero-sorry
+  / zero-custom-axiom posture is preserved; and the
+  standard-trio-only axiom-dependency posture is preserved
+  across all 928 `#print axioms` entries.
+* The CI's "Verify no sorry" comment-aware Perl strip continues
+  to return zero matches across the source tree.
+* The CI's "Verify no unexpected axioms" stricter declaration
+  regex (`^axiom\s+\w+\s*[\[({:]`) continues to return zero
+  matches.
+
+Files touched:
+- `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (B1, deleted).
+- `Orbcrypt/KEM/CompSecurity.lean` (B4, comment-only edit).
+- `Orbcrypt.lean` (B1, Phase-16 snapshot + R-TI dependency
+  listing + Verification subsection updated).
+- `CLAUDE.md` (B1 Layer T0 entry; B2 scripts/ directory
+  listing; this Workstream-B snapshot block; Workstream-B
+  status-tracker checkboxes).
+- `README.md` (B3, two cells in the Snapshot metrics table).
+- `docs/VERIFICATION_REPORT.md` (B1, three sections).
+- `docs/research/grochow_qiao_mathlib_api.md` (B1, two
+  paragraphs).
+- `scripts/audit_phase_16.lean` (B1 prose comment in § 15.4;
+  B2 preamble; B2 intra-script `trivialKEM_PermZMod2`
+  docstring reference).
+- `scripts/legacy/README.md` (B2, new file).
+- `scripts/audit_a7_defeq.lean` →
+  `scripts/legacy/audit_a7_defeq.lean` (B2, `git mv`).
+- `scripts/audit_b_workstream.lean` →
+  `scripts/legacy/audit_b_workstream.lean` (B2, `git mv`).
+- `scripts/audit_c_workstream.lean` →
+  `scripts/legacy/audit_c_workstream.lean` (B2, `git mv`).
+- `scripts/audit_d_workstream.lean` →
+  `scripts/legacy/audit_d_workstream.lean` (B2, `git mv`).
+- `scripts/audit_e_workstream.lean` →
+  `scripts/legacy/audit_e_workstream.lean` (B2, `git mv`).
+- `scripts/audit_phase15.lean` →
+  `scripts/legacy/audit_phase15.lean` (B2, `git mv`).
+- `scripts/audit_print_axioms.lean` →
+  `scripts/legacy/audit_print_axioms.lean` (B2, `git mv`).
+- `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+  (Workstream-B status-tracker checkboxes ticked under § 10.1
+  and Appendix B).
+
+**Patch version.** `lakefile.lean` retains `0.2.0`; Workstream B
+is recommended pre-release polish (file relocation + prose
+edits + transient-stub deletion) and adds no new Lean
+declarations.  The 75-module post-B total, the zero-sorry /
+zero-custom-axiom posture, and the standard-trio-only
+axiom-dependency posture are all preserved.
 
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring

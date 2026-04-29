@@ -2217,13 +2217,13 @@ hours serial; 1.5 hours with two implementers.**
 These items are not strictly release-blocking but affect audit
 hygiene and code cleanliness:
 
-- [ ] **B1 — Delete transient `_ApiSurvey.lean`.** The file is
+- [x] **B1 — Delete transient `_ApiSurvey.lean`.** The file is
   not imported by any module and is documented as transient by
   its own header. Acceptance: file deleted; `find Orbcrypt -name
   '*.lean' | wc -l` returns 75; CLAUDE.md's R-TI Phase 1 / Layer
   T0 entry updated. Effort: 5 min.
 
-- [ ] **B2 — Relocate legacy audit scripts to `scripts/legacy/`.**
+- [x] **B2 — Relocate legacy audit scripts to `scripts/legacy/`.**
   Six scripts (`audit_a7_defeq.lean`, `audit_b_workstream.lean`,
   `audit_c_workstream.lean`, `audit_d_workstream.lean`,
   `audit_e_workstream.lean`, `audit_phase15.lean`,
@@ -2232,12 +2232,12 @@ hygiene and code cleanliness:
   scripts/audit_*.lean` returns only `audit_phase_16.lean`;
   `scripts/legacy/` contains README + 7 files. Effort: 25 min.
 
-- [ ] **B3 — Refresh `README.md` audit-script count.** Update
+- [x] **B3 — Refresh `README.md` audit-script count.** Update
   line 53 from "382+" to "900+" (deliberately imprecise to
   resist per-PR staleness). Acceptance: `grep -n "382" README.md`
   returns no matches. Effort: 5 min.
 
-- [ ] **B4 — Compact post-Workstream-I deletion comment.** Reduce
+- [x] **B4 — Compact post-Workstream-I deletion comment.** Reduce
   the 14-line `--`-comment block in
   `Orbcrypt/KEM/CompSecurity.lean:392-405` to ~6 lines while
   preserving all four reference points (pre-I name, audit-finding
@@ -2464,10 +2464,10 @@ merge). At plan-issuance time, all workstreams are pending.
 | **A2** (VERIFICATION_REPORT.md refresh) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
 | **A3** (Orbcrypt.lean snapshot refresh) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
 | **A4** (Lakefile / CLAUDE.md reconciliation) | closed | `claude/audit-codebase-planning-CYmv2` | 2026-04-29 |
-| **B1** (Delete `_ApiSurvey.lean`) | pending | — | — |
-| **B2** (Relocate legacy audit scripts) | pending | — | — |
-| **B3** (README audit-script count refresh) | pending | — | — |
-| **B4** (Compact KEM/CompSecurity comment) | pending | — | — |
+| **B1** (Delete `_ApiSurvey.lean`) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
+| **B2** (Relocate legacy audit scripts) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
+| **B3** (README audit-script count refresh) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
+| **B4** (Compact KEM/CompSecurity comment) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
 | **C1** (lakefile globs) | deferred | — | v1.1+ |
 | **C2** (toolchain checksum) | deferred | — | v1.1+ |
 | **C3** (CI nested-comment regex) | deferred | — | v1.1+ |

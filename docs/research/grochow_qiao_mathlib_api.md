@@ -10,10 +10,17 @@
 
 **Status.** Paper synthesis deliverable for Workstream R-TI Layer T0
 (audit plan § "Decision GQ-D"). Catalogues every Mathlib declaration
-referenced by Layers T1–T6 with a 1-line API check (the live
-`example` checks live in
-`Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`). Mathlib pinned at
-commit `fa6418a8` (see `lakefile.lean` and `lake-manifest.json`).
+referenced by Layers T1–T6 with a 1-line API check. Pre-Workstream-B1
+of the 2026-04-29 audit plan, the live `example` checks lived in
+the transient `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean`
+companion stub; B1 deleted that file after the live
+`Orbcrypt/Hardness/GrochowQiao/PathAlgebra.lean` and
+`Orbcrypt/Hardness/GrochowQiao/StructureTensor.lean` (and downstream
+R-TI modules) became the genuine regression sentinel — any
+Mathlib API drift on the pinned commit will manifest as a build
+failure in those live modules, not in a separate stub. Mathlib
+pinned at commit `fa6418a8` (see `lakefile.lean` and
+`lake-manifest.json`).
 
 ## 1. Layer T1 — path algebra F[Q_G] / J²
 
@@ -106,5 +113,11 @@ in-tree replacements; the rigidity argument's Mathlib API
 (`Matrix.IsConj`, `Polynomial.minpoly`, `IsAtom`) is fully present.
 
 **Layer T0.2 exit criterion met:** every Mathlib API call planned
-for T1–T6 elaborates in the Layer T0 transient
-`Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` survey file.
+for T1–T6 originally elaborated in the Layer T0 transient
+`Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` survey file
+(deleted by Workstream B1 of the 2026-04-29 audit plan once
+the live R-TI modules subsumed the regression-sentinel role).
+Post-B1, every Mathlib API call planned for T1–T6 elaborates
+in the live R-TI modules under `Orbcrypt/Hardness/GrochowQiao/`
+themselves; any API drift on the pinned commit `fa6418a8`
+would manifest as a `lake build` failure on those modules.
