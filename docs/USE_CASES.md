@@ -30,9 +30,9 @@ must not be cited as standalone security claims.
 
 ---
 
-## 0. The four primitives that make these designs work
+## 0. The five primitives that make these designs work
 
-Orbcrypt is a small set of operations, but three of them are unusual
+Orbcrypt is a small set of operations, all five of which are unusual
 enough to enable applications that are awkward with AEAD or lattice KEMs:
 
 | Primitive | Signature | What makes it unusual |
@@ -141,10 +141,8 @@ two are composable (VDF-gate the `G` reveal) rather than substitutes.
 
 **Formalization handle.** Binding follows from `canon_eq_implies_orbit_eq`
 (Standalone); hiding from `concreteOIA_zero_implies_perfect` (perfect
-limit at ε = 0; non-vacuously inhabited on subsingleton-message schemes
-via `concreteOIA_zero_of_subsingleton_message`, Workstream I1) and
-`concrete_oia_implies_1cpa` (Theorem 6, **Quantitative**: ε > 0
-parameterises concrete security).
+limit at ε = 0) and `concrete_oia_implies_1cpa` (Theorem 6,
+**Quantitative**: ε > 0 parameterises concrete security).
 
 **Open.** Trust-minimizing the reveal authority — threshold-sharing `G`
 over the permutation representation — is natural but not yet
@@ -627,7 +625,7 @@ non-trivial schemes, do not cite as a security claim).
 | 3.3 LP rotation | `orbit_eq_of_smul`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` (Standalone) | bundle provisioning / refresh economics |
 | 3.4 swap routing | #17, #18 (Standalone) | same as 1.3 |
 | 4.1 orbit follows | `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` (Standalone), OIA-bounded view | bundle distribution; graph-level metadata |
-| 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` (perfect limit at ε = 0); witness `concreteOIA_zero_of_subsingleton_message` | deniability class bounded by public invariants; key distribution out of scope |
+| 4.2 deniable messaging | `concreteOIA_zero_implies_perfect` (perfect limit at ε = 0; Standalone) | deniability class bounded by public invariants; key distribution out of scope |
 | 4.3 private recs | `canonical_isGInvariant` (Standalone) | service must be invariant-free |
 | 4.4 group PSI | `canon_eq_implies_orbit_eq` (Standalone) | delegated canonicalization model |
 
@@ -790,10 +788,15 @@ lemmas (`canon_idem`, `canon_eq_implies_orbit_eq`,
 `canonical_isGInvariant`, `invariant_const_on_orbit`,
 `concreteOIA_zero_implies_perfect`, `concrete_oia_implies_1cpa`,
 `csidh_correctness`, `csidh_views_agree`, `comm_pke_correctness`,
-`symmetric_key_agreement_limitation`, `refresh_depends_only_on_epoch_range`,
-`oblivious_sample_in_orbit`, `hybrid_argument`,
+`sessionKey_expands_to_canon_form` (was
+`symmetric_key_agreement_limitation` at the time of this 2026-04-18
+audit; renamed in Workstream L4 of the 2026-04-21 audit),
+`refresh_depends_only_on_epoch_range` (was `refresh_independent` at
+the time of this 2026-04-18 audit; renamed in Workstream L3 of the
+2026-04-21 audit), `oblivious_sample_in_orbit`, `hybrid_argument`,
 `subgroupBitstringAction`, `same_weight_not_separating`) are all
-present in the sources at the locations cited.
+present in the sources at the locations cited (with the renames
+disclosed above).
 
 ---
 
@@ -817,10 +820,15 @@ A–G of that audit and by Workstream R-CE / R-TI.
   **Scaffolding**, with the non-vacuous quantitative analogue
   `concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27)
   named explicitly.
-* **§1.2 (batched commitments).** Added cross-reference to
-  `concreteOIA_zero_of_subsingleton_message` (Workstream I1, audit
-  2026-04-23 finding C-15) — the non-vacuity witness for
-  `concreteOIA_zero_implies_perfect` at the perfect ε = 0 limit.
+* **§1.2 (batched commitments).** No cross-reference change in this
+  pass. (An earlier draft of this changelog cited
+  `concreteOIA_zero_of_subsingleton_message` as a non-vacuity witness
+  at ε = 0; that theorem was identified as theatrical and removed by
+  the post-Workstream-I audit on 2026-04-25 — it required
+  `[Subsingleton M]`, a hypothesis under which there is only one
+  message and therefore no security game to play. The hiding-at-ε=0
+  framing here cites only `concreteOIA_zero_implies_perfect`, which
+  is unconditional.)
 * **§4.3 (private recommendations).** Tightened the
   `invariant_attack` framing per Workstream A of audit 2026-04-23
   finding D13: the formal conclusion is `∃ A, hasAdvantage scheme A`
