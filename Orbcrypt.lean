@@ -1342,10 +1342,14 @@ per-workstream changelog entry):
   `_ApiSurvey.lean` carrying the count, deleted by B1 after the
   live `PathAlgebra.lean` / `StructureTensor.lean` modules
   superseded its regression-sentinel purpose). All 75 modules build
-  successfully via `lake build Orbcrypt` (3,417 jobs as of the
+  successfully via `lake build Orbcrypt` (3,418 jobs as of the
   post-Workstream-B verification run on
   `claude/audit-workstream-planning-nOC9R`, zero errors, zero
-  warnings).
+  warnings; the deleted `_ApiSurvey.lean` shared most of its
+  dependency graph with the live R-TI modules, and Lake's job
+  count is dominated by Mathlib transitive build artefacts, so
+  the 76 → 75 source-file drop did not produce a corresponding
+  3,418 → 3,417 job-count drop).
 * **0** uses of `sorry` anywhere in `Orbcrypt/**/*.lean` (verified by the
   comment-aware Perl strip used by CI).
 * **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every

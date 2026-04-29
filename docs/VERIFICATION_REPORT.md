@@ -54,8 +54,13 @@ sentinel purpose); 928 declarations exercised by
 declarations across the source tree (verified at A2-
 implementation time via the grep recipe in the Phase 16
 snapshot section); 48 intentionally `private` helper
-declarations; `lake build` succeeds with 3,417 jobs (verified
+declarations; `lake build` succeeds with 3,418 jobs (verified
 post-Workstream-B on `claude/audit-workstream-planning-nOC9R`;
+the deleted `_ApiSurvey.lean` shared most of its dependency graph
+with the live R-TI modules, and Lake's job count is dominated by
+Mathlib transitive build artefacts, so the 76 → 75 source-file
+drop did not produce a corresponding 3,418 → 3,417 job-count
+drop;
 the audit plan's pre-implementation estimate of 3,426 was
 itself a slightly-stale carry-over from the audit-time
 snapshot — the precise current count tracks `CLAUDE.md`'s
@@ -580,11 +585,15 @@ the complete public-API graph (post-Workstream-B1 of the
 intentionally excluded from the graph and deleted by B1 after
 the live `PathAlgebra.lean` / `StructureTensor.lean` modules
 superseded its regression-sentinel purpose). Building `lake
-build Orbcrypt` exercises the complete graph (3,417 jobs
+build Orbcrypt` exercises the complete graph (3,418 jobs
 including Mathlib dependencies as of the 2026-04-29 Workstream-B
-anchor, zero errors, zero warnings; the exact running count
-shifts with each module addition and tracks `CLAUDE.md`'s most
-recent per-workstream changelog entry).
+anchor, zero errors, zero warnings; the deleted `_ApiSurvey.lean`
+shared most of its dependency graph with the live R-TI modules
+and Lake's job count is dominated by Mathlib transitive build
+artefacts, so the 76 → 75 source-file drop did not produce a
+corresponding 3,418 → 3,417 job-count drop. The exact running
+count shifts with each module addition and tracks `CLAUDE.md`'s
+most recent per-workstream changelog entry).
 
 The ASCII dependency graph in `Orbcrypt.lean`'s docstring already
 covers every Phase 7–13 module. Phase 16 added a new "Phase 16

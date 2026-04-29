@@ -1354,8 +1354,8 @@ local instance permActionZMod2_forE2 :
     Workstream-C `toyKEMZMod2` fixture (which lives in
     `scripts/legacy/audit_c_workstream.lean`, relocated by
     Workstream B2 of the 2026-04-29 audit plan) but is
-    re-materialised here
-    so `audit_phase_16.lean` remains a self-contained audit script.
+    re-materialised here so `audit_phase_16.lean` remains a
+    self-contained audit script.
     Used as the concrete target for
     `det_kemoia_false_of_nontrivial_orbit`. -/
 def trivialKEM_PermZMod2 :

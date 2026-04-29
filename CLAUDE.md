@@ -7050,14 +7050,17 @@ file deleted, none modified beyond docstring / comment edits).
   entries continue to depend only on the standard Lean trio
   (`propext`, `Classical.choice`, `Quot.sound`); zero `sorryAx`;
   zero non-standard axioms.
-* The 38-module total established at Phase 15 is unchanged at
-  the *contributing* level — Workstream B is subtractive
-  (deleting one transient module that pre-Phase-15 work did not
-  count among the live total).  The post-B running module count
-  is 75 (down from 76), the public-declaration count is
-  unchanged, the zero-sorry / zero-custom-axiom posture is
-  preserved, and the standard-trio-only axiom-dependency
-  posture is preserved.
+* The post-B running module count under `Orbcrypt/` is **75**
+  (down from 76: B1 deleted the un-imported transient
+  `_ApiSurvey.lean` after the live `PathAlgebra.lean` /
+  `StructureTensor.lean` modules superseded its regression-
+  sentinel role).  No new module was added by any of B1–B4.
+  The public-declaration count is unchanged (the deleted file
+  contained only `example` blocks — never a `def` / `theorem` /
+  `structure` / `class` / `instance` / `abbrev`); the zero-sorry
+  / zero-custom-axiom posture is preserved; and the
+  standard-trio-only axiom-dependency posture is preserved
+  across all 928 `#print axioms` entries.
 * The CI's "Verify no sorry" comment-aware Perl strip continues
   to return zero matches across the source tree.
 * The CI's "Verify no unexpected axioms" stricter declaration
