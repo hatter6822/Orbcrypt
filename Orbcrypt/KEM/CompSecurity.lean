@@ -389,19 +389,12 @@ theorem concrete_kemoia_implies_secure [Group G] [Fintype G] [Nonempty G]
     kemAdvantage kem A g₀ g₁ ≤ ε :=
   hOIA (fun p => A.guess kem.basePoint p.1 p.2) g₀ g₁
 
--- Note: pre-Workstream-I this section contained
--- `concreteKEMOIA_one_meaningful`, a redundant duplicate of
--- `kemAdvantage_le_one` (line 347 above). Workstream I2 of the
--- 2026-04-23 audit (finding E-11) deleted that lemma — consumers
--- migrate to `kemAdvantage_le_one` for the trivial `≤ 1` sanity
--- bound. The original Workstream-I2 replacement
--- `concreteKEMOIA_uniform_zero_of_singleton_orbit` (perfect-security
--- ε = 0 on degenerate singleton-orbit KEMs) was removed by the
--- post-Workstream-I audit (2026-04-25) as theatrical: it required
--- the KEM to have only one possible ciphertext, collapsing the
--- security game. The honest non-vacuity story for
--- `ConcreteKEMOIA_uniform` is the trivial `≤ 1` bound via
--- `concreteKEMOIA_uniform_one`.
+-- Pre-Workstream-I (audit 2026-04-23 finding E-11): this section
+-- held `concreteKEMOIA_one_meaningful` (deleted — duplicated
+-- `kemAdvantage_le_one`). The 2026-04-25 follow-up audit further
+-- removed `concreteKEMOIA_uniform_zero_of_singleton_orbit` as
+-- theatrical (singleton-orbit hypothesis collapses the game).
+-- Honest non-vacuity story: `concreteKEMOIA_uniform_one`.
 
 -- ============================================================================
 -- Workstream E1d (continued) — Uniform-form KEM security reduction
