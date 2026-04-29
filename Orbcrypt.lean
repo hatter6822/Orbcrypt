@@ -77,6 +77,11 @@ import Orbcrypt.Hardness.GrochowQiao.Manin.TensorStabilizer
 import Orbcrypt.Hardness.GrochowQiao.PaddingInvariant
 import Orbcrypt.Hardness.GrochowQiao.PathOnlyAlgebra
 import Orbcrypt.Hardness.GrochowQiao.Discharge
+-- Phase 3 / Path B Sub-task A.6.4: Subalgebra σ-extraction (WM-based,
+-- discharges `PathOnlySubalgebraGraphIsoObligation` unconditionally;
+-- `PathOnlyAlgEquivObligation` discharged conditionally on
+-- `GrochowQiaoRigidity` since it is provably equivalent to it).
+import Orbcrypt.Hardness.GrochowQiao.PathOnlyAlgEquivSigma
 import Orbcrypt.Hardness.GrochowQiao
 
 import Orbcrypt.PublicKey.ObliviousSampling

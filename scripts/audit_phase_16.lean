@@ -4474,3 +4474,116 @@ example (m : ℕ) (adj : Fin m → Fin m → Bool) :
   Discharge.pathOnlyAlgebra_manin_trivial m adj
 
 end PathOnlyAlgebraNonVacuity
+
+-- ============================================================================
+-- §15.21 — Path B Subalgebra σ-extraction (Sub-task A.6.4).
+-- ============================================================================
+
+/-! ## §15.21 — Path B obligations: substantive discharge
+
+Path B's two research-scope obligations:
+* `PathOnlySubalgebraGraphIsoObligation` — discharged UNCONDITIONALLY
+  via `pathOnlySubalgebraGraphIsoObligation_discharge` using
+  Wedderburn–Mal'cev σ-extraction + adjacency invariance from arrow
+  preservation.
+* `PathOnlyAlgEquivObligation` — discharged CONDITIONALLY on
+  `GrochowQiaoRigidity` via `pathOnlyAlgEquivObligation_under_rigidity`.
+  The conditional discharge is *necessary*: `PathOnlyAlgEquivObligation`
+  is provably equivalent to `GrochowQiaoRigidity` (modulo the
+  unconditional WM σ-extraction).  Discharging it unconditionally
+  would solve the deep open problem of Grochow–Qiao SIAM J. Comp.
+  2023 §4.3 (the partition-rigidity argument).
+
+Every new declaration depends only on the standard Lean trio. -/
+
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotentSubalgebra
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotentSubalgebra_ne_zero
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotentSubalgebra_completeOrthogonalIdempotents
+#print axioms Orbcrypt.GrochowQiao.algEquiv_image_vertexIdempotentSubalgebra_COI
+#print axioms Orbcrypt.GrochowQiao.algEquiv_image_vertexIdempotentSubalgebra_ne_zero
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_completeOrthogonalIdempotents
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_ne_zero
+#print axioms Orbcrypt.GrochowQiao.pathOnlySubalgebraAlgEquiv_extractVertexPerm
+#print axioms Orbcrypt.GrochowQiao.arrowElementSubalgebra
+#print axioms Orbcrypt.GrochowQiao.arrowElementSubalgebra_ne_zero
+#print axioms Orbcrypt.GrochowQiao.nilpotent_mem_pathAlgebraRadical
+#print axioms Orbcrypt.GrochowQiao.innerAut_sandwich_radical
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_mem_radical
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_sandwich
+#print axioms Orbcrypt.GrochowQiao.radical_apply_id_eq_zero
+#print axioms Orbcrypt.GrochowQiao.radical_sandwich_eq_arrow_scalar
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_eq_scalar
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_scalar_ne_zero
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_isGraphIso_forward
+#print axioms Orbcrypt.GrochowQiao.algEquivLifted_isGraphIso
+#print axioms Orbcrypt.GrochowQiao.pathOnlySubalgebraGraphIsoObligation_discharge
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgEquiv_of_graph_iso
+#print axioms Orbcrypt.GrochowQiao.pathOnlyAlgEquivObligation_under_rigidity
+#print axioms Orbcrypt.GrochowQiao.grochowQiaoRigidity_via_pathB_chain
+
+namespace PathOnlyAlgEquivSigmaNonVacuity
+
+open Orbcrypt
+open GrochowQiao
+
+/-- **Path B Sub-task A.6.4 non-vacuity (1): vertex idempotent in
+Subalgebra at `m = 2`.**
+
+The lifted vertex idempotent inhabits the path-only Subalgebra. -/
+noncomputable example :
+    ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) :=
+  vertexIdempotentSubalgebra 2 (fun _ _ => false) 0
+
+/-- **Non-vacuity (2): COI structure on lifted vertex idempotents.**
+
+For any `m, adj`, the family of lifted vertex idempotents forms a
+`CompleteOrthogonalIdempotents` structure in the path-only Subalgebra. -/
+example (m : ℕ) (adj : Fin m → Fin m → Bool) :
+    CompleteOrthogonalIdempotents (vertexIdempotentSubalgebra m adj) :=
+  vertexIdempotentSubalgebra_completeOrthogonalIdempotents m adj
+
+/-- **Non-vacuity (3): nilpotent ⇒ radical at `m = 2`.**
+
+The arrow element `α(0, 1)` is nilpotent and hence lies in the radical. -/
+example : arrowElement 2 0 1 ∈ pathAlgebraRadical 2 := by
+  apply nilpotent_mem_pathAlgebraRadical
+  exact arrow_mul_arrow_eq_zero 2 0 1 0 1
+
+/-- **Non-vacuity (4): radical-sandwich-arrow-scalar reduction at `m = 2`.**
+
+For any `A ∈ J` and any vertices `x, y`, `e_x * A * e_y = A(.edge x y) • α(x, y)`. -/
+example (A : pathAlgebraQuotient 2) (h_A : A ∈ pathAlgebraRadical 2) :
+    vertexIdempotent 2 0 * A * vertexIdempotent 2 1 =
+      A (.edge 0 1) • arrowElement 2 0 1 :=
+  radical_sandwich_eq_arrow_scalar 2 h_A 0 1
+
+/-- **Non-vacuity (5): `PathOnlySubalgebraGraphIsoObligation` discharged
+at `m = 2`.** -/
+example : Discharge.PathOnlySubalgebraGraphIsoObligation 2 :=
+  pathOnlySubalgebraGraphIsoObligation_discharge 2
+
+/-- **Non-vacuity (6): `pathOnlyAlgEquiv_of_graph_iso` with σ = id at
+`m = 2` empty graph.** -/
+noncomputable example :
+    ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) ≃ₐ[ℚ]
+      ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) :=
+  pathOnlyAlgEquiv_of_graph_iso 2 (fun _ _ => false) (fun _ _ => false) 1
+    (fun i j => by simp)
+
+/-- **Non-vacuity (7): conditional discharge of
+`PathOnlyAlgEquivObligation` from `GrochowQiaoRigidity`.** -/
+example (h_rig : GrochowQiaoRigidity) :
+    Discharge.PathOnlyAlgEquivObligation 2 :=
+  pathOnlyAlgEquivObligation_under_rigidity h_rig 2
+
+/-- **Non-vacuity (8): Path B end-to-end Karp reduction under
+`GrochowQiaoRigidity`.** -/
+example (h_rig : GrochowQiaoRigidity)
+    (adj₁ adj₂ : Fin 2 → Fin 2 → Bool)
+    (h_iso : AreTensorIsomorphic
+              (grochowQiaoEncode 2 adj₁) (grochowQiaoEncode 2 adj₂)) :
+    ∃ σ : Equiv.Perm (Fin 2), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j) :=
+  grochowQiaoRigidity_via_pathB_chain h_rig 2 adj₁ adj₂ h_iso
+
+end PathOnlyAlgEquivSigmaNonVacuity
