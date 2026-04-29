@@ -6591,6 +6591,137 @@ through `0.1.26` over the Phase 3 + audit-pass-v2 commits.
 - `#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermFun_mem_presentArrowsSubspace` / `_image_subset_…` / `_image_…` / `gl3InducesAlgEquivOnPathSubspace_of_rigidity` / `isPresentArrowSlot_liftedSigma` / `presentArrowSlotIndices_card_eq_of_graphIso` / `restrictedGL3OnPathOnlyTensor_of_rigidity` — standard Lean only (A.6.3)
 - `#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity` / `_unified_discharge_under_rigidity` — standard Lean only (top-level packaging)
 
+R-TI Phase 3 — Path B Sub-task A.6.4 (audit 2026-04-29 — Subalgebra
+σ-extraction + conditional AlgEquiv discharge): Lands
+`Orbcrypt/Hardness/GrochowQiao/PathOnlyAlgEquivSigma.lean` (~1,055
+LOC, NEW module 75) discharging both Path B research-scope Props
+from `Discharge.lean`:
+
+- **Path B Obligation 2 — UNCONDITIONAL discharge.**
+  `pathOnlySubalgebraGraphIsoObligation_discharge : ∀ m,
+  PathOnlySubalgebraGraphIsoObligation m`. The substantive proof
+  composes:
+  * **Layer A.6.4.1–A.6.4.5 (σ-extraction).** Lift vertex
+    idempotents into the path-only Subalgebra; show the family is a
+    `CompleteOrthogonalIdempotents` preserved by AlgEquiv;
+    apply the existing `wedderburn_malcev_conjugacy` (from
+    `WedderburnMalcev.lean`) to the lifted COI image of ϕ to extract
+    σ + j with `(1 + j) * vertexIdempotent (σ v) * (1 - j) = ϕ(e_v).val`.
+  * **Layer A.6.4.6–A.6.4.10 (sandwich identity).** Lift arrow
+    elements `α(u, v)` into the Subalgebra; show their ϕ-images are
+    nilpotent (`α² = 0` ⇒ `ϕ(α)² = 0`), hence in the radical via
+    `nilpotent_mem_pathAlgebraRadical`; prove the inner-conjugation
+    sandwich identity `((1 + j) * c * (1 - j)) * A * ((1 + j) * d *
+    (1 - j)) = c * A * d` for `A, j ∈ J` (substantive use of `J² =
+    0`); compose with the basis-element sandwich `α(u, v) = e_u * α
+    * e_v` and ϕ-multiplicativity to derive `(ϕ(α(u, v))).val = e_{σ
+    u} * (ϕ(α(u, v))).val * e_{σ v}`.
+  * **Layer A.6.4.11–A.6.4.14 (scalar form).** Prove `radical_apply_
+    id_eq_zero`: `A ∈ J ⇒ A(.id z) = 0` (via `Submodule.span_
+    induction` on the radical generators); prove `radical_sandwich_
+    eq_arrow_scalar`: `e_x * A * e_y = A(.edge x y) • α(x, y)` for
+    `A ∈ J` (pointwise on `c : QuiverArrow m` using `vertexIdempotent_
+    mul_apply` and `mul_vertexIdempotent_apply`); compose to get
+    `(ϕ(α(u, v))).val = c • α(σ u, σ v)` with `c = (ϕ(α(u, v))).val
+    (.edge (σ u) (σ v))`; show `c ≠ 0` from injectivity of ϕ on the
+    non-zero `arrowElementSubalgebra`.
+  * **Layer A.6.4.15 (forward graph iso).** `algEquivLifted_isGraph
+    Iso_forward`: `adj₁ u v = true ⇒ adj₂ (σ u) (σ v) = true`. Proof
+    uses the scalar form: if `adj₂ (σ u) (σ v) = false`, then `(.edge
+    (σ u) (σ v)) ∉ presentArrows m adj₂`, but `(ϕ(α)).val ∈
+    presentArrowsSubspace m adj₂` and is non-zero at `.edge (σ u) (σ
+    v)` — contradiction.
+  * **Layer A.6.4.16–A.6.4.17 (cardinality bijection).** Apply the
+    forward direction at both ϕ and ϕ.symm to get two injections
+    `edgeFinset adj₁ ↪ edgeFinset adj₂` and `edgeFinset adj₂ ↪
+    edgeFinset adj₁` (via σ × σ). Equal cardinalities + injection
+    on a finite type ⇒ bijection. Image equality gives the converse
+    direction `adj₂ (σ i) (σ j) = true ⇒ adj₁ i j = true` without
+    needing to identify the inverse-extracted permutation σ' with
+    σ⁻¹.
+
+- **Path B Obligation 1 — CONDITIONAL discharge from
+  `GrochowQiaoRigidity`.** `pathOnlyAlgEquivObligation_under_
+  rigidity (h_rig : GrochowQiaoRigidity) : ∀ m,
+  PathOnlyAlgEquivObligation m`. Construction:
+  * **Layer A.6.4.18 (constructive AlgEquiv from σ).**
+    `pathOnlyAlgEquiv_of_graph_iso m adj₁ adj₂ σ h_iso`: given a
+    graph iso σ between adj₁ and adj₂, restrict `quiverPermAlgEquiv
+    m σ` (existing infrastructure from `AlgEquivLift.lean`) to the
+    path-only Subalgebras via `AlgHom.codRestrict` on both
+    directions, packaged as `AlgEquiv.ofAlgHom`. The membership
+    proofs use the existing `quiverPermFun_mem_presentArrowsSubspace`
+    (from `Discharge.lean`) elementwise.
+  * **Layer A.6.4.19–A.6.4.20 (chain composition).**
+    `pathOnlyAlgEquivObligation_under_rigidity` extracts σ from the
+    rigidity hypothesis and composes with `pathOnlyAlgEquiv_of_
+    graph_iso`. `grochowQiaoRigidity_via_pathB_chain` is the
+    sanity-check: under `GrochowQiaoRigidity`, the Path B chain
+    composes back to the rigidity statement.
+
+  **Why this discharge is conditional.** Combined with the
+  unconditional discharge of Path B Obligation 2, discharging
+  `PathOnlyAlgEquivObligation` unconditionally would give
+  `GrochowQiaoRigidity` unconditionally (via the existing
+  `grochowQiaoRigidity_via_path_only_algEquiv_chain`). So the two
+  Path B obligations are PROVABLY EQUIVALENT to `GrochowQiao
+  Rigidity` modulo unconditional content — discharging the second
+  unconditionally is the deep open problem of Grochow–Qiao SIAM J.
+  Comp. 2023 §4.3 (the partition-rigidity argument). The
+  conditional discharge is therefore the cleanest factoring: Path B
+  reduces the research-scope load to a single named Prop equivalent
+  to the original Path A obligation, with one of its two
+  sub-obligations now machine-checked unconditional content.
+
+- **Audit script.** `scripts/audit_phase_16.lean` extended with
+  §15.21 listing 24 new `#print axioms` entries plus 8 non-vacuity
+  `example` bindings under `PathOnlyAlgEquivSigmaNonVacuity`
+  (covering vertex-idempotent in Subalgebra, COI structure on
+  lifted vertex idempotents, nilpotent-implies-radical, sandwich-
+  to-arrow-scalar reduction, full Path B obligation 2 discharge,
+  identity-σ AlgEquiv construction, conditional Path B obligation 1
+  discharge, end-to-end Karp reduction under `GrochowQiaoRigidity`).
+
+- **Audit pass (2026-04-29).** Deep audit of the initial landing
+  surfaced and fixed:
+  * **Removed dead code**: the `have := h_cA` exploratory
+    statement (unused after refactor); the `set_option linter.
+    unusedSectionVars false` silencing (unnecessary — the module
+    has no unused section variables, verified by removing the
+    silencing and rebuilding clean).
+  * **Removed duplicate `algEquivLifted_isGraphIso`**: a curried
+    one-line wrapper around `algEquivLifted_isGraphIso_forward`
+    with identical content; consumers (`pathOnlySubalgebraGraph
+    IsoObligation_discharge` step 3/4) now call `_forward`
+    directly.
+  * **Cleaned up section header A.6.4.16**: pre-audit "σ is a
+    graph isomorphism (full bidirection via inverse)" was
+    misleading because the theorem only delivered the forward
+    direction. Replaced with the discharge headline since the
+    bidirection is now packaged inside `pathOnlySubalgebraGraph
+    IsoObligation_discharge` via the cardinality argument.
+  * **Fixed stale docstring reference** to `pathOnly
+    SubalgebraAlgEquiv_isGraphIso` (a name that never existed in
+    the file).
+  * **Module docstring restructured** to honestly reflect the
+    obligation-by-obligation structure (Path B obligation 2
+    UNCONDITIONAL; Path B obligation 1 CONDITIONAL on
+    `GrochowQiao Rigidity`).
+  * **Verification**: full `lake build` succeeds (3,418 jobs, zero
+    warnings, zero errors). Audit script: exit code 0, 767
+    declarations exercised by `#print axioms`, zero `sorryAx`,
+    zero custom axioms (only `propext`, `Classical.choice`,
+    `Quot.sound`).
+
+- **Patch version.** `lakefile.lean` bumped from `0.1.28` to
+  `0.1.29`. The 74-module total rises to 75; the zero-sorry /
+  zero-custom-axiom posture and the standard-trio-only
+  axiom-dependency posture are both preserved. Public declaration
+  count rises by ~25 declarations (24 `#print axioms` entries land
+  for new public surface + helper `pathOnlyAlgEquiv_of_graph_iso`
+  — `algEquivLifted_isGraphIso` removed in audit pass; net new
+  declarations: 24).
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

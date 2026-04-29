@@ -37,6 +37,7 @@ import Orbcrypt.Hardness.GrochowQiao.Discharge
 
 ## Public surface
 
+### Path B obligation 2 (UNCONDITIONAL)
 * `vertexIdempotentSubalgebra` — vertex idempotent lifted into the
   path-only Subalgebra.
 * `vertexIdempotentSubalgebra_completeOrthogonalIdempotents` — the
@@ -44,10 +45,25 @@ import Orbcrypt.Hardness.GrochowQiao.Discharge
 * `pathOnlySubalgebraAlgEquiv_extractVertexPerm` — σ-extraction
   from a Subalgebra AlgEquiv (the analog of
   `algEquiv_extractVertexPerm` from `WedderburnMalcev.lean`).
-* `pathOnlySubalgebraAlgEquiv_isGraphIso` — σ extracted from a
-  Subalgebra AlgEquiv is a graph iso between `(adj₁, adj₂)`.
+* `algEquivLifted_isGraphIso_forward` — the σ extracted from a
+  Subalgebra AlgEquiv carries `adj₁`-edges to `adj₂`-edges.
 * `pathOnlySubalgebraGraphIsoObligation_discharge` — the headline:
-  `PathOnlySubalgebraGraphIsoObligation m` holds unconditionally.
+  `PathOnlySubalgebraGraphIsoObligation m` holds unconditionally
+  (combines the forward direction at ϕ and ϕ.symm via a
+  cardinality-bijection argument).
+
+### Path B obligation 1 (CONDITIONAL on `GrochowQiaoRigidity`)
+* `pathOnlyAlgEquiv_of_graph_iso` — constructive AlgEquiv between
+  path-only Subalgebras from a graph isomorphism σ.
+* `pathOnlyAlgEquivObligation_under_rigidity` — discharges
+  `PathOnlyAlgEquivObligation` using `GrochowQiaoRigidity`.
+* `grochowQiaoRigidity_via_pathB_chain` — sanity-check that Path B's
+  chain composes back to `GrochowQiaoRigidity`'s conclusion.
+
+The two obligations are provably equivalent to `GrochowQiaoRigidity`
+modulo the unconditional content (Path B obligation 2).  Discharging
+`PathOnlyAlgEquivObligation` unconditionally would solve the deep
+open problem of Grochow–Qiao SIAM J. Comp. 2023 §4.3.
 -/
 
 namespace Orbcrypt
@@ -55,8 +71,6 @@ namespace GrochowQiao
 
 open Orbcrypt
 open scoped BigOperators
-
-set_option linter.unusedSectionVars false
 
 -- ============================================================================
 -- A.6.4.1 — Vertex idempotents lifted into the Subalgebra.
@@ -391,45 +405,32 @@ theorem innerAut_sandwich_radical
       rw [mul_add]; exact Submodule.add_mem _ hx hy
     · intros r x _ hx
       rw [mul_smul_comm]; exact Submodule.smul_mem _ _ hx
+  -- Left absorption: ((1+j) * c * (1-j)) * A = c * A.
+  -- Math: (1-j) * A = A (since j*A = 0), so the LHS reduces to (1+j) * c * A
+  -- = c * A + j * (c * A) = c * A (since c * A ∈ J ⇒ j * (c * A) = 0).
   have h_left : ((1 + j) * c * (1 - j)) * A = c * A := by
     have h_step1 : (1 - j) * A = A := by
       rw [sub_mul, one_mul, h_jA, sub_zero]
-    rw [show ((1 + j) * c * (1 - j)) * A = (1 + j) * c * ((1 - j) * A) from by
-        noncomm_ring]
-    rw [h_step1]
-    -- Goal: (1 + j) * c * A = c * A
-    rw [show (1 + j) * c * A = c * A + j * (c * A) from by noncomm_ring]
+    rw [show ((1 + j) * c * (1 - j)) * A = (1 + j) * c * ((1 - j) * A) by
+        noncomm_ring,
+        h_step1,
+        show (1 + j) * c * A = c * A + j * (c * A) by noncomm_ring]
     have h_jcA : j * (c * A) = 0 :=
       pathAlgebraRadical_mul_radical_eq_zero m h_j h_cA
     rw [h_jcA, add_zero]
   rw [h_left]
-  -- Step 2: (c * A) * ((1+j) d (1-j)) = c * A * d.
-  -- Symmetric to step 1: (c*A)*(1+j) = c*A. Then (c*A) * d * (1-j) = c*A*d.
-  have h_cAd : c * A * d ∈ pathAlgebraRadical m := by
-    have := h_cA
-    -- c * A * d = (c * A) * d. c * A ∈ J, so (c * A) * d ∈ J (right ideal).
-    -- pathAlgebraRadical is a Submodule, but is it closed under right
-    -- multiplication?  By `member_radical_mul_anything_mem_radical`?
-    -- Actually we want c*A*d ∈ J given c*A ∈ J. The radical is a
-    -- two-sided ideal — left and right multiplications stay in J.
-    -- Direct argument: c*A ∈ J and d is arbitrary; need (c*A)*d ∈ J.
-    -- Looking at member_radical_mul_anything_mem_radical's signature.
-    have h_step : (c * A) * d ∈ pathAlgebraRadical m :=
-      member_radical_mul_anything_mem_radical m d h_cA
-    rw [show c * A * d = (c * A) * d from by noncomm_ring]
-    exact h_step
+  -- Right absorption: (c * A) * ((1+j) * d * (1-j)) = c * A * d.
+  -- `c * A * d ∈ J` because the radical is a two-sided ideal.
+  have h_cAd : c * A * d ∈ pathAlgebraRadical m :=
+    member_radical_mul_anything_mem_radical m d h_cA
   have h_Aj : A * j = 0 := pathAlgebraRadical_mul_radical_eq_zero m h_A h_j
   have h_step2 : c * A * (1 + j) = c * A := by
-    rw [mul_add, mul_one]
-    -- c*A*j = c*(A*j) = c*0 = 0
-    rw [show c * A * j = c * (A * j) from by noncomm_ring,
+    rw [mul_add, mul_one,
+        show c * A * j = c * (A * j) by noncomm_ring,
         h_Aj, mul_zero, add_zero]
   rw [show c * A * ((1 + j) * d * (1 - j)) =
-        (c * A * (1 + j)) * d * (1 - j) from by noncomm_ring]
-  rw [h_step2]
-  -- Goal: c * A * d * (1 - j) = c * A * d.
-  rw [mul_sub, mul_one]
-  -- c*A*d*j = (c*A*d) * j = 0 (since c*A*d ∈ J).
+        (c * A * (1 + j)) * d * (1 - j) by noncomm_ring,
+      h_step2, mul_sub, mul_one]
   have h_cAdj : c * A * d * j = 0 :=
     pathAlgebraRadical_mul_radical_eq_zero m h_cAd h_j
   rw [h_cAdj, sub_zero]
@@ -746,41 +747,15 @@ theorem algEquivLifted_isGraphIso_forward
     u v h_adj h_zero
 
 -- ============================================================================
--- A.6.4.16 — σ is a graph isomorphism (full bidirection via inverse).
+-- A.6.4.16 — Discharge `PathOnlySubalgebraGraphIsoObligation`.
 -- ============================================================================
 
-/-- **σ is a graph isomorphism between `(adj₁, adj₂)`.**
-
-Composes the forward direction (from ϕ) and a converse direction
-(from ϕ⁻¹).  The converse extracts a vertex permutation σ' from ϕ⁻¹
-via the same WM machinery, but we need to identify σ' with σ⁻¹ — for
-which we need the existing `algEquivLifted_isGraphIso_forward` plus
-the bijectivity of σ.
-
-To avoid circular reasoning, we apply the forward direction at both
-ϕ and ϕ⁻¹; the resulting permutations σ, σ' satisfy:
-- ϕ(α(u, v)) ≠ 0 ⇒ adj₂ (σ u) (σ v) = true (forward at ϕ).
-- ϕ⁻¹(α(u', v')) ≠ 0 ⇒ adj₁ (σ' u') (σ' v') = true (forward at ϕ⁻¹).
-
-But we only need the *forward* direction at ϕ for this theorem; the
-"only if" direction for the σ-iso comes from a parallel argument
-applied to ϕ⁻¹.  See `pathOnlySubalgebraAlgEquiv_isGraphIso` below. -/
-theorem algEquivLifted_isGraphIso
-    (m : ℕ) (adj₁ adj₂ : Fin m → Fin m → Bool)
-    (ϕ : ↥(pathOnlyAlgebraSubalgebra m adj₁) ≃ₐ[ℚ]
-            ↥(pathOnlyAlgebraSubalgebra m adj₂))
-    (σ : Equiv.Perm (Fin m)) (j : pathAlgebraQuotient m)
-    (h_j : j ∈ pathAlgebraRadical m)
-    (h_wm : ∀ v : Fin m,
-        (1 + j) * vertexIdempotent m (σ v) * (1 - j) =
-        (ϕ (vertexIdempotentSubalgebra m adj₁ v)).val) :
-    ∀ u v : Fin m, adj₁ u v = true → adj₂ (σ u) (σ v) = true := by
-  intro u v h_adj
-  exact algEquivLifted_isGraphIso_forward m adj₁ adj₂ ϕ σ j h_j h_wm u v h_adj
-
--- ============================================================================
--- A.6.4.17 — Discharge `PathOnlySubalgebraGraphIsoObligation`.
--- ============================================================================
+/-! Note on bidirection: the full graph-iso conclusion `∀ i j, adj₁ i j
+= adj₂ (σ i) (σ j)` (both directions, as a Boolean equality) is
+delivered by `pathOnlySubalgebraGraphIsoObligation_discharge` below
+via a cardinality-bijection argument that combines two applications
+of `algEquivLifted_isGraphIso_forward` (one at ϕ and one at ϕ.symm,
+each yielding a one-direction implication on present arrows). -/
 
 /-- The Finset of edges of a graph (pairs `(u, v)` with `adj u v = true`). -/
 private def edgeFinset (m : ℕ) (adj : Fin m → Fin m → Bool) :
@@ -869,11 +844,11 @@ theorem pathOnlySubalgebraGraphIsoObligation_discharge :
   obtain ⟨σ', j', h_j', h_wm'⟩ :=
     pathOnlySubalgebraAlgEquiv_extractVertexPerm m adj₂ adj₁ ϕ.symm
   -- Step 3: Forward direction at ϕ.
-  have h_fwd : ∀ u v, adj₁ u v = true → adj₂ (σ u) (σ v) = true :=
-    algEquivLifted_isGraphIso m adj₁ adj₂ ϕ σ j h_j h_wm
+  have h_fwd : ∀ u v, adj₁ u v = true → adj₂ (σ u) (σ v) = true := fun u v =>
+    algEquivLifted_isGraphIso_forward m adj₁ adj₂ ϕ σ j h_j h_wm u v
   -- Step 4: Forward direction at ϕ.symm.
-  have h_inv : ∀ u v, adj₂ u v = true → adj₁ (σ' u) (σ' v) = true :=
-    algEquivLifted_isGraphIso m adj₂ adj₁ ϕ.symm σ' j' h_j' h_wm'
+  have h_inv : ∀ u v, adj₂ u v = true → adj₁ (σ' u) (σ' v) = true := fun u v =>
+    algEquivLifted_isGraphIso_forward m adj₂ adj₁ ϕ.symm σ' j' h_j' h_wm' u v
   -- Step 5: Cardinality match via the two forward injections.
   have h_le_12 := edgeFinset_card_le m adj₁ adj₂ σ h_fwd
   have h_le_21 := edgeFinset_card_le m adj₂ adj₁ σ' h_inv

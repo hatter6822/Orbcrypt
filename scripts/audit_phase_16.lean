@@ -4516,7 +4516,6 @@ Every new declaration depends only on the standard Lean trio. -/
 #print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_eq_scalar
 #print axioms Orbcrypt.GrochowQiao.algEquivLifted_arrow_scalar_ne_zero
 #print axioms Orbcrypt.GrochowQiao.algEquivLifted_isGraphIso_forward
-#print axioms Orbcrypt.GrochowQiao.algEquivLifted_isGraphIso
 #print axioms Orbcrypt.GrochowQiao.pathOnlySubalgebraGraphIsoObligation_discharge
 #print axioms Orbcrypt.GrochowQiao.pathOnlyAlgEquiv_of_graph_iso
 #print axioms Orbcrypt.GrochowQiao.pathOnlyAlgEquivObligation_under_rigidity
@@ -4585,5 +4584,37 @@ example (h_rig : GrochowQiaoRigidity)
               (grochowQiaoEncode 2 adj₁) (grochowQiaoEncode 2 adj₂)) :
     ∃ σ : Equiv.Perm (Fin 2), ∀ i j, adj₁ i j = adj₂ (σ i) (σ j) :=
   grochowQiaoRigidity_via_pathB_chain h_rig 2 adj₁ adj₂ h_iso
+
+/-- **Non-vacuity (9): vertex idempotent in Subalgebra is non-zero.** -/
+example : vertexIdempotentSubalgebra 2 (fun _ _ => false) 0 ≠ 0 :=
+  vertexIdempotentSubalgebra_ne_zero 2 (fun _ _ => false) 0
+
+/-- **Non-vacuity (10): radical_apply_id_eq_zero on a concrete radical
+element at `m = 2`.** -/
+example (z : Fin 2) : arrowElement 2 0 1 (.id z) = 0 :=
+  radical_apply_id_eq_zero 2 (arrowElement_mem_pathAlgebraRadical 2 0 1) z
+
+/-- **Non-vacuity (11): inner-conjugation sandwich identity at `j = 0`,
+`A = α(0, 1)`.** -/
+example (c d : pathAlgebraQuotient 2) :
+    ((1 + (0 : pathAlgebraQuotient 2)) * c * (1 - 0)) * arrowElement 2 0 1 *
+        ((1 + 0) * d * (1 - 0)) =
+      c * arrowElement 2 0 1 * d :=
+  innerAut_sandwich_radical 2
+    (Submodule.zero_mem _)
+    (arrowElement_mem_pathAlgebraRadical 2 0 1) c d
+
+/-- **Non-vacuity (12): σ-extraction from a Subalgebra AlgEquiv at the
+identity case.** -/
+example : ∃ (σ : Equiv.Perm (Fin 2)) (j : pathAlgebraQuotient 2),
+    j ∈ pathAlgebraRadical 2 ∧
+    ∀ v : Fin 2,
+      (1 + j) * vertexIdempotent 2 (σ v) * (1 - j) =
+      ((AlgEquiv.refl :
+          ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)) ≃ₐ[ℚ]
+            ↥(pathOnlyAlgebraSubalgebra 2 (fun _ _ => false)))
+        (vertexIdempotentSubalgebra 2 (fun _ _ => false) v)).val :=
+  pathOnlySubalgebraAlgEquiv_extractVertexPerm 2 (fun _ _ => false)
+    (fun _ _ => false) AlgEquiv.refl
 
 end PathOnlyAlgEquivSigmaNonVacuity
