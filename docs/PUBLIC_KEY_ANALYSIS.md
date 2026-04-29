@@ -77,12 +77,13 @@ that the output is a bona fide orbit element — i.e. a valid ciphertext.
   advantage ≤ ε from a fresh uniform orbit sample (`orbitDist`). For
   ε = 0 this is *perfect oblivious sampling*; for intermediate ε this
   is *ε-computational obliviousness* suitable for release-facing
-  security claims.
-* `oblivious_sampling_view_advantage_bound` — Workstream I6 NEW
-  structural extraction lemma mirroring `concrete_oia_implies_1cpa`.
-* `ObliviousSamplingConcreteHiding_zero_witness` — Workstream I6 NEW
-  non-vacuity witness at ε = 0 on singleton-orbit bundles (any KEM
-  with a fixed-point basepoint discharges the hypothesis).
+  security claims. The post-Workstream-I audit (2026-04-25) replaced
+  the originally-paired `_zero_witness` (vacuous on singleton-orbit
+  bundles where there is no security game to play) with a non-degenerate
+  fixture `concreteHidingBundle` + `concreteHidingCombine` (an
+  `Equiv.Perm Bool` two-randomizer bundle with biased-AND combine,
+  on-paper worst-case advantage `1/4`); the precise Lean proof of the
+  `1/4` bound is research-scope R-12.
 * `refreshRandomizers`, `refreshRandomizers_in_orbit` — epoch-indexed fresh
   bundles with orbit certificates.
 * `refresh_depends_only_on_epoch_range` — structural determinism: the
@@ -485,8 +486,7 @@ The most plausible paths forward are therefore:
 | `oblivious_sample_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `oblivious_sampling_view_constant_under_perfect_hiding` (renamed in Workstream I6) | `PublicKey/ObliviousSampling.lean` | Standard Lean (carries `ObliviousSamplingPerfectHiding` as hypothesis) |
 | `ObliviousSamplingConcreteHiding` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Standard Lean (probabilistic ε-smooth predicate) |
-| `oblivious_sampling_view_advantage_bound` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Standard Lean only (extraction shape) |
-| `ObliviousSamplingConcreteHiding_zero_witness` (Workstream I6 NEW) | `PublicKey/ObliviousSampling.lean` | Standard Lean only (non-vacuity at ε = 0 on singleton-orbit bundles via `PMF.map_const` × 2 + `advantage_self`) |
+| `concreteHidingBundle` + `concreteHidingCombine` (post-Workstream-I audit fixture, 2026-04-25) | `PublicKey/ObliviousSampling.lean` | Standard Lean only (non-degenerate `Equiv.Perm Bool` fixture replacing the theatrical `_zero_witness`; on-paper bound `1/4`, full Lean proof tracked as research-scope R-12) |
 | `obliviousSample_eq` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_apply` (simp) | `PublicKey/ObliviousSampling.lean` | Standard Lean only |
 | `refreshRandomizers_in_orbit` | `PublicKey/ObliviousSampling.lean` | Standard Lean only |

@@ -266,11 +266,15 @@ AEAD.MAC ◄── Mathlib.Tactic
         `ObliviousSamplingHiding` in Workstream I6 of the 2026-04-23
         audit, finding K-02),
         oblivious_sampling_view_constant_under_perfect_hiding
-  ◄── ObliviousSamplingConcreteHiding,
-        oblivious_sampling_view_advantage_bound,
-        ObliviousSamplingConcreteHiding_zero_witness
-        (probabilistic ε-smooth replacement and non-vacuity witness;
-         Workstream I6, audit K-02)
+  ◄── ObliviousSamplingConcreteHiding
+        (probabilistic ε-smooth replacement, Workstream I6, audit
+         K-02; the originally-paired `oblivious_sampling_view_
+         advantage_bound` extraction wrapper and
+         `ObliviousSamplingConcreteHiding_zero_witness` at ε = 0 on
+         singleton-orbit bundles were removed by the post-Workstream-I
+         audit on 2026-04-25 as theatrical, replaced by the
+         `concreteHidingBundle` + `concreteHidingCombine` non-degenerate
+         fixture)
   ◄── refreshRandomizers, refreshRandomizers_in_orbit
   ◄── RefreshDependsOnlyOnEpochRange, refresh_depends_only_on_epoch_range
 
@@ -769,9 +773,13 @@ typeclass axiom rather than a Lean `axiom`:
   Workstream I6 of the 2026-04-23 audit (finding K-02) to accurately
   convey its perfect-extremum strength. The genuinely ε-smooth
   probabilistic analogue `ObliviousSamplingConcreteHiding` is added
-  alongside in the same workstream, with a perfect-security non-
-  vacuity witness `ObliviousSamplingConcreteHiding_zero_witness`
-  at ε = 0 on singleton-orbit bundles.
+  alongside in the same workstream. The post-Workstream-I audit on
+  2026-04-25 replaced the originally-paired
+  `ObliviousSamplingConcreteHiding_zero_witness` (vacuous on
+  singleton-orbit bundles) with a non-degenerate fixture
+  `concreteHidingBundle` + `concreteHidingCombine` (on-paper
+  worst-case advantage `1/4`; precise Lean proof is research-scope
+  R-12).
 - `refresh_depends_only_on_epoch_range`
   (`PublicKey/ObliviousSampling.lean`) — structural
   determinism of epoch-refreshed randomizer bundles (unconditional; PRF
@@ -1233,10 +1241,36 @@ and the uniform form for the ε-smooth alternative.
 
 ### Vacuity map (2026-04-23 Workstream I additions — strengthening, not rebadging)
 
+**Note (post-Workstream-I audit, 2026-04-25).** The table and bullets
+below describe the *initial* Workstream I landing. A critical
+re-evaluation that same day identified four of the originally-paired
+"perfect-security" witnesses as theatrical — they required hypotheses
+under which the security game collapses to a single element (e.g.
+`[Subsingleton M]`, singleton-orbit KEM, singleton-orbit oblivious-
+sampling bundle). The post-audit refactor **removed**
+`concreteOIA_zero_of_subsingleton_message`,
+`concreteKEMOIA_uniform_zero_of_singleton_orbit`,
+`ObliviousSamplingConcreteHiding_zero_witness`, and
+`oblivious_sampling_view_advantage_bound`, and replaced them with the
+non-degenerate `concreteHidingBundle` + `concreteHidingCombine`
+fixture (on-paper bound `1/4`; precise Lean proof tracked as R-12).
+The current substantive Workstream-I deliverables are:
+`distinct_messages_have_invariant_separator` (I3),
+`canon_indicator_isGInvariant` (I3 helper),
+`GIReducesToCE_card_nondegeneracy_witness` (I4),
+`GIReducesToTI_nondegeneracy_witness` (I5),
+`ObliviousSamplingConcreteHiding` (I6, vocabulary), the four content-
+neutral renames (I1 / I3 / I6 names), and the type-level Prop
+strengthenings of `GIReducesToCE` / `GIReducesToTI`. See the
+"Workstream I post-audit refactor (2026-04-25)" section below for
+full details. The historical pairing table is retained verbatim
+below as a record of what the initial landing claimed.
+
 Workstream I (audit 2026-04-23, findings C-15 / D-07 / E-11 / J-03 /
-J-08 / K-02) replaces six pre-I weak identifiers with strengthened
-substantive content. The pairing — pre-I weak-content identifier ↔
-post-I substantive sibling:
+J-08 / K-02) initially replaced six pre-I weak identifiers with
+candidate strengthened content. The pairing — pre-I weak-content
+identifier ↔ initially-paired post-I sibling (with the four
+theatrical entries struck out per the post-audit refactor):
 
 | Pre-I weak identifier | Workstream-I substantive sibling | Strengthening summary |
 |---|---|---|
@@ -1248,17 +1282,30 @@ post-I substantive sibling:
 | `ObliviousSamplingHiding` (deterministic perfect-extremum; `False` on every non-trivial bundle) | `ObliviousSamplingPerfectHiding` (I6, renamed; same content, post-I name accurately conveys the perfect-extremum strength) **plus** `ObliviousSamplingConcreteHiding` (I6, NEW probabilistic ε-smooth analogue) + extraction lemma + non-vacuity witness at ε = 0 on singleton-orbit bundles | Pre-I docstring self-disclosed the predicate is `False` on every non-trivial bundle; post-I keeps the deterministic form (renamed honestly) and adds the genuinely ε-smooth predicate suitable for release-facing security claims |
 
 **Three perfect-security non-vacuity witnesses** at ε = 0 across the
-post-Workstream-I probabilistic chain:
-* `concreteOIA_zero_of_subsingleton_message` (scheme layer, I1).
-* `concreteKEMOIA_uniform_zero_of_singleton_orbit` (KEM layer, I2).
-* `ObliviousSamplingConcreteHiding_zero_witness` (oblivious-sampling
-  layer, I6).
+probabilistic chain (as initially claimed by Workstream I; **all
+three were removed by the post-Workstream-I audit on 2026-04-25 as
+theatrical — each required a hypothesis under which the security
+game collapses to a single element**):
+* ~~`concreteOIA_zero_of_subsingleton_message` (scheme layer, I1)~~
+  — required `[Subsingleton M]`.
+* ~~`concreteKEMOIA_uniform_zero_of_singleton_orbit` (KEM layer,
+  I2)~~ — required `∀ g, g • basePoint = basePoint`.
+* ~~`ObliviousSamplingConcreteHiding_zero_witness` (oblivious-sampling
+  layer, I6)~~ — required singleton-orbit bundle + constant
+  `combine`.
 
-Together these inhabit the meaningful (perfect-security) extremum of
-the `[0, 1]` ε-spectrum on every probabilistic predicate post-
-Workstream-I, complementing the trivial-bound `concreteOIA_one`,
-`concreteKEMOIA_uniform_one`, and `concreteKEMOIA_one` witnesses that
-inhabit the ε = 1 extremum.
+As initially landed, these were claimed to inhabit the meaningful
+(perfect-security) extremum of the `[0, 1]` ε-spectrum, complementing
+the trivial-bound `concreteOIA_one`, `concreteKEMOIA_uniform_one`,
+and `concreteKEMOIA_one` witnesses that inhabit the ε = 1 extremum.
+The post-Workstream-I audit on 2026-04-25 concluded that all three
+perfect-security extremum witnesses required hypotheses that
+collapse the security game and therefore contributed no
+cryptographic content; they are deleted, replaced by the non-
+degenerate `concreteHidingBundle` + `concreteHidingCombine` fixture
+on the oblivious-sampling layer (with the precise on-paper `1/4`
+bound tracked as research-scope R-12). The trivial-bound ε = 1
+witnesses are unchanged.
 
 **Strengthening, not rebadging.** Per `CLAUDE.md`'s
 Security-by-docstring prohibition, when an identifier names a

@@ -14,7 +14,7 @@ This document applies the primitives catalogued in `docs/USE_CASES.md` to
 the specific setting of an **anonymous software development platform**
 that integrates cryptocurrency rails and LLM-based tooling. It does not
 re-derive the Orbcrypt primitives; readers should first skim `POE.md`
-(concept), `docs/USE_CASES.md` §0 (the four primitives), and
+(concept), `docs/USE_CASES.md` §0 (the five primitives), and
 `docs/PUBLIC_KEY_ANALYSIS.md` (feasibility) so that references to
 `canon`, `encaps`, `OrbitalRandomizers`, and the `CombineImpossibility`
 no-go are familiar. Theorem numbers below match `CLAUDE.md`'s registry;

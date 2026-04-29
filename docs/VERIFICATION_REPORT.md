@@ -676,12 +676,17 @@ limitations, each documented in source and tracked as future work:
    perfect_hiding` corollary carries it as a hypothesis. Workstream
    I6 simultaneously **adds the genuinely ε-smooth probabilistic
    counterpart `ObliviousSamplingConcreteHiding`** suitable for
-   release-facing security claims, with a structural extraction
-   lemma (`oblivious_sampling_view_advantage_bound`) and a
-   non-vacuity witness at ε = 0 on singleton-orbit bundles
-   (`ObliviousSamplingConcreteHiding_zero_witness`); the deterministic
-   pathological-strength caveat is therefore only relevant to
-   citations of the perfect-extremum form.
+   release-facing security claims. The post-Workstream-I audit
+   (2026-04-25) replaced the originally-paired structural extraction
+   lemma `oblivious_sampling_view_advantage_bound` (a one-line
+   wrapper of the predicate's universal quantifier) and the
+   `_zero_witness` at ε = 0 on singleton-orbit bundles (vacuous —
+   the security game collapses on a singleton orbit) with a
+   non-degenerate fixture `concreteHidingBundle` +
+   `concreteHidingCombine` (on-paper worst-case advantage `1/4`);
+   the precise Lean proof of the `1/4` bound is research-scope R-12.
+   The deterministic pathological-strength caveat is only relevant
+   to citations of the perfect-extremum form.
 
 5. **`SessionKeyExpansionIdentity`** (renamed from
    `SymmetricKeyAgreementLimitation` in Workstream L4, audit
@@ -1141,11 +1146,15 @@ The formalization's public release posture (detailed):
      post-I name accurately conveys the perfect-extremum strength).
      **Workstream I6 simultaneously added the genuinely ε-smooth
      probabilistic counterpart `ObliviousSamplingConcreteHiding`** —
-     suitable for release-facing security claims, with a non-vacuity
-     witness `ObliviousSamplingConcreteHiding_zero_witness` at
-     ε = 0 on singleton-orbit bundles. Cite the `Concrete` form for
-     ε-smooth security; cite the `Perfect` form only as the
-     deterministic perfect-extremum.
+     suitable for release-facing security claims. The post-Workstream-I
+     audit (2026-04-25) replaced the originally-paired
+     `_zero_witness` at ε = 0 on singleton-orbit bundles (vacuous —
+     the security game collapses on a singleton orbit) with the
+     non-degenerate `concreteHidingBundle` + `concreteHidingCombine`
+     fixture (on-paper worst-case advantage `1/4`; full Lean proof
+     tracked as R-12). Cite the `Concrete` form for ε-smooth
+     security; cite the `Perfect` form only as the deterministic
+     perfect-extremum.
    * `ConcreteKEMOIA` (point-mass form) — collapses on `[0, 1)`
      (advantage is 0 or 1 per pair); use the uniform-form
      `ConcreteKEMOIA_uniform` or
