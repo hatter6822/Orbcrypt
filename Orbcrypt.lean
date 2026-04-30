@@ -46,6 +46,7 @@ import Orbcrypt.AEAD.MAC
 import Orbcrypt.AEAD.AEAD
 import Orbcrypt.AEAD.Modes
 import Orbcrypt.AEAD.CarterWegmanMAC
+import Orbcrypt.AEAD.BitstringPolynomialMAC
 
 import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
@@ -3361,4 +3362,125 @@ work. The post-extension landing delivers:
   `GrochowQiaoForwardObligation` is research-scope
   **R-15-residual-TI-forward-matrix**. Both remain post-v1.0
   research-scope items.
+
+## Workstream D Research-Scope Discharge Snapshot (2026-04-30)
+
+Closes three research-scope items from
+`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+§ 8.1. All three discharges land entirely on standard-trio axioms
+(`propext`, `Classical.choice`, `Quot.sound`); zero `sorry`; zero
+custom axioms.
+
+### R-12 — Tight 1/4 ε-bound for `concreteHidingBundle`
+
+Closes the post-Workstream-I research-scope disclosure (the
+`(1/4 : ℝ)`-tight bound for the post-2026-04-25 non-degenerate
+`concreteHidingBundle` + Boolean-AND fixture). Decomposed into:
+
+* **Layer A (`Probability/Advantage.lean`).** Bool TV bound:
+  - `probTrue_bool_eq` — closed-form `probTrue` evaluation on Bool.
+  - `pmf_bool_sum_eq_one_toReal` — PMF sum-to-1 on Bool in ℝ.
+  - `probTrue_bool_toReal_eq` — `.toReal`-converted closed form.
+  - `advantage_bool_le_tv` — TV upper bound `advantage D μ ν ≤
+    |(μ true).toReal − (ν true).toReal|` for any `D : Bool → Bool`,
+    via four-way case-split on `(D true, D false)`.
+  - `advantage_bool_id_eq_tv` — tightness witness at `D = id`.
+* **Layer B (`PublicKey/ObliviousSampling.lean`).** Concrete pointwise
+  computations + headline:
+  - `concreteHidingBundle_orbitDist_apply_true/_false` — both = 1/2
+    (the orbit of `false` under `Equiv.Perm Bool` is uniform on
+    `{false, true}`).
+  - `concreteHidingLHS_apply_true` (= 1/4), `_apply_false` (= 3/4)
+    — the AND-combine PMF push-forward biased toward `false`.
+  - `concreteHiding_tight` — **headline** `1/4` bound via
+    `advantage_bool_le_tv`.
+  - `concreteHiding_tight_attained` — tightness witness at `D = id`.
+
+Closes 11 declarations on standard-trio axioms.
+
+### R-13 — `Bitstring n`-typed Carter–Wegman MAC + INT-CTXT
+
+Closes the HGOE compatibility gap of `carterWegmanMAC_int_ctxt` (typed
+at `X = ZMod p`, incompatible with HGOE's `Bitstring n` ciphertext
+space — audit finding V1-7 / D4 / I-08). Strategy: **generalise
+Carter–Wegman to a `Bitstring n`-native polynomial-evaluation hash**,
+not adapt via `Bitstring n → ZMod p`.
+
+* **New module `AEAD/BitstringPolynomialMAC.lean`.**
+  - `toBit p : Bool → ZMod p` — bit-to-field encoding `false ↦ 0,
+    true ↦ 1`. Injective at any prime `p`.
+  - `evalAtBitstring p n k b := ∑ i, (toBit (b i)) · k^(i+1)` —
+    polynomial evaluation core.
+  - `bitstringPolynomialHash p n (k, s) b := s + evalAtBitstring …`
+    — affine-shifted hash (offset `s` cancels in collisions).
+  - `bitstringDiffPolynomial p n b₁ b₂ : (ZMod p)[X]` — formal
+    polynomial whose roots are the colliding keys.
+  - `bitstringDiffPolynomial_natDegree_le` — degree ≤ `n`.
+  - `bitstringDiffPolynomial_ne_zero_of_ne` — non-zero on `b₁ ≠ b₂`
+    (coefficient at the disagreeing position is `±1` in the prime
+    field).
+  - `bitstringDiffPolynomial_card_roots_le` — at most `n` roots
+    (via `Polynomial.card_roots'` over the field `ZMod p`).
+  - `bitstringPolynomialHash_collision_card_le` — at most `n · p`
+    colliding keys on the product keyspace `ZMod p × ZMod p`.
+  - `bitstringPolynomialHash_isUniversal` — **headline**
+    `(n : ℝ≥0∞) / (p : ℝ≥0∞)`-universal, via
+    `IsEpsilonUniversal.ofCollisionCardBound`.
+  - `bitstringPolynomialMAC` — concrete MAC via
+    `deterministicTagMAC`.
+  - `bitstringPolynomial_authKEM` — composes with any `OrbitKEM G
+    (Bitstring n) (ZMod p × ZMod p)`.
+  - `bitstringPolynomialMAC_int_ctxt` — **headline** unconditional
+    INT-CTXT for `Bitstring n`-typed authenticated encryption (via
+    post-Workstream-B `authEncrypt_is_int_ctxt`).
+
+Closes 18 declarations on standard-trio axioms. Module count rises
+from 76 to 77.
+
+### R-09 — Discharge of `h_step` from `ConcreteOIA`
+
+Discharges the user-supplied `h_step` hypothesis of
+`indQCPA_from_perStepBound` from `ConcreteOIA scheme ε` alone. Pre-
+R-09, `indQCPA_from_perStepBound` was the consumer-facing entry point
+but required a per-step bound from custom analysis. Post-R-09, the
+new `indQCPA_from_concreteOIA` provides the unconditional discharge.
+
+* **Layer 1 (`Probability/Monad.lean`).** Sum factorisation along an
+  inserted coordinate:
+  - `sum_pi_succAbove_eq_sum_sum_insertNth` — `∑ gs : Fin (n+1) → α,
+    f gs = ∑ a, ∑ rest, f (insertNth j₀ a rest)` via
+    `Fin.insertNthEquiv` + `Fintype.sum_prod_type`.
+  - `probTrue_PMF_map_uniformPMF_toReal` — `.toReal`-form for
+    `probTrue (PMF.map F (uniformPMF α)) D` as filter-card / `|α|`.
+* **Layer 2 (`Probability/Advantage.lean`).** Convexity-of-TV along
+  an inserted coordinate:
+  - `advantage_pmf_map_uniform_pi_factor_bound` — abstract bind-
+    factorisation lemma. Per-rest hypothesis (`|inner sum| ≤ |α| · ε`)
+    implies global advantage bound (`≤ ε`).
+* **Layer 3+4 (`Crypto/CompSecurity.lean`).** Per-step + headline:
+  - `hybrid_step_bound_of_concreteOIA` — discharges per-step bound
+    `advantage (A.guess reps) (hybridDist i) (hybridDist (i+1)) ≤ ε`
+    from `ConcreteOIA scheme ε`. Proof: pattern-match `Q = n + 1`,
+    apply Layer 2 abstract helper, discharge per-rest hypothesis via
+    ConcreteOIA at the per-coord pair `(reps left, reps right)`.
+  - `indQCPA_from_concreteOIA` — **headline** unconditional
+    `indQCPAAdvantage scheme A ≤ Q · ε` from ConcreteOIA alone.
+  - `indQCPA_from_concreteOIA_recovers_single_query` — `Q = 1`
+    regression sentinel.
+  - `indQCPA_from_concreteOIA_distinct` — distinct-challenge
+    classical-game form (Workstream-K-style).
+
+Closes 7 declarations on standard-trio axioms.
+
+### Cumulative posture
+
+* `lake build` succeeds across 3,420 jobs with zero warnings, zero
+  errors.
+* Phase-16 audit script exercises 36 new declarations (11 R-12 + 18
+  R-13 + 7 R-09); all on standard-trio axioms.
+* module count rises from 76 to 77 (one new module:
+  `AEAD/BitstringPolynomialMAC.lean`).
+* Public-declaration count rises by ~36 across the three R-items.
+* Zero-sorry / zero-custom-axiom posture preserved.
+* `lakefile.lean` bumped from `0.2.1` to `0.2.2`.
 -/

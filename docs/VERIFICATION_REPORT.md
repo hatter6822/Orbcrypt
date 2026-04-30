@@ -243,7 +243,7 @@ is honest about which assumption is doing the cryptographic work.
 | 10  | `nonce_encaps_correctness`                                    | `KeyMgmt/Nonce.lean`                          | Unconditional |
 | 11  | `nonce_reuse_leaks_orbit`                                     | `KeyMgmt/Nonce.lean`                          | Unconditional warning theorem |
 | 12  | `authEncrypt_is_int_ctxt`                                     | `AEAD/AEAD.lean`                              | **Standalone** (post-2026-04-23 Workstream B refactor: orbit condition absorbed into `INT_CTXT` game as a per-challenge well-formedness precondition; theorem discharges unconditionally on every `AuthOrbitKEM`) |
-| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | **Conditional** (requires `X = ZMod p × ZMod p`; incompatible with HGOE's `Bitstring n` — research R-13; see Known limitations item 12. Post-Workstream-B the orbit content is unconditional; only the HGOE compatibility caveat remains) |
+| 13  | `carterWegmanMAC_int_ctxt`                                    | `AEAD/CarterWegmanMAC.lean`                   | **Conditional** (requires `X = ZMod p × ZMod p`; incompatible with HGOE's `Bitstring n` ciphertext space. **R-13 discharged 2026-04-30** by `bitstringPolynomialMAC_int_ctxt` (`AEAD/BitstringPolynomialMAC.lean`), which provides the HGOE-compatible analogue typed at `Bitstring n` via a polynomial-evaluation hash family — the carterWegmanMAC theorem itself is retained as the single-block witness) |
 | 13a | `carterWegmanHash_isUniversal`                                | `AEAD/CarterWegmanMAC.lean`                   | **Carter–Wegman 1977 `(1/p)`-universality** (post-audit 2026-04-22) |
 | 13b | `IsEpsilonUniversal`                                          | `Probability/UniversalHash.lean`              | ε-universal hash Prop (post-audit 2026-04-22) |
 | 14  | `hardness_chain_implies_security`                             | `Hardness/Reductions.lean`                    | Conditional on `HardnessChain` |
@@ -255,7 +255,10 @@ is honest about which assumption is doing the cryptographic work.
 | 20  | `det_oia_implies_concrete_zero`                               | `Crypto/CompOIA.lean`                         | Bridge: `OIA → ConcreteOIA 0` |
 | 21  | `concrete_kemoia_uniform_implies_secure`                      | `KEM/CompSecurity.lean`                       | Genuinely ε-smooth KEM bound (Workstream E1d) |
 | 22  | `concrete_hardness_chain_implies_1cpa_advantage_bound`        | `Hardness/Reductions.lean`                    | **Quantitative** — probabilistic hardness chain (Workstream E5); inhabited only at ε = 1 via `tight_one_exists` in the current formalisation; ε < 1 requires caller-supplied surrogate + encoder witnesses (research-scope R-02 / R-03 / R-04) |
-| 23  | `indQCPA_from_perStepBound`                                   | `Crypto/CompSecurity.lean`                    | **Quantitative** — multi-query bound (Workstream E8c) **under caller-supplied `h_step` per-step bound**; discharge from `ConcreteOIA` alone is research-scope R-09. Renamed from `indQCPA_bound_via_hybrid` in Workstream C of 2026-04-23 plan (finding V1-8 / C-13) to surface the `h_step` obligation in the identifier itself |
+| 23  | `indQCPA_from_perStepBound`                                   | `Crypto/CompSecurity.lean`                    | **Quantitative** — multi-query bound (Workstream E8c) **under caller-supplied `h_step` per-step bound**. **R-09 discharged 2026-04-30** by `indQCPA_from_concreteOIA` (`Crypto/CompSecurity.lean`), which discharges `h_step` from `ConcreteOIA scheme ε` alone via `hybrid_step_bound_of_concreteOIA`. The `_perStepBound` form is retained for callers that want to supply a custom per-step bound; new code should prefer `_from_concreteOIA` |
+| 23a | `indQCPA_from_concreteOIA`                                    | `Crypto/CompSecurity.lean`                    | **Quantitative — R-09 discharged 2026-04-30**. Multi-query IND-Q-CPA advantage bound `indQCPAAdvantage scheme A ≤ Q · ε` from `ConcreteOIA scheme ε` alone (no `h_step` user-hypothesis). Composes `hybrid_step_bound_of_concreteOIA` (per-step) with `hybrid_argument_uniform` (Q-step telescoping) |
+| 23b | `concreteHiding_tight`                                        | `PublicKey/ObliviousSampling.lean`            | **Quantitative — R-12 discharged 2026-04-30**. Tight ε = 1/4 bound on the post-Workstream-I non-degenerate `concreteHidingBundle` + Boolean-AND fixture. Uses Bool TV bound (`advantage_bool_le_tv`) plus pointwise PMF computations |
+| 23c | `bitstringPolynomialMAC_int_ctxt`                             | `AEAD/BitstringPolynomialMAC.lean`            | **Standalone — R-13 discharged 2026-04-30**. Unconditional INT-CTXT for `Bitstring n`-typed authenticated KEM, via the polynomial-evaluation hash family (`bitstringPolynomialHash`, `(n / p)`-universal). Closes the HGOE compatibility gap of `carterWegmanMAC_int_ctxt` (audit V1-7 / D4 / I-08) |
 | 24  | `arePermEquivalent_setoid`                                    | `Hardness/CodeEquivalence.lean`               | Mathlib `Setoid` instance (Workstream D4) |
 | 25  | `paut_equivalence_set_eq_coset`                               | `Hardness/CodeEquivalence.lean`               | Full coset set identity (Workstream D3) |
 | 26  | `PAutSubgroup`                                                | `Hardness/CodeEquivalence.lean`               | `PAut` as Mathlib `Subgroup` (Workstream D2) |
@@ -753,18 +756,25 @@ limitations, each documented in source and tracked as future work:
    is documented in `Orbcrypt.lean`'s axiom transparency report under
    "Hardness parameter Props".
 
-3. **`indQCPA_from_perStepBound` carries `h_step` as a hypothesis.**
-   The per-step bound is the marginal-independence step that would, in
-   a complete probabilistic refinement, follow from `ConcreteOIA` plus
-   a product-distribution argument over `uniformPMFTuple`. The
-   atomic-bound shape lets any concrete marginal argument plug in
-   later; this is tracked as Workstream E8b in the 2026-04-18 audit
-   plan and as research milestone R-09 in the 2026-04-23 plan. The
-   theorem was renamed from `indQCPA_bound_via_hybrid` by Workstream C
-   of the 2026-04-23 audit (finding V1-8 / C-13 / D10) to surface the
-   caller-supplied `h_step` obligation in the identifier itself per
-   `CLAUDE.md`'s naming rule that identifiers describe what the code
-   *proves*, not what it *aspires to*.
+3. **`indQCPA_from_perStepBound` carries `h_step` as a hypothesis** —
+   **R-09 discharged 2026-04-30**. The per-step bound is the
+   marginal-independence step that, in a complete probabilistic
+   refinement, follows from `ConcreteOIA` plus a product-distribution
+   argument over `uniformPMFTuple`. This was tracked as Workstream
+   E8b in the 2026-04-18 audit plan and as research milestone R-09 in
+   the 2026-04-23 plan; **discharged 2026-04-30** by
+   `indQCPA_from_concreteOIA` (`Crypto/CompSecurity.lean`) which
+   supplies the per-coordinate marginal-independence proof via
+   `hybrid_step_bound_of_concreteOIA` + the convexity-of-TV helper
+   `advantage_pmf_map_uniform_pi_factor_bound`
+   (`Probability/Advantage.lean`). The `_perStepBound` form is
+   retained for callers who supply a custom per-step bound; new code
+   should prefer `_from_concreteOIA`. The theorem was renamed from
+   `indQCPA_bound_via_hybrid` by Workstream C of the 2026-04-23 audit
+   (finding V1-8 / C-13 / D10) to surface the `h_step` obligation in
+   the identifier itself per `CLAUDE.md`'s naming rule that
+   identifiers describe what the code *proves*, not what it
+   *aspires to*.
 
 4. **`ObliviousSamplingPerfectHiding` is a strong deterministic
    pathological-strength predicate** (renamed from
@@ -782,10 +792,14 @@ limitations, each documented in source and tracked as future work:
    `_zero_witness` at ε = 0 on singleton-orbit bundles (vacuous —
    the security game collapses on a singleton orbit) with a
    non-degenerate fixture `concreteHidingBundle` +
-   `concreteHidingCombine` (on-paper worst-case advantage `1/4`);
-   the precise Lean proof of the `1/4` bound is research-scope R-12.
-   The deterministic pathological-strength caveat is only relevant
-   to citations of the perfect-extremum form.
+   `concreteHidingCombine` (on-paper worst-case advantage `1/4`).
+   **R-12 discharged 2026-04-30**: the precise Lean proof of the
+   `1/4` bound landed as `concreteHiding_tight`
+   (`PublicKey/ObliviousSampling.lean`), with the tightness witness
+   `concreteHiding_tight_attained` confirming the bound is achieved
+   exactly at `D = id`. The deterministic pathological-strength
+   caveat is only relevant to citations of the perfect-extremum
+   form.
 
 5. **`SessionKeyExpansionIdentity`** (renamed from
    `SymmetricKeyAgreementLimitation` in Workstream L4, audit
@@ -901,22 +915,26 @@ limitations, each documented in source and tracked as future work:
     L-03 / D2).
 
 12. **`carterWegmanMAC_int_ctxt` is incompatible with HGOE's
-    `Bitstring n` ciphertext space.** The Carter–Wegman MAC in
-    `AEAD/CarterWegmanMAC.lean` is typed over `K = ZMod p × ZMod p`,
-    `Msg = ZMod p`, `Tag = ZMod p`. Composing it with an HGOE
-    `OrbitKEM G (Bitstring n) K` requires an `Bitstring n → ZMod p`
-    adapter that maps a HGOE ciphertext into a MAC message while
-    preserving the orbit structure that the composition theorem
-    relies on. No such adapter is formalised in the current
-    release. Consequently `carterWegmanMAC_int_ctxt` serves as a
-    **satisfiability witness for `MAC.verify_inj` and for
-    `INT_CTXT` non-vacuity** on the `ZMod p × ZMod p` toy
-    composition; it is **not** a production AEAD construction for
-    HGOE. Citations should use `carterWegmanHash_isUniversal` for
-    standalone universal-hash claims. The `Bitstring n → ZMod p`
-    adapter formalisation is tracked as research-scope R-13 in the
-    2026-04-23 plan § 18 (audit 2026-04-23 finding V1-7 / D4 /
-    I-08 / I-10).
+    `Bitstring n` ciphertext space** — **R-13 discharged 2026-04-30**.
+    The Carter–Wegman MAC in `AEAD/CarterWegmanMAC.lean` is typed
+    over `K = ZMod p × ZMod p`, `Msg = ZMod p`, `Tag = ZMod p`.
+    Composing it with an HGOE `OrbitKEM G (Bitstring n) K` requires
+    a `Bitstring n`-typed MAC. **R-13 was discharged 2026-04-30** by
+    **generalising Carter–Wegman to a polynomial-evaluation hash
+    family typed at `Bitstring n`**, rather than building an
+    `Bitstring n → ZMod p` orbit-preserving adapter. The new module
+    `AEAD/BitstringPolynomialMAC.lean` provides
+    `bitstringPolynomialHash p n (k, s) b := s + ∑ i, toBit (b i) ·
+    k^(i+1)` (the standard Carter–Wegman polynomial hash, Stinson
+    1996), proven `(n / p)`-universal via
+    `bitstringPolynomialHash_isUniversal` (using Mathlib's
+    `Polynomial.card_roots'` over the field `ZMod p`). The composed
+    `bitstringPolynomialMAC_int_ctxt` is the unconditional
+    HGOE-compatible analogue of `carterWegmanMAC_int_ctxt`. The
+    original `carterWegmanMAC_int_ctxt` is retained as the
+    single-block (`n = 1`) `(1/p)`-universal witness; new code
+    targeting HGOE should use `bitstringPolynomialMAC_int_ctxt`.
+    See also Headline-table rows 23a–23c.
 
 These items are *known and documented*, not silent gaps. The
 formalization is internally consistent: every conditional theorem
@@ -1157,13 +1175,22 @@ The formalization's public release posture (detailed):
      plan, landed 2026-04-24.** See the (a) entry below.
    * `carterWegmanMAC_int_ctxt` (`AEAD/CarterWegmanMAC.lean`) —
      **requires `X = ZMod p × ZMod p` ciphertext space** and is
-     **incompatible with HGOE's `Bitstring n`** without an
-     `Bitstring n → ZMod p` adapter (research-scope R-13). This
-     theorem is a **satisfiability witness for `MAC.verify_inj`
-     and for `INT_CTXT` non-vacuity**; it does not compose directly
-     with the concrete HGOE construction. Cite
-     `carterWegmanHash_isUniversal` instead for standalone
-     universal-hash claims (class (a) above).
+     **incompatible with HGOE's `Bitstring n`** without a
+     `Bitstring n`-typed analogue. **R-13 was discharged 2026-04-30**
+     by `bitstringPolynomialMAC_int_ctxt`
+     (`AEAD/BitstringPolynomialMAC.lean`), which generalises
+     Carter–Wegman to a polynomial-evaluation hash typed at
+     `Bitstring n` (`(n / p)`-universal via
+     `bitstringPolynomialHash_isUniversal`). The
+     `carterWegmanMAC_int_ctxt` theorem itself is retained as the
+     single-block (`n = 1`) `(1/p)`-universal **satisfiability
+     witness for `MAC.verify_inj` and for `INT_CTXT` non-vacuity**;
+     new HGOE-compatible code should use
+     `bitstringPolynomialMAC_int_ctxt` directly. Cite
+     `carterWegmanHash_isUniversal` for standalone universal-hash
+     claims at `n = 1`, or
+     `bitstringPolynomialHash_isUniversal` for the `n ≥ 1`
+     polynomial-hash family (class (a) above).
    * `two_phase_correct` / `two_phase_kem_correctness`
      (`Optimization/TwoPhaseDecrypt.lean`) — fast-decryption
      conditionals **under `TwoPhaseDecomposition`**, which is
@@ -1283,6 +1310,54 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-30 (Workstream D research-scope discharge — R-09 +
+  R-12 + R-13)** — Three research-scope items from the 2026-04-29
+  audit plan (§ 8.1) discharged in a single PR:
+
+  * **R-12 — Tight 1/4 ε-bound for `concreteHidingBundle`** (11
+    declarations on standard-trio axioms). Layer A in
+    `Probability/Advantage.lean`: Bool TV bound
+    (`advantage_bool_le_tv`, `advantage_bool_id_eq_tv`) + closed-form
+    `probTrue` evaluation on Bool. Layer B in
+    `PublicKey/ObliviousSampling.lean`: pointwise PMF computations
+    (`concreteHidingBundle_orbitDist_apply_true/_false`,
+    `concreteHidingLHS_apply_true/_false`) + headline
+    `concreteHiding_tight` (1/4 bound) + tightness witness
+    `concreteHiding_tight_attained`.
+  * **R-13 — `Bitstring n`-typed Carter–Wegman MAC + INT-CTXT** (18
+    declarations, NEW module `AEAD/BitstringPolynomialMAC.lean`).
+    Generalises Carter–Wegman to a polynomial-evaluation hash
+    family `bitstringPolynomialHash p n (k, s) b := s + ∑ i,
+    toBit (b i) · k^(i+1)`, proven `(n / p)`-universal via
+    `Polynomial.card_roots'` over the field `ZMod p`. The composed
+    `bitstringPolynomialMAC_int_ctxt` provides the unconditional
+    HGOE-compatible analogue of `carterWegmanMAC_int_ctxt`.
+  * **R-09 — Discharge of `h_step` from `ConcreteOIA`** (7
+    declarations). Three layers: Layer 1
+    (`Probability/Monad.lean`) sum factorisation along an inserted
+    coordinate (`sum_pi_succAbove_eq_sum_sum_insertNth`) +
+    `probTrue_PMF_map_uniformPMF_toReal`; Layer 2
+    (`Probability/Advantage.lean`) convexity-of-TV
+    (`advantage_pmf_map_uniform_pi_factor_bound`); Layer 3+4
+    (`Crypto/CompSecurity.lean`) per-step bound
+    (`hybrid_step_bound_of_concreteOIA`) + headline
+    `indQCPA_from_concreteOIA` + `_recovers_single_query` +
+    `_distinct`.
+
+  **Cumulative posture (post-discharge).** `lake build` succeeds
+  across 3,420 jobs with zero warnings, zero errors. Phase-16 audit
+  script exercises 36 new declarations (11 R-12 + 18 R-13 + 7
+  R-09); all on standard-trio axioms; zero `sorryAx`. Module count:
+  76 → 77. Public-declaration count: ≈ 358 → ≈ 394.
+  `lakefile.lean` bumped from `0.2.1` to `0.2.2`. Headline-results
+  table extended with rows 23a (`indQCPA_from_concreteOIA`), 23b
+  (`concreteHiding_tight`), 23c (`bitstringPolynomialMAC_int_ctxt`).
+  Known-limitations item 12 (carterWegmanMAC HGOE-incompatibility)
+  marked **discharged**; item 3 (`indQCPA_from_perStepBound`'s
+  `h_step` obligation) marked **discharged**; item 4
+  (`ObliviousSamplingConcreteHiding` 1/4 bound) marked
+  **discharged**.
 
 * **2026-04-30 (Workstream C audit pass #2 — fresh-eyes deep
   re-audit)** — A second deep audit of the Workstream-C landing
@@ -2054,10 +2129,13 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   Bool` two-randomizer bundle with biased-AND combine, on-paper
   worst-case advantage `1/4`), plus Mathlib-style helpers
   `probTrue_map` and `probTrue_uniformPMF_card` in
-  `Probability/Monad.lean`. The precise Lean proof of the `1/4`
-  bound is tracked as research-scope R-12; the in-tree
-  contribution is the non-degenerate fixture itself, with the
-  on-paper TV-distance analysis fully documented in the
+  `Probability/Monad.lean`. **R-12 discharged 2026-04-30**: the
+  precise Lean proof of the `1/4` bound landed as
+  `concreteHiding_tight` (`PublicKey/ObliviousSampling.lean`), with
+  the tightness witness `concreteHiding_tight_attained` confirming
+  the bound is achieved exactly at `D = id`; this 2026-04-25 entry
+  documents the pre-discharge state. The on-paper TV-distance
+  analysis is fully documented in the
   in-module research-scope note. The honest scoreboard: of the
   Workstream-I deliverables, the substantive content is
   `distinct_messages_have_invariant_separator` (genuinely new
@@ -2713,8 +2791,10 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   `indQCPA_bound_recovers_single_query` must be updated to the
   new identifier); the patch bump is per `CLAUDE.md`'s
   version-bump discipline for API breaks. No new declarations;
-  no semantic changes. The discharge of `h_step` from
-  `ConcreteOIA scheme ε` alone remains research-scope R-09.
+  no semantic changes. (At the time of this 2026-04-24 entry, the
+  discharge of `h_step` from `ConcreteOIA scheme ε` alone was
+  research-scope R-09. **R-09 was discharged 2026-04-30** by
+  `indQCPA_from_concreteOIA` — see Document history entry below.)
 
 * **2026-04-24 (Workstream D of the 2026-04-23 pre-release
   audit)** — Toolchain decision + `lakefile.lean` hygiene (audit

@@ -141,11 +141,14 @@ context, but its operational status is now "closed" rather than
 by the per-work-unit acceptance criteria documented in the
 implementation snapshot in `CLAUDE.md`'s Workstream-C entry.
 
-**Research catalogue (Workstream D, never closes)** tracks R-09, R-12,
-R-13, R-15-residual-CE-reverse, R-15-residual-TI-reverse,
-R-15-residual-TI-forward-matrix — all multi-month research milestones
-already documented in CLAUDE.md and in the prior audit plans. This
-plan does **not** alter the research catalogue; it records continuity.
+**Research catalogue (Workstream D)** tracks R-09, R-12, R-13,
+R-15-residual-CE-reverse, R-15-residual-TI-reverse,
+R-15-residual-TI-forward-matrix.  **R-09, R-12, R-13 were
+discharged 2026-04-30** (see § 8.3) — closing the multi-query
+`h_step` discharge, the tight `1/4` ε-bound on
+`concreteHidingBundle`, and the HGOE-compatible Carter–Wegman
+analogue respectively.  R-15-residual-* items remain
+multi-thousand-LOC research-scope and remain v1.1+ / v2.0.
 
 **Release-gate commitment.** After Workstream **A** lands, the v1.0
 release narrative is honest: every prose surface that describes Lean
@@ -282,7 +285,8 @@ a single underlying defect; the plan treats them as one work unit.
 | **C-03a** | INFO | § C | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **C-13a** | INFO | § C | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **F-03a** | INFO | § F | **C** | C6 (docstring polish) | no-action (verified disclosed) |
-| **R-09 / R-12 / R-13 / R-15-residual-CE-reverse / R-15-residual-TI-reverse / R-15-residual-TI-forward-matrix** | research | § N-04 | **D** | n/a (catalogue) | v1.1+ / v2.0 |
+| **R-09 / R-12 / R-13** ✅ | research | § N-04 | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-15-residual-CE-reverse / R-15-residual-TI-reverse / R-15-residual-TI-forward-matrix** | research | § N-04 | **D** | n/a (catalogue) | v1.1+ / v2.0 |
 
 Note that **B-03a, B-03b, C-03a, C-13a, F-03a** are all "no-action"
 INFO observations (the audit explicitly says "No action needed" or
@@ -297,7 +301,7 @@ required.
 | **A** | Release-blocking documentation parity. Edits four prose / metadata surfaces: `Orbcrypt/Hardness/PetrankRoth.lean` module docstring (A1, lines 9-19 and 38-52); `docs/VERIFICATION_REPORT.md` headline numbers + 17 in-doc references (A2); `Orbcrypt.lean` "Phase 16 Verification Audit Snapshot" section (A3, lines 1279-1314); `lakefile.lean` `version` field reconciled with a new `CLAUDE.md` changelog entry (A4). **No Lean source semantics change.** | G-02, L-04, A-07/J-02, A-02 | `Orbcrypt/Hardness/PetrankRoth.lean`, `docs/VERIFICATION_REPORT.md`, `Orbcrypt.lean`, `lakefile.lean`, `CLAUDE.md` | 3.25 h | **pre-release (blocking)** |
 | **B** | Recommended pre-release polish. Removes the un-imported `_ApiSurvey.lean` transient stub (B1); decides on the legacy per-workstream audit scripts under `scripts/` (B2); refreshes `README.md`'s audit-script count (B3); compacts the 14-line `--`-comment block in `Orbcrypt/KEM/CompSecurity.lean:392-404` (B4). | A-01/H-03a, A-06, L-01, C-13b | `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (delete or relocate), `scripts/audit_*.lean` (move to `scripts/legacy/`), `README.md`, `Orbcrypt/KEM/CompSecurity.lean` | 50 min | recommended |
 | **C** | Optional v1.1+ engineering enhancements (**LANDED PRE-1.0 on 2026-04-30**). Defense-in-depth and hygiene improvements: explicit lakefile globs (C1); fast-path SHA-256 snapshot verification in `setup_lean_env.sh` (C2); CI nested-block-comment regex upgrade (C3); CI `lake-manifest.json` drift check (C4); formal GAP/Lean canonical-image equivalence theorem at arbitrary `n` (C5, new module `Orbcrypt/Construction/BitstringSupport.lean`); INFO-class docstring observations grouped (C6). | A-03, A-04, A-05, A-08, D-02a, B-03a, B-03b, C-03a, C-13a, F-03a | `lakefile.lean`, `scripts/setup_lean_env.sh`, `.github/workflows/lean4-build.yml`, `Orbcrypt/Construction/BitstringSupport.lean` (NEW), `Orbcrypt.lean`, `scripts/audit_phase_16.lean`, `CLAUDE.md` | ~6 h | **pre-release (landed)** |
-| **D** | Research-scope catalogue (informational only — never closes). Tracks R-09 (`h_step` discharge in `indQCPA_from_perStepBound`), R-12 (tight 1/4 ε-bound on `ObliviousSamplingConcreteHiding`), R-13 (`Bitstring n → ZMod p` orbit-preserving adapter), R-15-residual-CE-reverse (PetrankRoth Layers 4.1–7), R-15-residual-TI-reverse (Grochow–Qiao Layer T5), R-15-residual-TI-forward-matrix (Grochow–Qiao Layer T3.6 matrix-action upgrade). All multi-month; explicitly not v1.0 work. | R-09, R-12, R-13, R-15-residual-CE-reverse, R-15-residual-TI-reverse, R-15-residual-TI-forward-matrix | n/a — tracking only | n/a | **v1.1+ / v2.0** |
+| **D** | Research-scope catalogue. Tracks R-09 (`h_step` discharge in `indQCPA_from_perStepBound`) **DISCHARGED 2026-04-30**, R-12 (tight 1/4 ε-bound on `ObliviousSamplingConcreteHiding`) **DISCHARGED 2026-04-30**, R-13 (`Bitstring n`-typed Carter–Wegman analogue, generalising rather than adapting) **DISCHARGED 2026-04-30**, R-15-residual-CE-reverse (PetrankRoth Layers 4.1–7), R-15-residual-TI-reverse (Grochow–Qiao Layer T5), R-15-residual-TI-forward-matrix (Grochow–Qiao Layer T3.6 matrix-action upgrade). R-15-residual-* items are multi-month and remain v1.1+ / v2.0. See § 8.3 for R-09/R-12/R-13 discharge details. | R-09 ✅, R-12 ✅, R-13 ✅, R-15-residual-CE-reverse, R-15-residual-TI-reverse, R-15-residual-TI-forward-matrix | `Orbcrypt/Probability/{Monad,Advantage}.lean`, `Orbcrypt/Crypto/CompSecurity.lean`, `Orbcrypt/PublicKey/ObliviousSampling.lean`, `Orbcrypt/AEAD/BitstringPolynomialMAC.lean` (NEW) for discharged items | ~25 h discharged + n/a remaining | **partial v1.0 discharge (R-09/R-12/R-13); R-15-residual-* remains v1.1+ / v2.0** |
 | — | **Totals** | 16 audit findings | — | ≈ 4.1 h pre-tag work | — |
 
 **Parallelism.** Workstream **A**'s four work units (A1, A2, A3, A4)
@@ -2084,9 +2088,9 @@ current status.
 
 | ID | Topic | Tracking location | Estimated effort | Audit cycle |
 |----|-------|-------------------|------------------|-------------|
-| **R-09** | Discharge of `h_step` in `indQCPA_from_perStepBound` from `ConcreteOIA scheme ε` alone — per-coordinate marginal-independence over `uniformPMFTuple` | CLAUDE.md (Workstream C of audit 2026-04-23, finding V1-8 / C-13 / D10) | ~40-60 hours | tracked since 2026-04-18 |
-| **R-12** | Tight `1/4` ε-bound on `ObliviousSamplingConcreteHiding` for the `concreteHidingBundle` + `concreteHidingCombine` fixture (post-Workstream-I non-degenerate fixture) | CLAUDE.md (Workstream I, audit 2026-04-23 / 2026-04-25 honest-delivery refactor) | ~20-30 hours | tracked since 2026-04-25 |
-| **R-13** | `Bitstring n → ZMod p` orbit-preserving adapter making `carterWegmanMAC_int_ctxt` compose with HGOE | CLAUDE.md (Workstream A finding V1-7 / D4 / I-08 of 2026-04-23 audit) | ~80-120 hours | tracked since 2026-04-23 |
+| **R-09** ✅ | Discharge of `h_step` in `indQCPA_from_perStepBound` from `ConcreteOIA scheme ε` alone — per-coordinate marginal-independence over `uniformPMFTuple` | CLAUDE.md (Workstream C of audit 2026-04-23, finding V1-8 / C-13 / D10) | ~40-60 hours | **DISCHARGED 2026-04-30** by `indQCPA_from_concreteOIA` (`Crypto/CompSecurity.lean`); see § 8.3 below |
+| **R-12** ✅ | Tight `1/4` ε-bound on `ObliviousSamplingConcreteHiding` for the `concreteHidingBundle` + `concreteHidingCombine` fixture (post-Workstream-I non-degenerate fixture) | CLAUDE.md (Workstream I, audit 2026-04-23 / 2026-04-25 honest-delivery refactor) | ~20-30 hours | **DISCHARGED 2026-04-30** by `concreteHiding_tight` + `concreteHiding_tight_attained` (`PublicKey/ObliviousSampling.lean`); see § 8.3 below |
+| **R-13** ✅ | `Bitstring n`-typed Carter–Wegman analogue making INT-CTXT compose with HGOE (originally framed as "`Bitstring n → ZMod p` adapter"; the discharge takes the cleaner approach of generalising Carter–Wegman to a polynomial-evaluation hash typed at `Bitstring n` directly) | CLAUDE.md (Workstream A finding V1-7 / D4 / I-08 of 2026-04-23 audit) | ~80-120 hours | **DISCHARGED 2026-04-30** by `bitstringPolynomialMAC_int_ctxt` (`AEAD/BitstringPolynomialMAC.lean`); see § 8.3 below |
 | **R-15-residual-CE-reverse** | PetrankRoth Layers 4.1–4.10 (full marker-forcing reverse direction), Layer 5 (`prEncode_iff` assembly), Layer 6 (non-degeneracy bridge), Layer 7 (`petrankRoth_isInhabitedKarpReduction`) | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` § 4–§ 7 | ~800-1500 LOC, 7-14 days dedicated work | tracked since 2026-04-25 |
 | **R-15-residual-TI-reverse** | Grochow–Qiao Layer T5 rigidity argument | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` Layer T5 | ~80 pages on paper, ~1,800 LOC of Lean | tracked since 2026-04-25 |
 | **R-15-residual-TI-forward-matrix** | Grochow–Qiao Layer T3.6 full matrix-action upgrade | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` Layer T3.6 | ~400 LOC | tracked since 2026-04-25 |
@@ -2130,13 +2134,77 @@ catalogued items have these characteristics:
   item is a *quantitative tightening* of an already-conditional
   result, not a correctness gap.
 
+### 8.3 Workstream D research-scope discharges (post-2026-04-29)
+
+The following items have been discharged after the 2026-04-29 audit
+landed, demonstrating that "Workstream D never closes" is a
+catalogue convention, not a permanent freeze:
+
+* **R-09 — discharged 2026-04-30**. Closed by
+  `indQCPA_from_concreteOIA` (`Crypto/CompSecurity.lean`) which
+  discharges the `h_step` hypothesis of `indQCPA_from_perStepBound`
+  from `ConcreteOIA scheme ε` alone via three layers:
+  - Layer 1 (`Probability/Monad.lean`):
+    `sum_pi_succAbove_eq_sum_sum_insertNth` (sum factorisation
+    along an inserted coordinate via `Fin.insertNthEquiv`),
+    `probTrue_PMF_map_uniformPMF_toReal`.
+  - Layer 2 (`Probability/Advantage.lean`):
+    `advantage_pmf_map_uniform_pi_factor_bound` (convexity-of-TV
+    along an inserted coordinate; per-rest hypothesis ⇒ global
+    advantage bound).
+  - Layer 3+4 (`Crypto/CompSecurity.lean`):
+    `hybrid_step_bound_of_concreteOIA` (per-step bound from
+    ConcreteOIA), `indQCPA_from_concreteOIA` (headline `≤ Q · ε`),
+    `_recovers_single_query`, `_distinct`.
+  7 declarations, all on standard-trio axioms.
+
+* **R-12 — discharged 2026-04-30**. Closed by `concreteHiding_tight`
+  (`PublicKey/ObliviousSampling.lean`) which proves the tight
+  `1/4` ε-bound on the post-Workstream-I non-degenerate
+  `concreteHidingBundle` + Boolean-AND fixture. Built on:
+  - Layer A (`Probability/Advantage.lean`): Bool TV bound
+    (`advantage_bool_le_tv` via four-way distinguisher case-split,
+    `advantage_bool_id_eq_tv` tightness witness).
+  - Layer B (`PublicKey/ObliviousSampling.lean`): pointwise PMF
+    computations (`concreteHidingBundle_orbitDist_apply_true/_false`,
+    `concreteHidingLHS_apply_true/_false`) + headline
+    `concreteHiding_tight` + tightness witness
+    `concreteHiding_tight_attained` (D = id achieves the bound).
+  11 declarations, all on standard-trio axioms.
+
+* **R-13 — discharged 2026-04-30**. Closed by
+  `bitstringPolynomialMAC_int_ctxt`
+  (`AEAD/BitstringPolynomialMAC.lean`, NEW module). Generalises
+  Carter–Wegman to a polynomial-evaluation hash family directly
+  typed at `Bitstring n` (Stinson 1996 §4.2):
+  `bitstringPolynomialHash p n (k, s) b := s + ∑ i, toBit (b i)
+  · k^(i+1)`. Proven `(n / p)`-universal via
+  `bitstringPolynomialHash_isUniversal` using
+  `Polynomial.card_roots'` over the field `ZMod p`. The composed
+  `bitstringPolynomialMAC_int_ctxt` is the unconditional
+  HGOE-compatible analogue of `carterWegmanMAC_int_ctxt`.
+  18 declarations, NEW module, all on standard-trio axioms.
+
+**Cumulative posture (post-discharge):** `lake build` succeeds
+across 3,420 jobs (was 3,419) with zero warnings, zero errors.
+Phase-16 audit script: +36 declarations exercised; zero `sorryAx`;
+all on standard-trio axioms. Module count: 76 → 77. Public-
+declaration count: ≈ 358 → ≈ 394. `lakefile.lean`: 0.2.1 → 0.2.2.
+
+The remaining R-15-residual-* items continue to track at the
+estimates above; they require multi-thousand LOC of dedicated
+Lean infrastructure that R-09/R-12/R-13 did not.
+
 ### 8.4 Workstream D exit criteria
 
-**Workstream D never closes.** It is a tracking container that
-persists across audit cycles. Each catalogued item migrates to
+**Workstream D never closes** as a tracking *container* — but
+individual research-scope items DO close (see § 8.3 for R-09 / R-12
+/ R-13 discharged 2026-04-30). Each catalogued item migrates to
 its own dedicated workstream (and its own dedicated planning
 document) when v1.1+ / v2.0 prioritisation makes the item
-release-blocking for a future tag.
+release-blocking for a future tag, OR is discharged
+opportunistically when the implementation effort drops below an
+~8-hour spike.
 
 ## 9. Regression safeguards
 

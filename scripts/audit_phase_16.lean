@@ -1597,7 +1597,10 @@ example :
     support (![true, false, true] : Bitstring 3) =
       ({0, 2} : Finset (Fin 3)) := by
   ext i
-  fin_cases i <;> simp [support, mem_support_iff]
+  -- `mem_support_iff` is already `@[simp]`, so `simp [support]` suffices
+  -- (the linter flagged the explicit redundant entry pre-Workstream-D
+  -- discharge audit; fixed 2026-04-30).
+  fin_cases i <;> simp [support]
 
 /-- The `ofSupport_support` round-trip on `![true, false, true]`. -/
 example :
@@ -4752,3 +4755,329 @@ example : ∃ (σ : Equiv.Perm (Fin 2)) (j : pathAlgebraQuotient 2),
     (fun _ _ => false) AlgEquiv.refl
 
 end PathOnlyAlgEquivSigmaNonVacuity
+
+-- ============================================================================
+-- § 15.22 R-12 — Tight 1/4 ε-bound for `concreteHidingBundle`
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan § R-12)
+--
+-- Layer A — Bool TV bound (`Probability/Advantage.lean`):
+--   * `probTrue_bool_eq` — closed-form `probTrue` evaluation on Bool.
+--   * `pmf_bool_sum_eq_one_toReal` — PMF sum-to-1 for Bool in ℝ.
+--   * `probTrue_bool_toReal_eq` — `.toReal`-converted closed form.
+--   * `advantage_bool_le_tv` — TV bound on Boolean distinguishers.
+--   * `advantage_bool_id_eq_tv` — tightness witness at `D = id`.
+--
+-- Layer B — Concrete pointwise computations + headline
+-- (`PublicKey/ObliviousSampling.lean`):
+--   * `concreteHidingBundle_orbitDist_apply_true`,
+--     `concreteHidingBundle_orbitDist_apply_false` — both = 1/2.
+--   * `concreteHidingLHS_apply_true` (= 1/4),
+--     `concreteHidingLHS_apply_false` (= 3/4).
+--   * `concreteHiding_tight` — headline: tight ε = 1/4 bound.
+--   * `concreteHiding_tight_attained` — tightness witness.
+-- ============================================================================
+
+#print axioms Orbcrypt.probTrue_bool_eq
+#print axioms Orbcrypt.pmf_bool_sum_eq_one_toReal
+#print axioms Orbcrypt.probTrue_bool_toReal_eq
+#print axioms Orbcrypt.advantage_bool_le_tv
+#print axioms Orbcrypt.advantage_bool_id_eq_tv
+#print axioms Orbcrypt.concreteHidingBundle_orbitDist_apply_true
+#print axioms Orbcrypt.concreteHidingBundle_orbitDist_apply_false
+#print axioms Orbcrypt.concreteHidingLHS_apply_true
+#print axioms Orbcrypt.concreteHidingLHS_apply_false
+#print axioms Orbcrypt.concreteHiding_tight
+#print axioms Orbcrypt.concreteHiding_tight_attained
+
+/-! ## R-12 non-vacuity witnesses -/
+namespace R12NonVacuity
+
+open Orbcrypt
+
+/-- **Non-vacuity (1): the headline tight 1/4 bound at `D = id`.** Asserts
+the bound directly on a concrete pair of PMFs (the LHS combine PMF and
+the RHS orbit PMF at the `concreteHidingBundle` fixture). -/
+example :
+    advantage (id : Bool → Bool)
+      (PMF.map (fun (p : Fin 2 × Fin 2) =>
+         concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+           (concreteHidingBundle.randomizers p.2))
+         (uniformPMF (Fin 2 × Fin 2)))
+      (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint)
+      ≤ ((1 : ℝ) / 4) :=
+  concreteHiding_tight (id : Bool → Bool)
+
+/-- **Non-vacuity (2): tightness witness — advantage equals 1/4 at
+`D = id`.** Combined with (1), confirms 1/4 is the smallest ε for which
+`ObliviousSamplingConcreteHiding concreteHidingBundle
+concreteHidingCombine ε` holds. -/
+example :
+    advantage (id : Bool → Bool)
+      (PMF.map (fun (p : Fin 2 × Fin 2) =>
+         concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+           (concreteHidingBundle.randomizers p.2))
+         (uniformPMF (Fin 2 × Fin 2)))
+      (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint)
+      = ((1 : ℝ) / 4) :=
+  concreteHiding_tight_attained
+
+/-- **Non-vacuity (3): explicit `(orbitDist false) true = 1/2` at the
+fixture.** -/
+example :
+    (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) true
+      = (1 / 2 : ENNReal) :=
+  concreteHidingBundle_orbitDist_apply_true
+
+/-- **Non-vacuity (4): explicit `(LHS PMF) true = 1/4` at the fixture.** -/
+example :
+    (PMF.map (fun (p : Fin 2 × Fin 2) =>
+       concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+         (concreteHidingBundle.randomizers p.2))
+       (uniformPMF (Fin 2 × Fin 2))) true = (1 / 4 : ENNReal) :=
+  concreteHidingLHS_apply_true
+
+/-- **Non-vacuity (5): closed-form `probTrue_bool_eq` on a concrete
+`PMF` and the identity Bool function.** -/
+example (μ : PMF Bool) :
+    probTrue μ (id : Bool → Bool) =
+      (if (id true : Bool) = true then μ true else 0) +
+      (if (id false : Bool) = true then μ false else 0) :=
+  probTrue_bool_eq μ id
+
+/-- **Non-vacuity (6): TV upper bound applies to every `D : Bool → Bool`
+on every PMF pair — instantiated at the `concreteHidingBundle` fixture
+with the `not` distinguisher (which also achieves the `1/4` bound, by
+TV symmetry). -/
+example :
+    advantage (Bool.not)
+      (PMF.map (fun (p : Fin 2 × Fin 2) =>
+         concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+           (concreteHidingBundle.randomizers p.2))
+         (uniformPMF (Fin 2 × Fin 2)))
+      (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint)
+      ≤ ((1 : ℝ) / 4) :=
+  concreteHiding_tight (Bool.not)
+
+end R12NonVacuity
+
+-- ============================================================================
+-- § 15.23 R-13 — `Bitstring n`-typed polynomial-evaluation MAC + INT-CTXT
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan § R-13)
+--
+-- Layer α — `Probability/UniversalHash.lean` (already exists,
+-- `IsEpsilonUniversal.ofCollisionCardBound` + `mono` directly consumed).
+--
+-- Layer β — `AEAD/BitstringPolynomialMAC.lean` (NEW module):
+--   * `toBit` — bit-to-field encoding `Bool → ZMod p`.
+--   * `toBit_injective` — injective at any prime `p`.
+--   * `evalAtBitstring` — polynomial-eval hash core.
+--   * `bitstringPolynomialHash` — `(k, s) ↦ s + ∑ toBit(b i) · k^(i+1)`.
+--   * `bitstringPolynomialHash_collision_iff_eval` — `s` cancels.
+--   * `bitstringDiffPolynomial` — formal `(ZMod p)[X]` of the difference.
+--   * `bitstringDiffPolynomial_eval` — eval recovers
+--     `evalAtBitstring(b₁) − evalAtBitstring(b₂)`.
+--   * `bitstringDiffPolynomial_natDegree_le` — degree ≤ n.
+--   * `bitstringDiffPolynomial_coeff_at` — coefficient extraction.
+--   * `bitstringDiffPolynomial_ne_zero_of_ne` — non-zero on b₁ ≠ b₂.
+--   * `bitstringDiffPolynomial_card_roots_le` — ≤ n roots.
+--   * `bitstringDiffPolynomial_collision_keys_card_le` — ≤ n collision-keys.
+--   * `bitstringPolynomialHash_collision_card_le` — ≤ n·p collisions.
+--   * `bitstringPolynomialHash_isUniversal` — **headline** (n/p)-universal.
+--   * `bitstringPolynomialMAC` — MAC built from the hash.
+--   * `bitstringPolynomial_authKEM` — AEAD composition with any
+--     `OrbitKEM G (Bitstring n) (ZMod p × ZMod p)`.
+--   * `bitstringPolynomialMAC_int_ctxt` — **headline** unconditional
+--     INT-CTXT for HGOE-typed authenticated encryption.
+-- ============================================================================
+
+#print axioms Orbcrypt.toBit
+#print axioms Orbcrypt.toBit_injective
+#print axioms Orbcrypt.evalAtBitstring
+#print axioms Orbcrypt.bitstringPolynomialHash
+#print axioms Orbcrypt.bitstringPolynomialHash_apply
+#print axioms Orbcrypt.bitstringPolynomialHash_collision_iff_eval
+#print axioms Orbcrypt.bitstringDiffPolynomial
+#print axioms Orbcrypt.bitstringDiffPolynomial_eval
+#print axioms Orbcrypt.bitstringDiffPolynomial_natDegree_le
+#print axioms Orbcrypt.bitstringDiffPolynomial_coeff_at
+#print axioms Orbcrypt.bitstringDiffPolynomial_ne_zero_of_ne
+#print axioms Orbcrypt.bitstringDiffPolynomial_card_roots_le
+#print axioms Orbcrypt.bitstringDiffPolynomial_collision_keys_card_le
+#print axioms Orbcrypt.bitstringPolynomialHash_collision_card_le
+#print axioms Orbcrypt.bitstringPolynomialHash_isUniversal
+#print axioms Orbcrypt.bitstringPolynomialMAC
+#print axioms Orbcrypt.bitstringPolynomial_authKEM
+#print axioms Orbcrypt.bitstringPolynomialMAC_int_ctxt
+
+/-! ## R-13 non-vacuity witnesses -/
+namespace R13NonVacuity
+
+open Orbcrypt
+
+/-- **Non-vacuity (1): the (n/p)-universal hash family at `n = 2, p = 3`.**
+The smallest non-trivial parameter pair where `n ≤ p` (`Fact (Nat.Prime
+3)` is in Mathlib via `fact_prime_three`). Bound: `2/3 < 1`,
+informative. -/
+example :
+    IsEpsilonUniversal (bitstringPolynomialHash 3 2)
+      ((2 : ENNReal) / (3 : ENNReal)) :=
+  bitstringPolynomialHash_isUniversal 3 2
+
+/-- **Non-vacuity (2): MAC instance at `n = 2, p = 3`.** Type-elaborates
+the generic `MAC` structure on the new key/message types. -/
+example : MAC (ZMod 3 × ZMod 3) (Bitstring 2) (ZMod 3) :=
+  bitstringPolynomialMAC 3 2
+
+/-- **Non-vacuity (3): collision-card bound at concrete bitstrings.**
+The bound `≤ n · p = 2 · 3 = 6` holds for any pair of distinct
+bitstrings in `Bitstring 2`. Concrete instance: `b₁ = ![true, false],
+b₂ = ![false, true]`. -/
+example :
+    (Finset.univ.filter (fun kp : ZMod 3 × ZMod 3 =>
+      bitstringPolynomialHash 3 2 kp ![true, false] =
+      bitstringPolynomialHash 3 2 kp ![false, true])).card ≤ 2 * 3 := by
+  apply bitstringPolynomialHash_collision_card_le
+  intro h
+  -- ![true, false] ≠ ![false, true]: differ at position 0.
+  have : (![true, false] : Bitstring 2) 0 = (![false, true] : Bitstring 2) 0 :=
+    congrFun h 0
+  simp at this
+
+/-- **Non-vacuity (4): difference polynomial is non-zero.** Concrete
+witness at `n = 2, p = 3` for `b₁ = ![true, false], b₂ = ![false,
+true]`. -/
+example :
+    bitstringDiffPolynomial 3 2 ![true, false] ![false, true] ≠ 0 := by
+  apply bitstringDiffPolynomial_ne_zero_of_ne
+  intro h
+  have : (![true, false] : Bitstring 2) 0 = (![false, true] : Bitstring 2) 0 :=
+    congrFun h 0
+  simp at this
+
+/-- **Non-vacuity (5): toBit is injective at the prime field `ZMod 2`.**
+The smallest prime, where `1 ≠ 0` is the field-axiom requirement. -/
+example : Function.Injective (toBit 2) := toBit_injective
+
+/-- **Non-vacuity (6): END-TO-END INT-CTXT on a `Bitstring 2`-typed
+authenticated KEM at `p = 3`.** Constructs a trivial `OrbitKEM` over
+`Equiv.Perm (Fin 2)` acting on `Bitstring 2` (using a constant
+canonical form and a constant key derivation), then composes with the
+new `bitstringPolynomial_authKEM` and discharges INT-CTXT. -/
+example
+    (canForm : CanonicalForm (Equiv.Perm (Fin 2)) (Bitstring 2))
+    (keyDerive : Bitstring 2 → ZMod 3 × ZMod 3) :
+    let kem : OrbitKEM (Equiv.Perm (Fin 2)) (Bitstring 2) (ZMod 3 × ZMod 3) :=
+      { basePoint := fun _ => false
+        canonForm := canForm
+        keyDerive := keyDerive }
+    let akem : AuthOrbitKEM (Equiv.Perm (Fin 2)) (Bitstring 2)
+                  (ZMod 3 × ZMod 3) (ZMod 3) :=
+      bitstringPolynomial_authKEM 3 2 kem
+    INT_CTXT akem :=
+  bitstringPolynomialMAC_int_ctxt 3 2 _
+
+end R13NonVacuity
+
+-- ============================================================================
+-- § 15.24 R-09 — Discharge of `h_step` from `ConcreteOIA`
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan § R-09)
+--
+-- Layer 1 — `Probability/Monad.lean` extensions:
+--   * `sum_pi_succAbove_eq_sum_sum_insertNth` — sum factorisation
+--     along an inserted coordinate via `Fin.insertNthEquiv`.
+--   * `probTrue_PMF_map_uniformPMF_toReal` — `.toReal` form of
+--     `probTrue (PMF.map F (uniformPMF α)) D` as filter-card / |α|.
+--
+-- Layer 2 — `Probability/Advantage.lean`:
+--   * `advantage_pmf_map_uniform_pi_factor_bound` — convexity-of-TV
+--     along an inserted coordinate. Per-rest hypothesis ⇒ global bound.
+--
+-- Layer 3+4 — `Crypto/CompSecurity.lean`:
+--   * `hybrid_step_bound_of_concreteOIA` — discharges per-step bound
+--     from ConcreteOIA alone (no `h_step` needed).
+--   * `indQCPA_from_concreteOIA` — **headline**: multi-query bound
+--     `indQCPAAdvantage ≤ Q · ε` from `ConcreteOIA scheme ε` alone.
+--   * `indQCPA_from_concreteOIA_recovers_single_query` — Q = 1
+--     regression sentinel.
+--   * `indQCPA_from_concreteOIA_distinct` — classical-game form.
+-- ============================================================================
+
+#print axioms Orbcrypt.sum_pi_succAbove_eq_sum_sum_insertNth
+#print axioms Orbcrypt.probTrue_PMF_map_uniformPMF_toReal
+#print axioms Orbcrypt.advantage_pmf_map_uniform_pi_factor_bound
+#print axioms Orbcrypt.hybrid_step_bound_of_concreteOIA
+#print axioms Orbcrypt.indQCPA_from_concreteOIA
+#print axioms Orbcrypt.indQCPA_from_concreteOIA_recovers_single_query
+#print axioms Orbcrypt.indQCPA_from_concreteOIA_distinct
+
+/-! ## R-09 non-vacuity witnesses -/
+namespace R09NonVacuity
+
+open Orbcrypt
+
+/-- **Non-vacuity (1): the unconditional Q · ε bound from ConcreteOIA alone**
+on a generic scheme + adversary. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G] [MulAction G X]
+    [DecidableEq X] {Q : ℕ} (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε) :
+    indQCPAAdvantage scheme A ≤ (Q : ℝ) * ε :=
+  indQCPA_from_concreteOIA scheme ε A hOIA
+
+/-- **Non-vacuity (2): Q = 1 regression sentinel** — at Q = 1, the multi-
+query bound `1 · ε = ε` recovers the single-query advantage bound
+(matching `concrete_oia_implies_1cpa`). -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G] [MulAction G X]
+    [DecidableEq X] (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M 1) (hOIA : ConcreteOIA scheme ε) :
+    indQCPAAdvantage scheme A ≤ ε :=
+  indQCPA_from_concreteOIA_recovers_single_query scheme ε A hOIA
+
+/-- **Non-vacuity (3): per-step bound at `i = 0`** for any Q ≥ 1. The
+per-step content of R-09. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G] [MulAction G X]
+    [DecidableEq X] {Q : ℕ} (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε)
+    (hQ : 0 < Q) :
+    advantage (A.guess scheme.reps)
+      (hybridDist scheme (A.choose scheme.reps) 0)
+      (hybridDist scheme (A.choose scheme.reps) 1) ≤ ε :=
+  hybrid_step_bound_of_concreteOIA scheme ε A hOIA 0 hQ
+
+/-- **Non-vacuity (4): distinct-challenge multi-query form.** -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G] [MulAction G X]
+    [DecidableEq X] {Q : ℕ} (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : DistinctMultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε) :
+    indQCPAAdvantage scheme A.toMultiQueryAdversary ≤ (Q : ℝ) * ε :=
+  indQCPA_from_concreteOIA_distinct scheme ε A hOIA
+
+-- A *concrete* witness using the `trivialSchemeBool` fixture from
+-- `NonVacuityWitnesses` (the OrbitEncScheme on `Bool` under the trivial
+-- `Equiv.Perm (Fin 1)` action). Re-registers the local MulAction instance
+-- since `local instance` does not propagate across namespace boundaries.
+local instance trivialPermFin1ActionBoolR09 :
+    MulAction (Equiv.Perm (Fin 1)) Bool where
+  smul _ b := b
+  one_smul _ := rfl
+  mul_smul _ _ _ := rfl
+
+/-- A trivial `MultiQueryAdversary` on `Bool` × `Bool` at Q = 2: always
+    chooses the same pair `(true, false)` and always guesses `true`.
+    Used as the concrete adversary for the end-to-end R-09 witness. -/
+def trivialMQABool : MultiQueryAdversary Bool Bool 2 where
+  choose := fun _ _ => (true, false)
+  guess := fun _ _ => true
+
+/-- **Non-vacuity (5) — concrete end-to-end R-09 witness.**
+    Specialises `indQCPA_from_concreteOIA` at `scheme := NonVacuityWitnesses.
+    trivialSchemeBool`, `Q := 2`, and the trivial `ConcreteOIA scheme 1`
+    bound (via `concreteOIA_one`). Establishes the full chain
+    `ConcreteOIA → indQCPA_from_concreteOIA → bounded multi-query
+    advantage` on a concrete fixture (not just a parametric signature
+    elaboration). -/
+example :
+    indQCPAAdvantage NonVacuityWitnesses.trivialSchemeBool trivialMQABool ≤
+      (2 : ℝ) * 1 :=
+  indQCPA_from_concreteOIA NonVacuityWitnesses.trivialSchemeBool 1
+    trivialMQABool (concreteOIA_one _)
+
+end R09NonVacuity

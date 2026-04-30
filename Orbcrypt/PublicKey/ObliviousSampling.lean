@@ -433,9 +433,237 @@ audit theatrical `_zero_witness` (vacuous on degenerate bundles)
 with an honest non-degenerate fixture plus a research-scope
 disclosure of the precise bound. The honest delivery is the
 fixture + disclosure, not a Lean proof of a tight ε bound.
+
+**Update — R-12 closure (audit 2026-04-29 § 8.1, Workstream D).**
+The research-scope note above is **superseded** by the headline
+theorems `concreteHiding_tight` (the precise ε = 1/4 bound) and
+`concreteHiding_tight_attained` (tightness at `D = id`) below.
+The reasoning runs through `advantage_bool_le_tv`
+(`Probability/Advantage.lean`, R-12 Layer A) plus the four
+pointwise PMF-evaluation lemmas
+`concreteHidingBundle_orbitDist_apply_true/_false` and
+`concreteHidingLHS_apply_true/_false`. All five new theorems
+depend only on the standard Lean trio.
 -/
 section ConcreteHidingBundleResearchScopeNote
 end ConcreteHidingBundleResearchScopeNote
+
+-- ============================================================================
+-- Workstream R-12 Layer B — Concrete pointwise PMF computations + tight 1/4
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan § R-12 Layer B)
+-- ============================================================================
+
+/-- **R-12 Layer B.1 — `(orbitDist false) true = 1/2`.**
+
+    The orbit distribution of `false` under `Equiv.Perm Bool` puts
+    mass `1/2` on `true`. Reasoning:
+    * `(orbitDist false) true` = `(orbitDist false).toOuterMeasure
+      {true}` = `(uniformPMF G).toOuterMeasure ((· • false) ⁻¹'
+      {true})` (PMF.toOuterMeasure_map_apply on the push-forward).
+    * The preimage `{g : Equiv.Perm Bool | g • false = true}` is a
+      Finset of cardinality `1` (the unique element is `Equiv.swap
+      false true`, since the identity sends `false` to `false`).
+    * `Fintype.card (Equiv.Perm Bool) = 2! = 2`.
+    * Result: `1/2`.
+
+    The cardinality computations both discharge by `decide`. -/
+theorem concreteHidingBundle_orbitDist_apply_true :
+    (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) true
+      = (1 / 2 : ENNReal) := by
+  show (orbitDist (G := Equiv.Perm Bool) false) true = (1 / 2 : ENNReal)
+  -- Step 1 — singleton outer-measure rewrite.
+  rw [← PMF.toOuterMeasure_apply_singleton]
+  -- Step 2 — push outer measure through the `PMF.map` (preimage form).
+  unfold orbitDist
+  rw [PMF.toOuterMeasure_map_apply]
+  -- Step 3 — recognise the preimage as a `setOf`.
+  have h_preimage :
+      ((fun g : Equiv.Perm Bool => g • false) ⁻¹' ({true} : Set Bool)) =
+        {g : Equiv.Perm Bool | g • false = true} := by
+    ext g; simp
+  rw [h_preimage]
+  -- Step 4 — recognise as `probTrue` of the uniform PMF.
+  show (uniformPMF (Equiv.Perm Bool)).toOuterMeasure
+        {g : Equiv.Perm Bool | g • false = true} = (1 / 2 : ENNReal)
+  have h_probTrue :
+      (uniformPMF (Equiv.Perm Bool)).toOuterMeasure
+        {g : Equiv.Perm Bool | g • false = true} =
+      probTrue (uniformPMF (Equiv.Perm Bool))
+        (fun g : Equiv.Perm Bool => g • false) := rfl
+  rw [h_probTrue, probTrue_uniformPMF_card]
+  -- Step 5 — discharge the cardinality identities by `decide`.
+  have h_filter :
+      (Finset.univ.filter (fun g : Equiv.Perm Bool => g • false = true)).card = 1 := by
+    decide
+  have h_card : Fintype.card (Equiv.Perm Bool) = 2 := by decide
+  rw [h_filter, h_card]
+  -- Step 6 — `(1 : ℕ → ENNReal) / (2 : ℕ → ENNReal) = 1/2`.
+  norm_num
+
+/-- **R-12 Layer B.2 — `(orbitDist false) false = 1/2`.** Parallel
+    to `concreteHidingBundle_orbitDist_apply_true`. We derive the
+    mass via the PMF sum-to-1 identity:
+    `μ false = 1 - μ true = 1 - 1/2 = 1/2`. This bypasses the
+    `decide` complication at `!`-Bool predicates that arises when
+    using `probTrue_uniformPMF_card` directly. -/
+theorem concreteHidingBundle_orbitDist_apply_false :
+    (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) false
+      = (1 / 2 : ENNReal) := by
+  -- PMF sum-to-1 (in ENNReal): μ true + μ false = 1.
+  have h_sum :
+      (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) true
+      + (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) false = 1 := by
+    have h := (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint).tsum_coe
+    rw [tsum_fintype, Fintype.sum_bool] at h
+    exact h
+  -- μ true = 1/2 by Layer B.1.
+  rw [concreteHidingBundle_orbitDist_apply_true] at h_sum
+  -- Solve μ false = 1 - 1/2.
+  have h_finite_t : (1 / 2 : ENNReal) ≠ ⊤ := by norm_num
+  have hX :
+      (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) false =
+        (1 : ENNReal) - 1 / 2 :=
+    (ENNReal.sub_eq_of_eq_add_rev h_finite_t h_sum.symm).symm
+  rw [hX]
+  -- 1 - 1/2 = 1/2: prove via 1 = 1/2 + 1/2 + ENNReal.sub_eq_of_eq_add.
+  have h_one : (1 : ENNReal) = 1 / 2 + 1 / 2 := by
+    rw [ENNReal.div_add_div_same, show (1 + 1 : ENNReal) = 2 from by norm_num,
+        ENNReal.div_self (by norm_num : (2 : ENNReal) ≠ 0)
+          (by norm_num : (2 : ENNReal) ≠ ⊤)]
+  exact ENNReal.sub_eq_of_eq_add h_finite_t h_one
+
+/-- **R-12 Layer B.3 — `(LHS PMF) true = 1/4`.**
+
+    The combine-bundle LHS PMF (the push-forward of uniform pairs
+    in `Fin 2 × Fin 2` through Boolean-AND on the corresponding
+    randomizers) puts mass `1/4` on `true`. Reasoning:
+    * Out of the four pairs `(i, j) ∈ Fin 2 × Fin 2`, only `(1, 1)`
+      maps to `true` (since `randomizers = ![false, true]` and the
+      AND is `true ↔ both inputs `true``).
+    * `Fintype.card (Fin 2 × Fin 2) = 4`.
+    * Result: `1/4`. -/
+theorem concreteHidingLHS_apply_true :
+    (PMF.map (fun (p : Fin 2 × Fin 2) =>
+       concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+         (concreteHidingBundle.randomizers p.2))
+       (uniformPMF (Fin 2 × Fin 2))) true = (1 / 4 : ENNReal) := by
+  rw [← PMF.toOuterMeasure_apply_singleton]
+  rw [PMF.toOuterMeasure_map_apply]
+  -- Recognise preimage as `setOf`.
+  have h_preimage :
+      ((fun (p : Fin 2 × Fin 2) =>
+         concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+           (concreteHidingBundle.randomizers p.2)) ⁻¹' ({true} : Set Bool)) =
+      {p : Fin 2 × Fin 2 |
+         concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+           (concreteHidingBundle.randomizers p.2) = true} := by
+    ext p; simp
+  rw [h_preimage]
+  show (uniformPMF (Fin 2 × Fin 2)).toOuterMeasure
+        {p : Fin 2 × Fin 2 |
+           concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+             (concreteHidingBundle.randomizers p.2) = true}
+       = (1 / 4 : ENNReal)
+  have h_probTrue :
+      (uniformPMF (Fin 2 × Fin 2)).toOuterMeasure
+        {p : Fin 2 × Fin 2 |
+          concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+            (concreteHidingBundle.randomizers p.2) = true} =
+      probTrue (uniformPMF (Fin 2 × Fin 2))
+        (fun p => concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+          (concreteHidingBundle.randomizers p.2)) := rfl
+  rw [h_probTrue, probTrue_uniformPMF_card]
+  have h_filter :
+      (Finset.univ.filter (fun p : Fin 2 × Fin 2 =>
+         (concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+                                (concreteHidingBundle.randomizers p.2)) = true)).card = 1 := by
+    decide
+  have h_card : Fintype.card (Fin 2 × Fin 2) = 4 := by decide
+  rw [h_filter, h_card]
+  norm_num
+
+/-- **R-12 Layer B.4 — `(LHS PMF) false = 3/4`.** Parallel to B.3.
+    Derived from B.3 + PMF sum-to-1: `μ false = 1 - 1/4 = 3/4`. -/
+theorem concreteHidingLHS_apply_false :
+    (PMF.map (fun (p : Fin 2 × Fin 2) =>
+       concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+         (concreteHidingBundle.randomizers p.2))
+       (uniformPMF (Fin 2 × Fin 2))) false = (3 / 4 : ENNReal) := by
+  set μ : PMF Bool := PMF.map (fun (p : Fin 2 × Fin 2) =>
+       concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+         (concreteHidingBundle.randomizers p.2))
+       (uniformPMF (Fin 2 × Fin 2)) with hμ_def
+  -- PMF sum-to-1 in ENNReal.
+  have h_sum : μ true + μ false = (1 : ENNReal) := by
+    have h := μ.tsum_coe
+    rw [tsum_fintype, Fintype.sum_bool] at h
+    exact h
+  -- μ true = 1/4 by B.3.
+  have h_t : μ true = (1 / 4 : ENNReal) := concreteHidingLHS_apply_true
+  rw [h_t] at h_sum
+  -- Solve μ false = 1 - 1/4.
+  have h_finite_t : (1 / 4 : ENNReal) ≠ ⊤ := by norm_num
+  have hX : μ false = (1 : ENNReal) - 1 / 4 :=
+    (ENNReal.sub_eq_of_eq_add_rev h_finite_t h_sum.symm).symm
+  rw [hX]
+  -- 1 - 1/4 = 3/4: prove via 1 = 3/4 + 1/4 + ENNReal.sub_eq_of_eq_add.
+  have h_one : (1 : ENNReal) = 3 / 4 + 1 / 4 := by
+    rw [ENNReal.div_add_div_same, show (3 + 1 : ENNReal) = 4 from by norm_num,
+        ENNReal.div_self (by norm_num : (4 : ENNReal) ≠ 0)
+          (by norm_num : (4 : ENNReal) ≠ ⊤)]
+  exact ENNReal.sub_eq_of_eq_add h_finite_t h_one
+
+/-- **R-12 headline — Tight ε = 1/4 bound for `concreteHidingBundle`.**
+
+    Closes the post-Workstream-I research-scope disclosure
+    (`Orbcrypt.PublicKey.ObliviousSampling`, lines 380–436):
+    machine-checks that the on-paper `1/4` bound holds in Lean.
+
+    **Proof.** Apply `advantage_bool_le_tv` (Workstream R-12 Layer
+    A) to bound the advantage above by `|(LHS true).toReal − (RHS
+    true).toReal|`; substitute the explicit pointwise values
+    `1/4` and `1/2` (Layer B.1, B.3); arithmetic.
+
+    See `concreteHiding_tight_attained` for the tightness witness:
+    the bound is *achieved* by `D = id`. -/
+theorem concreteHiding_tight :
+    ObliviousSamplingConcreteHiding (G := Equiv.Perm Bool) concreteHidingBundle
+      concreteHidingCombine ((1 : ℝ) / 4) := by
+  intro D
+  refine (advantage_bool_le_tv D _ _).trans ?_
+  rw [concreteHidingLHS_apply_true, concreteHidingBundle_orbitDist_apply_true]
+  -- Goal: |(1/4 : ENNReal).toReal - (1/2 : ENNReal).toReal| ≤ 1/4
+  rw [show ((1 / 4 : ENNReal).toReal : ℝ) = 1 / 4 by norm_num,
+      show ((1 / 2 : ENNReal).toReal : ℝ) = 1 / 2 by norm_num]
+  -- Goal: |1/4 - 1/2| ≤ 1/4
+  rw [show ((1 : ℝ) / 4 - 1 / 2) = -(1 / 4) by ring, abs_neg]
+  rw [show |(1 : ℝ) / 4| = 1 / 4 by norm_num]
+
+/-- **R-12 tightness witness — `1/4` is exactly attained at `D = id`.**
+
+    Companion to `concreteHiding_tight`: the bound is *not* a loose
+    overestimate. The identity Boolean function `D = id` achieves
+    advantage exactly `1/4`. Combined with `concreteHiding_tight`,
+    this confirms `1/4` is the smallest ε for which
+    `ObliviousSamplingConcreteHiding concreteHidingBundle
+    concreteHidingCombine ε` holds.
+
+    **Proof.** Apply `advantage_bool_id_eq_tv` to convert advantage
+    to total-variation distance; substitute the explicit pointwise
+    values `1/4` and `1/2`; arithmetic. -/
+theorem concreteHiding_tight_attained :
+    advantage (id : Bool → Bool)
+      (PMF.map (fun (p : Fin 2 × Fin 2) =>
+         concreteHidingCombine (concreteHidingBundle.randomizers p.1)
+           (concreteHidingBundle.randomizers p.2))
+         (uniformPMF (Fin 2 × Fin 2)))
+      (orbitDist (G := Equiv.Perm Bool) concreteHidingBundle.basePoint) = (1 : ℝ) / 4 := by
+  rw [advantage_bool_id_eq_tv]
+  rw [concreteHidingLHS_apply_true, concreteHidingBundle_orbitDist_apply_true]
+  rw [show ((1 / 4 : ENNReal).toReal : ℝ) = 1 / 4 by norm_num,
+      show ((1 / 2 : ENNReal).toReal : ℝ) = 1 / 2 by norm_num]
+  rw [show ((1 : ℝ) / 4 - 1 / 2) = -(1 / 4) by ring, abs_neg]
+  norm_num
 
 -- ============================================================================
 -- Work Unit 13.3: Randomizer Refresh Protocol

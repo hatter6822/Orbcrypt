@@ -8,6 +8,7 @@
 
 import Mathlib.Probability.ProbabilityMassFunction.Constructions
 import Mathlib.Probability.Distributions.Uniform
+import Mathlib.Data.Fin.Tuple.Basic
 
 /-!
 # Orbcrypt.Probability.Monad
@@ -188,5 +189,65 @@ theorem probTrue_uniformPMF_card {α : Type*} [Fintype α] [Nonempty α]
   -- `Finset.filter ... |>.card` form.
   congr 1
   exact_mod_cast Fintype.card_subtype (fun x => D x = true)
+
+-- ============================================================================
+-- Workstream R-09 — uniform-tuple factorisation at a specific coordinate
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan § R-09 Layer 1)
+-- ============================================================================
+
+/-- **Sum-factorisation of `Fin (n+1) → α` along an inserted coordinate.**
+
+    For any `j₀ : Fin (n+1)` and any `Finset.univ`-summed function over
+    `Fin (n+1) → α`, the sum splits into a doubly-nested sum: outer
+    over `α` (the value at `j₀`) and inner over `Fin n → α` (the
+    "rest", indexed via `Fin.succAbove j₀`).
+
+    This is the cardinality lemma underlying R-09's per-step bound:
+    summing a Bool predicate over `Fin (n+1) → α` factors over
+    `(value at j₀) × (rest)`, enabling the per-coordinate
+    `ConcreteOIA` application after fixing the rest. -/
+theorem sum_pi_succAbove_eq_sum_sum_insertNth {α : Type*} [Fintype α]
+    {n : ℕ} {β : Type*} [AddCommMonoid β]
+    (j₀ : Fin (n + 1)) (f : (Fin (n + 1) → α) → β) :
+    ∑ gs : Fin (n + 1) → α, f gs =
+      ∑ a : α, ∑ rest : Fin n → α, f (Fin.insertNth j₀ a rest) := by
+  classical
+  -- Step 1: re-index `∑ gs : Fin (n+1) → α, f gs` along the equiv
+  -- `Fin.insertNthEquiv (fun _ => α) j₀ : α × (Fin n → α) ≃ Fin (n+1) → α`.
+  -- This converts the LHS to `∑ p : α × (Fin n → α), f (insertNth j₀ p.1 p.2)`
+  -- (since the equiv's `toFun` is `fun p => insertNth j₀ p.1 p.2`).
+  rw [← Equiv.sum_comp (Fin.insertNthEquiv (fun _ : Fin (n + 1) => α) j₀) f]
+  -- Step 2: the equiv's `toFun` is definitionally
+  -- `fun p => Fin.insertNth j₀ p.1 p.2` (see `Fin.insertNthEquiv`'s
+  -- `def` in `Mathlib.Data.Fin.Tuple.Basic`). So the goal
+  -- reduces to splitting a sum over `α × (Fin n → α)` into the
+  -- doubly-nested form via `Fintype.sum_prod_type`.
+  exact Fintype.sum_prod_type (fun p => f (Fin.insertNth j₀ p.1 p.2))
+
+/-- **`probTrue` of a `PMF.map` of `uniformPMF` as a filter-card ratio
+    in ℝ.** Combines `probTrue_map` and `probTrue_uniformPMF_card` and
+    performs the ENNReal-to-Real conversion. The denominator is
+    `Fintype.card α` cast to ℝ; the numerator is the filter
+    cardinality cast to ℝ.
+
+    For our R-09 application, this lets us express the per-step
+    advantage as a difference of two filter cardinalities scaled by
+    `1 / |G|^Q`. -/
+theorem probTrue_PMF_map_uniformPMF_toReal {α : Type*} [Fintype α] [Nonempty α]
+    [DecidableEq α] {β : Type*} (F : α → β) (D : β → Bool) :
+    (probTrue (PMF.map F (uniformPMF α)) D).toReal =
+      ((Finset.univ.filter (fun x : α => D (F x) = true)).card : ℝ)
+        / (Fintype.card α : ℝ) := by
+  classical
+  -- Push probTrue through PMF.map: probTrue (PMF.map F μ) D = probTrue μ (D ∘ F).
+  rw [probTrue_map]
+  -- Express probTrue (uniformPMF α) (D ∘ F) as filter-card ratio.
+  rw [probTrue_uniformPMF_card]
+  -- Convert (n / m : ℝ≥0∞).toReal = (n : ℝ) / (m : ℝ) under finiteness.
+  rw [ENNReal.toReal_div]
+  -- Both numerator and denominator are natural-cast ENNReals; their
+  -- `.toReal` simplifies to the natural cast (and the goal is `rfl`
+  -- after the simp).
+  rfl
 
 end Orbcrypt
