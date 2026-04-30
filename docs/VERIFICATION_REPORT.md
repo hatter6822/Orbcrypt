@@ -1277,6 +1277,45 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-04-30 (Workstream C audit pass — post-landing deep
+  audit)** — A subsequent deep audit of the Workstream-C landing
+  surfaced three substantive findings, all fixed in the same-day
+  audit-pass commit:
+  - **C2 set-e robustness.** The
+    `bin_sha256_snapshot_verify "${tc_dir}"; verify_status=$?`
+    pattern was fragile under `set -e`. Replaced with the
+    `|| verify_status=$?` pattern that's robust regardless of
+    caller context (the original pattern relied on the
+    `if fast_path_ready; then ... fi` invocation context to
+    suppress `set -e`).
+  - **C2 missing-entry strictness.** The verify function
+    silently `continue`d on marker entries not present, with a
+    `log_elapsed` warning suppressed in `--quiet` mode.
+    Strengthened to fail closed (exit 2) on missing-entry,
+    matching the design intent of "fail-fast on tamper".
+  - **C4 file/JSON validity checks.** The drift check
+    conflated "manifest missing" / "manifest malformed" /
+    "package missing from manifest" into a single error
+    message. Split into three explicit checks with distinct
+    remediation guidance.
+
+  **Plus a cosmetic cleanup.** Stale `.lake/build` artefacts
+  from the pre-rename `GAPEquivalence` state (`.olean`,
+  `.ilean.hash`, `.c.hash`, `.trace`, etc.) were lingering in
+  the build cache. Manually deleted.
+
+  **Verification.** All audit-pass fixes verified via 6 C2 unit
+  tests (incl. the new missing-entry-as-mismatch test), C2
+  set-e robustness test, C4 4-edge-case test, full
+  `lake build` (3,419 jobs, zero warnings, zero errors),
+  Phase-16 audit script (947 entries, exit 0, zero `sorryAx`,
+  zero non-trio axioms), and all 5 CI checks pass on the
+  current tree.
+
+  **Patch version.** `lakefile.lean` retains `0.2.1` — the
+  audit-pass fixes are bug-fix-grade improvements to existing
+  C2 and C4 code, not new public API.
+
 * **2026-04-30 (Audit 2026-04-29 — Workstream C optional v1.1+
   engineering enhancements, **promoted to pre-1.0** per project
   sponsor's request)** — `docs/VERIFICATION_REPORT.md` updated to

@@ -146,6 +146,22 @@ jobs:
         # is concerned only with this package's *own* declared pins.
         run: |
           set -e
+          # Audit-pass refinement (post-Workstream-C, 2026-04-30): explicit
+          # checks for "manifest file missing" and "manifest JSON malformed"
+          # are split out from the "package missing from manifest" case so
+          # the error message points the user at the actual remediation.
+          if [ ! -f lake-manifest.json ]; then
+            echo "ERROR: lake-manifest.json missing from workspace root"
+            echo "  (the C4 drift check requires it; run \`lake update\` to generate)"
+            exit 1
+          fi
+          # Validate JSON shape up front — `python3 -m json.tool` exits
+          # non-zero on malformed JSON.
+          if ! python3 -m json.tool lake-manifest.json > /dev/null 2>&1; then
+            echo "ERROR: lake-manifest.json is not valid JSON"
+            echo "  (re-generate with \`lake update\`)"
+            exit 1
+          fi
           # Extract every direct `require ... @ git "<rev>"` from lakefile.lean.
           # The format is one require-directive per line:
           #   `require "leanprover-community" / "mathlib" @ git "<40-hex>"`
@@ -167,8 +183,9 @@ jobs:
             lakefile_rev="${entry#* }"
             # Look up the package's manifest rev. Use python3 (always
             # present on ubuntu-latest CI runners) to avoid a jq
-            # dependency. Fall back to a grep+awk shape that works on
-            # the manifest's exact pretty-printed format.
+            # dependency. JSON validity has already been verified above,
+            # so any error at this point indicates a missing entry —
+            # not a parser failure.
             manifest_rev="$(python3 -c "
 import json, sys
 with open('lake-manifest.json') as f:
@@ -177,9 +194,10 @@ for p in m.get('packages', []):
     if p.get('name') == sys.argv[1]:
         print(p.get('rev', ''))
         break
-" "$name" 2>/dev/null || echo "")"
+" "$name" 2>&1 || echo "")"
             if [ -z "${manifest_rev}" ]; then
               echo "ERROR: lakefile.lean requires '${name}', but no entry in lake-manifest.json"
+              echo "  (run \`lake update ${name}\` to add it to the manifest)"
               fail=1
               continue
             fi

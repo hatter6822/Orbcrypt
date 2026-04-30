@@ -353,8 +353,23 @@ bin_sha256_snapshot_verify() {
   # Re-compute SHA-256 of every protected binary under the toolchain and
   # verify each against the recorded marker. Returns 0 iff every binary
   # matches its recorded snapshot. Returns 1 if the marker is missing
-  # (caller may decide to take a snapshot now), or 2 if any verification
-  # failed.
+  # entirely (caller may decide to take a snapshot now). Returns 2 if
+  # any individual binary verification failed OR if the marker is
+  # missing an entry for a TOOLCHAIN_PROTECTED_BINS member (the
+  # "missing-entry-as-mismatch" rule, audit-pass strengthening of C2).
+  #
+  # Audit-pass note (post-Workstream-C, 2026-04-30): the original
+  # "missing entry → continue" behaviour silently skipped verification
+  # of binaries whose marker line was deleted by an attacker. While
+  # full marker write access implies a stronger compromise (write
+  # access to the toolchain directory itself), the "missing-entry-as-
+  # mismatch" rule below closes a defense-in-depth gap for the
+  # marker-only attacker variant: removing a line no longer suffices
+  # to bypass detection. The legitimate "marker doesn't yet record a
+  # newly-added protected binary" case (e.g., we ever add `bin/leanc`
+  # to `TOOLCHAIN_PROTECTED_BINS` in a future revision) is handled by
+  # the obvious remediation — `rm -rf "${tc_dir}"` and re-run, which
+  # triggers a fresh snapshot.
   local tc_dir="$1"
   local marker="${tc_dir}/${TOOLCHAIN_MARKER_FILENAME}"
   if [ ! -f "${marker}" ]; then
@@ -363,13 +378,17 @@ bin_sha256_snapshot_verify() {
   local rel sha expected
   for rel in "${TOOLCHAIN_PROTECTED_BINS[@]}"; do
     if [ ! -f "${tc_dir}/${rel}" ]; then
-      log_elapsed "error: ${rel} missing under ${tc_dir}; integrity check failed" >&2
+      echo "error: ${rel} missing under ${tc_dir}; integrity check failed" >&2
       return 2
     fi
     expected="$(awk -v r="${rel}" '$2 == r {print $1; exit}' "${marker}")"
     if [ -z "${expected}" ]; then
-      log_elapsed "warning: ${rel} not recorded in ${marker}; integrity check incomplete"
-      continue
+      # No expected SHA recorded for this binary in the marker.
+      # Treat as mismatch (audit-pass strengthening of C2).
+      echo "error: ${rel} not recorded in ${marker}; marker may have been tampered" >&2
+      echo "  toolchain at ${tc_dir} integrity cannot be confirmed" >&2
+      echo "  delete ${tc_dir} and re-run this script to recover from a verified archive" >&2
+      return 2
     fi
     sha="$(compute_sha256 "${tc_dir}/${rel}")"
     if [ "${sha}" != "${expected}" ]; then
@@ -414,9 +433,21 @@ fast_path_ready() {
   #     `rm -rf "${tc_dir}"` and re-run, which triggers a fresh archive
   #     download with `verify_toolchain_sha256` re-verifying the
   #     archive's SHA against the per-arch pin.
-  local verify_status
-  bin_sha256_snapshot_verify "${tc_dir}"
-  verify_status=$?
+  # Audit-pass robustness fix (post-Workstream-C, 2026-04-30): use
+  # `|| verify_status=$?` rather than the bare `cmd; verify_status=$?`
+  # pattern. The bare form is fragile — `set -e` (set at the script
+  # top) DOES trigger on a function returning non-zero unless the
+  # function call appears in a context where `set -e` is suppressed
+  # (`if`, `while`, `&&`, `||`, `!`). Today `fast_path_ready` is
+  # invoked via `if fast_path_ready; then ... fi`, so the suppression
+  # holds — but a future refactor that calls `fast_path_ready`
+  # outside such a context would silently exit on the first
+  # non-zero return from `bin_sha256_snapshot_verify` (the "marker
+  # missing" case) BEFORE the `verify_status=$?` line could capture
+  # the exit code. The `||`-bound capture below is robust regardless
+  # of caller context.
+  local verify_status=0
+  bin_sha256_snapshot_verify "${tc_dir}" || verify_status=$?
   case "${verify_status}" in
     0)  # Marker present and verifies. Proceed.
         ;;

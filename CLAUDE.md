@@ -7427,6 +7427,81 @@ The cryptographic-correctness posture (zero `sorry`, zero
 custom axioms, all 947 `#print axioms` results on the
 standard Lean trio) is preserved.
 
+**Audit pass (2026-04-30, post-Workstream-C landing).** A deep
+audit of the Workstream-C changes surfaced three substantive
+findings, all fixed in the audit-pass commit on the same branch:
+
+1. **C2 fragile `set -e` interaction.** The original
+   `bin_sha256_snapshot_verify "${tc_dir}"; verify_status=$?`
+   pattern in `fast_path_ready` is fragile: `set -e` (set at
+   script top) DOES trigger on a function returning non-zero
+   unless the function call is inside a context that suppresses
+   `set -e` (`if`, `while`, `&&`, `||`, `!`). Today
+   `fast_path_ready` is invoked via `if fast_path_ready; then ...
+   fi`, so the suppression holds — but a future refactor that
+   calls `fast_path_ready` outside such a context would silently
+   exit on the first non-zero return from
+   `bin_sha256_snapshot_verify` (the "marker missing" case)
+   BEFORE the `verify_status=$?` line could capture the exit
+   code. **Fix.** Replace with `bin_sha256_snapshot_verify
+   "${tc_dir}" || verify_status=$?` — the `||`-bound capture is
+   robust regardless of caller context.
+
+2. **C2 silent skip on missing marker entry.** The original
+   verify function silently `continue`d on entries not recorded
+   in the marker (with a `log_elapsed` warning suppressed in
+   `--quiet` mode). An attacker with marker write access (a
+   strictly weaker capability than full toolchain write access,
+   but still worth defending against in defense-in-depth) could
+   delete a line from the marker to skip verification of that
+   binary. **Fix.** Treat any missing entry as a mismatch (return
+   exit 2) — fail closed. Documented in the function docstring
+   as the audit-pass strengthening of C2's missing-entry-as-
+   mismatch rule.
+
+3. **C4 misleading error on missing/malformed manifest.** The
+   drift check captured `python3` errors via `2>/dev/null || echo
+   ""`, conflating "manifest file missing" and "manifest JSON
+   malformed" with "package missing from manifest". All three
+   surfaced the same generic "no entry in lake-manifest.json"
+   error, leading the user to investigate the wrong thing.
+   **Fix.** Split out explicit checks for file existence
+   (`[ ! -f lake-manifest.json ]`) and JSON validity (`python3 -m
+   json.tool lake-manifest.json`) up front, with distinct error
+   messages pointing the user at the actual remediation
+   (`lake update` for missing/malformed; `lake update <name>` for
+   missing-entry; `lake update <name>` again for drift).
+
+**Plus one cosmetic cleanup:**
+- Stale `.lake/build/lib/lean/Orbcrypt/Construction/GAPEquivalence.olean`
+  (and friends — `.c.hash`, `.ilean.hash`, `.trace`, etc.) from
+  the pre-rename state were lingering in the build cache. Lake
+  doesn't auto-clean orphaned build artefacts when source files
+  are renamed. Manually deleted in the audit pass; subsequent
+  `lake build` invocations recover the canonical 76-source +
+  1-root = 77 .olean state.
+
+**Verification.** All audit-pass fixes verified via:
+- 6 C2 unit tests (snapshot create, idempotency, verification,
+  tamper detection, missing marker, **NEW: missing-entry-as-
+  mismatch**, missing binary).
+- C2 set-e robustness test (function called WITHOUT
+  if-guard — confirms `||` pattern is robust).
+- C4 4 edge-case tests (missing manifest, malformed manifest,
+  matching rev, drift detected).
+- Full lake build (3,419 jobs, zero warnings, zero errors).
+- Phase-16 audit script (947 entries, exit 0, zero `sorryAx`,
+  zero non-trio axioms).
+- All 5 CI checks (build, sorry-strip, axiom-check, drift-check,
+  Phase-16 audit) pass on the current tree.
+
+**Patch version.** `lakefile.lean` retains `0.2.1` — the audit-
+pass fixes are bug-fix-grade improvements to existing C2 and
+C4 code, not new public API. The 76-module total, the
+zero-sorry / zero-custom-axiom posture, and the standard-trio-
+only axiom-dependency posture are all preserved.
+
+
 
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring

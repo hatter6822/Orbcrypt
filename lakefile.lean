@@ -19,8 +19,11 @@ package "orbcrypt" where
 
 -- Pinned to Mathlib4 commit fa6418a8 (matches lake-manifest.json)
 -- Compatible with lean4:v4.30.0-rc1 (see lean-toolchain)
--- Last verified: 2026-04-30 (Workstream C of audit 2026-04-29:
--- explicit globs + defense-in-depth checks + GAP/Lean equivalence)
+-- Last verified: 2026-04-30 (Workstream C of audit 2026-04-29
+-- + post-landing audit-pass fixes:
+-- explicit globs + defense-in-depth checks + GAP/Lean equivalence
+-- + C2 set-e robustness + C2 missing-entry-as-mismatch + C4 explicit
+-- file/JSON-validity checks)
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md
