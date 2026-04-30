@@ -1120,8 +1120,13 @@ The formalization's public release posture (detailed):
      `(g₀, g₁)` pair); the informal "complete break under a
      separating G-invariant" shorthand is allowed but must be
      accompanied by the formal conclusion when the citation is
-     release-facing. Quantitative probabilistic lower bounds on the
-     cross-orbit advantage are research-scope R-01.
+     release-facing. The probabilistic-IND-1-CPA strengthening is
+     `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream
+     R-01, headline-table row #35) — under a separating G-invariant
+     the IND-1-CPA advantage is *exactly* `1`, attaining the
+     universal `≤ 1` upper bound from `indCPAAdvantage_le_one`. The
+     plan-level R-01 research milestone is now discharged
+     (2026-04-30).
    * `carterWegmanHash_isUniversal` — the standalone `(1/p)`-universal
      hash theorem over `ZMod p` with `[Fact (Nat.Prime p)]` (post
      Workstream L2 upgrade). This is the Carter–Wegman 1977 property

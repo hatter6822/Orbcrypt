@@ -2232,8 +2232,7 @@ discharge — R-01 is in-place in an existing module) with zero
 warnings, zero errors. Phase-16 audit script: +3 R-01
 declarations exercised on top of the previous +36 from R-09/R-12/
 R-13; zero `sorryAx`; all on standard-trio axioms. Module count
-unchanged at 77. Public-declaration count rises from ≈ 394 to
-≈ 397. `lakefile.lean`: 0.2.2 → 0.2.3.
+unchanged at 77. `lakefile.lean`: 0.2.2 → 0.2.3.
 
 * **R-07 — discharged 2026-04-30** (per
   `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07). Closed by
@@ -2290,11 +2289,17 @@ unchanged at 77. Public-declaration count rises from ≈ 394 to
 
 **Cumulative posture (post-R-07):** `lake build` succeeds across
 3,420 jobs (unchanged — R-07 is in-place in an existing module)
-with zero warnings, zero errors. Phase-16 audit script: +6 R-07
-declarations exercised on top of the previous additions; zero
-`sorryAx`; all on standard-trio axioms. Module count unchanged at
-77. Public-declaration count rises from ≈ 397 to ≈ 403.
-`lakefile.lean`: 0.2.3 → 0.2.4.
+with zero warnings, zero errors. Phase-16 audit script exercises
+992 declarations total; the +6 R-07 additions are
+`combinerOrbitDist_apply_true_eq_probTrue`,
+`CrossOrbitNonDegenerateCombiner`,
+`probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
+`probTrue_combinerDistinguisher_target_eq_zero`,
+`combinerDistinguisherAdvantage_ge_inv_card`, and
+`no_concreteOIA_below_inv_card_of_combiner`; zero `sorryAx`; all
+new declarations on standard-trio axioms (the `Cross
+OrbitNonDegenerateCombiner` structure is axiom-free). Module
+count unchanged at 77. `lakefile.lean`: 0.2.3 → 0.2.4.
 
 The remaining R-15-residual-* items continue to track at the
 estimates above; they require multi-thousand LOC of dedicated

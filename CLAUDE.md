@@ -556,7 +556,7 @@ rationale):
 | # | Name | Statement | File | Status | Significance |
 |---|------|-----------|------|--------|--------------|
 | 1 | **Correctness** | `decrypt(encrypt(g, m)) = some m` for all messages m and group elements g | `Theorems/Correctness.lean` | Standalone | The scheme faithfully recovers encrypted messages |
-| 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (i.e. a specific `(g₀, g₁)` pair on which the adversary's two guesses disagree) | `Theorems/InvariantAttack.lean` | Standalone | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md. The theorem's **formal conclusion** is `∃ A : Adversary X M, hasAdvantage scheme A` — existence of one distinguishing adversary — **not** a quantitative "advantage = 1/2" claim in either the two-distribution or centred conventions (see `Probability/Advantage.lean` and the `invariant_attack` docstring for the three-convention catalogue: under a separating G-invariant, deterministic advantage = 1, two-distribution advantage = 1, centred advantage = 1/2). Informal shorthand: "complete break under a separating G-invariant". A quantitative probabilistic lower-bound analysis would produce a cross-orbit advantage ≥ a bound determined by the invariant's separation behaviour; that analysis is research-scope R-01 (audit 2026-04-23 finding V1-4 / D13) |
+| 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (i.e. a specific `(g₀, g₁)` pair on which the adversary's two guesses disagree) | `Theorems/InvariantAttack.lean` | Standalone | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md. The theorem's **formal conclusion** is `∃ A : Adversary X M, hasAdvantage scheme A` — existence of one distinguishing adversary — **not** a quantitative "advantage = 1/2" claim in either the two-distribution or centred conventions (see `Probability/Advantage.lean` and the `invariant_attack` docstring for the three-convention catalogue: under a separating G-invariant, deterministic advantage = 1, two-distribution advantage = 1, centred advantage = 1/2). Informal shorthand: "complete break under a separating G-invariant". The quantitative probabilistic strengthening — IND-1-CPA advantage *exactly* `1` for the invariant-attack adversary — is delivered by `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream R-01, discharged 2026-04-30; see `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) |
 | 3 | **Conditional Security** | OIA implies IND-1-CPA | `Theorems/OIAImpliesCPA.lean` | Scaffolding | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks. Deterministic OIA is `False` on every non-trivial scheme, so this theorem is vacuously true on production instances — cite the probabilistic counterpart (#6) as the real security statement |
 | 4 | **KEM Correctness** | `decaps(encaps(g).1) = encaps(g).2` for all group elements g | `KEM/Correctness.lean` | Standalone | The KEM correctly recovers the shared secret (proof by `rfl`) |
 | 5 | **KEM Security** | KEMOIA implies KEM security | `KEM/Security.lean` | Scaffolding | If the KEM-OIA holds, no adversary can distinguish two encapsulations. Deterministic KEMOIA is vacuous on every non-trivial KEM; cite the probabilistic counterpart (the `concrete_kemoia_*_implies_secure` family) for quantitative KEM security |
@@ -7828,9 +7828,10 @@ completed (2026-04-30):
   discipline. The 77-module total, the zero-sorry / zero-custom-
   axiom posture, and the standard-trio-only axiom-dependency
   posture are all preserved. Public declaration count rises by
-  three (947 → 950, accounting only for the in-scope additions).
-  Audit-script `#print axioms` entries rise from 947 to 950 (three
-  new lines).
+  three. Audit-script `#print axioms` entries rise by three (the
+  three R-01 declarations: `probTrue_orbitDist_invariant_eq_one`,
+  `probTrue_orbitDist_invariant_eq_zero`,
+  `indCPAAdvantage_invariantAttackAdversary_eq_one`).
 
   **Remaining R-01 follow-ups: none.** R-01 is fully discharged in
   this PR. The remaining audit-2026-04-29 § 8.1 research-scope items
@@ -7990,9 +7991,17 @@ completed (2026-04-30):
   version-bump discipline. The 77-module total, the zero-sorry /
   zero-custom-axiom posture, and the standard-trio-only axiom-
   dependency posture are all preserved. Public declaration count
-  rises by six (953 → 959, accounting only for the in-scope
-  additions). Audit-script `#print axioms` entries rise by six
-  (953 → 959).
+  rises by six. Audit-script `#print axioms` entries rise by six
+  (the six R-07 declarations:
+  `combinerOrbitDist_apply_true_eq_probTrue`,
+  `CrossOrbitNonDegenerateCombiner`,
+  `probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
+  `probTrue_combinerDistinguisher_target_eq_zero`,
+  `combinerDistinguisherAdvantage_ge_inv_card`,
+  `no_concreteOIA_below_inv_card_of_combiner`). The audit-script
+  total verified post-R-07: 992 `#print axioms` entries, all
+  standard-trio-only or axiom-free; zero `sorryAx`; zero non-
+  standard axioms.
 
   **Remaining R-07 follow-ups: none.** R-07 is fully discharged in
   this PR. The remaining audit-2026-04-29 § 8.1 research-scope items
