@@ -109,19 +109,20 @@ done; echo "PASS: zero sorry"
 source ~/.elan/env && lake env lean scripts/audit_phase_16.lean
 ```
 
-Step 5 prints `#print axioms` for 928 declarations — every public `def`,
-`theorem`, `structure`, `class`, `instance`, and `abbrev` in
-`Orbcrypt/**/*.lean`, including all post-2026-04-21 R-CE / R-TI
-Karp-reduction additions, the Manin tensor-stabilizer chain, and
-the PathOnlyAlgebra Path-B factoring. CI fails if any line
-mentions `sorryAx` or any axiom outside the standard Lean trio
-(`propext`, `Classical.choice`, `Quot.sound`). The CI parser
-first de-wraps multi-line axiom lists (Lean wraps long
-`[propext, Classical.choice, Quot.sound]` outputs across three
-lines) so a custom axiom cannot hide on a continuation line.
-The exact running count tracks `CLAUDE.md`'s most recent
-per-workstream changelog entry; "928" is the 2026-04-29
-Workstream-A2 anchor.
+Step 5 prints `#print axioms` for **947** declarations (post-Workstream-C
+of audit 2026-04-29; up from 928 at the Workstream-A2 anchor) — every
+public `def`, `theorem`, `structure`, `class`, `instance`, and `abbrev`
+in `Orbcrypt/**/*.lean`, including all post-2026-04-21 R-CE / R-TI
+Karp-reduction additions, the Manin tensor-stabilizer chain, the
+PathOnlyAlgebra Path-B factoring, and the Workstream-C5
+`BitstringSupport.lean` GAP / Lean canonical-image-equivalence module.
+CI fails if any line mentions `sorryAx` or any axiom outside the
+standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`). The
+CI parser first de-wraps multi-line axiom lists (Lean wraps long
+`[propext, Classical.choice, Quot.sound]` outputs across three lines)
+so a custom axiom cannot hide on a continuation line. The exact
+running count tracks `CLAUDE.md`'s most recent per-workstream changelog
+entry.
 
 ---
 
@@ -491,18 +492,20 @@ discharged by Workstream E (E1, E5, E8) as documented above.
 
 ## Axiom audit (work unit 16.5)
 
-**Method.** `scripts/audit_phase_16.lean` runs `#print axioms` on 928
-declarations — every public `def`, `theorem`, `structure`, `class`,
-`instance`, and `abbrev` in `Orbcrypt/**/*.lean`, including all
-Phase 2–14 foundations, the Workstream A/B/C/D/E follow-ups, and
-the post-2026-04-21 additions (Workstream G/H/J/K/L/M/N of the
-2026-04-21 audit; Workstream A/B/C/D/E/F/G of the 2026-04-23
-audit; the R-CE / R-TI Karp-reduction subtree expansion; the R-TI
-Phase 1 / 2 / 3 partial-discharge cluster). CI first de-wraps
-multi-line axiom lists (Lean wraps long
-`[propext, Classical.choice, Quot.sound]` outputs across three lines,
-so a naive line-oriented scan would miss a custom axiom on a
-continuation line), then parses each depends-on line and rejects:
+**Method.** `scripts/audit_phase_16.lean` runs `#print axioms` on
+**947** declarations (post-Workstream-C of audit 2026-04-29; up from
+928 at the Workstream-A2 anchor) — every public `def`, `theorem`,
+`structure`, `class`, `instance`, and `abbrev` in
+`Orbcrypt/**/*.lean`, including all Phase 2–14 foundations, the
+Workstream A/B/C/D/E follow-ups, and the post-2026-04-21 additions
+(Workstream G/H/J/K/L/M/N of the 2026-04-21 audit; Workstream A/B/C/D/E/F/G
+of the 2026-04-23 audit; the R-CE / R-TI Karp-reduction subtree
+expansion; the R-TI Phase 1 / 2 / 3 partial-discharge cluster; and the
+Workstream-C5 `BitstringSupport.lean` GAP / Lean canonical-image-
+equivalence module). CI first de-wraps multi-line axiom lists (Lean
+wraps long `[propext, Classical.choice, Quot.sound]` outputs across
+three lines, so a naive line-oriented scan would miss a custom axiom
+on a continuation line), then parses each depends-on line and rejects:
 
 * any axiom outside the standard Lean trio
   (`propext`, `Classical.choice`, `Quot.sound`);
@@ -512,7 +515,7 @@ continuation line), then parses each depends-on line and rejects:
 **Result.**
 
 ```
-928 declarations exercised (every public declaration in Orbcrypt/**/*.lean)
+947 declarations exercised (post-Workstream-C; every public declaration in Orbcrypt/**/*.lean)
    0 depend on `sorryAx`
    0 depend on any non-standard axiom
  every dependency lies in the standard Lean trio
@@ -524,8 +527,10 @@ The exact running totals (axiom-free count, standard-trio count,
 running declaration count) track `CLAUDE.md`'s most recent
 per-workstream changelog entry — that document is updated
 continuously per the project's "Documentation rules" guidance and
-is the canonical source for ephemeral metrics. "928" is the
-2026-04-29 Workstream-A2 anchor.
+is the canonical source for ephemeral metrics. "947" is the
+post-Workstream-C anchor; the prior "928" was the Workstream-A2
+anchor (Workstream-C5 added 19 new entries for the
+`BitstringSupport.lean` module).
 
 The full `#print axioms` per-declaration breakdown is reproduced in
 `Orbcrypt.lean`'s axiom transparency report (§"Verification" near the
@@ -542,10 +547,11 @@ end of the file).
    `structure`, `class`, `instance`, or `abbrev` is preceded by a
    `/-- … -/` documentation comment.
 
-**Result.** Every one of the 75 modules under `Orbcrypt/` opens
-with a module-header comment block.  Of those, 74 use the
-project-standard `/-! … -/` markdown form (per CLAUDE.md's "Every
-`.lean` file begins with a `/-! … -/` module docstring"
+**Result.** Every one of the **76** modules under `Orbcrypt/` opens
+with a module-header comment block (post-Workstream-C5 the count is
+76, up from 75 — `BitstringSupport.lean` added).  Of those, 75 use
+the project-standard `/-! … -/` markdown form (per CLAUDE.md's
+"Every `.lean` file begins with a `/-! … -/` module docstring"
 convention); the remaining module —
 `Orbcrypt/Hardness/GrochowQiao/WedderburnMalcev.lean` — currently
 opens with a `/- … -/` regular block comment rather than the
@@ -576,22 +582,22 @@ work, and the R-CE / R-TI Karp-reduction subtree.
 
 ## Root-import / dependency-graph audit (work unit 16.7)
 
-`Orbcrypt.lean` imports all 75 modules under `Orbcrypt/`, which is
-the complete public-API graph (post-Workstream-B1 of the
-2026-04-29 audit plan; pre-B1 the source tree contained 76
-`.lean` files, with the un-imported transient `_ApiSurvey.lean`
-intentionally excluded from the graph and deleted by B1 after
-the live `PathAlgebra.lean` / `StructureTensor.lean` modules
-superseded its regression-sentinel purpose). Building `lake
-build Orbcrypt` exercises the complete graph (3,418 jobs
-including Mathlib dependencies as of the 2026-04-29 Workstream-B
-anchor, zero errors, zero warnings; the deleted `_ApiSurvey.lean`
-shared most of its dependency graph with the live R-TI modules
-and Lake's job count is dominated by Mathlib transitive build
-artefacts, so the 76 → 75 source-file drop did not produce a
-corresponding 3,418 → 3,417 job-count drop. The exact running
-count shifts with each module addition and tracks `CLAUDE.md`'s
-most recent per-workstream changelog entry).
+`Orbcrypt.lean` imports all **76** modules under `Orbcrypt/`, which
+is the complete public-API graph (post-Workstream-C5 of the
+2026-04-29 audit plan; the C5 landing added
+`Orbcrypt/Construction/BitstringSupport.lean`. Pre-Workstream-B1 the
+source tree contained 76 `.lean` files including the un-imported
+transient `_ApiSurvey.lean`; B1 deleted that transient after the
+live `PathAlgebra.lean` / `StructureTensor.lean` modules superseded
+its regression-sentinel purpose, dropping the count to 75; C5 then
+added `BitstringSupport.lean`, bringing the count back to 76 — but
+this 76th module is fully imported, unlike the un-imported transient
+B1 deleted). Building `lake build Orbcrypt` exercises the complete
+graph (**3,419** jobs as of post-Workstream-C, exactly +1 build node
+vs the post-Workstream-B 3,418 anchor for the new C5 module's build
+node, including Mathlib dependencies, zero errors, zero warnings.
+The exact running count shifts with each module addition and tracks
+`CLAUDE.md`'s most recent per-workstream changelog entry).
 
 The ASCII dependency graph in `Orbcrypt.lean`'s docstring already
 covers every Phase 7–13 module. Phase 16 added a new "Phase 16
@@ -678,14 +684,15 @@ included in the global totals row but not broken out here to keep the
 table compact; see the per-phase verification matrix above for the
 detailed counts per file.)
 
-The 928 declarations exercised by `scripts/audit_phase_16.lean`
-(2026-04-29 Workstream-A2 anchor; the exact running count tracks
-`CLAUDE.md`'s most recent per-workstream changelog entry) cover
-every public `def`, `theorem`, `structure`, `class`, `instance`,
-and `abbrev` under `Orbcrypt/**/*.lean`. This includes every
-headline result a downstream consumer would care about (every
-phase, every workstream) plus every supporting lemma, simp rule,
-typeclass instance, and namespace-qualified field accessor; the
+The **947** declarations exercised by `scripts/audit_phase_16.lean`
+(post-Workstream-C of audit 2026-04-29; up from the 928
+Workstream-A2 anchor — the exact running count tracks `CLAUDE.md`'s
+most recent per-workstream changelog entry) cover every public
+`def`, `theorem`, `structure`, `class`, `instance`, and `abbrev`
+under `Orbcrypt/**/*.lean`. This includes every headline result a
+downstream consumer would care about (every phase, every
+workstream) plus every supporting lemma, simp rule, typeclass
+instance, and namespace-qualified field accessor; the
 post-2026-04-21 R-CE / R-TI Karp-reduction subtree expansion, the
 Manin tensor-stabilizer chain, the PathOnlyAlgebra Path-B
 factoring, and the Workstream-A documentation parity additions
@@ -1276,6 +1283,51 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-30 (Workstream C audit pass #2 — fresh-eyes deep
+  re-audit)** — A second deep audit of the Workstream-C landing
+  surfaced four additional findings. All fixed in the same-day
+  audit-2 commit:
+  - **CRITICAL: malformed CI workflow YAML.** The C4 drift-check
+    step's multi-line `python3 -c "..."` had python lines at
+    column 0, dedented below the YAML literal-block indentation.
+    `yaml.safe_load` rejected the file with `ScannerError:
+    while scanning a simple key`. **The CI workflow would have
+    failed to parse on the first push.** Fixed by compressing
+    the python invocation into a single-line semicolon-separated
+    form.
+  - **C2 concurrency bug.** Multiple concurrent invocations of
+    `bin_sha256_snapshot_create` would race on the fixed
+    `${marker}.tmp` filename, potentially producing a partial
+    marker (which the post-audit-1 missing-entry-as-mismatch
+    rule would then flag, locking the user out). Fixed with
+    `mktemp` to allocate per-process scratch files.
+  - **Audit-plan reclassification consistency.** Eleven separate
+    references in the audit plan still described Workstream C as
+    "deferred to v1.1+". All updated with "originally deferred →
+    landed pre-1.0 2026-04-30" framing. § 7.4 expanded with
+    per-work-unit acceptance criteria; § 10.3 boxes ticked.
+  - **Documentation parity gaps in VERIFICATION_REPORT.md and
+    README.md.** Five current-state references in
+    VERIFICATION_REPORT.md still cited 928 / 75 modules /
+    3,418 jobs; updated to 947 / 76 modules / 3,419 jobs. README
+    metrics row updated to reflect package version 0.2.1 and the
+    new lake-manifest drift CI step.
+
+  **Verification.** All audit-2 fixes verified via:
+  - YAML parse check (`python3 -c "import yaml; yaml.safe_load(...)"`)
+    succeeds.
+  - Concurrency test: 10 concurrent invocations produce exactly 1
+    complete marker, 0 leftover `.tmp` files.
+  - Shellcheck on `setup_lean_env.sh`: zero issues at every
+    severity level.
+  - All 5 CI checks pass locally.
+  - Phase-16 audit script: exit 0, 947 entries, zero `sorryAx`,
+    zero non-trio axioms.
+
+  **Patch version.** `lakefile.lean` retains `0.2.1`. The
+  audit-2 fixes are bug-fix-grade improvements; no new public
+  API.
 
 * **2026-04-30 (Workstream C audit pass — post-landing deep
   audit)** — A subsequent deep audit of the Workstream-C landing

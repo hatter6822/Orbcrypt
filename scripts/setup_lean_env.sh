@@ -328,23 +328,54 @@ bin_sha256_snapshot_create() {
   # Compute SHA-256 of every protected binary under a freshly-installed
   # toolchain and write the result to the marker. Idempotent — if the
   # marker already exists, this function leaves it alone.
+  #
+  # Audit-pass concurrency safety (post-Workstream-C, 2026-04-30): use
+  # `mktemp` to allocate a per-process scratch file rather than a
+  # fixed `${marker}.tmp` name. Without this, concurrent invocations
+  # would race on the same `.tmp` path: process A's `: > .tmp`
+  # truncate could blow away the partial content of process B's
+  # in-progress writes, leading to a marker file containing fewer
+  # than `${#TOOLCHAIN_PROTECTED_BINS[@]}` lines (= silent corruption,
+  # since the verify function would then trip the missing-entry-as-
+  # mismatch rule on the next invocation). With `mktemp` each process
+  # has its own scratch file; the final atomic `mv` resolves the race
+  # by last-writer-wins semantics, but every contender's `mv` produces
+  # a complete marker.
   local tc_dir="$1"
   local marker="${tc_dir}/${TOOLCHAIN_MARKER_FILENAME}"
   if [ -f "${marker}" ]; then
     return 0
   fi
-  local rel sha
-  : > "${marker}.tmp"
+  local rel sha tmp
+  # Allocate a per-process temp file inside the toolchain dir (so the
+  # final `mv` is atomic on the same filesystem; cross-fs `mv` would
+  # degrade to copy+delete and lose atomicity).
+  #
+  # Permission note: mktemp creates the temp file with 0600 by default
+  # (more restrictive than the 0644 umask default). After the `mv` the
+  # marker inherits 0600 — readable only by the user who created it.
+  # This is appropriate for a per-user toolchain marker; if a shared-
+  # toolchain scenario arises, the consumer can `chmod 0644` the
+  # marker after first creation.
+  tmp="$(mktemp "${marker}.XXXXXX.tmp")" || {
+    log_elapsed "warning: mktemp failed for ${marker}; skipping snapshot"
+    return 1
+  }
   for rel in "${TOOLCHAIN_PROTECTED_BINS[@]}"; do
     if [ ! -f "${tc_dir}/${rel}" ]; then
       log_elapsed "warning: ${rel} missing under ${tc_dir}; skipping snapshot"
-      rm -f "${marker}.tmp"
+      rm -f "${tmp}"
       return 1
     fi
     sha="$(compute_sha256 "${tc_dir}/${rel}")"
-    printf '%s  %s\n' "${sha}" "${rel}" >> "${marker}.tmp"
+    printf '%s  %s\n' "${sha}" "${rel}" >> "${tmp}"
   done
-  mv "${marker}.tmp" "${marker}"
+  # Atomic rename: any concurrent invocations all rename their own
+  # scratch files; whichever wins the last-writer race produces the
+  # final marker. All other scratch files become marker overwrites
+  # (each is itself a complete snapshot, so the final state is always
+  # a complete marker — no partial-content possible).
+  mv "${tmp}" "${marker}"
   log_elapsed "toolchain binary snapshot recorded (${marker})"
   return 0
 }

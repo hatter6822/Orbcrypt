@@ -19,10 +19,12 @@ is clean** — zero `sorry`, zero custom axioms, every `#print axioms`
 result on the standard Lean trio (`propext`, `Classical.choice`,
 `Quot.sound`). The findings register (§ 3) decomposes the work into
 **four letter-coded workstreams** (**A** release-blocking; **B**
-recommended polish; **C** deferred v1.1+ engineering; **D** research-
-scope catalogue). Letter codes are used as document identifiers only
-per `CLAUDE.md`'s naming discipline — they **never** appear in Lean
-declaration names.
+recommended polish; **C** [originally deferred v1.1+ engineering;
+promoted to pre-1.0 on 2026-04-30 per project sponsor's request and
+landed on `claude/audit-codebase-workstream-5DR7B` — see § 7 and
+Appendix B for the closure record]; **D** research-scope catalogue).
+Letter codes are used as document identifiers only per `CLAUDE.md`'s
+naming discipline — they **never** appear in Lean declaration names.
 
 **Branch.** Author this plan on the existing development branch
 (`claude/audit-workstream-planning-HsW8k` per the session brief) and
@@ -150,8 +152,11 @@ release narrative is honest: every prose surface that describes Lean
 content (`PetrankRoth.lean` module docstring, `VERIFICATION_REPORT.md`
 headline numbers, `Orbcrypt.lean` Phase 16 snapshot, `lakefile.lean`
 version field) accurately reflects what the code delivers. Workstream
-**B** is strongly recommended polish; **C** and **D** defer to v1.1+ /
-v2.0.
+**B** is strongly recommended polish. Workstream **C** was originally
+deferred to v1.1+ but was **promoted to pre-1.0** on 2026-04-30 per the
+project sponsor's request and has landed; see § 7 below.
+Workstream **D** remains deferred to v1.1+ / v2.0 as a research-scope
+catalogue.
 
 ## 1. Finding taxonomy and validation log
 
@@ -183,7 +188,7 @@ The 2026-04-29 audit follows a CVSS-style severity classification
 | HIGH | 3 | G-02, L-04, A-07/J-02 | Workstream **A** (pre-release) |
 | MEDIUM | 1 | A-02 / L-03a | Workstream **A** (pre-release) |
 | LOW | 4 | A-01/H-03a, A-06, C-13b, L-01 | Workstream **B** (recommended) |
-| INFO | 8 | A-03, A-04, A-05, A-08, B-03a, B-03b, C-03a, C-13a, D-02a, F-03a | Workstream **C** (deferred) |
+| INFO | 8 | A-03, A-04, A-05, A-08, B-03a, B-03b, C-03a, C-13a, D-02a, F-03a | Workstream **C** (originally deferred; landed pre-1.0 on 2026-04-30) |
 
 **Note on INFO count.** The audit's M-02 severity summary lists 8
 INFO findings, but the M-01 findings table enumerates 10 INFO-class
@@ -267,16 +272,16 @@ a single underlying defect; the plan treats them as one work unit.
 | **A-06** | LOW | § A | **B** | B2 | recommended |
 | **L-01** | LOW | § L | **B** | B3 | recommended |
 | **C-13b** | LOW | § C | **B** | B4 | recommended |
-| **A-03** | INFO | § A | **C** | C1 | defer (v1.1+) |
-| **A-04** | INFO | § A | **C** | C2 | defer (v1.1+) |
-| **A-05** | INFO | § A | **C** | C3 | defer (v1.1+) |
-| **A-08** | INFO | § A | **C** | C4 | defer (v1.1+) |
-| **D-02a** | INFO | § D | **C** | C5 | defer (v1.1+) |
-| **B-03a** | INFO | § B | **C** | C6 (docstring polish) | defer |
-| **B-03b** | INFO | § B | **C** | C6 (docstring polish) | defer |
-| **C-03a** | INFO | § C | **C** | C6 (docstring polish) | defer |
-| **C-13a** | INFO | § C | **C** | C6 (docstring polish) | defer |
-| **F-03a** | INFO | § F | **C** | C6 (docstring polish) | defer |
+| **A-03** | INFO | § A | **C** | C1 | closed (pre-1.0, 2026-04-30) |
+| **A-04** | INFO | § A | **C** | C2 | closed (pre-1.0, 2026-04-30) |
+| **A-05** | INFO | § A | **C** | C3 | closed (pre-1.0, 2026-04-30) |
+| **A-08** | INFO | § A | **C** | C4 | closed (pre-1.0, 2026-04-30) |
+| **D-02a** | INFO | § D | **C** | C5 | closed (pre-1.0, 2026-04-30) |
+| **B-03a** | INFO | § B | **C** | C6 (docstring polish) | no-action (verified disclosed) |
+| **B-03b** | INFO | § B | **C** | C6 (docstring polish) | no-action (verified disclosed) |
+| **C-03a** | INFO | § C | **C** | C6 (docstring polish) | no-action (verified disclosed) |
+| **C-13a** | INFO | § C | **C** | C6 (docstring polish) | no-action (verified disclosed) |
+| **F-03a** | INFO | § F | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **R-09 / R-12 / R-13 / R-15-residual-CE-reverse / R-15-residual-TI-reverse / R-15-residual-TI-forward-matrix** | research | § N-04 | **D** | n/a (catalogue) | v1.1+ / v2.0 |
 
 Note that **B-03a, B-03b, C-03a, C-13a, F-03a** are all "no-action"
@@ -335,19 +340,24 @@ or after **A**.
        comment) ──────────────┘
 
         ┌─────────────────────────────────────────────────┐
-        │   ~~~ DEFERRED (v1.1+ / v2.0) ~~~               │
+        │   ~~~ LANDED PRE-1.0 (originally deferred) ~~~  │
+        │       Promoted 2026-04-30 per sponsor request   │
         └─────────────────────────────────────────────────┘
 
    C1 (lakefile globs)  ────┐
    C2 (setup_lean_env.sh
-       checksums) ──────────┤
+       SHA-256 snapshot) ───┤
    C3 (CI sorry-strip
-       nested-comment) ─────┼─►  v1.1+ engineering
+       nested-comment) ─────┼─►  pre-1.0 (landed 2026-04-30)
    C4 (CI lake-manifest
        drift) ──────────────┤
-   C5 (GAP/Lean equiv
-       theorem) ────────────┤
+   C5 (BitstringSupport
+       module) ─────────────┤
    C6 (INFO docstrings) ────┘
+
+        ┌─────────────────────────────────────────────────┐
+        │   ~~~ DEFERRED (v1.1+ / v2.0) ~~~               │
+        └─────────────────────────────────────────────────┘
 
    D — research catalogue ──►  v1.1+ / v2.0 roadmap
 ```
@@ -379,8 +389,8 @@ branches. § 11 enumerates the full implementation-branch list.
 (where **K** depended on **A** and **I** for stable rename targets),
 this plan's workstreams have no semantic coupling. Workstream **A**
 edits prose; Workstream **B** removes / relocates files; Workstream
-**C** is deferred. There is no cross-workstream PR ordering
-constraint.
+**C** [originally deferred; promoted to pre-1.0 on 2026-04-30 and
+landed]. There is no cross-workstream PR ordering constraint.
 
 ## 5. Workstream A — Release-blocking documentation parity
 
@@ -1834,14 +1844,23 @@ acceptable as-is. They are listed for completeness only.
 
 ### 7.2 Fix scope
 
-Workstream **C** **does not produce v1.0 deliverables.** Every work
-unit is tracked here for v1.1+ planning. The work-unit specifications
-below are skeletons; full implementation guidance is deferred to a
-future audit cycle (likely the v1.1 release planning).
+**Originally**: "Workstream **C** does not produce v1.0 deliverables.
+Every work unit is tracked here for v1.1+ planning. The work-unit
+specifications below are skeletons; full implementation guidance is
+deferred to a future audit cycle (likely the v1.1 release planning)."
+
+**Superseded (2026-04-30)**: Per the project sponsor's request,
+Workstream **C** was promoted to pre-1.0 release work. The "skeletons"
+in § 7.3 below describe the *original* v1.1+ designs as documented at
+plan-issuance time; the *actual* pre-1.0 implementations may have
+refined those skeletons (e.g., C2 evolved from a pinned-SHA design to
+a write-once snapshot guard). The **`CLAUDE.md` Workstream-C
+snapshot** is the canonical record of what landed; § 7.3 is preserved
+verbatim as historical context for the audit-time intent.
 
 ### 7.3 Work units (v1.1+ skeletons)
 
-#### C1 — Make lakefile globs explicit (A-03, v1.1+)
+#### C1 — Make lakefile globs explicit (A-03, originally v1.1+ → landed pre-1.0 2026-04-30)
 
 **File.** `lakefile.lean:30-31`.
 
@@ -1857,11 +1876,13 @@ lean_lib Orbcrypt where
   ]
 ```
 
-**Status.** Deferred to v1.1+. Acceptable for v1.0; the Workstream
-**B1** removal of `_ApiSurvey.lean` already addresses the immediate
-"transient stub builds silently" concern.
+**Status.** Originally deferred to v1.1+. **Promoted to pre-1.0 on
+2026-04-30 and landed.** The Workstream **B1** removal of
+`_ApiSurvey.lean` addresses the immediate "transient stub builds
+silently" concern; C1 adds a structural tripwire on top, bounding
+the default-target build to `Orbcrypt.*` modules.
 
-#### C2 — Defense-in-depth toolchain content check (A-04, v1.1+)
+#### C2 — Defense-in-depth toolchain content check (A-04, originally v1.1+ → landed pre-1.0 2026-04-30)
 
 **File.** `scripts/setup_lean_env.sh:252-262`.
 
@@ -1888,11 +1909,17 @@ fast_path_ready() {
 }
 ```
 
-**Status.** Deferred to v1.1+. The threat model (local write
-access to `~/.elan/`) is already game-over; this is purely
-defense-in-depth.
+**Status.** Originally deferred to v1.1+. **Promoted to pre-1.0 on
+2026-04-30 and landed.** Implementation refined from the pinned-SHA
+sketch above to a write-once snapshot guard
+(`bin_sha256_snapshot_create` / `_verify` in
+`scripts/setup_lean_env.sh`) that records SHAs of `bin/lean` and
+`bin/lake` post-install and verifies on every fast-path entry.
+Audit-pass strengthened to fail-closed on missing-entry. Threat
+model (local write access to `~/.elan/`) is unchanged: C2 is
+defense-in-depth, not a replacement for filesystem access controls.
 
-#### C3 — Upgrade CI sorry-strip to handle nested block comments (A-05, v1.1+)
+#### C3 — Upgrade CI sorry-strip to handle nested block comments (A-05, originally v1.1+ → landed pre-1.0 2026-04-30)
 
 **File.** `.github/workflows/lean4-build.yml`.
 
@@ -1905,13 +1932,17 @@ blocks. Recursive Perl regex sample:
 my $pattern = qr/(\/\-(?:[^\/\-]|\/(?!-)|-(?!\/)|(?1))*-\/)/;
 ```
 
-**Status.** Deferred to v1.1+. The `lake build` step (step 4 of
-the workflow) is the definitive `sorry` guard via Lean's own
-parser; the comment-strip regex is a fast pre-filter only, and
-the audit confirmed no nested-comment regressions in the current
-tree.
+**Status.** Originally deferred to v1.1+. **Promoted to pre-1.0 on
+2026-04-30 and landed.** The recursive Perl regex
+`(\/\-(?:[^\/\-]++|\-(?!\/)|\/(?!\-)|(?1))*+\-\/)` correctly
+handles arbitrarily-nested Lean block comments. Verified on 9 unit
+cases (incl. the "sorry-after-inner-block-close" pattern the old
+non-greedy regex would false-positive on) plus the full 76-module
+codebase. The `lake build` step remains the definitive `sorry`
+guard; the comment-strip is a fast pre-filter that's now also
+nesting-correct.
 
-#### C4 — Add CI lake-manifest drift check (A-08, v1.1+)
+#### C4 — Add CI lake-manifest drift check (A-08, originally v1.1+ → landed pre-1.0 2026-04-30)
 
 **File.** `.github/workflows/lean4-build.yml`.
 
@@ -1930,11 +1961,16 @@ check / axiom-check / Phase-16-audit steps:
     fi
 ```
 
-**Status.** Deferred to v1.1+. The current cache-key inclusion of
-`lake-manifest.json` already invalidates the cache on any drift;
-adding an explicit drift check is defense-in-depth.
+**Status.** Originally deferred to v1.1+. **Promoted to pre-1.0 on
+2026-04-30 and landed.** Implementation refined: the original
+`lake update --dry-run` skeleton couldn't be used because Lake at
+v4.30.0-rc1 has no `--dry-run` flag (would mutate the manifest).
+Replaced with a direct structural cross-check that parses
+`require` directives from `lakefile.lean` and compares revs to the
+manifest's package entries. Audit-pass added explicit
+file-existence + JSON-validity checks with distinct error messages.
 
-#### C5 — Formal GAP/Lean canonical-image equivalence at arbitrary `n` (D-02a, v1.1+ research-scope)
+#### C5 — Formal GAP/Lean canonical-image equivalence at arbitrary `n` (D-02a, originally v1.1+ research-scope → landed pre-1.0 2026-04-30)
 
 **File.** New theorem in `Orbcrypt/Construction/HGOE.lean` or a
 new module under `Orbcrypt/Construction/`.
@@ -1950,12 +1986,22 @@ The proof requires either (a) a Lean specification of GAP's
 `bitstringLinearOrder` lex order, or (b) a model-theoretic
 correspondence theorem at the abstract algebra level.
 
-**Status.** Research-scope (v1.1+ or v2.0). The current
-small-`n` `decide`-based witnesses are persuasive evidence for
-the GAP/Lean equivalence claim, and the prose disclosure in
-`Construction/HGOE.lean:88-113` is honestly bounded ("matching
-the GAP reference implementation's choice of orbit
-representative exactly").
+**Status.** Originally research-scope (v1.1+ or v2.0). **Promoted to
+pre-1.0 on 2026-04-30 and landed** as the new module
+`Orbcrypt/Construction/BitstringSupport.lean` (76th module). The
+module was originally drafted as `GAPEquivalence.lean` and renamed
+to `BitstringSupport.lean` per the "names describe content, never
+provenance" rule — the central abstraction is `support :
+Bitstring n → Finset (Fin n)`, the GAP correspondence is a downstream
+consequence. The 19 public declarations include `support_smul`
+(G-equivariance / OnSets correspondence), `listLex_ofFn_iff` (the
+core structural lemma proven by induction on `n`),
+`bitstringLinearOrder_lt_iff_first_differ`, `gapSetLT`,
+`bitstringLinearOrder_lt_iff_gapSetLT_support`, and the headline
+canonical-image-equivalence triple
+(`support_canon_minimal` / `_gapSetLT_minimal` /
+`_in_support_orbit`). All on standard-Lean-trio axioms; zero
+`sorry`; zero custom axioms.
 
 #### C6 — INFO docstring observations (no action needed)
 
@@ -1988,9 +2034,40 @@ completeness; no work unit is generated.
 
 ### 7.4 Workstream C exit criteria
 
-**No exit criteria for v1.0.** Workstream **C** is a tracking
-container. Each work unit's exit criteria will be defined when
-the corresponding v1.1+ workstream is opened.
+**Originally**: "No exit criteria for v1.0. Workstream C is a tracking
+container. Each work unit's exit criteria will be defined when the
+corresponding v1.1+ workstream is opened."
+
+**Superseded (2026-04-30)**: With Workstream C promoted to pre-1.0 and
+landed, every work unit has been verified against concrete exit
+criteria:
+
+* **C1**: `lake build Orbcrypt` succeeds with the explicit
+  `globs := #[.andSubmodules \`Orbcrypt]` declaration; out-of-tree
+  files (e.g., `experiments/foo.lean`) are provably excluded from the
+  default-target build.
+* **C2**: `scripts/setup_lean_env.sh` records and verifies SHA-256
+  snapshots of `bin/lean` and `bin/lake`; tamper detection exits with
+  code 1 and explicit remediation guidance. Six unit tests + an
+  end-to-end live-toolchain test pass. Audit-pass strengthening:
+  missing-entry-as-mismatch, `||` set-e-robust capture pattern.
+* **C3**: CI's "Verify no sorry" step uses a recursive Perl regex that
+  handles arbitrarily-nested Lean block comments. Verified against 9
+  unit cases including the post-C3 false-positive scenario the old
+  non-greedy regex would mishandle.
+* **C4**: CI's new "Verify lake-manifest.json drift" step cross-checks
+  every `require ... @ git "<rev>"` against the manifest. Audit-pass
+  strengthening: explicit file-existence + JSON-validity checks with
+  distinct error messages.
+* **C5**: `Orbcrypt/Construction/BitstringSupport.lean` (76th module)
+  delivers the formal GAP / Lean canonical-image equivalence at
+  arbitrary `n`, with 19 public declarations all on the standard Lean
+  trio (`propext`, `Classical.choice`, `Quot.sound`).
+* **C6**: All 5 INFO findings verified honestly disclosed in source;
+  zero changes required.
+
+The Appendix B status tracker reflects all six work units as `closed`
+with date 2026-04-30.
 
 ## 8. Workstream D — Research-scope catalogue
 
@@ -2268,21 +2345,34 @@ hygiene and code cleanliness:
 **Total estimated effort to clear "Recommended" items: ~50
 minutes.**
 
-### 10.3 v1.1+ enhancements (defer, not release-blocking)
+### 10.3 Pre-1.0 enhancements (originally deferred to v1.1+; promoted to pre-1.0 on 2026-04-30 and landed)
 
-These items are tracked for future audit cycles. **They are
-explicitly excluded from v1.0 work.**
+These items were originally tracked for future audit cycles and
+explicitly excluded from v1.0 work. On 2026-04-30, per project
+sponsor's request, all of Workstream C was **promoted to pre-1.0
+release work** and landed on branch
+`claude/audit-codebase-workstream-5DR7B`. Each work unit's
+implementation snapshot is in `CLAUDE.md`'s Workstream-C entry.
 
-- [ ] **C1 — Make lakefile globs explicit (A-03).**
-- [ ] **C2 — Defense-in-depth toolchain content check (A-04).**
-- [ ] **C3 — Upgrade CI sorry-strip to handle nested block
-  comments (A-05).**
-- [ ] **C4 — Add CI lake-manifest drift check (A-08).**
-- [ ] **C5 — Formal GAP/Lean canonical-image equivalence at
-  arbitrary `n` (D-02a).**
-- [ ] **C6 — INFO docstring observations (B-03a, B-03b, C-03a,
-  C-13a, F-03a).** No action required; tracked for
-  completeness only.
+- [x] **C1 — Make lakefile globs explicit (A-03).** Closed
+  2026-04-30. `lakefile.lean` now declares
+  `globs := #[.andSubmodules \`Orbcrypt]`.
+- [x] **C2 — Defense-in-depth toolchain content check (A-04).**
+  Closed 2026-04-30. SHA-256 snapshot guard in
+  `scripts/setup_lean_env.sh` with marker-tampered detection.
+- [x] **C3 — Upgrade CI sorry-strip to handle nested block
+  comments (A-05).** Closed 2026-04-30. Recursive Perl regex
+  `(\/\-(?:[^\/\-]++|\-(?!\/)|\/(?!\-)|(?1))*+\-\/)`.
+- [x] **C4 — Add CI lake-manifest drift check (A-08).** Closed
+  2026-04-30. New CI step cross-checks lakefile-require revs against
+  manifest revs.
+- [x] **C5 — Formal GAP/Lean canonical-image equivalence at
+  arbitrary `n` (D-02a).** Closed 2026-04-30. New module
+  `Orbcrypt/Construction/BitstringSupport.lean` with 19 public
+  declarations on standard-trio axioms.
+- [x] **C6 — INFO docstring observations (B-03a, B-03b, C-03a,
+  C-13a, F-03a).** Closed 2026-04-30 as no-action: all 5 findings
+  verified honestly disclosed in source; zero changes required.
 
 ### 10.4 Research-scope items (long-term, not v1.0 work)
 

@@ -186,15 +186,16 @@ jobs:
             # dependency. JSON validity has already been verified above,
             # so any error at this point indicates a missing entry —
             # not a parser failure.
-            manifest_rev="$(python3 -c "
-import json, sys
-with open('lake-manifest.json') as f:
-    m = json.load(f)
-for p in m.get('packages', []):
-    if p.get('name') == sys.argv[1]:
-        print(p.get('rev', ''))
-        break
-" "$name" 2>&1 || echo "")"
+            #
+            # Audit-pass note (post-Workstream-C, 2026-04-30): the
+            # python invocation is a *single line* (semicolon-
+            # separated) rather than a multi-line script because the
+            # YAML literal-block scalar (`run: |`) requires all
+            # content lines to be indented at least to the first
+            # content line's indentation. Multi-line python at column
+            # 0 would dedent below that level and prematurely
+            # terminate the literal block, breaking workflow parsing.
+            manifest_rev="$(python3 -c "import json,sys; data=json.load(open('lake-manifest.json')); print(next((p['rev'] for p in data.get('packages', []) if p.get('name') == sys.argv[1]), ''))" "$name" 2>&1 || echo "")"
             if [ -z "${manifest_rev}" ]; then
               echo "ERROR: lakefile.lean requires '${name}', but no entry in lake-manifest.json"
               echo "  (run \`lake update ${name}\` to add it to the manifest)"

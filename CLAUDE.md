@@ -7501,7 +7501,128 @@ C4 code, not new public API. The 76-module total, the
 zero-sorry / zero-custom-axiom posture, and the standard-trio-
 only axiom-dependency posture are all preserved.
 
+**Second audit pass (2026-04-30, post-Workstream-C deep re-audit).**
+A subsequent fresh-eyes audit surfaced four additional findings —
+one CRITICAL CI workflow bug, one defense-in-depth concurrency
+issue, and two documentation-parity gaps. All fixed in the same-day
+audit-2 commit.
 
+1. **CRITICAL: malformed CI workflow YAML.** The C4 drift-check
+   step's multi-line `python3 -c "..."` invocation had python
+   source lines at column 0, dedented below the YAML literal-block
+   (`run: |`) indentation. YAML's literal-block parser terminated
+   the block prematurely at the python code, then tried to parse
+   the python lines as new YAML mapping keys — which fail because
+   `import json, sys` doesn't have the required `:` separator.
+
+   Verified by `python3 -c "import yaml;
+   yaml.safe_load(open('.github/workflows/lean4-build.yml'))"` —
+   raised `ScannerError: while scanning a simple key in line 191
+   column 1 could not find expected ':'`. **The CI workflow would
+   fail to parse on the first push to GitHub Actions.**
+
+   **Fix.** Compress the multi-line python invocation into a
+   single-line semicolon-separated form:
+   ```python
+   python3 -c "import json,sys; data=json.load(open('lake-manifest.json')); print(next((p['rev'] for p in data.get('packages', []) if p.get('name') == sys.argv[1]), ''))"
+   ```
+   Single-line python avoids any indentation issue with YAML
+   literal blocks. Verified: post-fix YAML parses cleanly; C4
+   logic still works (clean-state PASS, drift-state DETECTS).
+
+2. **C2 concurrency bug in `bin_sha256_snapshot_create`.** When
+   multiple invocations of `setup_lean_env.sh` race (e.g., a
+   developer accidentally launches two terminals), all processes
+   would `: > "${marker}.tmp"` at the same path, then interleave
+   their write-and-rename steps. The losing race could blow away
+   another process's partial content, producing a marker file
+   with fewer than `${#TOOLCHAIN_PROTECTED_BINS[@]}` lines.
+   Subsequent verifications would then trigger the missing-entry-
+   as-mismatch rule (added in audit pass #1) on the LEGITIMATE
+   marker, locking the user out of the toolchain.
+
+   **Fix.** Replace the fixed `${marker}.tmp` filename with
+   `mktemp "${marker}.XXXXXX.tmp"` — each process gets a unique
+   per-process scratch file, so concurrent writes don't interleave.
+   The final atomic `mv` resolves the race by last-writer-wins,
+   but every contender's `mv` produces a complete marker (no
+   partial-content possible).
+
+   Verified: 10 concurrent invocations produce exactly 1
+   complete marker with 0 leftover `.tmp` files.
+
+   Note: `mktemp`'s default 0600 mode is more restrictive than
+   the previous 0644 (umask default). For per-user toolchains
+   (`~/.elan/`) this is appropriate and arguably more secure;
+   shared toolchains can `chmod 0644` post-snapshot.
+
+3. **Audit-plan reclassification consistency.** Four areas of
+   `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+   still described Workstream C as "deferred to v1.1+":
+   - § 0 executive summary opening paragraph.
+   - § 0 release-gate commitment.
+   - § 1.2 severity-distribution table.
+   - § 2 finding-to-workstream mapping (10 rows, "defer (v1.1+)").
+   - § 4 dependency-graph ASCII art ("DEFERRED" header for C).
+   - § 7 section header ("Optional v1.1+ engineering enhancements").
+   - § 7.2 fix scope ("Workstream C does not produce v1.0
+     deliverables").
+   - § 7.3 sub-section headers (5 headers, "(A-XX, v1.1+)" /
+     "(D-02a, v1.1+ research-scope)").
+   - § 7.3 Status fields (5 fields, "Deferred to v1.1+" /
+     "Research-scope").
+   - § 7.4 exit-criteria text ("No exit criteria for v1.0").
+   - § 10.3 release-readiness checkbox list (6 unchecked rows).
+
+   **Fix.** All updated with explicit "originally deferred to v1.1+
+   → landed pre-1.0 2026-04-30" framing or substantive closure
+   text (e.g., § 7.4 expanded with per-work-unit acceptance
+   criteria; § 10.3 boxes ticked with implementation summary per
+   work unit). The original audit-time framing is preserved as
+   historical context where relevant.
+
+4. **Documentation parity gaps in VERIFICATION_REPORT.md and
+   README.md.** Five current-state references missed in audit-1:
+   - VERIFICATION_REPORT.md line 112: "Step 5 prints `#print
+     axioms` for 928 declarations" → 947.
+   - VERIFICATION_REPORT.md line 494: "runs `#print axioms` on
+     928 declarations" → 947.
+   - VERIFICATION_REPORT.md line 515: "928 declarations
+     exercised" (in Result block) → 947.
+   - VERIFICATION_REPORT.md line 545: "Every one of the 75
+     modules" → 76.
+   - VERIFICATION_REPORT.md line 579: "imports all 75 modules" → 76.
+   - VERIFICATION_REPORT.md line 586: "exercises the complete
+     graph (3,418 jobs)" → 3,419.
+   - VERIFICATION_REPORT.md line 681: "928 declarations
+     exercised" (in Theorem-inventory close) → 947.
+   - README.md line 51: "75 (+ root import file)" → 76.
+   - README.md line 53: "900+ `#print axioms`" → 940+.
+   - README.md line 56: Package version "0.2.0" → 0.2.1.
+   - README.md line 55: CI step list missing "lake-manifest drift
+     check" — added.
+
+   All current-state references updated; historical-snapshot
+   references inside per-Workstream Document-history bullets are
+   preserved verbatim (they correctly describe state-at-the-time).
+
+**Cumulative verification posture preserved.**
+- Lake build: 3,419 jobs, zero warnings, zero errors.
+- audit_phase_16.lean: exit 0, 947 entries, zero `sorryAx`,
+  zero non-trio axioms.
+- Shellcheck on `scripts/setup_lean_env.sh`: zero issues at
+  every severity level.
+- YAML parses cleanly (post-audit-2 fix).
+- All 5 CI checks pass locally (build, sorry-strip,
+  axiom-check, drift-check, Phase-16 audit).
+- C2 concurrency test: 10 concurrent invocations → 1 complete
+  marker, 0 leftover `.tmp` files.
+- C4 drift detection: clean PASS; simulated drift correctly
+  fails.
+
+**Patch version.** `lakefile.lean` retains `0.2.1` — the
+audit-2 fixes are bug-fix-grade improvements (CI YAML, C2
+concurrency, doc-parity). No new public API.
 
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring

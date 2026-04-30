@@ -23,7 +23,10 @@ package "orbcrypt" where
 -- + post-landing audit-pass fixes:
 -- explicit globs + defense-in-depth checks + GAP/Lean equivalence
 -- + C2 set-e robustness + C2 missing-entry-as-mismatch + C4 explicit
--- file/JSON-validity checks)
+-- file/JSON-validity checks; audit-pass #2 fixed CRITICAL CI workflow
+-- YAML malformation + C2 concurrency safety via mktemp + 11-point
+-- audit-plan reclassification + 11 doc-parity refs in
+-- VERIFICATION_REPORT.md / README.md)
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md
