@@ -507,6 +507,385 @@ theorem bitstringPolynomialMAC_int_ctxt {G : Type*} [Group G]
   -- Post-Workstream-B `authEncrypt_is_int_ctxt` is unconditional.
   authEncrypt_is_int_ctxt (bitstringPolynomial_authKEM p n kem)
 
+-- ============================================================================
+-- Workstream R-13⁺ — Bitstring-polynomial SU2 + SUF-CMA + Q-time NEGATIVE
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan
+-- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-13⁺)
+-- ============================================================================
+
+/-- **Shifted-difference polynomial.** `bitstringDiffPolynomial p n b₁ b₂ -
+    C δ` is the polynomial `Δ(X) - δ` whose roots are exactly the
+    `k₁` values satisfying `evalAtBitstring p n k₁ b₁ -
+    evalAtBitstring p n k₁ b₂ = δ`. -/
+private noncomputable def bitstringDiffPolynomialShifted
+    (p n : ℕ) [Fact (Nat.Prime p)]
+    (b₁ b₂ : Bitstring n) (δ : ZMod p) : Polynomial (ZMod p) :=
+  bitstringDiffPolynomial p n b₁ b₂ - Polynomial.C δ
+
+/-- **Shifted polynomial preserves the degree bound.** Subtracting a
+    constant `C δ` doesn't increase the natDegree beyond the original
+    polynomial's degree. -/
+private theorem bitstringDiffPolynomialShifted_natDegree_le
+    (p n : ℕ) [Fact (Nat.Prime p)]
+    (b₁ b₂ : Bitstring n) (δ : ZMod p) :
+    (bitstringDiffPolynomialShifted p n b₁ b₂ δ).natDegree ≤ n := by
+  unfold bitstringDiffPolynomialShifted
+  -- `(P - C δ).natDegree ≤ max P.natDegree (C δ).natDegree`.
+  -- `(C δ).natDegree ≤ 0`, and original P has natDegree ≤ n.
+  have h_left : (bitstringDiffPolynomial p n b₁ b₂).natDegree ≤ n :=
+    bitstringDiffPolynomial_natDegree_le p n b₁ b₂
+  have h_right : (Polynomial.C δ).natDegree ≤ n := by
+    rw [Polynomial.natDegree_C]
+    omega
+  exact (Polynomial.natDegree_sub_le _ _).trans (max_le h_left h_right)
+
+/-- **Shifted polynomial is non-zero for `b₁ ≠ b₂`.** When `Δ` has a
+    non-zero coefficient at position `i₀ + 1` (where bits disagree),
+    so does `Δ - C δ`: the constant `δ` only affects coefficient
+    position 0, but the disagreement is at a strictly positive
+    position `i₀ + 1`. -/
+private theorem bitstringDiffPolynomialShifted_ne_zero_of_ne
+    (p n : ℕ) [Fact (Nat.Prime p)]
+    {b₁ b₂ : Bitstring n} (h_ne : b₁ ≠ b₂) (δ : ZMod p) :
+    bitstringDiffPolynomialShifted p n b₁ b₂ δ ≠ 0 := by
+  -- Find a disagreeing position i₀.
+  obtain ⟨i₀, h_disagree⟩ := Function.ne_iff.mp h_ne
+  intro h_zero
+  -- The coefficient at i₀ + 1 of the shifted polynomial equals the
+  -- coefficient at i₀ + 1 of the original difference polynomial,
+  -- because subtracting `C δ` only changes coefficient 0.
+  have h_coeff_eq :
+      (bitstringDiffPolynomialShifted p n b₁ b₂ δ).coeff (i₀.val + 1) =
+      (bitstringDiffPolynomial p n b₁ b₂).coeff (i₀.val + 1) := by
+    unfold bitstringDiffPolynomialShifted
+    rw [Polynomial.coeff_sub, Polynomial.coeff_C]
+    -- coeff of `C δ` at `i₀.val + 1`: i₀.val + 1 ≥ 1 > 0, so = 0.
+    -- Coefficient of `C δ` at position `i₀.val + 1 ≥ 1` is `0` (only
+    -- coeff 0 is non-zero). Closed by `simp` directly via
+    -- `Polynomial.coeff_C` + `if_neg` on `i₀.val + 1 ≠ 0`.
+    simp
+  -- Now h_zero says shifted poly is 0, so its coeff at i₀.val + 1 is 0.
+  have h_shifted_coeff :
+      (bitstringDiffPolynomialShifted p n b₁ b₂ δ).coeff (i₀.val + 1) = 0 := by
+    rw [h_zero]
+    exact Polynomial.coeff_zero _
+  rw [h_coeff_eq] at h_shifted_coeff
+  -- This means original Δ has 0 coefficient at i₀.val + 1, contradicting
+  -- the disagreement at position i₀.
+  rw [bitstringDiffPolynomial_coeff_at] at h_shifted_coeff
+  have h_eq : toBit p (b₁ i₀) = toBit p (b₂ i₀) := sub_eq_zero.mp h_shifted_coeff
+  haveI : NeZero p := ⟨(Fact.out : Nat.Prime p).ne_zero⟩
+  exact h_disagree (toBit_injective h_eq)
+
+/-- **Joint-collision keys (k₁ component) bound.** For `b₁ ≠ b₂` and
+    arbitrary `(t₁, t₂)`, the set of `k₁ : ZMod p` for which there
+    exists *any* `k₂` making the joint event hold has cardinality at
+    most `n`: such `k₁` are precisely the roots of `Δ - C(t₁ - t₂)`. -/
+private theorem bitstringPolynomialHash_joint_keys_card_le
+    (p n : ℕ) [Fact (Nat.Prime p)]
+    {b₁ b₂ : Bitstring n} (h_ne : b₁ ≠ b₂) (t₁ t₂ : ZMod p) :
+    (Finset.univ.filter (fun k : ZMod p =>
+        evalAtBitstring p n k b₁ - evalAtBitstring p n k b₂ = t₁ - t₂)).card ≤ n := by
+  classical
+  have h_Δ_ne_zero : bitstringDiffPolynomialShifted p n b₁ b₂ (t₁ - t₂) ≠ 0 :=
+    bitstringDiffPolynomialShifted_ne_zero_of_ne p n h_ne (t₁ - t₂)
+  -- The filter ⊆ root-set of Δ via `Δ.eval k = 0 ↔ collision-eq k`.
+  have h_subset :
+      (Finset.univ.filter (fun k : ZMod p =>
+          evalAtBitstring p n k b₁ - evalAtBitstring p n k b₂ = t₁ - t₂)) ⊆
+      (bitstringDiffPolynomialShifted p n b₁ b₂ (t₁ - t₂)).roots.toFinset := by
+    intro k hk
+    rw [Finset.mem_filter] at hk
+    rw [Multiset.mem_toFinset, Polynomial.mem_roots h_Δ_ne_zero]
+    show (bitstringDiffPolynomialShifted p n b₁ b₂ (t₁ - t₂)).eval k = 0
+    unfold bitstringDiffPolynomialShifted
+    rw [Polynomial.eval_sub, Polynomial.eval_C, bitstringDiffPolynomial_eval, hk.2]
+    ring
+  calc (Finset.univ.filter (fun k : ZMod p =>
+          evalAtBitstring p n k b₁ - evalAtBitstring p n k b₂ = t₁ - t₂)).card
+      ≤ (bitstringDiffPolynomialShifted p n b₁ b₂ (t₁ - t₂)).roots.toFinset.card :=
+        Finset.card_le_card h_subset
+    _ ≤ Multiset.card (bitstringDiffPolynomialShifted p n b₁ b₂ (t₁ - t₂)).roots :=
+        Multiset.toFinset_card_le _
+    _ ≤ (bitstringDiffPolynomialShifted p n b₁ b₂ (t₁ - t₂)).natDegree :=
+        Polynomial.card_roots' _
+    _ ≤ n := bitstringDiffPolynomialShifted_natDegree_le p n b₁ b₂ (t₁ - t₂)
+
+/-- **Joint-collision card bound on `ZMod p × ZMod p`.** For `b₁ ≠ b₂`
+    and arbitrary `(t₁, t₂)`, the joint-collision filter has card ≤ n.
+
+    **Proof structure.** Each k₁ admitting any joint-collision must
+    satisfy `Δ(k₁) - (t₁ - t₂) = 0` (≤ n such k₁). For each such k₁,
+    `k.2` is uniquely determined by `k.2 = t₁ - eval(b₁, k.1)`. So the
+    joint filter is in bijection with a subset of valid k₁ values. -/
+private theorem bitstringPolynomialHash_joint_collision_card_le
+    (p n : ℕ) [Fact (Nat.Prime p)]
+    {b₁ b₂ : Bitstring n} (h_ne : b₁ ≠ b₂) (t₁ t₂ : ZMod p) :
+    (Finset.univ.filter
+      (fun k : ZMod p × ZMod p =>
+        bitstringPolynomialHash p n k b₁ = t₁ ∧
+        bitstringPolynomialHash p n k b₂ = t₂)).card ≤ n := by
+  classical
+  -- Define the projection: any joint-collision (k₁, k₂) must have k₁ in
+  -- the joint-keys filter, and k₂ uniquely determined.
+  -- We bound the joint filter's card by `card (joint-keys-on-k₁)`.
+  have h_inj_on_k1 :
+      Set.InjOn (fun k : ZMod p × ZMod p => k.1)
+        ((Finset.univ.filter
+          (fun k : ZMod p × ZMod p =>
+            bitstringPolynomialHash p n k b₁ = t₁ ∧
+            bitstringPolynomialHash p n k b₂ = t₂)) : Set _) := by
+    intro k hk k' hk' h_eq_k1
+    -- hk, hk' : both are in the joint filter.
+    simp only [Finset.coe_filter, Finset.mem_univ, true_and,
+      Set.mem_setOf_eq] at hk hk'
+    obtain ⟨h_k_eq₁, _⟩ := hk
+    obtain ⟨h_k'_eq₁, _⟩ := hk'
+    -- After β-reducing the projection, h_eq_k1 becomes k.1 = k'.1.
+    have h_proj : k.1 = k'.1 := h_eq_k1
+    -- From h_k_eq₁, h_k'_eq₁, both k.2 and k'.2 equal t₁ - eval(k.1, b₁).
+    apply Prod.ext h_proj
+    -- Goal: k.2 = k'.2.
+    have h_k_eq : k.2 = t₁ - evalAtBitstring p n k.1 b₁ := by
+      unfold bitstringPolynomialHash at h_k_eq₁
+      linear_combination h_k_eq₁
+    have h_k'_eq : k'.2 = t₁ - evalAtBitstring p n k'.1 b₁ := by
+      unfold bitstringPolynomialHash at h_k'_eq₁
+      linear_combination h_k'_eq₁
+    rw [h_k_eq, h_k'_eq, h_proj]
+  -- The image of joint-collision under proj_1 is contained in joint-keys.
+  have h_image_subset :
+      (Finset.univ.filter
+        (fun k : ZMod p × ZMod p =>
+          bitstringPolynomialHash p n k b₁ = t₁ ∧
+          bitstringPolynomialHash p n k b₂ = t₂)).image (fun k => k.1) ⊆
+      Finset.univ.filter (fun k₁ : ZMod p =>
+        evalAtBitstring p n k₁ b₁ - evalAtBitstring p n k₁ b₂ = t₁ - t₂) := by
+    intro k₁ hk₁
+    simp only [Finset.mem_image, Finset.mem_filter, Finset.mem_univ,
+      true_and] at hk₁
+    obtain ⟨⟨k1', k2'⟩, ⟨h_eq₁, h_eq₂⟩, h_proj⟩ := hk₁
+    -- h_proj : k1' = k₁
+    subst h_proj
+    -- h_eq₁ : k.2 + eval b₁ k.1 = t₁, h_eq₂ : k.2 + eval b₂ k.1 = t₂.
+    -- Subtract: eval b₁ k.1 - eval b₂ k.1 = t₁ - t₂.
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+    unfold bitstringPolynomialHash at h_eq₁ h_eq₂
+    linear_combination h_eq₁ - h_eq₂
+  -- Now: joint card = image card (by injectivity) ≤ joint-keys card ≤ n.
+  calc (Finset.univ.filter
+          (fun k : ZMod p × ZMod p =>
+            bitstringPolynomialHash p n k b₁ = t₁ ∧
+            bitstringPolynomialHash p n k b₂ = t₂)).card
+      = ((Finset.univ.filter
+          (fun k : ZMod p × ZMod p =>
+            bitstringPolynomialHash p n k b₁ = t₁ ∧
+            bitstringPolynomialHash p n k b₂ = t₂)).image (fun k => k.1)).card :=
+        (Finset.card_image_of_injOn h_inj_on_k1).symm
+    _ ≤ (Finset.univ.filter (fun k₁ : ZMod p =>
+            evalAtBitstring p n k₁ b₁ - evalAtBitstring p n k₁ b₂ = t₁ - t₂)).card :=
+        Finset.card_le_card h_image_subset
+    _ ≤ n := bitstringPolynomialHash_joint_keys_card_le p n h_ne t₁ t₂
+
+/-- **R-13⁺ SU2 headline.** The bitstring polynomial hash family is
+    `(n / p)`-SU2 over the prime field `ZMod p`. The joint-collision
+    analysis bounds the joint-card by `n` (degree-≤-n shifted
+    difference polynomial); applied to the framework's `ofJointCollision
+    CardBound` with `C = n` and `|Tag| = p`, `|K| = p²`, gives
+    `(n · p) / p² = n / p`. -/
+theorem bitstringPolynomialHash_isEpsilonSU2 (p n : ℕ) [Fact (Nat.Prime p)] :
+    IsEpsilonSU2 (bitstringPolynomialHash p n) ((n : ℝ≥0∞) / (p : ℝ≥0∞)) := by
+  have h_prime : Nat.Prime p := Fact.out
+  have h_pos : 0 < p := h_prime.pos
+  have h_p_ne_zero : (p : ℝ≥0∞) ≠ 0 := by exact_mod_cast h_pos.ne'
+  have h_p_ne_top : (p : ℝ≥0∞) ≠ ⊤ := ENNReal.natCast_ne_top p
+  have h := IsEpsilonSU2.ofJointCollisionCardBound
+    (h := bitstringPolynomialHash p n) (C := n)
+    (fun b₁ b₂ t₁ t₂ h_ne =>
+      bitstringPolynomialHash_joint_collision_card_le p n h_ne t₁ t₂)
+  -- h : IsEpsilonSU2 _ ((n : ℝ≥0∞) * |Tag| / |K|).
+  -- Need: IsEpsilonSU2 _ (n / p).
+  apply IsEpsilonSU2.mono _ h
+  -- Goal: (n * |ZMod p|) / |ZMod p × ZMod p| ≤ n / p.
+  rw [Fintype.card_prod, ZMod.card]
+  push_cast
+  -- Goal: (n : ℝ≥0∞) * p / (p * p) ≤ n / p.
+  apply le_of_eq
+  rw [ENNReal.mul_div_mul_right (n : ℝ≥0∞) (p : ℝ≥0∞) h_p_ne_zero h_p_ne_top]
+
+/-- **R-13⁺ AXU corollary.** The bitstring polynomial hash family is
+    `(n / p)`-AXU, derived directly from SU2 via
+    `IsEpsilonSU2.toIsEpsilonAXU`. -/
+theorem bitstringPolynomialHash_isEpsilonAXU (p n : ℕ) [Fact (Nat.Prime p)] :
+    IsEpsilonAXU (bitstringPolynomialHash p n) ((n : ℝ≥0∞) / (p : ℝ≥0∞)) :=
+  (bitstringPolynomialHash_isEpsilonSU2 p n).toIsEpsilonAXU
+
+/-- **R-13⁺ 1-time SUF-CMA headline.** `bitstringPolynomialMAC p n` is
+    `(n / p)`-SUF-CMA-secure (1-time): every adversary's forgery
+    advantage is at most `n / p`.
+
+    **Honest scope.** The bound is informative for `n ≤ p` (giving
+    `≤ 1`); for `n > p` the bound is trivially universal. Deployment
+    must pin `p ≥ n` (typically `p ≫ n`) to obtain meaningful security.
+
+    **Composition.** Composes the framework reduction
+    `isSUFCMASecure_of_isEpsilonSU2` with the R-13⁺ SU2 specialisation
+    plus the trivial witness `IsDeterministicTagMAC
+    (bitstringPolynomialMAC p n)` (which holds by `rfl` per the body
+    of `deterministicTagMAC`). -/
+theorem bitstringPolynomialMAC_isSUFCMASecure (p n : ℕ) [Fact (Nat.Prime p)] :
+    IsSUFCMASecure (bitstringPolynomialMAC p n) ((n : ℝ) / p) := by
+  have h_det : IsDeterministicTagMAC (bitstringPolynomialMAC p n) := fun _ _ _ => rfl
+  have h_su2 : IsEpsilonSU2 (bitstringPolynomialMAC p n).tag
+      ((n : ℝ≥0∞) / (p : ℝ≥0∞)) :=
+    bitstringPolynomialHash_isEpsilonSU2 p n
+  have h_finite : ((n : ℝ≥0∞) / (p : ℝ≥0∞)) ≠ ⊤ := by
+    have h_prime : Nat.Prime p := Fact.out
+    have h_p_ne_zero : (p : ℝ≥0∞) ≠ 0 := by exact_mod_cast h_prime.pos.ne'
+    rw [ENNReal.div_eq_inv_mul]
+    have h_inv_ne_top : (p : ℝ≥0∞)⁻¹ ≠ ⊤ := ENNReal.inv_ne_top.mpr h_p_ne_zero
+    exact ENNReal.mul_ne_top h_inv_ne_top (ENNReal.natCast_ne_top n)
+  have h := isSUFCMASecure_of_isEpsilonSU2 (bitstringPolynomialMAC p n) h_det
+    ((n : ℝ≥0∞) / p) h_finite h_su2
+  -- Convert ((n : ℝ≥0∞) / p).toReal to (n : ℝ) / p.
+  have h_toReal : ((n : ℝ≥0∞) / (p : ℝ≥0∞)).toReal = (n : ℝ) / p := by
+    rw [ENNReal.toReal_div, ENNReal.toReal_natCast, ENNReal.toReal_natCast]
+  rw [h_toReal] at h
+  exact h
+
+/-- **Bitstring-polynomial key-recovery procedure.** With Q = 2 queries
+    on the witness messages `e₀` (the bitstring `(true, false, ..., false)`)
+    and `0` (the all-false bitstring), the honest tags are:
+
+      - `t_e₀ = k.2 + toBit(true) · k.1 + 0 + ... + 0 = k.2 + k.1`
+      - `t_0  = k.2 + 0 + ... + 0 = k.2`
+
+    Recovery: `k.1 = t_e₀ - t_0`, `k.2 = t_0`. Same closed form as
+    Carter–Wegman.
+
+    Requires `n ≥ 1` so that position 0 exists in the bitstring. -/
+private noncomputable def bitstringPolynomialRecover (p : ℕ)
+    [Fact (Nat.Prime p)] :
+    (Fin 2 → ZMod p) → Option (ZMod p × ZMod p) :=
+  fun tags => some (tags 0 - tags 1, tags 1)
+
+/-- **R-13⁺ key-recovery witness.** `bitstringPolynomialHash` is
+    key-recoverable from `Q = 2` queries on the witness messages
+    `e₀` (one-hot at position 0) and `0` (the all-false bitstring).
+
+    Requires `n ≥ 1` (for position 0 to exist) and `p ≥ 2` (for the
+    field `ZMod p` to admit non-zero elements; automatic when prime). -/
+theorem bitstringPolynomialHash_isKeyRecoverableForSomeQueries
+    (p n : ℕ) [Fact (Nat.Prime p)] (h_n_pos : 1 ≤ n) :
+    IsKeyRecoverableForSomeQueries (bitstringPolynomialHash p n) 2 := by
+  -- Witness e₀ : Bitstring n is the indicator of position 0.
+  let e0 : Bitstring n := fun i => decide (i.val = 0)
+  -- Witness 0 : Bitstring n is the all-false bitstring.
+  let zero_bs : Bitstring n := fun _ => false
+  -- These differ: at position ⟨0, h_n_pos⟩, e0 is true and zero_bs is false.
+  have h_e0_ne_zero : e0 ≠ zero_bs := by
+    intro h_eq
+    have h_apply : e0 ⟨0, h_n_pos⟩ = zero_bs ⟨0, h_n_pos⟩ := by
+      rw [h_eq]
+    show False
+    simp [e0, zero_bs] at h_apply
+  -- Refine with msgs = ![e0, zero_bs], recover = bitstringPolynomialRecover.
+  refine ⟨![e0, zero_bs], bitstringPolynomialRecover p, ?_, ?_⟩
+  · -- Injectivity of msgs. Since ![e0, zero_bs] 0 = e0 and ![e0, zero_bs] 1
+    -- = zero_bs are `rfl`-level definitional, the diagonal cases close by
+    -- `rfl` and the off-diagonal cases give h_eq : e0 = zero_bs (or its
+    -- symm), contradicting h_e0_ne_zero.
+    intro i j h_eq
+    fin_cases i <;> fin_cases j
+    · rfl
+    · exact absurd h_eq h_e0_ne_zero
+    · exact absurd h_eq.symm h_e0_ne_zero
+    · rfl
+  · -- For every key k, recover (honest tags) = some k.
+    intro k
+    -- Compute tags 0 = h k e₀ = k.2 + k.1, tags 1 = h k 0 = k.2.
+    -- Recover: (tags 0 - tags 1, tags 1) = (k.1, k.2) = k.
+    show bitstringPolynomialRecover p
+        (fun i => bitstringPolynomialHash p n k (![e0, zero_bs] i)) = some k
+    simp only [bitstringPolynomialRecover, Matrix.cons_val_zero,
+      Matrix.cons_val_one]
+    -- Compute h k e₀ = k.2 + evalAtBitstring p n k.1 e₀.
+    -- evalAtBitstring p n k.1 e₀ = ∑ i, toBit (e₀ i) · k.1^(i+1).
+    -- Since e₀ i = decide (i.val = 0), the sum collapses to position 0:
+    --   toBit true · k.1^1 + ∑ (i ≥ 1), 0 · k.1^(i+1) = k.1.
+    have h_eval_e0 : evalAtBitstring p n k.1 e0 = k.1 := by
+      unfold evalAtBitstring
+      rw [show (fun i : Fin n => toBit p (e0 i) * k.1 ^ (i.val + 1)) =
+            (fun i : Fin n =>
+              if i = ⟨0, h_n_pos⟩ then k.1 else 0) from ?_]
+      · rw [Finset.sum_ite_eq']
+        simp
+      funext i
+      by_cases h_i : i = ⟨0, h_n_pos⟩
+      · subst h_i
+        simp [e0, toBit]
+      · -- i ≠ ⟨0, _⟩, so i.val ≠ 0, so e0 i = false, so toBit = 0.
+        have h_val_ne : i.val ≠ 0 := by
+          intro h_val
+          apply h_i
+          ext
+          exact h_val
+        simp [e0, toBit, h_val_ne, h_i]
+    -- evalAtBitstring p n k.1 zero_bs = 0 (already proved).
+    have h_eval_zero : evalAtBitstring p n k.1 zero_bs = 0 := by
+      apply evalAtBitstring_zero
+    -- Compute the two hashes.
+    have h_hash_e0 : bitstringPolynomialHash p n k e0 = k.2 + k.1 := by
+      rw [bitstringPolynomialHash_apply, h_eval_e0]
+    have h_hash_zero : bitstringPolynomialHash p n k zero_bs = k.2 := by
+      rw [bitstringPolynomialHash_apply, h_eval_zero, add_zero]
+    rw [h_hash_e0, h_hash_zero]
+    -- Goal: some (k.2 + k.1 - k.2, k.2) = some k.
+    congr 1
+    apply Prod.ext
+    · show k.2 + k.1 - k.2 = k.1
+      ring
+    · rfl
+
+/-- **R-13⁺ Q-time NEGATIVE result.** For `n ≥ 2` and any prime `p`,
+    `bitstringPolynomialMAC p n` is **not** `ε`-Q-time-SUF-CMA-secure
+    for any `ε < 1`. The (Q+1)-time adversary at `Q = 2` queries
+    recovers the key by the linear-system inversion in
+    `bitstringPolynomialRecover`, then forges deterministically on
+    a fresh bitstring.
+
+    **Cardinality side condition.** `n ≥ 2` ensures `|Bitstring n|
+    = 2^n ≥ 4 > 3 = Q + 1`, so the framework's `Q + 1 < |Msg|`
+    requirement is satisfied. Recovery itself only needs `n ≥ 1`,
+    but the negative theorem additionally requires two fresh
+    messages outside `{e₀, 0}`.
+
+    Formalises the well-known limitation of nonce-free polynomial
+    Wegman–Carter MACs: Q-time security requires fresh nonces per
+    message. The Q-time *positive* bound for nonce-free
+    bitstring-polynomial is mathematically false, not just unproven.
+    See research milestone R-05. -/
+theorem not_bitstringPolynomialMAC_isQtimeSUFCMASecure
+    (p n : ℕ) [Fact (Nat.Prime p)] (h_n_ge_two : 2 ≤ n)
+    (ε : ℝ) (hε : ε < 1) :
+    ¬ IsQtimeSUFCMASecure (Q := 3) (bitstringPolynomialMAC p n) ε := by
+  have h_det : IsDeterministicTagMAC (bitstringPolynomialMAC p n) :=
+    fun _ _ _ => rfl
+  have h_recover : IsKeyRecoverableForSomeQueries
+      (bitstringPolynomialMAC p n).tag 2 :=
+    bitstringPolynomialHash_isKeyRecoverableForSomeQueries p n (by omega)
+  -- Cardinality bound: |Bitstring n| = |Fin n → Bool| = 2^n.
+  -- For n ≥ 2, 2^n ≥ 4 > 3 = Q + 1.
+  have h_card : 2 + 1 < Fintype.card (Bitstring n) := by
+    -- Bitstring n = Fin n → Bool, |Bool|^n = 2^n.
+    rw [show Fintype.card (Bitstring n) = 2 ^ n from by
+      simp [Bitstring]]
+    -- Goal: 3 < 2 ^ n. With n ≥ 2, 2^n ≥ 2^2 = 4.
+    have h_pow : 2 ^ 2 ≤ 2 ^ n := Nat.pow_le_pow_right (by omega) h_n_ge_two
+    omega
+  exact not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
+    (bitstringPolynomialMAC p n) h_det h_card h_recover ε hε
+
 end Orbcrypt
 
 
