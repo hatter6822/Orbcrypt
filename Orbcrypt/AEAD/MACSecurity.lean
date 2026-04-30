@@ -9,7 +9,6 @@
 import Mathlib.Data.Fintype.Pi
 import Mathlib.Probability.ProbabilityMassFunction.Basic
 import Orbcrypt.AEAD.MAC
-import Orbcrypt.AEAD.CarterWegmanMAC
 import Orbcrypt.Probability.Monad
 import Orbcrypt.Probability.UniversalHash
 
@@ -230,13 +229,34 @@ theorem forgeryAdvantage_le_one [Fintype K] [Nonempty K] [DecidableEq Msg]
   simpa using this
 
 -- ============================================================================
--- Layer 3 — Headline 1-time SUF-CMA reduction (Stinson 1994 Theorem 1)
+-- Layer 3 — Deterministic-tag MAC predicate + 1-time SUF-CMA reduction
 -- ============================================================================
 
 /--
-**Headline 1-time SUF-CMA reduction (Stinson 1994 Theorem 1).** A
-`deterministicTagMAC` over an `ε`-SU2 hash is `ε`-SUF-CMA-secure
-(1-time): every adversary's forgery advantage is at most `ε`.
+**Deterministic-tag MAC predicate.** A MAC has *deterministic-tag
+verification* iff `verify k m t = true` is decided by `decide`-style
+equality `t = tag k m`. The canonical witness is `deterministicTagMAC`
+(in `Orbcrypt/AEAD/CarterWegmanMAC.lean`), where `verify` is *literally*
+`decide (t = tag k m)`; this predicate captures the property
+abstractly, so the SUF-CMA reduction below applies to any MAC whose
+verification is tag-equality-based without forcing `MACSecurity` to
+import any concrete construction.
+
+**Why a Prop, not a structure field.** The predicate could equivalently
+be added to the `MAC` structure, but doing so would force every
+existing MAC instantiation to carry the extra obligation. The
+free-standing predicate keeps `MAC` minimal (matching its abstract-
+interface role) while letting downstream callers attach the property
+where it's needed.
+-/
+def IsDeterministicTagMAC [DecidableEq Tag] (mac : MAC K Msg Tag) : Prop :=
+  ∀ (k : K) (m : Msg) (t : Tag), mac.verify k m t = decide (t = mac.tag k m)
+
+/--
+**Headline 1-time SUF-CMA reduction (Stinson 1994 Theorem 1).** Any
+deterministic-tag MAC whose `tag` is an `ε`-SU2 hash is
+`ε`-SUF-CMA-secure (1-time): every adversary's forgery advantage is
+at most `ε`.
 
 **Hypothesis is SU2, not ε-universal.** ε-universal alone is
 **insufficient**: it bounds only `Pr[h k m₁ = h k m₂]` (the δ = 0
@@ -262,16 +282,18 @@ finite key space) for cleanest finite-arithmetic manipulation.
 theorem isSUFCMASecure_of_isEpsilonSU2 [Fintype K] [Nonempty K]
     [Fintype Tag] [Nonempty Tag] [DecidableEq K] [DecidableEq Msg]
     [DecidableEq Tag]
-    (h : K → Msg → Tag) (ε : ℝ≥0∞) (hε_finite : ε ≠ ⊤)
-    (hSU2 : IsEpsilonSU2 h ε) :
-    IsSUFCMASecure (deterministicTagMAC h) ε.toReal := by
+    (mac : MAC K Msg Tag) (h_det : IsDeterministicTagMAC mac)
+    (ε : ℝ≥0∞) (hε_finite : ε ≠ ⊤)
+    (hSU2 : IsEpsilonSU2 mac.tag ε) :
+    IsSUFCMASecure mac ε.toReal := by
   intro A
   classical
   -- Unfold the forgery advantage to a probTrue ratio.
   unfold forgeryAdvantage
-  -- Reduce A.forges (deterministicTagMAC h) to the joint-event indicator.
-  -- The verify of deterministicTagMAC is `decide (t = h k m)`, so the
-  -- adversary wins iff: m'(h k m_q) ≠ m_q ∧ h k (m'(h k m_q)) = t'(h k m_q).
+  -- Reduce A.forges mac k via h_det: verify k m t = decide (t = mac.tag k m).
+  -- The adversary wins iff:
+  --   m'(mac.tag k m_q) ≠ m_q ∧ mac.tag k (m'(mac.tag k m_q)) = t'(mac.tag k m_q).
+  set h : K → Msg → Tag := mac.tag with h_eq_tag
   set m_q : Msg := A.query
   set m' : Tag → Msg := fun t => (A.forge t).1
   set t' : Tag → Tag := fun t => (A.forge t).2
@@ -285,29 +307,32 @@ theorem isSUFCMASecure_of_isEpsilonSU2 [Fintype K] [Nonempty K]
   set forgesAtFilter : Tag → Finset K := fun t_q =>
     Finset.univ.filter (fun k : K =>
       h k m_q = t_q ∧ m' t_q ≠ m_q ∧ h k (m' t_q) = t' t_q)
-  -- Step 2: The Total forgery filter equals the disjoint union over t_q.
+  -- Step 2: The total forgery filter equals the disjoint union over t_q.
   have h_forge_eq :
-      Finset.univ.filter (fun k : K => A.forges (deterministicTagMAC h) k = true)
+      Finset.univ.filter (fun k : K => A.forges mac k = true)
       = Finset.univ.biUnion forgesAtFilter := by
     ext k
     simp only [Finset.mem_filter, Finset.mem_univ, true_and,
       Finset.mem_biUnion, forgesAtFilter]
+    -- Reduce A.forges to the deterministic-tag form via h_det.
+    have h_unfold :
+        A.forges mac k =
+          (decide (m' (h k m_q) ≠ m_q) &&
+            decide (t' (h k m_q) = h k (m' (h k m_q)))) := by
+      show (decide (m' (mac.tag k m_q) ≠ m_q)
+              && mac.verify k (m' (mac.tag k m_q)) (t' (mac.tag k m_q))) = _
+      rw [h_det]
+    rw [h_unfold]
+    simp only [Bool.and_eq_true, decide_eq_true_eq]
     constructor
     · -- Forward: if A wins at k, partition by t_q := h k m_q.
-      intro h_wins
-      -- Unfold A.forges to get the conjuncts; decide unfolding gives equalities.
-      unfold MACAdversary.forges deterministicTagMAC at h_wins
-      simp only [Bool.and_eq_true, decide_eq_true_eq] at h_wins
-      -- After simp, h_wins is `(m' (h k m_q) ≠ m_q) ∧ (t' (h k m_q) = h k (m' (h k m_q)))`.
-      obtain ⟨h_fresh, h_verify_eq⟩ := h_wins
-      -- The biUnion side's existential: `∃ t_q, h k m_q = t_q ∧ m' t_q ≠ m_q ∧ h k (m' t_q) = t' t_q`.
-      refine ⟨h k m_q, rfl, h_fresh, h_verify_eq.symm⟩
+      rintro ⟨h_fresh, h_verify_eq⟩
+      -- biUnion side: `∃ t_q, h k m_q = t_q ∧ m' t_q ≠ m_q ∧ h k (m' t_q) = t' t_q`.
+      exact ⟨h k m_q, rfl, h_fresh, h_verify_eq.symm⟩
     · -- Backward: from forgesAtFilter we extract A.forges = true.
       rintro ⟨t_q, h_t_q_eq, h_fresh, h_verify_eq⟩
-      -- h_t_q_eq : h k m_q = t_q.  Substitute t_q := h k m_q in h_fresh, h_verify_eq.
+      -- h_t_q_eq : h k m_q = t_q. Substitute t_q := h k m_q.
       subst h_t_q_eq
-      unfold MACAdversary.forges deterministicTagMAC
-      simp only [Bool.and_eq_true, decide_eq_true_eq]
       exact ⟨h_fresh, h_verify_eq.symm⟩
   -- Step 3: Express card(biUnion) as sum of card(per-tᵩ).
   -- The biUnion is disjoint because each k has a unique t_q := h k m_q.
@@ -406,7 +431,7 @@ theorem isSUFCMASecure_of_isEpsilonSU2 [Fintype K] [Nonempty K]
   -- Combine: card(filter) = card(biUnion) = ∑ card(per_t) (via h_forge_eq + Finset.card_biUnion).
   have h_card_filter_eq :
       (Finset.univ.filter (fun k : K =>
-          A.forges (deterministicTagMAC h) k = true)).card =
+          A.forges mac k = true)).card =
       ∑ t_q : Tag, (forgesAtFilter t_q).card := by
     rw [h_forge_eq, Finset.card_biUnion h_disj]
   -- Apply this rewrite to the goal's LHS.
@@ -578,11 +603,11 @@ theorem not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
     [Fintype K] [Nonempty K] [Fintype Msg] [DecidableEq K]
     [DecidableEq Msg] [DecidableEq Tag]
     {Q : ℕ}
-    (h : K → Msg → Tag)
+    (mac : MAC K Msg Tag) (h_det : IsDeterministicTagMAC mac)
     (hQ_lt_card : Q + 1 < Fintype.card Msg)
-    (hRecover : IsKeyRecoverableForSomeQueries h Q)
+    (hRecover : IsKeyRecoverableForSomeQueries mac.tag Q)
     (ε : ℝ) (hε : ε < 1) :
-    ¬ IsQtimeSUFCMASecure (Q := Q + 1) (deterministicTagMAC h) ε := by
+    ¬ IsQtimeSUFCMASecure (Q := Q + 1) mac ε := by
   -- Extract recovery witness.
   obtain ⟨msgs, recover, h_inj, h_recover_eq⟩ := hRecover
   -- Find TWO distinct fresh messages m_pad, m_target ∉ Set.range msgs.
@@ -633,8 +658,6 @@ theorem not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
     exact Finset.mem_image_of_mem _ (Finset.mem_univ j)
   -- The (Q+1)-time adversary: queries are `extendedQueries`, the
   -- recovery is `extendedRecover`, the forge is `extendedForge`.
-  -- All defined as ordinary functions (no `let` body) so they expand
-  -- transparently via `show`.
   -- Define extendedQueries: Fin Q ⊆ Fin (Q+1) via Fin.castSucc, last slot = m_pad.
   set extendedQueries : Fin (Q + 1) → Msg := fun i =>
     if h_lt : i.val < Q then msgs ⟨i.val, h_lt⟩ else m_pad with hexq
@@ -644,7 +667,7 @@ theorem not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
   -- Forge: recover the key, then forge on m_target.
   set extendedForge : (Fin (Q + 1) → Tag) → Msg × Tag := fun tags =>
     match extendedRecover tags with
-    | some k => (m_target, h k m_target)
+    | some k => (m_target, mac.tag k m_target)
     | none => (m_target, tags 0) with hexf
   let A : MultiQueryMACAdversary K Msg Tag (Q + 1) :=
     { queries := extendedQueries, forge := extendedForge }
@@ -654,61 +677,62 @@ theorem not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
     intro i
     show (if h_lt : i.val < Q then msgs ⟨i.val, h_lt⟩ else m_pad) = msgs i
     simp only [i.isLt, dif_pos]
-  -- Show A always wins: A.forges (deterministicTagMAC h) k = true for every k.
+  -- Show A always wins: A.forges mac k = true for every k.
   have h_always_wins :
-      ∀ k : K, A.forges (deterministicTagMAC h) k = true := by
+      ∀ k : K, A.forges mac k = true := by
     intro k
     -- Step 1: extendedRecover(honest tags) = some k.
     have h_recover_at_k :
-        extendedRecover (fun j : Fin (Q + 1) => h k (extendedQueries j))
+        extendedRecover (fun j : Fin (Q + 1) => mac.tag k (extendedQueries j))
           = some k := by
       show recover (fun i : Fin Q =>
-              h k (extendedQueries ⟨i.val, by omega⟩)) = some k
+              mac.tag k (extendedQueries ⟨i.val, by omega⟩)) = some k
       have h_q' :
-          (fun i : Fin Q => h k (extendedQueries ⟨i.val, by omega⟩)) =
-          (fun i : Fin Q => h k (msgs i)) := by
+          (fun i : Fin Q => mac.tag k (extendedQueries ⟨i.val, by omega⟩)) =
+          (fun i : Fin Q => mac.tag k (msgs i)) := by
         funext i
         congr 1
         exact h_eq_msgs i
       rw [h_q']
       exact h_recover_eq k
-    -- Step 2: extendedForge (honest tags) = (m_target, h k m_target).
+    -- Step 2: extendedForge (honest tags) = (m_target, mac.tag k m_target).
     have h_forge_eq :
-        extendedForge (fun j : Fin (Q + 1) => h k (extendedQueries j))
-          = (m_target, h k m_target) := by
+        extendedForge (fun j : Fin (Q + 1) => mac.tag k (extendedQueries j))
+          = (m_target, mac.tag k m_target) := by
       show (match extendedRecover
-              (fun j : Fin (Q + 1) => h k (extendedQueries j)) with
-            | some k' => (m_target, h k' m_target)
-            | none => (m_target, _)) = (m_target, h k m_target)
+              (fun j : Fin (Q + 1) => mac.tag k (extendedQueries j)) with
+            | some k' => (m_target, mac.tag k' m_target)
+            | none => (m_target, _)) = (m_target, mac.tag k m_target)
       rw [h_recover_at_k]
     -- Step 3: A.forges = decide (fresh) && verify.
     show (decide (∀ i : Fin (Q + 1),
-            (extendedForge fun j => h k (extendedQueries j)).1 ≠
+            (extendedForge fun j => mac.tag k (extendedQueries j)).1 ≠
               extendedQueries i)
-            && (deterministicTagMAC h).verify k
-              (extendedForge fun j => h k (extendedQueries j)).1
-              (extendedForge fun j => h k (extendedQueries j)).2) = true
+            && mac.verify k
+              (extendedForge fun j => mac.tag k (extendedQueries j)).1
+              (extendedForge fun j => mac.tag k (extendedQueries j)).2) = true
     rw [h_forge_eq]
-    simp only [Bool.and_eq_true, decide_eq_true_eq]
-    refine ⟨?_, ?_⟩
-    · -- Fresh-message: m_target ≠ extendedQueries i for every i.
-      intro i
-      show m_target ≠ if h_lt : i.val < Q then msgs ⟨i.val, h_lt⟩ else m_pad
-      by_cases h_lt : i.val < Q
-      · simp only [h_lt, dif_pos]
-        exact h_target_ne_msgs ⟨i.val, h_lt⟩
-      · simp only [h_lt, dif_neg, not_false_iff]
-        exact h_m_target_ne_pad
-    · -- Verify: tag verifies under k.
-      show (deterministicTagMAC h).verify k m_target (h k m_target) = true
-      unfold deterministicTagMAC
-      simp
+    -- Reduce mac.verify to decide via h_det (deterministic-tag predicate).
+    rw [h_det]
+    -- Goal:
+    --   decide (∀ i, m_target ≠ extendedQueries i)
+    --     && decide (mac.tag k m_target = mac.tag k m_target) = true.
+    -- The second decide reduces to decide True = true; simplify both sides.
+    simp only [Bool.and_eq_true, decide_eq_true_eq, and_true]
+    -- Goal: ∀ i, m_target ≠ extendedQueries i.
+    intro i
+    show m_target ≠ if h_lt : i.val < Q then msgs ⟨i.val, h_lt⟩ else m_pad
+    by_cases h_lt : i.val < Q
+    · simp only [h_lt, dif_pos]
+      exact h_target_ne_msgs ⟨i.val, h_lt⟩
+    · simp only [h_lt, dif_neg, not_false_iff]
+      exact h_m_target_ne_pad
   -- From h_always_wins, conclude forgeryAdvantage_Qtime A = 1.
-  have h_adv_eq_one : forgeryAdvantage_Qtime (deterministicTagMAC h) A = 1 := by
+  have h_adv_eq_one : forgeryAdvantage_Qtime mac A = 1 := by
     unfold forgeryAdvantage_Qtime
     -- The probTrue equals 1 because the predicate is constantly true.
     have h_predicate_const :
-        (A.forges (deterministicTagMAC h)) = (fun _ : K => true) := by
+        (A.forges mac) = (fun _ : K => true) := by
       funext k
       exact h_always_wins k
     rw [h_predicate_const]
