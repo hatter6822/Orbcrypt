@@ -42,31 +42,29 @@ ephemeral metrics and is updated continuously per the
 | Phase-16 audit script `scripts/audit_phase_16.lean` runs cleanly (exit code 0) | ✅ |
 | CI workflow `.github/workflows/lean4-build.yml` enforces all of the above | ✅ |
 
-**Snapshot anchor (2026-04-29 reality, ephemeral — for current
-totals consult `CLAUDE.md`).** At Workstream-B landing time the
-running counts were: 75 Lean source modules under `Orbcrypt/`
-(all imported by the root file; pre-Workstream-B1 the count was
-76, with the un-imported transient `_ApiSurvey.lean` carrying
-the count, deleted by B1 after the live `PathAlgebra.lean` /
-`StructureTensor.lean` modules superseded its regression-
-sentinel purpose); 928 declarations exercised by
-`scripts/audit_phase_16.lean` via `#print axioms`; ≈ 930 public
-declarations across the source tree (verified at A2-
-implementation time via the grep recipe in the Phase 16
-snapshot section); 48 intentionally `private` helper
-declarations; `lake build` succeeds with 3,418 jobs (verified
-post-Workstream-B on `claude/audit-workstream-planning-nOC9R`;
-the deleted `_ApiSurvey.lean` shared most of its dependency graph
-with the live R-TI modules, and Lake's job count is dominated by
-Mathlib transitive build artefacts, so the 76 → 75 source-file
-drop did not produce a corresponding 3,418 → 3,417 job-count
-drop;
-the audit plan's pre-implementation estimate of 3,426 was
-itself a slightly-stale carry-over from the audit-time
-snapshot — the precise current count tracks `CLAUDE.md`'s
-most recent per-workstream changelog).  Subsequent workstream
-landings shift these counts; the anchor above is informational
-only.
+**Snapshot anchor (2026-04-30 reality, ephemeral — for current
+totals consult `CLAUDE.md`).** At Workstream-C landing time the
+running counts were: **76** Lean source modules under `Orbcrypt/`
+(all imported by the root file; up from 75 — Workstream-C5 added
+`Orbcrypt/Construction/BitstringSupport.lean`, the support-set
+representation module establishing the GAP / Lean canonical-image
+equivalence at arbitrary `n`); **947** declarations exercised by
+`scripts/audit_phase_16.lean` via `#print axioms` (up from 928 — C5
+adds 19 new entries); ≈ 949 public declarations across the source
+tree; 48 intentionally `private` helper declarations; `lake build`
+succeeds with **3,419** jobs (up from 3,418 — exactly +1 build
+node for the new C5 module). Subsequent workstream landings shift
+these counts; the anchor above is informational only.
+
+**Pre-Workstream-C history.** Pre-Workstream-C the counts at the
+2026-04-29 Workstream-B landing were: 75 modules (B1 deleted the
+un-imported transient `_ApiSurvey.lean` after the live
+`PathAlgebra.lean` / `StructureTensor.lean` modules superseded its
+regression-sentinel purpose; pre-B1 the count was 76, with the
+transient carrying the count); 928 audit-script entries; 3,418
+build jobs; ≈ 930 public declarations. The 2026-04-29 audit plan's
+pre-implementation estimate of 3,426 was itself a slightly-stale
+carry-over from the audit-time snapshot.
 
 **Verdict.** Phase 16 exit criteria are all met. The formal verification
 posture established at the end of Phase 6 — zero `sorry`, zero custom axioms,
@@ -1278,6 +1276,106 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-30 (Audit 2026-04-29 — Workstream C optional v1.1+
+  engineering enhancements, **promoted to pre-1.0** per project
+  sponsor's request)** — `docs/VERIFICATION_REPORT.md` updated to
+  reflect the post-Workstream-C reality of the source tree, build
+  configuration, and CI workflow. All five engineering enhancements
+  (C1–C5) and the INFO no-action review (C6) landed on branch
+  `claude/audit-codebase-workstream-5DR7B`.
+
+  **Snapshot-anchor refresh.**  The "Snapshot anchor" paragraph is
+  updated to record post-Workstream-C totals: **76 modules**
+  (up from 75 — Workstream C5 adds
+  `Orbcrypt/Construction/BitstringSupport.lean`), **947
+  audit-script `#print axioms` entries** (up from 928 — C5 adds
+  19 new entries), full `lake build` succeeds with **3,419 jobs**
+  (up from 3,418 — exactly +1 build node for the new module), zero
+  warnings, zero errors. The post-C public declaration count rises
+  by 19. Zero `sorry`, zero custom axioms, all axiom-dependencies
+  on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`).
+
+  **Build-configuration changes (C1, C2, C3, C4).**
+  - `lakefile.lean` (C1) gains an explicit
+    `globs := #[.andSubmodules \`Orbcrypt]` declaration, bounding
+    the default-target build to `Orbcrypt` and submodules under
+    `Orbcrypt/`. Version bumped `0.2.0 → 0.2.1`.
+  - `scripts/setup_lean_env.sh` (C2) gains a write-once
+    SHA-256 snapshot guard for the toolchain's `bin/lean` and
+    `bin/lake` binaries. Tamper detection at fast-path entry exits
+    fatally with explicit remediation guidance.
+  - `.github/workflows/lean4-build.yml` (C3) upgrades the "Verify
+    no sorry" Perl regex from a non-greedy
+    `/-.*?-/` to a recursive
+    `(\/\-(?:[^\/\-]++|\-(?!\/)|\/(?!\-)|(?1))*+\-\/)` that
+    handles arbitrarily-nested Lean block comments.
+  - `.github/workflows/lean4-build.yml` (C4) gains a new
+    "Verify lake-manifest.json drift" step that cross-checks
+    every direct `require ... @ git "<rev>"` directive in
+    `lakefile.lean` against the corresponding `rev` field in
+    `lake-manifest.json`.
+
+  **New module (C5).**
+  `Orbcrypt/Construction/BitstringSupport.lean` (NEW, 76th module
+  under `Orbcrypt/`) establishes the support-set representation of
+  bitstrings as an equivariant order-isomorphism with
+  `Finset (Fin n)`. Headline content:
+  - `support : Bitstring n → Finset (Fin n)` and the inverse
+    `ofSupport` are mutual inverses, packaged as
+    `bitstringSupportEquiv`.
+  - `support_smul` proves G-equivariance (the OnSets
+    correspondence): `support (σ • x) = (support x).image σ`.
+  - `bitstringLinearOrder_lt_iff_first_differ` characterizes the
+    Lean lex order via the first-differing-index rule, derived
+    from `listLex_ofFn_iff` (a structural lemma proving
+    `List.Lex` on `List.ofFn` is equivalent to first-differing-
+    index, by induction on `n`).
+  - `bitstringLinearOrder_lt_iff_gapSetLT_support` is the central
+    order-correspondence lemma: the bitstring lex order and the
+    GAP set-lex order on supports are *the same* relation,
+    mediated by `support`.
+  - `support_canon_minimal`, `support_canon_gapSetLT_minimal`,
+    and `support_canon_in_support_orbit` together formalize the
+    GAP / Lean canonical-image equivalence at arbitrary `n`,
+    closing audit finding D-02a (the pre-C5 prose-level disclosure
+    in `Construction/HGOE.lean:88-113`).
+
+  **Audit-script extensions.** `scripts/audit_phase_16.lean` gains
+  19 new `#print axioms` entries (one per public C5 declaration)
+  plus 7 non-vacuity `example` bindings on concrete `Bitstring 3`
+  inputs at `Equiv.Perm (Fin 3)` and the top subgroup `⊤ ≤ S_3`,
+  exercising the full equivalence chain on small-`n` instances.
+
+  **C6 (no-action).** Five INFO docstring observations (B-03a,
+  B-03b, C-03a, C-13a, F-03a) verified as already honestly
+  disclosed in the existing source. Zero changes.
+
+  **Verification.** Lake build succeeds (3,419 jobs, zero warnings,
+  zero errors). Audit script runs cleanly with exit 0; zero
+  `sorryAx`; zero non-trio axioms across all 947 entries. CI
+  drift-check, sorry-strip, axiom-check all pass on the current
+  tree. Six C2 unit tests pass (snapshot creation, idempotency,
+  verification on un-tampered, tamper detection, missing marker,
+  missing binary post-snapshot). C3 recursive-regex tests pass on
+  9 unit cases (including nested-block-comment tamper), and on the
+  full 76-module codebase.
+
+  **Patch version.** `lakefile.lean` bumped from `0.2.0` to
+  `0.2.1` for Workstream C — C1's `globs` declaration is a
+  consumer-visible build-configuration change, C5 adds 19 new
+  public declarations in a new module, and C2 introduces a new
+  on-disk artifact (`${tc_dir}/.bin_sha256.lock`) downstream
+  tooling consumers may need to know about.
+
+  **Audit-plan reclassification.** The 2026-04-29 audit plan
+  classified Workstream C as "defer to v1.1+ engineering". Per
+  the project sponsor's request (2026-04-30), Workstream C was
+  promoted to pre-1.0 release work and landed alongside Workstream
+  A and Workstream B. The audit-plan tracker (Appendix B) and
+  Workstream C section (§ 7) are updated to reflect this
+  promotion. The cryptographic-correctness posture is preserved.
 
 * **2026-04-29 (Audit 2026-04-29 — Workstream B recommended
   pre-release polish)** — `docs/VERIFICATION_REPORT.md` updated in

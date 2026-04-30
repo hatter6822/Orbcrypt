@@ -37,6 +37,7 @@ import Orbcrypt.KEM.CompSecurity
 import Orbcrypt.Construction.Permutation
 import Orbcrypt.Construction.HGOE
 import Orbcrypt.Construction.HGOEKEM
+import Orbcrypt.Construction.BitstringSupport
 
 import Orbcrypt.KeyMgmt.SeedKey
 import Orbcrypt.KeyMgmt.Nonce

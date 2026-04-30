@@ -126,6 +126,19 @@ explicit lakefile globs, fast-path checksum verification, CI nested-
 comment regex upgrade, lake-manifest drift check, formal GAP/Lean
 canonical-image equivalence at arbitrary `n`. None block v1.0.
 
+**Workstream C promoted to pre-1.0 (2026-04-30 update).** Per the
+project sponsor's request, Workstream C was promoted from "defer to
+v1.1+" to pre-1.0 release work. All five engineering enhancements
+(C1, C2, C3, C4, C5) and the INFO no-action review (C6) landed on
+branch `claude/audit-codebase-workstream-5DR7B`. The Workstream
+status tracker (Appendix B) reflects each work unit's closure date.
+The plan's original narrative — that Workstream C is a tracking
+container for v1.1+ planning — is preserved below as historical
+context, but its operational status is now "closed" rather than
+"deferred". Section 7.4's "no exit criteria" claim is superseded
+by the per-work-unit acceptance criteria documented in the
+implementation snapshot in `CLAUDE.md`'s Workstream-C entry.
+
 **Research catalogue (Workstream D, never closes)** tracks R-09, R-12,
 R-13, R-15-residual-CE-reverse, R-15-residual-TI-reverse,
 R-15-residual-TI-forward-matrix — all multi-month research milestones
@@ -278,7 +291,7 @@ required.
 |----|-------|-------------------|---------------|--------|-------|
 | **A** | Release-blocking documentation parity. Edits four prose / metadata surfaces: `Orbcrypt/Hardness/PetrankRoth.lean` module docstring (A1, lines 9-19 and 38-52); `docs/VERIFICATION_REPORT.md` headline numbers + 17 in-doc references (A2); `Orbcrypt.lean` "Phase 16 Verification Audit Snapshot" section (A3, lines 1279-1314); `lakefile.lean` `version` field reconciled with a new `CLAUDE.md` changelog entry (A4). **No Lean source semantics change.** | G-02, L-04, A-07/J-02, A-02 | `Orbcrypt/Hardness/PetrankRoth.lean`, `docs/VERIFICATION_REPORT.md`, `Orbcrypt.lean`, `lakefile.lean`, `CLAUDE.md` | 3.25 h | **pre-release (blocking)** |
 | **B** | Recommended pre-release polish. Removes the un-imported `_ApiSurvey.lean` transient stub (B1); decides on the legacy per-workstream audit scripts under `scripts/` (B2); refreshes `README.md`'s audit-script count (B3); compacts the 14-line `--`-comment block in `Orbcrypt/KEM/CompSecurity.lean:392-404` (B4). | A-01/H-03a, A-06, L-01, C-13b | `Orbcrypt/Hardness/GrochowQiao/_ApiSurvey.lean` (delete or relocate), `scripts/audit_*.lean` (move to `scripts/legacy/`), `README.md`, `Orbcrypt/KEM/CompSecurity.lean` | 50 min | recommended |
-| **C** | Optional v1.1+ engineering enhancements. Defense-in-depth and hygiene improvements: explicit lakefile globs (C1); fast-path checksum verification in `setup_lean_env.sh` (C2); CI nested-block-comment regex upgrade (C3); CI `lake-manifest.json` drift check (C4); formal GAP/Lean canonical-image equivalence theorem at arbitrary `n` (C5); INFO-class docstring observations grouped (C6). | A-03, A-04, A-05, A-08, D-02a, B-03a, B-03b, C-03a, C-13a, F-03a | `lakefile.lean`, `scripts/setup_lean_env.sh`, `.github/workflows/lean4-build.yml`, `Orbcrypt/Construction/HGOE.lean` (research-scope theorem), assorted docstrings | n/a (defer) | **v1.1+** |
+| **C** | Optional v1.1+ engineering enhancements (**LANDED PRE-1.0 on 2026-04-30**). Defense-in-depth and hygiene improvements: explicit lakefile globs (C1); fast-path SHA-256 snapshot verification in `setup_lean_env.sh` (C2); CI nested-block-comment regex upgrade (C3); CI `lake-manifest.json` drift check (C4); formal GAP/Lean canonical-image equivalence theorem at arbitrary `n` (C5, new module `Orbcrypt/Construction/BitstringSupport.lean`); INFO-class docstring observations grouped (C6). | A-03, A-04, A-05, A-08, D-02a, B-03a, B-03b, C-03a, C-13a, F-03a | `lakefile.lean`, `scripts/setup_lean_env.sh`, `.github/workflows/lean4-build.yml`, `Orbcrypt/Construction/BitstringSupport.lean` (NEW), `Orbcrypt.lean`, `scripts/audit_phase_16.lean`, `CLAUDE.md` | ~6 h | **pre-release (landed)** |
 | **D** | Research-scope catalogue (informational only — never closes). Tracks R-09 (`h_step` discharge in `indQCPA_from_perStepBound`), R-12 (tight 1/4 ε-bound on `ObliviousSamplingConcreteHiding`), R-13 (`Bitstring n → ZMod p` orbit-preserving adapter), R-15-residual-CE-reverse (PetrankRoth Layers 4.1–7), R-15-residual-TI-reverse (Grochow–Qiao Layer T5), R-15-residual-TI-forward-matrix (Grochow–Qiao Layer T3.6 matrix-action upgrade). All multi-month; explicitly not v1.0 work. | R-09, R-12, R-13, R-15-residual-CE-reverse, R-15-residual-TI-reverse, R-15-residual-TI-forward-matrix | n/a — tracking only | n/a | **v1.1+ / v2.0** |
 | — | **Totals** | 16 audit findings | — | ≈ 4.1 h pre-tag work | — |
 
@@ -1764,13 +1777,20 @@ trivial rollback.
 6. **CLAUDE.md change-log entry recorded:** A new Workstream-B
    snapshot section is appended to CLAUDE.md.
 
-## 7. Workstream C — Optional v1.1+ engineering enhancements
+## 7. Workstream C — Optional v1.1+ engineering enhancements (LANDED PRE-1.0)
 
 **Severity.** INFO (A-03, A-04, A-05, A-08, D-02a, B-03a, B-03b,
 C-03a, C-13a, F-03a).
-**Effort.** Defer all to v1.1+ / v2.0.
-**Scope.** Defense-in-depth and hygiene improvements; not
-release-blocking.
+**Effort.** Originally specified as "defer all to v1.1+ / v2.0";
+**promoted to pre-1.0 release work** on 2026-04-30 per the project
+sponsor's request. All five engineering enhancements (C1–C5) and the
+INFO no-action review (C6) landed on branch
+`claude/audit-codebase-workstream-5DR7B`. See the
+"Workstream C of audit 2026-04-29" snapshot in `CLAUDE.md` for the
+implementation details.
+**Scope.** Defense-in-depth and hygiene improvements; *was* not
+release-blocking, but landed pre-1.0 anyway as part of the v1.0
+release-readiness sweep.
 
 ### 7.1 Problem statement
 
@@ -2468,12 +2488,12 @@ merge). At plan-issuance time, all workstreams are pending.
 | **B2** (Relocate legacy audit scripts) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
 | **B3** (README audit-script count refresh) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
 | **B4** (Compact KEM/CompSecurity comment) | closed | `claude/audit-workstream-planning-nOC9R` | 2026-04-29 |
-| **C1** (lakefile globs) | deferred | — | v1.1+ |
-| **C2** (toolchain checksum) | deferred | — | v1.1+ |
-| **C3** (CI nested-comment regex) | deferred | — | v1.1+ |
-| **C4** (lake-manifest drift check) | deferred | — | v1.1+ |
-| **C5** (GAP/Lean equivalence theorem) | deferred | — | v1.1+ research-scope |
-| **C6** (INFO docstrings) | no-action | — | n/a |
+| **C1** (lakefile globs) | closed | `claude/audit-codebase-workstream-5DR7B` | 2026-04-30 |
+| **C2** (toolchain checksum) | closed | `claude/audit-codebase-workstream-5DR7B` | 2026-04-30 |
+| **C3** (CI nested-comment regex) | closed | `claude/audit-codebase-workstream-5DR7B` | 2026-04-30 |
+| **C4** (lake-manifest drift check) | closed | `claude/audit-codebase-workstream-5DR7B` | 2026-04-30 |
+| **C5** (GAP/Lean equivalence theorem) | closed | `claude/audit-codebase-workstream-5DR7B` | 2026-04-30 |
+| **C6** (INFO docstrings) | no-action | — | 2026-04-30 |
 | **D** (research catalogue) | tracking (never closes) | — | — |
 
 **Update protocol.** When a Workstream-A or Workstream-B work

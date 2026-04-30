@@ -110,14 +110,14 @@ under [`docs/benchmarks/`](docs/benchmarks/).
 ```
 Orbcrypt/
 ├── Orbcrypt.lean                 Root import file (axiom-transparency report)
-├── Orbcrypt/                     Lean 4 source tree (75 modules)
+├── Orbcrypt/                     Lean 4 source tree (76 modules)
 │   ├── GroupAction/              Orbits, stabilizers, canonical forms (incl. `ofLexMin`)
 │   ├── Crypto/                   AOE scheme, IND-CPA game, OIA, ConcreteOIA
 │   ├── Theorems/                 Correctness, invariant attack, OIA → IND-1-CPA
 │   ├── KEM/                      KEM reformulation + probabilistic security
 │   ├── Probability/              PMF wrappers, negligible functions, hybrid arg
 │   ├── KeyMgmt/                  Seed-key compression, nonce-based encryption
-│   ├── Construction/             S_n on bitstrings, HGOE instance, HGOE-KEM
+│   ├── Construction/             S_n on bitstrings, HGOE instance, HGOE-KEM, BitstringSupport (GAP/Lean equiv)
 │   ├── AEAD/                     MAC, Encrypt-then-MAC AEAD, KEM+DEM, Carter–Wegman
 │   ├── Hardness/                 CE / TI problems, GI reductions, hardness chain
 │   │   ├── PetrankRoth/          Forward direction of GI ≤ CE (Workstream R-CE)

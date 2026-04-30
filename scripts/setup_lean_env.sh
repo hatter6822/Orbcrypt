@@ -248,6 +248,140 @@ configure_lake_cache() {
   return 1
 }
 
+# -------- SHA-256 helper (used early by C2's snapshot guards) --------
+# Workstream C of audit 2026-04-29 (finding A-04 / C2): hoisted from its
+# original location below the package-management helpers because the
+# snapshot helpers `bin_sha256_snapshot_{create,verify}` invoke
+# `compute_sha256` and run before `fast_path_ready` exits — i.e., before
+# the package-management section of this script is reached.
+compute_sha256() {
+  local target_file="$1"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${target_file}" | awk '{print $1}'
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${target_file}" | awk '{print $1}'
+  else
+    echo "error: neither sha256sum nor shasum is available" >&2
+    exit 1
+  fi
+}
+
+# -------- Defense-in-depth: toolchain binary integrity verification --------
+#
+# Workstream C of audit 2026-04-29 (finding A-04 / C2). The pre-C2 fast-path
+# only verified *presence* of the toolchain's `bin/lean` and `lib/crti.o`,
+# not their *content*. Once the archive's SHA-256 was verified at install
+# time (`verify_toolchain_sha256` above), every subsequent invocation
+# trusted the cached layout — meaning a post-install modification (whether
+# accidental from a system update, an interrupted rsync, a misconfigured
+# backup tool, or malicious tampering with local write access to
+# `~/.elan/`) was undetectable.
+#
+# Design — write-once snapshot. After a fresh install (where the archive
+# SHA was verified against the per-arch pin in this script), we compute
+# the SHA-256 of the actually-installed `bin/lean` and `bin/lake` and
+# write them to a marker file. On every subsequent fast-path entry, we
+# recompute those SHAs and compare them to the marker.
+#
+# What this catches.
+#   * Accidental modification of cached binaries (system updates, backup
+#     restore mishaps, partial copies, file-system corruption).
+#   * A class of malicious tampering — anyone who modifies `bin/lean`
+#     without also updating the marker file is detected. This raises the
+#     bar for an attacker who compromises the toolchain at rest.
+#
+# What this DOES NOT catch.
+#   * An attacker with write access to both the toolchain *and* the
+#     marker can update both consistently and bypass the check. The
+#     threat model here is already game-over: with write access to
+#     `~/.elan/`, the attacker can replace `bin/lean` directly and
+#     `lake build` will execute their code on every invocation. C2 is
+#     defense-in-depth, not a replacement for filesystem-level access
+#     controls.
+#   * The check verifies binaries against a snapshot taken at install
+#     time on *this* machine. It does NOT verify that the install was
+#     itself authentic — that's the job of `verify_toolchain_sha256`,
+#     which checks the archive's SHA against a per-architecture pin
+#     baked into this script.
+#
+# The marker is `${tc_dir}/.bin_sha256.lock`. It is intentionally placed
+# *inside* the toolchain directory so that `rm -rf "${tc_dir}"` (the
+# destructive recovery path used by `verify_crt_files`) wipes both the
+# binaries and the snapshot atomically — there's no failure mode where
+# the marker outlives the binaries it was tracking.
+#
+# Marker format: `<sha256>  <relpath>` lines, one per binary, exactly
+# matching the output of `sha256sum --tag`-style files (without the
+# `--tag` prefix, for portability with `shasum -a 256` on macOS).
+#
+TOOLCHAIN_MARKER_FILENAME=".bin_sha256.lock"
+
+# Ordered list of binary paths (relative to toolchain root) that
+# `bin_sha256_snapshot_*` walks. `bin/lean` is the actual compiler;
+# `bin/lake` is the build orchestrator (build script execution); both
+# are on the trust path for `lake build`. `lib/crti.o` is intentionally
+# excluded — it is a passive ELF startup-stub and re-extraction is
+# already self-healing via `verify_crt_files` in the slow path.
+TOOLCHAIN_PROTECTED_BINS=("bin/lean" "bin/lake")
+
+bin_sha256_snapshot_create() {
+  # Compute SHA-256 of every protected binary under a freshly-installed
+  # toolchain and write the result to the marker. Idempotent — if the
+  # marker already exists, this function leaves it alone.
+  local tc_dir="$1"
+  local marker="${tc_dir}/${TOOLCHAIN_MARKER_FILENAME}"
+  if [ -f "${marker}" ]; then
+    return 0
+  fi
+  local rel sha
+  : > "${marker}.tmp"
+  for rel in "${TOOLCHAIN_PROTECTED_BINS[@]}"; do
+    if [ ! -f "${tc_dir}/${rel}" ]; then
+      log_elapsed "warning: ${rel} missing under ${tc_dir}; skipping snapshot"
+      rm -f "${marker}.tmp"
+      return 1
+    fi
+    sha="$(compute_sha256 "${tc_dir}/${rel}")"
+    printf '%s  %s\n' "${sha}" "${rel}" >> "${marker}.tmp"
+  done
+  mv "${marker}.tmp" "${marker}"
+  log_elapsed "toolchain binary snapshot recorded (${marker})"
+  return 0
+}
+
+bin_sha256_snapshot_verify() {
+  # Re-compute SHA-256 of every protected binary under the toolchain and
+  # verify each against the recorded marker. Returns 0 iff every binary
+  # matches its recorded snapshot. Returns 1 if the marker is missing
+  # (caller may decide to take a snapshot now), or 2 if any verification
+  # failed.
+  local tc_dir="$1"
+  local marker="${tc_dir}/${TOOLCHAIN_MARKER_FILENAME}"
+  if [ ! -f "${marker}" ]; then
+    return 1
+  fi
+  local rel sha expected
+  for rel in "${TOOLCHAIN_PROTECTED_BINS[@]}"; do
+    if [ ! -f "${tc_dir}/${rel}" ]; then
+      log_elapsed "error: ${rel} missing under ${tc_dir}; integrity check failed" >&2
+      return 2
+    fi
+    expected="$(awk -v r="${rel}" '$2 == r {print $1; exit}' "${marker}")"
+    if [ -z "${expected}" ]; then
+      log_elapsed "warning: ${rel} not recorded in ${marker}; integrity check incomplete"
+      continue
+    fi
+    sha="$(compute_sha256 "${tc_dir}/${rel}")"
+    if [ "${sha}" != "${expected}" ]; then
+      echo "error: ${rel} SHA-256 mismatch (expected ${expected}, got ${sha})" >&2
+      echo "  toolchain at ${tc_dir} appears to have been modified post-install" >&2
+      echo "  delete ${tc_dir} and re-run this script to recover from a verified archive" >&2
+      return 2
+    fi
+  done
+  return 0
+}
+
 # -------- Fast-path: skip setup if everything is already ready --------
 fast_path_ready() {
   if [ -f "${ELAN_ENV_FILE}" ]; then
@@ -258,6 +392,48 @@ fast_path_ready() {
   local tc_dir="${ELAN_HOME_DIR}/toolchains/${TOOLCHAIN_DIR_NAME}"
   [ -x "${tc_dir}/bin/lean" ] || return 1
   [ -f "${tc_dir}/lib/crti.o" ] || return 1
+
+  # Workstream C of audit 2026-04-29 (finding A-04 / C2): defense-in-depth
+  # binary integrity verification. See the docstring above
+  # `bin_sha256_snapshot_verify` for the threat model and limitations.
+  #
+  # Failure semantics. The fast path discriminates three outcomes from
+  # `bin_sha256_snapshot_verify`:
+  #   * exit 0 — marker present and every recorded SHA matches: proceed.
+  #   * exit 1 — marker absent (e.g., toolchain pre-dates C2 or marker
+  #     was deleted manually): take a snapshot now, then proceed.
+  #     Failing here would be hostile to developers who installed the
+  #     toolchain before this script grew the C2 guard.
+  #   * exit 2 — genuine mismatch: a binary was modified post-install.
+  #     This is FATAL. We `exit 1` from the script (not `return 1` from
+  #     this function), because falling through to the slow-path setup
+  #     flow would silently accept the tampered binaries — `if [ ! -x
+  #     "${local_tc_dir}/bin/lean" ]` is false (the file *exists*, just
+  #     with the wrong content), so the slow path would skip
+  #     re-installation and the tamper would persist. The user must
+  #     `rm -rf "${tc_dir}"` and re-run, which triggers a fresh archive
+  #     download with `verify_toolchain_sha256` re-verifying the
+  #     archive's SHA against the per-arch pin.
+  local verify_status
+  bin_sha256_snapshot_verify "${tc_dir}"
+  verify_status=$?
+  case "${verify_status}" in
+    0)  # Marker present and verifies. Proceed.
+        ;;
+    1)  # Marker missing. Take a snapshot now — see § "Failure semantics"
+        # above for why this is safe rather than fail-closed.
+        bin_sha256_snapshot_create "${tc_dir}" || true
+        ;;
+    *)  # Genuine SHA mismatch. Exit fatally.
+        echo "error: toolchain integrity check failed (Workstream C / C2)" >&2
+        echo "  see error messages above and remediate by deleting the toolchain:" >&2
+        echo "    rm -rf \"${tc_dir}\"" >&2
+        echo "  then re-run this script. The reinstall path will redownload" >&2
+        echo "  the archive and verify it against the SHA-256 pin in this" >&2
+        echo "  script (\`LEAN_TOOLCHAIN_SHA256_*_{X86,ARM}\`)." >&2
+        exit 1
+        ;;
+  esac
   return 0
 }
 
@@ -301,17 +477,8 @@ apt_update_once() {
   fi
 }
 
-compute_sha256() {
-  local target_file="$1"
-  if command -v sha256sum >/dev/null 2>&1; then
-    sha256sum "${target_file}" | awk '{print $1}'
-  elif command -v shasum >/dev/null 2>&1; then
-    shasum -a 256 "${target_file}" | awk '{print $1}'
-  else
-    echo "error: neither sha256sum nor shasum is available" >&2
-    exit 1
-  fi
-}
+# Note: `compute_sha256` is defined above the C2 snapshot helpers (which
+# run inside `fast_path_ready`); see the "SHA-256 helper" section.
 
 verify_toolchain_sha256() {
   local target_file="$1"
@@ -607,6 +774,14 @@ if [ "${TOOLCHAIN_FRESHLY_INSTALLED}" -eq 1 ]; then
     return 0
   }
   verify_crt_files
+
+  # Workstream C of audit 2026-04-29 (finding A-04 / C2): defense-in-depth.
+  # Now that the toolchain is freshly installed (and the archive's
+  # SHA-256 was verified by `verify_toolchain_sha256` inside
+  # `manual_curl_install`), record a snapshot of the binaries' content
+  # hashes. Subsequent fast-path entries (`bin_sha256_snapshot_verify`)
+  # will detect post-install modification.
+  bin_sha256_snapshot_create "${ELAN_HOME_DIR}/toolchains/${TOOLCHAIN_DIR_NAME}" || true
 fi
 
 log_elapsed "Lean environment is ready"

@@ -47,7 +47,8 @@ jobs:
         # which would red-card CI if any docstring, module header, or proof
         # comment ever mentioned the word `sorry`. The hardened check below
         # is *comment-aware*: it strips all block comments (`/- … -/`,
-        # including docstrings `/-- … -/` and module docstrings `/-! … -/`)
+        # including docstrings `/-- … -/` and module docstrings `/-! … -/`,
+        # **and arbitrarily nested `/- ... /- inner -/ ... -/` blocks**)
         # and all line comments (`-- …`) from each `.lean` file using a
         # Perl slurp, and only then searches the remaining source for
         # `sorry` with identifier word-boundaries on both sides.
@@ -58,45 +59,46 @@ jobs:
         # correctly because the Perl strip is file-wide (`-0777`), not
         # line-wide.
         #
-        # Implementation note: `/-.*?-/` is non-greedy, which matches
-        # `/- … -/`, `/-- … -/`, and `/-! … -/` equally (they are all
-        # block comments starting with `/-`). Lean technically allows
-        # nested block comments; a future extension could use a Perl
-        # recursive pattern, but no nested-comment usage exists in this
-        # tree (verified via `grep -c '/-' Orbcrypt/**/*.lean`).
+        # Implementation note (Workstream C / C3 of audit 2026-04-29):
+        # the strip pattern below is a Perl **recursive** regex that
+        # matches `/- ... -/` blocks with arbitrary nesting depth. The
+        # pre-C3 non-greedy `/-.*?-/` pattern stripped the *innermost*
+        # delimiter pair on every match, which on a fragment of the form
         #
-        # Audit finding I5 (Workstream N5, 2026-04-21) — nested-block
-        # disclaimer. The non-greedy `/-.*?-/` pattern above does *not*
-        # parse nested Lean block comments. Specifically, a source fragment
-        # of the form
+        #     /- a /- b -/ sorry /- c -/ -/
         #
-        #     /- outer /- inner sorry -/ still outer -/
+        # produced two non-greedy strips (`/- a /- b -/` and `/- c -/`)
+        # leaving a literal ` sorry  -/` trailer with the keyword
+        # exposed — even though the entire fragment was inside the
+        # outermost block comment in the original Lean source. The C3
+        # recursive pattern below correctly recognises the outermost
+        # `/- ... -/` span and strips the entire nested block atomically.
         #
-        # matches `/- outer /- inner sorry -/` as the first non-greedy
-        # span (outermost `/-` to *first* `-/`, which is the inner one),
-        # strips it, and leaves the literal trailer ` still outer -/`
-        # un-stripped. The trailer has no leading `/-` anchor, so no
-        # further match fires. In this concrete example the word `sorry`
-        # lived inside the stripped span, so the scan is safe — but the
-        # symmetric case, where the *outer* block carries the `sorry`
-        # tactic and the *inner* block carries innocuous prose, leaves
-        # an un-stripped fragment whose match/skip semantics differ from
-        # Lean's parser. The safe rule is: if you ever introduce a
-        # nested `/- … /- … -/ … -/` block in `Orbcrypt/**/*.lean`, do
-        # NOT rely solely on this regex check — run `lake build` locally
-        # (or let the "Build" step above do it), which uses Lean's own
-        # parser and is definitive about `sorry` occurrences regardless
-        # of comment nesting. The audit-plan follow-up
-        # (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.3
-        # "optional engineering follow-ups") is to upgrade the strip to
-        # a Perl recursive pattern such as
-        # `(?:/- (?:(?> [^/-]+ | /(?!-) | -(?!/) | (?R))* ) -/)` once
-        # a source file actually needs nested block comments.
+        # Pattern anatomy:
+        #   `(\/\-(?:[^\/\-]++|\-(?!\/)|\/(?!\-)|(?1))*+\-\/)`
+        # captures the outermost block as group 1, then matches its body
+        # as a sequence of: any non-`/`-non-`-` character (possessive
+        # `++` to avoid catastrophic backtracking on long bodies), or a
+        # `-` not followed by `/`, or a `/` not followed by `-`, or a
+        # recursive `(?1)` reference matching another nested block.
+        # Possessive `*+` on the body's outer alternation eliminates
+        # backtracking once a body character has been consumed, keeping
+        # complexity O(n) on well-formed input.
+        #
+        # See `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+        # § 7.3 (Workstream C / C3) for the audit context. The C3
+        # recursive regex landed alongside C1, C2, C4, C5 of the same
+        # plan as a defense-in-depth upgrade. The build step above
+        # remains the definitive `sorry` guard via Lean's own parser;
+        # this check is a fast pre-filter, not a security boundary.
         run: |
           set -e
           fail=0
           while IFS= read -r -d '' f; do
-            hits="$(perl -0777 -pe 's{/-.*?-/}{}sg; s{--[^\n]*}{}g' "$f" \
+            # Workstream C / C3: recursive comment-strip using Perl's
+            # `(?1)` self-reference to handle arbitrarily-nested Lean
+            # block comments.
+            hits="$(perl -0777 -pe 's{(\/\-(?:[^\/\-]++|\-(?!\/)|\/(?!\-)|(?1))*+\-\/)}{}sg; s{--[^\n]*}{}g' "$f" \
               | grep -Pn '(^|[^A-Za-z0-9_])sorry([^A-Za-z0-9_]|$)' || true)"
             if [ -n "$hits" ]; then
               echo "ERROR: sorry found in $f (outside comments and docstrings):"
@@ -117,6 +119,82 @@ jobs:
             echo "ERROR: unexpected axiom declaration found in source files"
             exit 1
           fi
+
+      - name: Verify lake-manifest.json drift
+        # Workstream C of audit 2026-04-29 (finding A-08 / C4): cross-check
+        # that every direct `require ... @ git "<rev>"` directive in
+        # `lakefile.lean` matches the corresponding `rev` field in
+        # `lake-manifest.json`. The manifest is a critical reproducibility
+        # surface — if a developer bumps Mathlib's pin in `lakefile.lean`
+        # without re-running `lake update`, the manifest's recorded rev
+        # falls out of sync, but downstream `lake build` may still
+        # succeed using the cached olean tree, producing a build whose
+        # apparent dependencies don't match the documented ones. CI must
+        # detect this discrepancy.
+        #
+        # The audit-plan C4 skeleton suggested `lake update --dry-run`,
+        # but Lake at v4.30.0-rc1 has no `--dry-run` flag (`lake update
+        # --help` documents only the bare invocation, which mutates the
+        # manifest). The structural cross-check below is exact: it
+        # compares the two files directly without invoking Lake.
+        #
+        # Direct requires only. Transitive dependencies (Mathlib's own
+        # `require`s, marked `"inherited": true` in the manifest) are
+        # not re-pinned in this lakefile, so they are not checked here —
+        # their pins are managed by Mathlib's lakefile and propagate via
+        # `lake update` when the Mathlib rev changes. The check below
+        # is concerned only with this package's *own* declared pins.
+        run: |
+          set -e
+          # Extract every direct `require ... @ git "<rev>"` from lakefile.lean.
+          # The format is one require-directive per line:
+          #   `require "leanprover-community" / "mathlib" @ git "<40-hex>"`
+          # We capture the `name` (last path-segment of the package spec)
+          # and the `rev` (the 40-hex git-revision literal).
+          mapfile -t requires < <(perl -ne '
+            if (/^\s*require\s+"[^"]+"\s*\/\s*"([^"]+)"\s*@\s*git\s+"([a-f0-9]{40})"/) {
+              print "$1 $2\n";
+            }
+          ' lakefile.lean)
+          if [ "${#requires[@]}" -eq 0 ]; then
+            echo "ERROR: no direct git-pinned requires found in lakefile.lean"
+            echo "  (the C4 drift check expects at least one)"
+            exit 1
+          fi
+          fail=0
+          for entry in "${requires[@]}"; do
+            name="${entry%% *}"
+            lakefile_rev="${entry#* }"
+            # Look up the package's manifest rev. Use python3 (always
+            # present on ubuntu-latest CI runners) to avoid a jq
+            # dependency. Fall back to a grep+awk shape that works on
+            # the manifest's exact pretty-printed format.
+            manifest_rev="$(python3 -c "
+import json, sys
+with open('lake-manifest.json') as f:
+    m = json.load(f)
+for p in m.get('packages', []):
+    if p.get('name') == sys.argv[1]:
+        print(p.get('rev', ''))
+        break
+" "$name" 2>/dev/null || echo "")"
+            if [ -z "${manifest_rev}" ]; then
+              echo "ERROR: lakefile.lean requires '${name}', but no entry in lake-manifest.json"
+              fail=1
+              continue
+            fi
+            if [ "${manifest_rev}" != "${lakefile_rev}" ]; then
+              echo "ERROR: lake-manifest.json drift detected for ${name}:"
+              echo "  lakefile.lean pin:  ${lakefile_rev}"
+              echo "  manifest rev:       ${manifest_rev}"
+              echo "  (run \`lake update ${name}\` to re-sync the manifest)"
+              fail=1
+            fi
+          done
+          if [ "$fail" -ne 0 ]; then
+            exit 1
+          fi
+          echo "lake-manifest.json drift check passed (${#requires[@]} direct require(s) verified)"
 
       - name: Phase 16 axiom-transparency audit
         # Run the consolidated Phase 16 audit script:
