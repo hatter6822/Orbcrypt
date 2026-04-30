@@ -528,4 +528,280 @@ theorem indQCPA_from_perStepBound_recovers_single_query
 
 end MultiQueryHybrid
 
+-- ============================================================================
+-- Workstream R-09 — Discharge of `h_step` from `ConcreteOIA`
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan § R-09)
+-- ============================================================================
+
+section R09
+
+variable {G : Type*} {X : Type*} {M : Type*}
+  [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+
+/-- **R-09 — Per-step hybrid bound from `ConcreteOIA`.**
+
+    Discharges the user-supplied `h_step` hypothesis of
+    `indQCPA_from_perStepBound` from `ConcreteOIA scheme ε` alone:
+    for every adjacent hybrid pair `(i, i+1)` with `i < Q`, the
+    distinguishing advantage of `A.guess` is at most `ε`.
+
+    **Mathematical content (Workstream R-09 plan).** The two adjacent
+    hybrids differ only at coordinate `j₀ := ⟨i, hi⟩ : Fin Q`: at j₀,
+    one samples from `orbit (scheme.reps right)` and the other from
+    `orbit (scheme.reps left)`. Off j₀, the two distributions agree
+    pointwise. Marginalising over the other coordinates (the "rest")
+    reduces the global advantage to a per-rest single-coordinate
+    advantage, which is bounded by `ConcreteOIA scheme ε`. The
+    convexity-of-TV step is encapsulated in
+    `advantage_pmf_map_uniform_pi_factor_bound`
+    (`Probability/Advantage.lean`).
+
+    **Proof outline.**
+    1. Pattern-match Q: at Q = 0, hi : i < 0 is impossible.
+    2. At Q = n + 1, set j₀ := ⟨i, hi⟩.
+    3. Apply `advantage_pmf_map_uniform_pi_factor_bound` at j₀ and
+       the F_i / F_{i+1} push-forwards.
+    4. Discharge the per-rest hypothesis: for each `rest`, define
+       a single-coord distinguisher `D_rest` that absorbs the rest
+       of the tuple, then apply ConcreteOIA at the per-rest pair
+       (right, left) of orbit distributions.
+
+    **Closes** the Workstream-D research-scope catalogue's R-09:
+    the multi-query bound `indQCPA_from_perStepBound` no longer
+    requires a user-supplied per-step hypothesis when
+    `ConcreteOIA scheme ε` is available. -/
+theorem hybrid_step_bound_of_concreteOIA {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε)
+    (i : ℕ) (hi : i < Q) :
+    advantage (A.guess scheme.reps)
+      (hybridDist scheme (A.choose scheme.reps) i)
+      (hybridDist scheme (A.choose scheme.reps) (i + 1)) ≤ ε := by
+  classical
+  -- Pattern-match Q to get the n+1 form needed by the abstract helper.
+  match Q, hi, A with
+  | 0, hi, _ => exact absurd hi (Nat.not_lt_zero _)
+  | n + 1, hi, A =>
+    -- Setup: j₀, choose, F_i, F_succ.
+    let j₀ : Fin (n + 1) := ⟨i, hi⟩
+    let choose := A.choose scheme.reps
+    let F_i : (Fin (n + 1) → G) → (Fin (n + 1) → X) :=
+      fun gs => fun j => if j.val < i
+        then gs j • scheme.reps (choose j).1
+        else gs j • scheme.reps (choose j).2
+    let F_succ : (Fin (n + 1) → G) → (Fin (n + 1) → X) :=
+      fun gs => fun j => if j.val < i + 1
+        then gs j • scheme.reps (choose j).1
+        else gs j • scheme.reps (choose j).2
+    -- The hybridDist's are exactly PMF.map F_i / F_succ over uniformPMFTuple.
+    show advantage (A.guess scheme.reps)
+        (PMF.map F_i (uniformPMFTuple G (n + 1)))
+        (PMF.map F_succ (uniformPMFTuple G (n + 1))) ≤ ε
+    unfold uniformPMFTuple
+    -- Apply the abstract helper. The per-rest hypothesis remains.
+    apply advantage_pmf_map_uniform_pi_factor_bound j₀ F_i F_succ
+      (A.guess scheme.reps) ε
+    -- Discharge the per-rest hypothesis.
+    intro rest
+    -- For each rest, build the "rest ciphertext" tuple — the values
+    -- at j ≠ j₀ in F_i (insertNth j₀ a rest), which agrees with F_succ
+    -- at those positions because the test (j.val < i) ↔ (j.val < i+1)
+    -- holds for every j ≠ j₀.
+    let restCipher : Fin n → X := fun k =>
+      if (j₀.succAbove k).val < i
+        then rest k • scheme.reps (choose (j₀.succAbove k)).1
+        else rest k • scheme.reps (choose (j₀.succAbove k)).2
+    -- Define the per-rest single-coord distinguisher.
+    let D_rest : X → Bool := fun x =>
+      A.guess scheme.reps (Fin.insertNth j₀ x restCipher)
+    -- Key structural identities: F_i (insertNth j₀ a rest) and
+    -- F_succ (insertNth j₀ a rest) decompose into "insertNth j₀ (a • reps_?)
+    -- restCipher".
+    have h_F_i_eq : ∀ a : G,
+        F_i (Fin.insertNth j₀ a rest) =
+          Fin.insertNth j₀ (a • scheme.reps (choose j₀).2) restCipher := by
+      intro a
+      ext j
+      -- Case-split: j = j₀ or j = j₀.succAbove k for some k.
+      by_cases h_j_eq : j = j₀
+      · -- j = j₀. F_i evaluates to gs j₀ • reps right; insertNth gives a.
+        subst h_j_eq
+        simp only [F_i, Fin.insertNth_apply_same]
+        -- Goal: (if j₀.val < i then ... else ...) = a • reps right.
+        -- j₀.val = i, so j₀.val < i is false.
+        have h_not_lt : ¬ j₀.val < i := by
+          show ¬ i < i
+          exact Nat.lt_irrefl i
+        rw [if_neg h_not_lt]
+      · -- j = j₀.succAbove k. F_i evaluates via the test on j.val < i.
+        -- Need to relate to restCipher k. The two are constructed identically.
+        obtain ⟨k, rfl⟩ := Fin.exists_succAbove_eq h_j_eq
+        simp only [F_i, Fin.insertNth_apply_succAbove, restCipher]
+    have h_F_succ_eq : ∀ a : G,
+        F_succ (Fin.insertNth j₀ a rest) =
+          Fin.insertNth j₀ (a • scheme.reps (choose j₀).1) restCipher := by
+      intro a
+      ext j
+      by_cases h_j_eq : j = j₀
+      · subst h_j_eq
+        simp only [F_succ, Fin.insertNth_apply_same]
+        -- j₀.val = i < i + 1 is true.
+        have h_lt : j₀.val < i + 1 := Nat.lt_succ_self i
+        rw [if_pos h_lt]
+      · obtain ⟨k, rfl⟩ := Fin.exists_succAbove_eq h_j_eq
+        simp only [F_succ, Fin.insertNth_apply_succAbove, restCipher]
+        -- The two `if` conditions agree off j₀. Specifically:
+        -- (j₀.succAbove k).val < i ↔ (j₀.succAbove k).val < i + 1.
+        -- Both reduce to `k.val < i` (= `k.val < j₀.val`).
+        by_cases h_k_lt : (j₀.succAbove k).val < i
+        · -- Then also < i + 1.
+          have : (j₀.succAbove k).val < i + 1 := Nat.lt_succ_of_lt h_k_lt
+          rw [if_pos this, if_pos h_k_lt]
+        · -- Then also ≥ i + 1 (since (j₀.succAbove k).val ≠ i = j₀.val).
+          have h_ne_i : (j₀.succAbove k).val ≠ i := by
+            intro h_eq
+            apply h_j_eq
+            -- (j₀.succAbove k).val = i = j₀.val implies j₀.succAbove k = j₀.
+            apply Fin.eq_of_val_eq
+            -- Hmm, j is opposite-indexed; we need j₀ = j.
+            -- Actually we proved j = j₀.succAbove k, but the variable substitution
+            -- in `obtain ⟨k, rfl⟩` made `j` become `j₀.succAbove k`. So
+            -- h_j_eq is `¬ j₀.succAbove k = j₀`.
+            -- Use Fin.succAbove_ne to conclude.
+            exfalso
+            exact Fin.succAbove_ne j₀ k (Fin.eq_of_val_eq h_eq)
+          have h_ge : i + 1 ≤ (j₀.succAbove k).val :=
+            Nat.lt_iff_add_one_le.mp
+              (lt_of_le_of_ne (Nat.le_of_not_lt h_k_lt) (Ne.symm h_ne_i))
+          have h_not_lt_succ : ¬ (j₀.succAbove k).val < i + 1 := Nat.not_lt.mpr h_ge
+          rw [if_neg h_not_lt_succ, if_neg h_k_lt]
+    -- Now use the structural identities to rewrite the per-rest sum.
+    have h_guess_F_i : ∀ a,
+        A.guess scheme.reps (F_i (Fin.insertNth j₀ a rest))
+        = D_rest (a • scheme.reps (choose j₀).2) := fun a => by
+      rw [h_F_i_eq a]
+    have h_guess_F_succ : ∀ a,
+        A.guess scheme.reps (F_succ (Fin.insertNth j₀ a rest))
+        = D_rest (a • scheme.reps (choose j₀).1) := fun a => by
+      rw [h_F_succ_eq a]
+    simp_rw [h_guess_F_i, h_guess_F_succ]
+    -- Goal: |∑ a, ((D_rest (a • reps right)).indicator
+    --             − (D_rest (a • reps left)).indicator)| ≤ |G| * ε
+    -- Use the abstract advantage on orbitDist and ConcreteOIA.
+    -- Step 1: bridge the indicator-sum to (filter card)-difference.
+    rw [Finset.sum_sub_distrib]
+    -- Each sum is a filter cardinality (cast to ℝ).
+    rw [show (∑ a : G, (if D_rest (a • scheme.reps (choose j₀).2) = true
+                          then (1 : ℝ) else 0))
+            = ((Finset.univ.filter
+                 (fun a : G =>
+                   D_rest (a • scheme.reps (choose j₀).2) = true)).card : ℝ)
+            from (Finset.natCast_card_filter _ _).symm,
+        show (∑ a : G, (if D_rest (a • scheme.reps (choose j₀).1) = true
+                          then (1 : ℝ) else 0))
+            = ((Finset.univ.filter
+                 (fun a : G =>
+                   D_rest (a • scheme.reps (choose j₀).1) = true)).card : ℝ)
+            from (Finset.natCast_card_filter _ _).symm]
+    -- Step 2: convert each (filter card)/|G| to a probTrue value, then
+    -- recognise the difference as |G| * advantage. Apply ConcreteOIA.
+    -- Use the observation: for any m : M,
+    --   (filter (fun a => D_rest (a • reps m)) ).card.toReal
+    --     = |G| * (probTrue (orbitDist (reps m)) D_rest).toReal
+    have h_filter_to_probTrue : ∀ m : M,
+        ((Finset.univ.filter
+            (fun a : G => D_rest (a • scheme.reps m) = true)).card : ℝ)
+        = (Fintype.card G : ℝ) *
+          (probTrue (orbitDist (G := G) (scheme.reps m)) D_rest).toReal := by
+      intro m
+      -- (filter ...).card / |G| = probTrue (PMF.map (· • reps m) (uniformPMF G)) D_rest = probTrue (orbitDist (reps m)) D_rest.
+      have h_pos : 0 < Fintype.card G := Fintype.card_pos
+      have h_card_real_pos : (0 : ℝ) < (Fintype.card G : ℝ) := by exact_mod_cast h_pos
+      have h_step :
+          ((Finset.univ.filter
+              (fun a : G => D_rest (a • scheme.reps m) = true)).card : ℝ)
+            / (Fintype.card G : ℝ) =
+          (probTrue (orbitDist (G := G) (scheme.reps m)) D_rest).toReal := by
+        rw [orbitDist]
+        rw [probTrue_PMF_map_uniformPMF_toReal]
+      field_simp at h_step
+      linarith [h_step]
+    rw [h_filter_to_probTrue (choose j₀).2, h_filter_to_probTrue (choose j₀).1]
+    -- Goal: |(|G| * pt_right) - (|G| * pt_left)| ≤ |G| * ε
+    rw [show (Fintype.card G : ℝ) *
+            (probTrue (orbitDist (G := G) (scheme.reps (choose j₀).2)) D_rest).toReal
+          - (Fintype.card G : ℝ) *
+            (probTrue (orbitDist (G := G) (scheme.reps (choose j₀).1)) D_rest).toReal
+          = (Fintype.card G : ℝ) *
+            ((probTrue (orbitDist (G := G) (scheme.reps (choose j₀).2)) D_rest).toReal
+            - (probTrue (orbitDist (G := G) (scheme.reps (choose j₀).1)) D_rest).toReal)
+          from by ring]
+    rw [abs_mul, abs_of_nonneg (by positivity : (0 : ℝ) ≤ (Fintype.card G : ℝ))]
+    -- Goal: |G| * |pt_right - pt_left| ≤ |G| * ε
+    -- The right factor is exactly advantage D_rest (orbitDist right) (orbitDist left).
+    rw [show |(probTrue (orbitDist (G := G) (scheme.reps (choose j₀).2)) D_rest).toReal
+              - (probTrue (orbitDist (G := G) (scheme.reps (choose j₀).1)) D_rest).toReal|
+            = advantage D_rest
+                (orbitDist (G := G) (scheme.reps (choose j₀).2))
+                (orbitDist (G := G) (scheme.reps (choose j₀).1))
+          from rfl]
+    -- Multiply both sides by |G| and apply ConcreteOIA.
+    apply mul_le_mul_of_nonneg_left _ (by positivity : (0 : ℝ) ≤ (Fintype.card G : ℝ))
+    exact hOIA D_rest (choose j₀).2 (choose j₀).1
+
+/-- **R-09 headline — Multi-query IND-Q-CPA bound from `ConcreteOIA`.**
+
+    The unconditional discharge of R-09: for every `Q`, the multi-query
+    IND-Q-CPA advantage of any adversary `A` against `scheme` is bounded
+    by `Q · ε`, given only `ConcreteOIA scheme ε`. This is the
+    Mathlib-grade upgrade of `indQCPA_from_perStepBound` (which
+    requires a user-supplied `h_step`).
+
+    **Closes Workstream D research-scope catalogue R-09.** Pre-R-09,
+    `indQCPA_from_perStepBound` was the consumer-facing entry-point
+    but required `h_step` from custom analysis. R-09 discharges
+    `h_step` from `ConcreteOIA scheme ε` alone via
+    `hybrid_step_bound_of_concreteOIA`, removing the user's hypothesis
+    obligation.
+
+    The bound `Q · ε` matches the standard hybrid-argument scaling
+    and is achieved by `hybrid_argument_uniform` (linearity of
+    advantage along Q adjacent steps).
+
+    See `indQCPA_from_concreteOIA_recovers_single_query` for the
+    `Q = 1` regression sentinel and `indQCPA_from_concreteOIA_distinct`
+    for the classical-game form (Workstream-K-style). -/
+theorem indQCPA_from_concreteOIA {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε) :
+    indQCPAAdvantage scheme A ≤ (Q : ℝ) * ε := by
+  apply indQCPA_from_perStepBound scheme ε A
+  intro i hi
+  exact hybrid_step_bound_of_concreteOIA scheme ε A hOIA i hi
+
+/-- **R-09 — Q = 1 regression sentinel.** At `Q = 1`, the multi-query
+    bound `Q · ε = ε` matches the single-query advantage bound from
+    `concrete_oia_implies_1cpa`. Confirms the multi-query result
+    specialises correctly. -/
+theorem indQCPA_from_concreteOIA_recovers_single_query
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : MultiQueryAdversary X M 1) (hOIA : ConcreteOIA scheme ε) :
+    indQCPAAdvantage scheme A ≤ ε := by
+  have h := indQCPA_from_concreteOIA (Q := 1) scheme ε A hOIA
+  simpa using h
+
+/-- **R-09 — Distinct-challenge classical-game form.** The classical
+    IND-Q-CPA game (parallels `IsSecureDistinct` for single-query)
+    rejects per-query `(m, m)` collisions. The probabilistic bound
+    transfers to the distinct-challenge form for free because the
+    bound holds *uniformly* for all adversaries (collision-choice or
+    not). This mirrors Workstream K's `_distinct` corollaries. -/
+theorem indQCPA_from_concreteOIA_distinct {Q : ℕ}
+    (scheme : OrbitEncScheme G X M) (ε : ℝ)
+    (A : DistinctMultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε) :
+    indQCPAAdvantage scheme A.toMultiQueryAdversary ≤ (Q : ℝ) * ε :=
+  indQCPA_from_concreteOIA scheme ε A.toMultiQueryAdversary hOIA
+
+end R09
+
 end Orbcrypt

@@ -7624,6 +7624,93 @@ audit-2 commit.
 audit-2 fixes are bug-fix-grade improvements (CI YAML, C2
 concurrency, doc-parity). No new public API.
 
+Workstream D Research-Scope Discharge (R-09 + R-12 + R-13,
+audit 2026-04-29 § 8.1) has been completed (2026-04-30):
+
+- **R-12 — Tight 1/4 ε-bound for `concreteHidingBundle`.** Closes
+  the post-Workstream-I research-scope disclosure on the
+  non-degenerate `concreteHidingBundle` + Boolean-AND fixture.
+
+  * **Layer A (`Probability/Advantage.lean`)** — Bool TV bound:
+    `probTrue_bool_eq`, `pmf_bool_sum_eq_one_toReal`,
+    `probTrue_bool_toReal_eq`, `advantage_bool_le_tv` (TV upper
+    bound `advantage D μ ν ≤ |(μ true).toReal − (ν true).toReal|`
+    for any `D : Bool → Bool`, via four-way case-split on
+    `(D true, D false)`), `advantage_bool_id_eq_tv` (tightness
+    witness at `D = id`).
+  * **Layer B (`PublicKey/ObliviousSampling.lean`)** — concrete
+    pointwise computations + headline:
+    `concreteHidingBundle_orbitDist_apply_true/_false` (= 1/2
+    each), `concreteHidingLHS_apply_true` (= 1/4),
+    `concreteHidingLHS_apply_false` (= 3/4),
+    `concreteHiding_tight` (**headline** `1/4` bound),
+    `concreteHiding_tight_attained` (tightness at `D = id`).
+
+  Closes 11 declarations on standard-trio axioms.
+
+- **R-13 — `Bitstring n`-typed Carter–Wegman MAC + INT-CTXT.**
+  Closes the HGOE compatibility gap of `carterWegmanMAC_int_ctxt`
+  (audit finding V1-7 / D4 / I-08). Strategy: **generalise
+  Carter–Wegman to a `Bitstring n`-native polynomial-evaluation
+  hash**, not adapt via `Bitstring n → ZMod p`. New module
+  `Orbcrypt/AEAD/BitstringPolynomialMAC.lean` with 18 new
+  declarations: `toBit p`, `toBit_injective`, `evalAtBitstring`,
+  `bitstringPolynomialHash`, `bitstringPolynomialHash_apply`,
+  `bitstringPolynomialHash_collision_iff_eval`,
+  `bitstringDiffPolynomial`, `_eval`, `_natDegree_le`, `_coeff_at`,
+  `_ne_zero_of_ne`, `_card_roots_le`, `_collision_keys_card_le`,
+  `bitstringPolynomialHash_collision_card_le`,
+  `bitstringPolynomialHash_isUniversal` (**headline**
+  `(n : ℝ≥0∞) / (p : ℝ≥0∞)`-universal),
+  `bitstringPolynomialMAC`,
+  `bitstringPolynomial_authKEM`,
+  `bitstringPolynomialMAC_int_ctxt` (**headline** unconditional
+  INT-CTXT for `Bitstring n`-typed authenticated KEM).
+
+  Closes 18 declarations on standard-trio axioms; module count
+  rises from 75 to 76.
+
+- **R-09 — Discharge of `h_step` from `ConcreteOIA`.** Closes
+  audit finding V1-8 / C-13 / D10. The discharge runs through
+  three layers:
+
+  * **Layer 1 (`Probability/Monad.lean`)** — sum factorisation
+    along an inserted coordinate:
+    `sum_pi_succAbove_eq_sum_sum_insertNth` (via
+    `Fin.insertNthEquiv` + `Fintype.sum_prod_type`),
+    `probTrue_PMF_map_uniformPMF_toReal` (`.toReal` form for
+    `probTrue (PMF.map F (uniformPMF α)) D`).
+  * **Layer 2 (`Probability/Advantage.lean`)** — convexity-of-TV:
+    `advantage_pmf_map_uniform_pi_factor_bound` (per-rest
+    hypothesis ⇒ global advantage bound, via cardinality
+    decomposition + triangle inequality on the outer sum).
+  * **Layer 3+4 (`Crypto/CompSecurity.lean`)** — per-step +
+    headline: `hybrid_step_bound_of_concreteOIA` (discharges
+    per-step bound from `ConcreteOIA` alone, via pattern-matching
+    `Q = n + 1` + Layer 2 abstract helper + ConcreteOIA per-rest),
+    `indQCPA_from_concreteOIA` (**headline** unconditional
+    `indQCPAAdvantage scheme A ≤ Q · ε` from `ConcreteOIA scheme
+    ε`), `indQCPA_from_concreteOIA_recovers_single_query` (Q = 1
+    regression sentinel), `indQCPA_from_concreteOIA_distinct`
+    (distinct-challenge classical-game form).
+
+  Closes 7 declarations on standard-trio axioms.
+
+**Cumulative posture (post-Workstream-D-discharge).**
+- `lake build` succeeds across 3,420 jobs with zero warnings,
+  zero errors.
+- Phase-16 audit script exercises +36 new declarations (11 R-12
+  + 18 R-13 + 7 R-09); all on standard-trio axioms; zero
+  `sorryAx`.
+- Module count: 75 → 76 (one new module
+  `AEAD/BitstringPolynomialMAC.lean`).
+- Zero-sorry / zero-custom-axiom posture preserved.
+
+**Patch version.** `lakefile.lean` bumped from `0.2.1` to
+`0.2.2` for Workstream D research-scope discharge — one new
+public-API module + ~36 new public declarations warrants the
+patch bump per `CLAUDE.md`'s version-bump discipline.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
