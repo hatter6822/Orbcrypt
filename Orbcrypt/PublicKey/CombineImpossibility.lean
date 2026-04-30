@@ -90,6 +90,49 @@ failure — is the headline theorem `equivariant_combiner_breaks_oia`.
   equivariant combiner is functionally constant on the bundle (it loses
   the dependence on the second sender index).
 
+## Workstream R-07 — Cross-orbit advantage lower bound
+
+The Workstream-E6 results above (`concrete_combiner_advantage_bounded_by_oia`,
+`combinerOrbitDist_mass_bounds`) deliver the **upper-bound** half of the
+combiner story: under `ConcreteOIA(ε)`, the combiner-induced
+distinguisher's advantage is at most `ε`. They do **not** by themselves
+deliver a *lower* bound that would refute `ConcreteOIA(ε)` for `ε <
+1/|G|` — the intra-orbit mass bound on the basepoint orbit
+(`combinerOrbitDist_mass_bounds`) is consistent with two orbits having
+identical Pr[true] = 1/2, yielding cross-orbit advantage 0.
+
+R-07 supplies the missing cross-orbit witness as a `Prop`-valued
+strengthening of `NonDegenerateCombiner`:
+`CrossOrbitNonDegenerateCombiner` carries the intra-orbit non-
+triviality on `m_bp`'s orbit *plus* a cross-orbit witness that the
+distinguisher is constantly `false` on a target message
+`m_target`'s orbit. Under that hypothesis, the cross-orbit advantage
+between `m_bp`'s and `m_target`'s orbit distributions is bounded
+below by `1/|G|`. Composing with `concrete_combiner_advantage_
+bounded_by_oia` yields the corollary:
+`ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε`.
+
+R-07 results:
+
+* `Orbcrypt.combinerOrbitDist_apply_true_eq_probTrue` — bridge lemma
+  identifying `combinerOrbitDist scheme m_bp comb m true` with
+  `probTrue (orbitDist (reps m)) (combinerDistinguisher comb)`.
+* `Orbcrypt.CrossOrbitNonDegenerateCombiner` — Prop-valued cross-
+  orbit non-degeneracy, conjunction of intra-orbit non-degeneracy
+  and cross-orbit constant-false witness.
+* `Orbcrypt.probTrue_combinerDistinguisher_basePoint_ge_inv_card` —
+  `1/|G| ≤ probTrue (orbitDist (reps m_bp)) (combinerDistinguisher comb)`
+  (intra-orbit mass bound rephrased via `probTrue`).
+* `Orbcrypt.probTrue_combinerDistinguisher_target_eq_zero` —
+  `probTrue (orbitDist (reps m_target)) (combinerDistinguisher comb) = 0`
+  (cross-orbit zero-mass under the constant-false hypothesis).
+* **`Orbcrypt.combinerDistinguisherAdvantage_ge_inv_card`** —
+  R-07 headline: `1/|G| ≤ combinerDistinguisherAdvantage scheme m_bp
+  comb m_bp m_target` under `CrossOrbitNonDegenerateCombiner`.
+* `Orbcrypt.no_concreteOIA_below_inv_card_of_combiner` —
+  Corollary: `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε` whenever a
+  `CrossOrbitNonDegenerateCombiner` exists.
+
 ## References
 
 * `docs/PUBLIC_KEY_ANALYSIS.md` §1 — the open `combine` problem.
@@ -648,6 +691,305 @@ theorem combinerOrbitDist_mass_bounds
     rw [PMF.map_apply]
     refine le_trans ?_ (ENNReal.le_tsum g_w)
     rw [if_pos (by rw [h_false_at_gw]), uniformPMF_apply]
+
+-- ============================================================================
+-- Workstream R-07 — Cross-orbit advantage lower bound for equivariant combiners
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan
+-- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07)
+-- ============================================================================
+--
+-- The Workstream-E6 results above (`concrete_combiner_advantage_bounded_by_oia`,
+-- `combinerOrbitDist_mass_bounds`) deliver only the *upper-bound* half of the
+-- combiner story. R-07 closes the cross-orbit gap by exhibiting a structural
+-- predicate (`CrossOrbitNonDegenerateCombiner`) that combines intra-orbit
+-- non-triviality on `m_bp` with a cross-orbit constant-false witness on
+-- `m_target` — together forcing `combinerDistinguisherAdvantage ≥ 1/|G|`,
+-- which composed with the upper bound yields `1/|G| ≤ ε` under
+-- `ConcreteOIA scheme ε`.
+
+/-- **R-07 bridge (WU-07.1).** The mass at `true` of the combiner-induced
+    `combinerOrbitDist` for message `m` equals the `probTrue` of the
+    underlying orbit distribution at the combiner-induced distinguisher.
+
+    **Proof structure.** Both sides reduce to the same outer-measure
+    expression on `uniformPMF G`. LHS:
+    `combinerOrbitDist scheme m_bp comb m true`
+      = `(PMF.map f (uniformPMF G)) true` (by definition)
+      = `(PMF.map f (uniformPMF G)).toOuterMeasure {true}`
+        (by `PMF.toOuterMeasure_apply_singleton`)
+      = `(uniformPMF G).toOuterMeasure (f ⁻¹' {true})`
+        (by `PMF.toOuterMeasure_map_apply`)
+    RHS:
+    `probTrue (orbitDist (reps m)) (combinerDistinguisher comb)`
+      = `(orbitDist (reps m)).toOuterMeasure {x | combinerDistinguisher comb x = true}`
+        (by `probTrue` definition)
+      = `(uniformPMF G).toOuterMeasure {g | combinerDistinguisher comb (g • reps m) = true}`
+        (by `orbitDist` definition + `PMF.toOuterMeasure_map_apply`)
+    The two outer-measure expressions are over the *same* set (after
+    `Set.preimage_setOf_eq`), so the equality follows.
+
+    The bridge lets us reuse the `1/|G|` mass bound from
+    `combinerOrbitDist_mass_bounds.1` in `probTrue` form, where it
+    composes naturally with `advantage`'s `probTrue`-based definition.
+-/
+theorem combinerOrbitDist_apply_true_eq_probTrue
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp)) (m : M) :
+    combinerOrbitDist scheme m_bp comb m true =
+      probTrue (orbitDist (G := G) (scheme.reps m)) (combinerDistinguisher comb) := by
+  -- LHS: (PMF.map f (uniformPMF G)) true.  Use Mathlib's
+  -- `toOuterMeasure_apply_singleton` to convert to the outer-measure form,
+  -- then `toOuterMeasure_map_apply` to push through the map.
+  unfold combinerOrbitDist
+  rw [← PMF.toOuterMeasure_apply_singleton, PMF.toOuterMeasure_map_apply]
+  -- LHS now: `(uniformPMF G).toOuterMeasure ((fun g => ...) ⁻¹' {true})`.
+  -- RHS: `probTrue (orbitDist (reps m)) (combinerDistinguisher comb)`.
+  --      = `(orbitDist (reps m)).toOuterMeasure {x | combinerDistinguisher comb x = true}`
+  --      = `(uniformPMF G).toOuterMeasure {g | combinerDistinguisher comb (g • reps m) = true}`.
+  unfold probTrue orbitDist
+  rw [PMF.toOuterMeasure_map_apply]
+  -- Both sides now: `(uniformPMF G).toOuterMeasure S` for the same set S.
+  -- The preimage `f ⁻¹' {true} = {g | f g = true}` is `rfl`-level definitional.
+  rfl
+
+/-- **R-07 cross-orbit non-degeneracy predicate (WU-07.2).** A
+    `CrossOrbitNonDegenerateCombiner` strengthens `NonDegenerateCombiner`
+    with a cross-orbit witness: in addition to the intra-orbit non-
+    triviality on `m_bp`'s orbit (the `intra` field, identical to
+    `NonDegenerateCombiner`), the predicate carries a cross-orbit
+    constant-false witness — the combiner-induced distinguisher is
+    constantly `false` on `m_target`'s orbit (the
+    `cross_constant_false` field).
+
+    **Cryptographic content.** The intra-orbit witness gives `≥ 1/|G|`
+    mass on `true` at `m_bp`'s orbit (via
+    `combinerOrbitDist_mass_bounds.1`); the cross-orbit witness gives
+    `= 0` mass on `true` at `m_target`'s orbit. Their difference is
+    `≥ 1/|G|`, lower-bounding the cross-orbit advantage.
+
+    **Edge cases.**
+    * `m_bp = m_target`: the conjunction is `False`, because `intra`
+      requires the distinguisher to be NON-constant on `m_bp`'s orbit
+      while `cross_constant_false` requires it to be CONSTANT on the
+      same orbit. The headline theorem
+      `combinerDistinguisherAdvantage_ge_inv_card` then holds
+      vacuously.
+    * `|G| = 1`: the singleton group makes `intra` unsatisfiable
+      (any `g : G` is `1`, and `combine bp (1 • bp) = combine bp bp`
+      always), so the conjunction is again `False` and the headline
+      vacuously holds at `1/|G| = 1`.
+    * `m_bp ≠ m_target`: by `OrbitEncScheme.reps_distinct`, the two
+      orbits are *disjoint*, so `intra` (non-constant on `m_bp`'s
+      orbit) and `cross_constant_false` (constant `false` on
+      `m_target`'s orbit) can hold simultaneously without
+      contradiction.
+
+    **Honesty disclosure.** The `cross_constant_false` hypothesis is
+    *strong* — most natural combiners do not satisfy it on arbitrary
+    target orbits. R-07's bound `1/|G|` is a *sufficient-condition*
+    refutation: when the hypothesis is satisfied, ConcreteOIA's ε
+    cannot be smaller than `1/|G|`. Tighter cross-orbit bounds
+    require problem-specific structural witnesses (e.g. the
+    distinguisher being concentrated on `m_target`'s orbit at some
+    weaker constant) and are research-scope follow-ups.
+-/
+structure CrossOrbitNonDegenerateCombiner
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M) : Prop where
+  /-- Intra-orbit non-triviality on `m_bp`'s orbit (identical to
+      `NonDegenerateCombiner`'s content). -/
+  intra : NonDegenerateCombiner comb
+  /-- Cross-orbit constant-false witness: the combiner-induced
+      distinguisher returns `false` on every element of
+      `m_target`'s orbit. -/
+  cross_constant_false : ∀ g : G,
+    combinerDistinguisher comb (g • scheme.reps m_target) = false
+
+/-- **R-07 intra-orbit mass lemma (WU-07.3).** Under
+    `NonDegenerateCombiner`, the mass on `true` of the orbit
+    distribution of `m_bp` (under the combiner-induced
+    distinguisher) is at least `1/|G|`.
+
+    This is the existing `combinerOrbitDist_mass_bounds.1` rephrased
+    via the `combinerOrbitDist_apply_true_eq_probTrue` bridge. The
+    `probTrue` form is the one that composes naturally with
+    `advantage`'s `probTrue`-based unfolding.
+
+    **Proof.** Direct rewrite using
+    `combinerOrbitDist_apply_true_eq_probTrue` to convert the existing
+    apply-form bound to the `probTrue` form.
+-/
+theorem probTrue_combinerDistinguisher_basePoint_ge_inv_card
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (hND : NonDegenerateCombiner comb) :
+    (Fintype.card G : ENNReal)⁻¹ ≤
+    probTrue (orbitDist (G := G) (scheme.reps m_bp))
+      (combinerDistinguisher comb) := by
+  -- Rewrite the goal's `probTrue` to `combinerOrbitDist ... true` form
+  -- via the R-07 bridge, then apply the existing intra-orbit mass bound.
+  rw [← combinerOrbitDist_apply_true_eq_probTrue]
+  exact (combinerOrbitDist_mass_bounds scheme m_bp comb hND).1
+
+/-- **R-07 cross-orbit zero-mass lemma (WU-07.4).** Under the cross-
+    orbit constant-false hypothesis (`cross_constant_false` field of
+    `CrossOrbitNonDegenerateCombiner`), the mass on `true` of the
+    orbit distribution of `m_target` (under the combiner-induced
+    distinguisher) is exactly `0`.
+
+    **Proof strategy.** `probTrue (orbitDist (reps m_target)) D` is
+    the outer measure of `{x | D x = true}` under
+    `orbitDist (reps m_target)`. Push through `PMF.map`'s
+    outer-measure bridge to land in
+    `(uniformPMF G).toOuterMeasure {g | D (g • reps m_target) = true}`.
+    The hypothesis `hCross : ∀ g, D (g • reps m_target) = false`
+    forces every `g` to falsify the predicate, so the set is empty
+    (extensionality on Sets), and the outer measure of the empty
+    set is `0`.
+-/
+theorem probTrue_combinerDistinguisher_target_eq_zero
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M) (hCross : ∀ g : G,
+      combinerDistinguisher comb (g • scheme.reps m_target) = false) :
+    probTrue (orbitDist (G := G) (scheme.reps m_target))
+        (combinerDistinguisher comb) = 0 := by
+  -- Unfold probTrue and orbitDist; push the outer measure through the map.
+  unfold probTrue orbitDist
+  rw [PMF.toOuterMeasure_map_apply]
+  -- Goal: (uniformPMF G).toOuterMeasure ((· • reps m_target) ⁻¹' {x | D x = true}) = 0.
+  -- The preimage equals {g | D (g • reps m_target) = true}; under hCross
+  -- this is empty, and outer measure of ∅ is 0.
+  have hSet :
+      ((fun g : G => g • scheme.reps m_target) ⁻¹'
+          {x | combinerDistinguisher comb x = true}) = (∅ : Set G) := by
+    apply Set.eq_empty_iff_forall_notMem.mpr
+    intro g hg
+    -- `hg : g ∈ (· • reps m_target) ⁻¹' {x | comb-dist x = true}`.
+    -- Unfold preimage membership to expose the underlying equality.
+    -- `Set.mem_preimage` reduces `hg` to `combinerDistinguisher comb (g • reps m_target) = true`,
+    -- which contradicts `hCross g`.
+    rw [Set.mem_preimage, Set.mem_setOf_eq] at hg
+    rw [hCross g] at hg
+    exact Bool.noConfusion hg
+  rw [hSet]
+  exact MeasureTheory.measure_empty
+
+/-- **R-07 headline (WU-07.5).** The combiner-induced distinguisher's
+    cross-orbit advantage between `m_bp`'s orbit distribution and
+    `m_target`'s orbit distribution is at least `1/|G|` whenever the
+    `CrossOrbitNonDegenerateCombiner` hypothesis is satisfied.
+
+    Composed with `concrete_combiner_advantage_bounded_by_oia` (the
+    existing upper bound), this forces: under `ConcreteOIA scheme ε`,
+    `1/|G| ≤ ε` — see corollary `no_concreteOIA_below_inv_card_of_combiner`.
+
+    **Cryptographic interpretation.** A scheme that admits a `Cross
+    OrbitNonDegenerateCombiner` cannot satisfy `ConcreteOIA scheme ε`
+    for `ε < 1/|G|`. The bound is honest but its hypothesis is
+    *strong* — the cross-orbit constant-false witness is artificial.
+    Tighter bounds (e.g. `1/2`) require problem-specific structure and
+    are research-scope follow-ups.
+
+    **Proof structure.**
+    1. Rewrite via `combinerDistinguisherAdvantage_eq` (existing) to
+       reduce the goal to a standard `advantage` between two
+       `orbitDist`s.
+    2. Unfold `advantage` to `|p_R.toReal − p_L.toReal|` where
+       `p_L = probTrue (orbitDist (reps m_bp)) D` and
+       `p_R = probTrue (orbitDist (reps m_target)) D`.
+    3. By `probTrue_combinerDistinguisher_target_eq_zero`, `p_R = 0`.
+    4. By `probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
+       `(|G| : ℝ≥0∞)⁻¹ ≤ p_L`. Convert to ℝ via `ENNReal.toReal_le_
+       toReal` (with both sides finite: `(|G| : ℝ≥0∞)⁻¹ ≠ ⊤` because
+       `|G| ≠ 0` and `Nat.cast_ne_top`; `probTrue ≤ 1 ≠ ⊤`).
+    5. The absolute value `|0 − p_L| = p_L ≥ 1/|G|` (after sign
+       analysis via `abs_of_nonneg` or `abs_sub_comm`).
+-/
+theorem combinerDistinguisherAdvantage_ge_inv_card
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M)
+    (hND : CrossOrbitNonDegenerateCombiner scheme m_bp comb m_target) :
+    (1 : ℝ) / (Fintype.card G : ℝ) ≤
+    combinerDistinguisherAdvantage scheme m_bp comb m_bp m_target := by
+  classical
+  -- Step 1: rewrite to standard `advantage` form.
+  rw [combinerDistinguisherAdvantage_eq]
+  unfold advantage
+  -- Step 2: substitute the two probTrue values.
+  rw [probTrue_combinerDistinguisher_target_eq_zero scheme m_bp comb m_target
+        hND.cross_constant_false]
+  -- Goal: 1 / |G| ≤ |((probTrue (orbitDist (reps m_bp)) D).toReal - (0 : ℝ≥0∞).toReal)|
+  -- Simplify the second `.toReal` (`ENNReal.toReal_zero` is `@[simp]`).
+  rw [ENNReal.toReal_zero, sub_zero]
+  -- Goal: 1 / |G| ≤ |((probTrue (orbitDist (reps m_bp)) D).toReal)|
+  -- Drop the absolute value: probTrue.toReal ≥ 0.
+  rw [abs_of_nonneg ENNReal.toReal_nonneg]
+  -- Goal: 1 / |G| ≤ (probTrue (orbitDist (reps m_bp)) D).toReal
+  -- Step 3: the intra-orbit mass bound `1/|G| ≤ probTrue ...` lives in ℝ≥0∞.
+  have h_mass : (Fintype.card G : ENNReal)⁻¹ ≤
+      probTrue (orbitDist (G := G) (scheme.reps m_bp))
+        (combinerDistinguisher comb) :=
+    probTrue_combinerDistinguisher_basePoint_ge_inv_card scheme m_bp comb hND.intra
+  -- Step 4: convert to ℝ. Finiteness side conditions:
+  -- (|G| : ℝ≥0∞)⁻¹ ≠ ⊤ because |G| ≠ 0 (Nonempty G + Fintype G ⇒ |G| ≥ 1 ⇒ ≠ 0
+  -- in ℝ≥0∞ ⇒ inverse is finite).
+  have h_card_pos : 0 < Fintype.card G := Fintype.card_pos
+  have h_card_ne_zero : (Fintype.card G : ENNReal) ≠ 0 := by
+    exact_mod_cast h_card_pos.ne'
+  have h_card_ne_top : (Fintype.card G : ENNReal) ≠ ⊤ := ENNReal.natCast_ne_top _
+  have h_inv_ne_top : (Fintype.card G : ENNReal)⁻¹ ≠ ⊤ := by
+    rw [Ne, ENNReal.inv_eq_top]; exact h_card_ne_zero
+  -- probTrue is ≤ 1 in ℝ≥0∞, so ≠ ⊤. Use the order-theoretic
+  -- `ne_top_of_le_ne_top`: `a ≤ 1 → 1 ≠ ⊤ → a ≠ ⊤`.
+  have h_prob_ne_top :
+      probTrue (orbitDist (G := G) (scheme.reps m_bp))
+          (combinerDistinguisher comb) ≠ ⊤ :=
+    ne_top_of_le_ne_top ENNReal.one_ne_top (probTrue_le_one _ _)
+  -- Apply ENNReal.toReal_le_toReal to lift the inequality.
+  have h_real :
+      ((Fintype.card G : ENNReal)⁻¹).toReal ≤
+        (probTrue (orbitDist (G := G) (scheme.reps m_bp))
+          (combinerDistinguisher comb)).toReal :=
+    ENNReal.toReal_le_toReal h_inv_ne_top h_prob_ne_top |>.mpr h_mass
+  -- Step 5: identify `((|G| : ℝ≥0∞)⁻¹).toReal = 1 / (|G| : ℝ)`.
+  have h_inv_real :
+      ((Fintype.card G : ENNReal)⁻¹).toReal = 1 / (Fintype.card G : ℝ) := by
+    rw [ENNReal.toReal_inv, ENNReal.toReal_natCast, one_div]
+  rw [h_inv_real] at h_real
+  exact h_real
+
+/-- **R-07 corollary (WU-07.6).** Composing the cross-orbit lower
+    bound with the existing upper bound from `concrete_combiner_
+    advantage_bounded_by_oia` yields: under `ConcreteOIA scheme ε`,
+    a `CrossOrbitNonDegenerateCombiner` forces `1/|G| ≤ ε`.
+
+    **Cryptographic content.** A scheme that admits any cross-orbit
+    non-degenerate equivariant combiner is provably *not*
+    `ε`-ConcreteOIA-secure for any `ε < 1/|G|`. This is the
+    quantitative refutation R-07 delivers: it converts the
+    deterministic refutation `equivariant_combiner_breaks_oia`
+    (which says non-degenerate combiners refute the all-or-nothing
+    deterministic OIA) into a quantitative ε bound at the
+    probabilistic level.
+
+    **Proof.** Transitivity (`le_trans`) of the lower bound
+    `1/|G| ≤ combinerDistinguisherAdvantage` (from
+    `combinerDistinguisherAdvantage_ge_inv_card`) and the upper
+    bound `combinerDistinguisherAdvantage ≤ ε` (from
+    `concrete_combiner_advantage_bounded_by_oia`).
+-/
+theorem no_concreteOIA_below_inv_card_of_combiner
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M)
+    (hND : CrossOrbitNonDegenerateCombiner scheme m_bp comb m_target)
+    (ε : ℝ) (hOIA : ConcreteOIA scheme ε) :
+    (1 : ℝ) / (Fintype.card G : ℝ) ≤ ε :=
+  le_trans (combinerDistinguisherAdvantage_ge_inv_card scheme m_bp comb m_target hND)
+    (concrete_combiner_advantage_bounded_by_oia scheme m_bp comb ε hOIA m_bp m_target)
 
 end ConcreteEquivariantCombiner
 

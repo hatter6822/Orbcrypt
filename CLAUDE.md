@@ -556,7 +556,7 @@ rationale):
 | # | Name | Statement | File | Status | Significance |
 |---|------|-----------|------|--------|--------------|
 | 1 | **Correctness** | `decrypt(encrypt(g, m)) = some m` for all messages m and group elements g | `Theorems/Correctness.lean` | Standalone | The scheme faithfully recovers encrypted messages |
-| 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (i.e. a specific `(g₀, g₁)` pair on which the adversary's two guesses disagree) | `Theorems/InvariantAttack.lean` | Standalone | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md. The theorem's **formal conclusion** is `∃ A : Adversary X M, hasAdvantage scheme A` — existence of one distinguishing adversary — **not** a quantitative "advantage = 1/2" claim in either the two-distribution or centred conventions (see `Probability/Advantage.lean` and the `invariant_attack` docstring for the three-convention catalogue: under a separating G-invariant, deterministic advantage = 1, two-distribution advantage = 1, centred advantage = 1/2). Informal shorthand: "complete break under a separating G-invariant". A quantitative probabilistic lower-bound analysis would produce a cross-orbit advantage ≥ a bound determined by the invariant's separation behaviour; that analysis is research-scope R-01 (audit 2026-04-23 finding V1-4 / D13) |
+| 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (i.e. a specific `(g₀, g₁)` pair on which the adversary's two guesses disagree) | `Theorems/InvariantAttack.lean` | Standalone | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md. The theorem's **formal conclusion** is `∃ A : Adversary X M, hasAdvantage scheme A` — existence of one distinguishing adversary — **not** a quantitative "advantage = 1/2" claim in either the two-distribution or centred conventions (see `Probability/Advantage.lean` and the `invariant_attack` docstring for the three-convention catalogue: under a separating G-invariant, deterministic advantage = 1, two-distribution advantage = 1, centred advantage = 1/2). Informal shorthand: "complete break under a separating G-invariant". The quantitative probabilistic strengthening — IND-1-CPA advantage *exactly* `1` for the invariant-attack adversary — is delivered by `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream R-01, discharged 2026-04-30; see `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) |
 | 3 | **Conditional Security** | OIA implies IND-1-CPA | `Theorems/OIAImpliesCPA.lean` | Scaffolding | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks. Deterministic OIA is `False` on every non-trivial scheme, so this theorem is vacuously true on production instances — cite the probabilistic counterpart (#6) as the real security statement |
 | 4 | **KEM Correctness** | `decaps(encaps(g).1) = encaps(g).2` for all group elements g | `KEM/Correctness.lean` | Standalone | The KEM correctly recovers the shared secret (proof by `rfl`) |
 | 5 | **KEM Security** | KEMOIA implies KEM security | `KEM/Security.lean` | Scaffolding | If the KEM-OIA holds, no adversary can distinguish two encapsulations. Deterministic KEMOIA is vacuous on every non-trivial KEM; cite the probabilistic counterpart (the `concrete_kemoia_*_implies_secure` family) for quantitative KEM security |
@@ -664,6 +664,98 @@ When changing behavior, theorems, or formalization status, update in the same PR
 7. `CLAUDE.md` — if development guidance, conventions, or project status changes
 
 Canonical ownership: `DEVELOPMENT.md` owns the full scheme specification. `formalization/FORMALIZATION_PLAN.md` owns the Lean 4 architecture and conventions. Phase documents own implementation-level guidance for their respective phases. `POE.md` and `COUNTEREXAMPLE.md` own the high-level concept exposition and vulnerability analysis respectively.
+
+## Pull request authoring policy (ABSOLUTE)
+
+**Forbidden in PR summaries / descriptions / bodies:** session URLs of
+the shape `https://claude.ai/code/session_*` (or any equivalent
+agent-harness session permalink). Examples of the forbidden form:
+
+* `https://claude.ai/code/session_019S9v23eC235cqr76MNWe5S`
+* `claude.ai/code/session_<any-id>`
+* Any other URL whose path identifies a private agent-harness
+  conversation (Claude Code Web, Claude Agent SDK, GitHub-side
+  Claude Action sessions, etc.).
+
+**Why this rule exists.**
+
+1. *Privacy / opacity.* A session URL points at a private workspace
+   artefact: full transcript, tool calls, intermediate code, plan
+   discussions. It is not a public reference. PR readers — including
+   reviewers, downstream maintainers, security auditors — cannot
+   open it; the link is dead from their perspective and adds no
+   discoverable context.
+2. *Link rot.* Session URLs are ephemeral: harness sessions expire,
+   compress, or get archived behind authentication. A PR description
+   that points at one will break in days or weeks, leaving a
+   permanent dead reference in the repository's release history.
+3. *Provenance leakage.* Session URLs embed harness internals
+   (Claude Code vs Web vs Action, session-id format, etc.) which
+   reveal authoring tooling that the PR description otherwise needn't
+   disclose. The PR's *content* (theorems, audit findings, build
+   posture) is what matters, not which agent-harness session
+   produced it.
+4. *Citation discipline.* Per `CLAUDE.md`'s **Names describe content,
+   never provenance** rule (Key Conventions), declarations and
+   release-facing references must describe what they prove or what
+   they document, not the workflow / phase / session that produced
+   them. PR summaries are release-facing prose; the same discipline
+   applies. A reader needs the theorem name, the audit plan section,
+   the file path — not a workspace-private session pointer.
+
+**Allowed alternatives — what to cite instead.**
+
+* The audit / planning document under `docs/planning/` (e.g.
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07).
+* The headline theorem name + file path (e.g.
+  `combinerDistinguisherAdvantage_ge_inv_card`
+  `Orbcrypt/PublicKey/CombineImpossibility.lean`).
+* The CLAUDE.md changelog entry that records the work
+  (e.g. "Workstream R-07 Research-Scope Discharge").
+* The `docs/VERIFICATION_REPORT.md` Document-history entry.
+* The relevant audit-script entry in `scripts/audit_phase_16.lean`'s
+  `R07NonVacuity` namespace.
+
+**Scope of the rule.**
+
+* **In scope (forbidden):** PR descriptions / bodies; PR review
+  comments; PR-edit `body` arguments to
+  `mcp__github__update_pull_request`; cross-link inserts in PR
+  comments via `mcp__github__add_issue_comment` /
+  `mcp__github__add_reply_to_pull_request_comment`. Anywhere the
+  resulting URL would be visible in the PR's GitHub UI or
+  retrievable via the GitHub API's public endpoints.
+* **Out of scope:** local commit messages (the agent harness's
+  default `gh commit` template may auto-append a session footer to
+  *commits*, which lives in `git log`; this policy concerns
+  *PR-level* surfaces, not commit-trailer hygiene). If a project
+  later wants to remove session URLs from commit messages too, that
+  is a separate policy decision.
+
+**Enforcement.**
+
+1. Before invoking `mcp__github__create_pull_request` or
+   `mcp__github__update_pull_request`, scan the prepared `body`
+   string for the regex
+   `https?://(?:www\.)?claude\.ai/code/session_[A-Za-z0-9]+` (or any
+   equivalent agent-harness session-permalink shape). Strip every
+   match before submission.
+2. If a session URL is discovered in an already-open PR, update
+   the PR body via `mcp__github__update_pull_request` to remove the
+   offending substring. The remediation should preserve the rest
+   of the PR description verbatim — only the URL line(s) and any
+   trailing whitespace they introduce should be removed.
+3. The same scan applies whenever the agent edits a PR body, even
+   for unrelated reasons (e.g. fixing a typo, adding a checklist
+   item). Removing pre-existing session URLs is a "free cleanup" —
+   never re-introduce them.
+
+**Historical note.** Earlier PRs in this repository may carry
+session URLs in their bodies (the policy is being introduced in this
+PR). Those PRs are merged / closed historical artefacts and are not
+subject to retroactive scrubbing; the rule is forward-looking. The
+PR introducing this policy itself has its body scrubbed of the
+session URL as part of the same change.
 
 ## Key documents reference
 
@@ -7710,6 +7802,304 @@ audit 2026-04-29 § 8.1) has been completed (2026-04-30):
 `0.2.2` for Workstream D research-scope discharge — one new
 public-API module + ~36 new public declarations warrants the
 patch bump per `CLAUDE.md`'s version-bump discipline.
+
+Workstream R-01 Research-Scope Discharge (audit 2026-04-29 § 8.1,
+plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) has been
+completed (2026-04-30):
+
+- **R-01 — Quantitative cross-orbit advantage lower bound for
+  `invariant_attack`.** Pre-R-01, `Orbcrypt/Theorems/InvariantAttack.lean`
+  delivered only the *existential* form of the invariant attack —
+  `∃ A : Adversary X M, hasAdvantage scheme A` (existence of one
+  distinguishing `(g₀, g₁)` pair, the strongest deterministic-
+  advantage form per the `invariant_attack` docstring's three-
+  convention catalogue). R-01 strengthens this to a *tight
+  probabilistic equality* at the IND-1-CPA layer: under a separating
+  G-invariant, the invariant-attack adversary's `indCPAAdvantage`
+  equals exactly `1` (the maximum advantage in the two-distribution
+  convention; cf. `advantage_le_one`).
+
+  The discharge lands three new public declarations under
+  `Orbcrypt/Theorems/InvariantAttack.lean`:
+
+  * **WU-01.1** — `probTrue_orbitDist_invariant_eq_one`: under a
+    G-invariant `f` with `f x = f y`, the Boolean predicate
+    `fun c => decide (f c = f y)` is constantly `true` on the orbit
+    of `x`, so `probTrue (orbitDist x) (decide (f · = f y)) = 1` in
+    `ℝ≥0∞`. Proof: route through `orbitDist x = PMF.map (· • x)
+    (uniformPMF G)` via `probTrue_map`; apply `probTrue_uniformPMF_card`
+    to get a filter-card ratio; show the filter equals `Finset.univ`
+    via `Finset.filter_true_of_mem` (each `g : G` satisfies `f (g •
+    x) = f x = f y` by composing `hInv g x` with `hEq`); collapse
+    `|G| / |G| = 1` via `ENNReal.div_self` with `|G| ≠ 0` from
+    `Fintype.card_pos.ne'` and `|G| ≠ ⊤` from `ENNReal.natCast_ne_top`.
+  * **WU-01.2** — `probTrue_orbitDist_invariant_eq_zero`: symmetric
+    `= 0` companion when `f x ≠ f y` (the predicate is constantly
+    `false` on the orbit). Same proof shape with
+    `Finset.filter_false_of_mem` + `Finset.card_empty` + `0 / |G| =
+    0`.
+  * **WU-01.3 (headline)** —
+    `indCPAAdvantage_invariantAttackAdversary_eq_one`: composes the
+    two mass lemmas via `indCPAAdvantage_eq` to deliver
+    `indCPAAdvantage scheme (invariantAttackAdversary f m₀ m₁) = 1`.
+    The bridge from the adversary's `if-then-else` guess form to the
+    `decide` form needed by the mass lemmas is closed by a per-`c`
+    `funext` + `by_cases` analysis.
+
+  **Cryptographic interpretation.** `indCPAAdvantage_le_one` provides
+  the universal `≤ 1` bound; R-01 says the bound is *attained* by
+  the invariant-attack adversary on every scheme that admits a
+  separating G-invariant. The bound is tight in both directions
+  (no scheme can exceed the universal `≤ 1`; some schemes attain it
+  exactly). Composed with `concrete_oia_implies_1cpa`, R-01 forces:
+  *any scheme admitting a separating G-invariant cannot satisfy
+  `ConcreteOIA scheme ε` for any `ε < 1`*. This formalises the
+  audit-disclosed "complete break" semantics quantitatively, ruling
+  out non-trivial probabilistic security in addition to the
+  vacuously-true deterministic-OIA gap.
+
+  **KEM-layer companion: dropped.** The KEM-layer companion of R-01
+  was found mathematically vacuous during plan review (see
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § "KEM-layer companion:
+  dropped"). The KEM uniform-form game's two distributions live in
+  the basepoint's single orbit, so any G-invariant distinguisher
+  gives advantage `0`, not `1`. The KEM-layer parallel of R-01's
+  *existential* content (`G-invariant attack ⇒ KEMOIA is False`) is
+  already discharged by `det_kemoia_false_of_nontrivial_orbit` in
+  `Orbcrypt/KEM/Security.lean` (post-Workstream-E of audit
+  2026-04-23, finding E-06). That theorem uses the *non*-G-invariant
+  test `fun c => decide (c = g₀ • basePoint)` to refute deterministic
+  KEMOIA — exactly the right adversarial shape because the KEM game
+  distinguishes ciphertexts within ONE orbit (so a G-invariant
+  function carries no signal there).
+
+  **Files touched.**
+  * `Orbcrypt/Theorems/InvariantAttack.lean` — extended with three
+    new theorems (WU-01.1, WU-01.2, WU-01.3 headline) plus an
+    expanded module docstring documenting the probabilistic
+    strengthening and the KEM-layer-companion-vacuity finding.
+    Imports added: `Orbcrypt.Crypto.CompOIA`,
+    `Orbcrypt.Crypto.CompSecurity`, `Orbcrypt.Probability.Monad`.
+    `open ENNReal` added to the new section so the `ℝ≥0∞` notation
+    is in scope.
+  * `scripts/audit_phase_16.lean` — three new `#print axioms`
+    entries (line ~150 of the script, immediately after the existing
+    `invariant_attack` entry) plus a new `R01NonVacuity` namespace
+    at the end of the script with four non-vacuity `example`
+    bindings: (1) `_eq_one` mass lemma at the trivial action
+    (`Equiv.Perm (Fin 1)` on `Bool`); (2) `_eq_zero` mass lemma at
+    the same fixture; (3) headline `= 1` equality on
+    `NonVacuityWitnesses.trivialSchemeBool`; (4) tightness witness
+    showing the R-01 bound is attained (composed with
+    `indCPAAdvantage_le_one`). The fixture re-uses
+    `NonVacuityWitnesses.trivialSchemeBool` (the two-message scheme
+    on `Bool` under the trivial action) and a fresh
+    `id_isGInvariant_trivialPermFin1` helper proving `id` is
+    G-invariant under the trivial action.
+  * `lakefile.lean` — version bumped from `0.2.2` to `0.2.3`;
+    "Last verified" comment block extended with a Workstream-R-01
+    entry.
+
+  **Verification.** Every new declaration depends only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+  Zero `sorry`, zero custom axioms, zero warnings. Full `lake build`
+  succeeds across 3,420 jobs (unchanged from the pre-R-01 baseline:
+  R-01 lands inside an existing module, no new `.lean` file is
+  added, so the module count remains at 77; the build-job count is
+  unchanged because `Orbcrypt/Theorems/InvariantAttack.lean` was
+  already a build node). Phase-16 audit script (`scripts/audit_phase_16.lean`)
+  runs cleanly with exit code 0; emits zero `sorryAx`; emits zero
+  non-standard-trio axioms; the three new R-01 `#print axioms`
+  entries report `[propext, Classical.choice, Quot.sound]` for each
+  theorem.
+
+  **Patch version.** `lakefile.lean` bumped from `0.2.2` to `0.2.3`
+  for Workstream R-01 — three new public declarations land within
+  the existing `Orbcrypt/Theorems/InvariantAttack.lean` module,
+  warranting a patch-version bump per `CLAUDE.md`'s version-bump
+  discipline. The 77-module total, the zero-sorry / zero-custom-
+  axiom posture, and the standard-trio-only axiom-dependency
+  posture are all preserved. Public declaration count rises by
+  three. Audit-script `#print axioms` entries rise by three (the
+  three R-01 declarations: `probTrue_orbitDist_invariant_eq_one`,
+  `probTrue_orbitDist_invariant_eq_zero`,
+  `indCPAAdvantage_invariantAttackAdversary_eq_one`).
+
+  **Remaining R-01 follow-ups: none.** R-01 is fully discharged in
+  this PR. The remaining audit-2026-04-29 § 8.1 research-scope items
+  (R-07, R-08, R-13⁺, R-14, R-16) are tracked by the same plan
+  document but are *not* landed by this PR; their discharge is
+  planned for follow-up work units.
+
+Workstream R-07 Research-Scope Discharge (audit 2026-04-29 § 8.1,
+plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) has been
+completed (2026-04-30):
+
+- **R-07 — Cross-orbit advantage lower bound for equivariant
+  combiners.** The Workstream-E6 results
+  (`concrete_combiner_advantage_bounded_by_oia`,
+  `combinerOrbitDist_mass_bounds`) deliver only the *upper-bound*
+  half of the combiner story: under `ConcreteOIA(ε)` the combiner-
+  induced distinguisher's advantage is at most `ε`. The intra-orbit
+  mass bound on the basepoint orbit (`combinerOrbitDist_mass_bounds`,
+  E6b) is by itself *not* a cross-orbit advantage lower bound —
+  two orbits could place identical Pr[true] = 1/2, yielding
+  cross-orbit advantage 0 (the `combinerOrbitDist_mass_bounds`
+  docstring discloses this gap). R-07 closes the gap by exhibiting
+  a structural predicate (`CrossOrbitNonDegenerateCombiner`) that
+  combines intra-orbit non-triviality on `m_bp` with a cross-orbit
+  constant-false witness on `m_target`, together forcing
+  `combinerDistinguisherAdvantage ≥ 1/|G|` and hence (composed with
+  the upper bound) `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε`.
+
+  The discharge lands six new public declarations under
+  `Orbcrypt/PublicKey/CombineImpossibility.lean`:
+
+  * **WU-07.1** — `combinerOrbitDist_apply_true_eq_probTrue`:
+    bridge lemma identifying the apply-form mass `combinerOrbitDist
+    scheme m_bp comb m true` with the `probTrue` form `probTrue
+    (orbitDist (reps m)) (combinerDistinguisher comb)`. Proof
+    routes both sides through the same outer-measure expression on
+    `uniformPMF G` via `PMF.toOuterMeasure_apply_singleton` +
+    `PMF.toOuterMeasure_map_apply`. This bridge lets us reuse the
+    `1/|G|` mass bound from `combinerOrbitDist_mass_bounds.1` in
+    `probTrue` form, where it composes naturally with `advantage`'s
+    `probTrue`-based definition.
+  * **WU-07.2** — `CrossOrbitNonDegenerateCombiner`: `Prop`-valued
+    structure with two fields, `intra : NonDegenerateCombiner comb`
+    (intra-orbit non-triviality on `m_bp`'s orbit) and
+    `cross_constant_false : ∀ g : G, combinerDistinguisher comb
+    (g • reps m_target) = false` (cross-orbit constant-false
+    witness on `m_target`'s orbit). Edge cases documented in the
+    docstring: at `m_bp = m_target` and at `|G| = 1` the structure
+    is `False` (the two fields contradict on the same orbit / the
+    intra hypothesis is unsatisfiable on a singleton group), so the
+    headline holds vacuously in those cases. Inhabited by the
+    concrete fixture below at `|G| = 2`, `m_bp ≠ m_target`.
+  * **WU-07.3** —
+    `probTrue_combinerDistinguisher_basePoint_ge_inv_card`: rephrases
+    the existing `combinerOrbitDist_mass_bounds.1 hND` (`1/|G| ≤
+    combinerOrbitDist ... true`) into `1/|G| ≤ probTrue (orbitDist
+    (reps m_bp)) (combinerDistinguisher comb)` via the WU-07.1
+    bridge.
+  * **WU-07.4** —
+    `probTrue_combinerDistinguisher_target_eq_zero`: under the
+    cross-orbit constant-false hypothesis, the orbit distribution
+    of `m_target` assigns mass exactly `0` to the `true` branch.
+    Proof: push `probTrue` through `orbitDist`'s `PMF.map`-bridge
+    via `PMF.toOuterMeasure_map_apply`; the resulting preimage set
+    `{g | combinerDistinguisher comb (g • reps m_target) = true}` is
+    *empty* under the hypothesis (every `g` falsifies the predicate
+    via `Bool.noConfusion`); the outer measure of the empty set is
+    `0` via Mathlib's `MeasureTheory.measure_empty`.
+  * **WU-07.5** —
+    `combinerDistinguisherAdvantage_ge_inv_card` (headline):
+    composes WU-07.3 + WU-07.4 with `combinerDistinguisherAdvantage
+    _eq` (existing E6 unfolding lemma) and `advantage`'s `|p_R - p_L|`
+    form. The ENNReal-to-ℝ conversion uses `ENNReal.toReal_le_toReal`
+    with finiteness side conditions (`(|G| : ENNReal)⁻¹ ≠ ⊤` from
+    `|G| ≠ 0`; `probTrue ≤ 1 ≠ ⊤` via `ne_top_of_le_ne_top`); the
+    final identification `((|G| : ENNReal)⁻¹).toReal = 1 / (|G| : ℝ)`
+    uses `ENNReal.toReal_inv` + `ENNReal.toReal_natCast`.
+  * **WU-07.6** —
+    `no_concreteOIA_below_inv_card_of_combiner` (corollary): one-
+    line `le_trans` chaining the lower bound (WU-07.5) with the
+    existing upper bound `concrete_combiner_advantage_bounded_by_oia`.
+    Cryptographic content: a scheme that admits any cross-orbit
+    non-degenerate equivariant combiner is provably *not* `ε`-
+    ConcreteOIA-secure for any `ε < 1/|G|`, refuting the
+    deterministic refutation `equivariant_combiner_breaks_oia`'s
+    quantitative descendant.
+
+  **Cryptographic interpretation.** R-07 is the quantitative
+  refinement of the deterministic `equivariant_combiner_breaks_oia`:
+  that theorem says non-degenerate equivariant combiners refute the
+  all-or-nothing deterministic OIA; R-07 says the refutation lifts
+  to the probabilistic level with an explicit `1/|G|` lower bound
+  on `ε` whenever a cross-orbit non-degenerate combiner is exhibited.
+  The `cross_constant_false` hypothesis is *strong* — most natural
+  combiners don't satisfy it on arbitrary target orbits — so R-07's
+  `1/|G|` is a sufficient-condition refutation; tighter cross-orbit
+  bounds at weaker hypotheses (e.g. `1/2` instead of `1/|G|`)
+  require problem-specific structure and remain research-scope
+  follow-ups.
+
+  **Concrete fixture (audit-script non-vacuity witness).**
+  `scripts/audit_phase_16.lean`'s `R07NonVacuity` namespace exhibits
+  the structure on a concrete `S_2 ⤳ Bitstring 2` model:
+  * `G := ⊤ ≤ Equiv.Perm (Fin 2)` (the full S_2; cardinality 2).
+  * `X := Bitstring 2` with `subgroupBitstringAction` permuting
+    indices.
+  * `M := Bool`, `repsR07 true := ![T, F]` (basepoint, in the
+    weight-1 doubleton orbit `{![T, F], ![F, T]}`); `repsR07
+    false := ![F, F]` (target, in the weight-0 singleton orbit).
+    Orbits disjoint by Hamming-weight separation
+    (`hammingWeight_invariant_subgroup` +
+    `separating_implies_distinct_orbits`).
+  * `combR07.combine x y := y` (projection on second argument):
+    closed on the basepoint orbit, G-equivariant by definition.
+    Intra-orbit non-triviality witness: the swap moves `![T, F]`
+    to `![F, T] ≠ ![T, F]`. Cross-orbit constant-false witness:
+    every permutation fixes `![F, F]`, and `![F, F] ≠ ![T, F]`
+    makes the combinerDistinguisher constantly `false` on the
+    target orbit.
+  * Headline: `(1 : ℝ) / 2 ≤ combinerDistinguisherAdvantage
+    schemeR07 true combR07 true false`. Concrete instance proves
+    the predicate is genuinely inhabited and the headline theorem
+    fires non-vacuously.
+
+  **Files touched.**
+  * `Orbcrypt/PublicKey/CombineImpossibility.lean` — extended with
+    six new public theorems / structures; module docstring
+    extended with R-07 section. No new imports needed (already
+    imports `CompOIA`, `Probability/Advantage`).
+  * `scripts/audit_phase_16.lean` — six new `#print axioms`
+    entries plus a new `R07NonVacuity` namespace with parametric
+    examples (one per WU) and a concrete `S_2 ⤳ Bitstring 2`
+    fixture witnessing the structure's inhabitedness. The
+    `decidableMemTopPermFin2` `local instance` in the namespace
+    enables `Fintype ↥⊤` synthesis for `hgoeScheme.ofLexMin` and
+    the headline-bound application.
+  * `lakefile.lean` — version bumped from `0.2.3` to `0.2.4`;
+    "Last verified" comment block extended with a Workstream-R-07
+    entry.
+
+  **Verification.** Every new declaration depends only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+  The `CrossOrbitNonDegenerateCombiner` structure is axiom-free
+  (Prop bundle). Zero `sorry`, zero custom axioms, zero warnings.
+  Full `lake build` succeeds across 3,420 jobs (R-07 lands inside
+  an existing module, no new `.lean` file is added). Phase-16
+  audit script (`scripts/audit_phase_16.lean`) runs cleanly with
+  exit code 0; emits zero `sorryAx`; emits zero non-standard-trio
+  axioms; the six new R-07 `#print axioms` entries report
+  standard-trio (or "does not depend on any axioms" for the Prop
+  structure).
+
+  **Patch version.** `lakefile.lean` bumped from `0.2.3` to `0.2.4`
+  for Workstream R-07 — six new public declarations land within
+  the existing `Orbcrypt/PublicKey/CombineImpossibility.lean`
+  module, warranting a patch-version bump per `CLAUDE.md`'s
+  version-bump discipline. The 77-module total, the zero-sorry /
+  zero-custom-axiom posture, and the standard-trio-only axiom-
+  dependency posture are all preserved. Public declaration count
+  rises by six. Audit-script `#print axioms` entries rise by six
+  (the six R-07 declarations:
+  `combinerOrbitDist_apply_true_eq_probTrue`,
+  `CrossOrbitNonDegenerateCombiner`,
+  `probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
+  `probTrue_combinerDistinguisher_target_eq_zero`,
+  `combinerDistinguisherAdvantage_ge_inv_card`,
+  `no_concreteOIA_below_inv_card_of_combiner`). The audit-script
+  total verified post-R-07: 992 `#print axioms` entries, all
+  standard-trio-only or axiom-free; zero `sorryAx`; zero non-
+  standard axioms.
+
+  **Remaining R-07 follow-ups: none.** R-07 is fully discharged in
+  this PR. The remaining audit-2026-04-29 § 8.1 research-scope items
+  (R-08, R-13⁺, R-14, R-16) are tracked by the same plan document
+  but are *not* landed by this PR; their discharge is planned for
+  follow-up work units.
 
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring

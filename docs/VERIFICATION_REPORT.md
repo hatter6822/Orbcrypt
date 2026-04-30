@@ -270,6 +270,15 @@ is honest about which assumption is doing the cryptographic work.
 | 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | **Quantitative** — classical IND-1-CPA form of the probabilistic chain bound (Workstream K4 companion), conditional on `ConcreteHardnessChain`; same ε = 1 inhabitation posture as row #22 |
 | 33  | `det_oia_false_of_distinct_reps`                              | `Crypto/OIA.lean`                             | **Standalone** — machine-checked vacuity witness for the deterministic `OIA` under the distinct-representatives hypothesis (Workstream E of 2026-04-23 audit, finding C-07). Closes the prose-only vacuity disclosure that previously lived in `Crypto/OIA.lean`'s module docstring. The distinguisher is `fun x => decide (x = scheme.reps m₀)` at identity group elements; LHS decides `true`, RHS decides `false`, contradiction |
 | 34  | `det_kemoia_false_of_nontrivial_orbit`                        | `KEM/Security.lean`                           | **Standalone** — KEM-layer parallel of row #33 (Workstream E of 2026-04-23 audit, finding E-06). Refutes `KEMOIA kem` under the non-trivial base-point-orbit hypothesis `g₀ • basePoint ≠ g₁ • basePoint`; holds on every realistic KEM (production HGOE has `\|orbit\| ≫ 2`). Written against the post-L5 single-conjunct `KEMOIA`; no `.1` / `.2` destructuring |
+| 35  | `indCPAAdvantage_invariantAttackAdversary_eq_one`             | `Theorems/InvariantAttack.lean`               | **Standalone — R-01 discharged 2026-04-30**. Quantitative companion of headline #2 (`invariant_attack`): under a separating G-invariant `f` (with `f (reps m₀) ≠ f (reps m₁)`), the IND-1-CPA advantage of the invariant-attack adversary is *exactly* `1`. Strengthens row #2's existential deterministic form (`∃ A, hasAdvantage`) to the tight probabilistic equality. Composed with `concrete_oia_implies_1cpa`, this rules out `ConcreteOIA scheme ε` for any `ε < 1` whenever a separating G-invariant exists |
+| 35a | `probTrue_orbitDist_invariant_eq_one`                         | `Theorems/InvariantAttack.lean`               | **Standalone** — constant-true mass lemma supporting #35 (Workstream R-01). Under G-invariance with `f x = f y`, `probTrue (orbitDist x) (decide (f · = f y)) = 1` |
+| 35b | `probTrue_orbitDist_invariant_eq_zero`                        | `Theorems/InvariantAttack.lean`               | **Standalone** — constant-false mass lemma supporting #35 (Workstream R-01). Symmetric `= 0` companion under `f x ≠ f y` |
+| 36  | `combinerDistinguisherAdvantage_ge_inv_card`                  | `PublicKey/CombineImpossibility.lean`         | **Standalone — R-07 discharged 2026-04-30**. Cross-orbit advantage lower bound: under `CrossOrbitNonDegenerateCombiner` (intra-orbit non-triviality on `m_bp`'s orbit + cross-orbit constant-false witness on `m_target`'s orbit), the combiner-induced distinguisher's cross-orbit advantage is at least `1/|G|`. Closes the cross-orbit gap from the Workstream-E6 disclosure: intra-orbit mass bounds alone do *not* imply cross-orbit advantage lower bounds; R-07 supplies the missing predicate |
+| 36a | `no_concreteOIA_below_inv_card_of_combiner`                   | `PublicKey/CombineImpossibility.lean`         | **Standalone — R-07 corollary**. Composing #36 with the existing `concrete_combiner_advantage_bounded_by_oia` upper bound: a `CrossOrbitNonDegenerateCombiner` makes any `ε < 1/|G|` ConcreteOIA bound impossible. Quantitative refinement of `equivariant_combiner_breaks_oia`'s deterministic refutation |
+| 36b | `CrossOrbitNonDegenerateCombiner`                             | `PublicKey/CombineImpossibility.lean`         | **Standalone** — `Prop`-valued cross-orbit non-degeneracy predicate (Workstream R-07). Two-field structure: `intra : NonDegenerateCombiner comb` plus `cross_constant_false : ∀ g, combinerDistinguisher comb (g • reps m_target) = false`. Inhabited on the `S_2 ⤳ Bitstring 2` fixture in `R07NonVacuity` |
+| 36c | `combinerOrbitDist_apply_true_eq_probTrue`                    | `PublicKey/CombineImpossibility.lean`         | **Standalone** — bridge lemma supporting #36 (Workstream R-07). Identifies the apply-form mass `combinerOrbitDist scheme m_bp comb m true` with the `probTrue` form `probTrue (orbitDist (reps m)) (combinerDistinguisher comb)` |
+| 36d | `probTrue_combinerDistinguisher_basePoint_ge_inv_card`        | `PublicKey/CombineImpossibility.lean`         | **Standalone** — intra-orbit `1/|G|` mass bound rephrased via `probTrue` (Workstream R-07). Composes #36c with the existing `combinerOrbitDist_mass_bounds.1` |
+| 36e | `probTrue_combinerDistinguisher_target_eq_zero`               | `PublicKey/CombineImpossibility.lean`         | **Standalone** — cross-orbit zero-mass under the cross-orbit constant-false witness (Workstream R-07). The empty preimage set's outer measure collapses via `MeasureTheory.measure_empty` |
 
 Every one of #1–#34 was confirmed to depend only on standard Lean axioms by
 running `scripts/audit_phase_16.lean` — all declarations exercised
@@ -1111,8 +1120,13 @@ The formalization's public release posture (detailed):
      `(g₀, g₁)` pair); the informal "complete break under a
      separating G-invariant" shorthand is allowed but must be
      accompanied by the formal conclusion when the citation is
-     release-facing. Quantitative probabilistic lower bounds on the
-     cross-orbit advantage are research-scope R-01.
+     release-facing. The probabilistic-IND-1-CPA strengthening is
+     `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream
+     R-01, headline-table row #35) — under a separating G-invariant
+     the IND-1-CPA advantage is *exactly* `1`, attaining the
+     universal `≤ 1` upper bound from `indCPAAdvantage_le_one`. The
+     plan-level R-01 research milestone is now discharged
+     (2026-04-30).
    * `carterWegmanHash_isUniversal` — the standalone `(1/p)`-universal
      hash theorem over `ZMod p` with `[Fact (Nat.Prime p)]` (post
      Workstream L2 upgrade). This is the Carter–Wegman 1977 property
@@ -1310,6 +1324,97 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-30 (Workstream R-07 — Cross-orbit advantage lower bound
+  for equivariant combiners)** — One additional research-scope
+  item from the 2026-04-29 audit plan (§ 8.1, plan
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) discharged
+  within the existing
+  `Orbcrypt/PublicKey/CombineImpossibility.lean` module:
+
+  * **R-07 — `combinerDistinguisherAdvantage ≥ 1/|G|` under
+    `CrossOrbitNonDegenerateCombiner`** (6 declarations on
+    standard-trio axioms; in-place extension of
+    `PublicKey/CombineImpossibility.lean`). Pre-R-07, the Workstream-
+    E6 results (`concrete_combiner_advantage_bounded_by_oia`,
+    `combinerOrbitDist_mass_bounds`) delivered only the *upper-bound*
+    half of the combiner story: under `ConcreteOIA(ε)` the combiner-
+    induced distinguisher's advantage is at most `ε`. The intra-
+    orbit mass bound on the basepoint orbit (E6b) is by itself *not*
+    a cross-orbit advantage lower bound. R-07 closes the gap by
+    introducing a `Prop`-valued cross-orbit non-degeneracy predicate
+    (`CrossOrbitNonDegenerateCombiner`) whose two component witnesses
+    (intra-orbit non-triviality on `m_bp`'s orbit + cross-orbit
+    constant-false on `m_target`'s orbit) jointly force the cross-
+    orbit advantage to be at least `1/|G|`, refuting `ConcreteOIA
+    scheme ε` for `ε < 1/|G|`. Six new public declarations:
+    - `combinerOrbitDist_apply_true_eq_probTrue` — bridge lemma
+      identifying the apply-form mass with the `probTrue` form.
+    - `CrossOrbitNonDegenerateCombiner` — Prop-valued cross-orbit
+      non-degeneracy predicate.
+    - `probTrue_combinerDistinguisher_basePoint_ge_inv_card` —
+      intra-orbit `1/|G|` mass bound (probTrue form).
+    - `probTrue_combinerDistinguisher_target_eq_zero` — cross-orbit
+      zero-mass under the constant-false witness.
+    - `combinerDistinguisherAdvantage_ge_inv_card` (headline) —
+      `1/|G| ≤ combinerDistinguisherAdvantage` under
+      `CrossOrbitNonDegenerateCombiner`.
+    - `no_concreteOIA_below_inv_card_of_combiner` (corollary) —
+      `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε`.
+
+    Concrete fixture in `scripts/audit_phase_16.lean`'s
+    `R07NonVacuity` namespace witnesses the structure is genuinely
+    inhabited: `S_2 ⤳ Bitstring 2`, `repsR07 true := ![T, F]`
+    (weight-1 orbit, doubleton), `repsR07 false := ![F, F]`
+    (weight-0 orbit, singleton), `combR07.combine x y := y`
+    (projection on second arg). Headline applies on this fixture
+    to give `(1 : ℝ) / 2 ≤ combinerDistinguisherAdvantage ...`.
+
+  Build posture preserved (3,420 jobs, zero warnings, zero errors,
+  zero sorry, zero custom axioms). Audit script gained 6 new
+  `#print axioms` entries plus a new `R07NonVacuity` namespace with
+  parametric examples and a concrete `S_2 ⤳ Bitstring 2` fixture
+  proving non-vacuity. Patch version bump `lakefile.lean` 0.2.3 →
+  0.2.4.
+
+* **2026-04-30 (Workstream R-01 — Quantitative cross-orbit advantage
+  lower bound)** — One additional research-scope item from the
+  2026-04-29 audit plan (§ 8.1, plan
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) discharged within
+  the existing `Orbcrypt/Theorems/InvariantAttack.lean` module:
+
+  * **R-01 — `indCPAAdvantage = 1` under separating G-invariant** (3
+    declarations on standard-trio axioms; in-place extension of
+    `Theorems/InvariantAttack.lean`). Pre-R-01, the
+    `invariant_attack` headline delivered only the *existential*
+    deterministic form `∃ A, hasAdvantage scheme A` (existence of
+    one distinguishing `(g₀, g₁)` pair). R-01 strengthens this to a
+    *tight* probabilistic equality at the IND-1-CPA layer:
+    `indCPAAdvantage scheme (invariantAttackAdversary f m₀ m₁) = 1`
+    whenever a separating G-invariant `f` is supplied. Three new
+    public declarations:
+    - `probTrue_orbitDist_invariant_eq_one` (constant-true mass
+      lemma: orbit distribution assigns mass `1` when the predicate
+      is constantly `true` on the orbit, via `Finset.filter_true_of_mem`
+      + `ENNReal.div_self`).
+    - `probTrue_orbitDist_invariant_eq_zero` (symmetric `= 0`
+      companion via `Finset.filter_false_of_mem`).
+    - `indCPAAdvantage_invariantAttackAdversary_eq_one` (the
+      headline, composing the two mass lemmas via `indCPAAdvantage_eq`).
+    Composed with `concrete_oia_implies_1cpa`, R-01 forces:
+    *any scheme admitting a separating G-invariant cannot satisfy
+    `ConcreteOIA scheme ε` for any `ε < 1`*. The KEM-layer companion
+    of R-01 was found mathematically vacuous during plan review; the
+    KEM-layer parallel is already discharged by
+    `det_kemoia_false_of_nontrivial_orbit` (post-Workstream-E of
+    audit 2026-04-23).
+
+  Build posture preserved (3,420 jobs, zero warnings, zero errors,
+  zero sorry, zero custom axioms). Audit script gained 3 new
+  `#print axioms` entries plus a new `R01NonVacuity` namespace with
+  4 non-vacuity `example` bindings on the
+  `NonVacuityWitnesses.trivialSchemeBool` fixture. Patch version
+  bump `lakefile.lean` 0.2.2 → 0.2.3.
 
 * **2026-04-30 (Workstream D research-scope discharge — R-09 +
   R-12 + R-13)** — Three research-scope items from the 2026-04-29

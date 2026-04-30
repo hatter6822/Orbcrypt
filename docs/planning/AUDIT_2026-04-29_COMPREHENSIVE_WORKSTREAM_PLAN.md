@@ -286,6 +286,8 @@ a single underlying defect; the plan treats them as one work unit.
 | **C-13a** | INFO | § C | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **F-03a** | INFO | § F | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **R-09 / R-12 / R-13** ✅ | research | § N-04 | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-01** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-07** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
 | **R-15-residual-CE-reverse / R-15-residual-TI-reverse / R-15-residual-TI-forward-matrix** | research | § N-04 | **D** | n/a (catalogue) | v1.1+ / v2.0 |
 
 Note that **B-03a, B-03b, C-03a, C-13a, F-03a** are all "no-action"
@@ -2185,15 +2187,123 @@ catalogue convention, not a permanent freeze:
   HGOE-compatible analogue of `carterWegmanMAC_int_ctxt`.
   18 declarations, NEW module, all on standard-trio axioms.
 
-**Cumulative posture (post-discharge):** `lake build` succeeds
-across 3,420 jobs (was 3,419) with zero warnings, zero errors.
-Phase-16 audit script: +36 declarations exercised; zero `sorryAx`;
-all on standard-trio axioms. Module count: 76 → 77. Public-
-declaration count: ≈ 358 → ≈ 394. `lakefile.lean`: 0.2.1 → 0.2.2.
+* **R-01 — discharged 2026-04-30** (per
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01). Closed by
+  `indCPAAdvantage_invariantAttackAdversary_eq_one`
+  (`Theorems/InvariantAttack.lean`). Strengthens the existential
+  `invariant_attack` headline (existence of one distinguishing
+  `(g₀, g₁)` pair) to a tight probabilistic equality at the
+  IND-1-CPA layer: under a separating G-invariant, the invariant-
+  attack adversary's `indCPAAdvantage` equals exactly `1`
+  (the universal `≤ 1` upper bound is *attained*, not merely
+  satisfied). Composed with `concrete_oia_implies_1cpa`, R-01
+  forces: any scheme admitting a separating G-invariant cannot
+  satisfy `ConcreteOIA scheme ε` for any `ε < 1`. Proof structure:
+  - `probTrue_orbitDist_invariant_eq_one` — constant-true mass
+    lemma at the orbit distribution. Routes through
+    `orbitDist x = PMF.map (· • x) (uniformPMF G)` via
+    `probTrue_map`; reduces to a filter-card ratio via
+    `probTrue_uniformPMF_card`; closes the filter-equals-`Finset.univ`
+    obligation via `Finset.filter_true_of_mem` (G-invariance gives
+    `f (g • x) = f x = f y` for every `g`); collapses
+    `|G| / |G| = 1` via `ENNReal.div_self`.
+  - `probTrue_orbitDist_invariant_eq_zero` — symmetric `= 0`
+    companion via `Finset.filter_false_of_mem`.
+  - `indCPAAdvantage_invariantAttackAdversary_eq_one` (headline)
+    — composes the two mass lemmas via `indCPAAdvantage_eq`. The
+    bridge from the adversary's `if-then-else` guess form to the
+    `decide` form expected by the mass lemmas is a per-`c`
+    `funext` + `by_cases` analysis (definitional equality, but
+    Lean's `rw` is syntactic).
+  3 declarations, in-place extension of an existing module, all
+  on standard-trio axioms.
+  
+  **KEM-layer companion: dropped.** Plan review found the KEM-
+  layer parallel mathematically vacuous — the KEM uniform-form
+  game's two distributions live in the basepoint's single orbit,
+  so any G-invariant distinguisher gives advantage `0`, not `1`.
+  The KEM-layer parallel of R-01's *existential* content is
+  already discharged by `det_kemoia_false_of_nontrivial_orbit`
+  (post-Workstream-E of audit 2026-04-23, finding E-06).
+
+**Cumulative posture (post-R-01):** `lake build` succeeds across
+3,420 jobs (unchanged from the post-Workstream-D R-09/R-12/R-13
+discharge — R-01 is in-place in an existing module) with zero
+warnings, zero errors. Phase-16 audit script: +3 R-01
+declarations exercised on top of the previous +36 from R-09/R-12/
+R-13; zero `sorryAx`; all on standard-trio axioms. Module count
+unchanged at 77. `lakefile.lean`: 0.2.2 → 0.2.3.
+
+* **R-07 — discharged 2026-04-30** (per
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07). Closed by
+  `combinerDistinguisherAdvantage_ge_inv_card` (and its corollary
+  `no_concreteOIA_below_inv_card_of_combiner`) in
+  `Orbcrypt/PublicKey/CombineImpossibility.lean`. Closes the
+  cross-orbit advantage-lower-bound gap from the Workstream-E6
+  disclosure (audit 2026-04-21 finding L8 / Workstream M
+  `combinerOrbitDist_mass_bounds`'s docstring): intra-orbit mass
+  bounds alone do *not* imply cross-orbit advantage lower bounds.
+  R-07 supplies the missing predicate
+  (`CrossOrbitNonDegenerateCombiner`) — combining intra-orbit
+  non-triviality on `m_bp`'s orbit with a cross-orbit constant-false
+  witness on `m_target`'s orbit — and delivers the headline
+  `1/|G| ≤ combinerDistinguisherAdvantage`. Composed with the
+  upper bound `concrete_combiner_advantage_bounded_by_oia` (E6),
+  R-07 forces `1/|G| ≤ ε` under `ConcreteOIA scheme ε`, refuting
+  any `ε < 1/|G|` security claim whenever a cross-orbit non-
+  degenerate combiner exists. Proof structure:
+  - `combinerOrbitDist_apply_true_eq_probTrue` — bridge lemma
+    identifying the apply-form mass `combinerOrbitDist scheme
+    m_bp comb m true` with `probTrue (orbitDist (reps m))
+    (combinerDistinguisher comb)` via
+    `PMF.toOuterMeasure_apply_singleton` +
+    `PMF.toOuterMeasure_map_apply`.
+  - `CrossOrbitNonDegenerateCombiner` — `Prop`-valued structure
+    with two fields (`intra : NonDegenerateCombiner comb` and
+    `cross_constant_false : ∀ g, combinerDistinguisher comb (g •
+    reps m_target) = false`).
+  - `probTrue_combinerDistinguisher_basePoint_ge_inv_card` —
+    rephrases the existing intra-orbit mass bound
+    (`combinerOrbitDist_mass_bounds.1`) via the bridge.
+  - `probTrue_combinerDistinguisher_target_eq_zero` — cross-orbit
+    zero-mass under the constant-false witness; pushes through
+    `PMF.map`'s outer-measure bridge to land on the empty preimage
+    set, then uses `MeasureTheory.measure_empty`.
+  - `combinerDistinguisherAdvantage_ge_inv_card` (headline) —
+    composes the per-orbit lemmas via
+    `combinerDistinguisherAdvantage_eq` + `advantage`'s
+    `|p_R - p_L|` form; ENNReal-to-ℝ conversion via
+    `ENNReal.toReal_le_toReal` + `ENNReal.toReal_inv` +
+    `ENNReal.toReal_natCast`.
+  - `no_concreteOIA_below_inv_card_of_combiner` (corollary) —
+    one-line `le_trans` chaining the lower bound with the
+    existing upper bound.
+  6 declarations, in-place extension of an existing module, all
+  on standard-trio axioms (the structure has no axioms). Concrete
+  fixture in `R07NonVacuity` namespace exhibits the predicate's
+  inhabitedness on `S_2 ⤳ Bitstring 2`: basepoint orbit
+  `{![T, F], ![F, T]}` (weight 1, doubleton), target orbit
+  `{![F, F]}` (weight 0, singleton), combiner `combine x y := y`.
+  The headline produces `(1 : ℝ) / 2 ≤
+  combinerDistinguisherAdvantage` on this fixture.
+
+**Cumulative posture (post-R-07):** `lake build` succeeds across
+3,420 jobs (unchanged — R-07 is in-place in an existing module)
+with zero warnings, zero errors. Phase-16 audit script exercises
+992 declarations total; the +6 R-07 additions are
+`combinerOrbitDist_apply_true_eq_probTrue`,
+`CrossOrbitNonDegenerateCombiner`,
+`probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
+`probTrue_combinerDistinguisher_target_eq_zero`,
+`combinerDistinguisherAdvantage_ge_inv_card`, and
+`no_concreteOIA_below_inv_card_of_combiner`; zero `sorryAx`; all
+new declarations on standard-trio axioms (the `Cross
+OrbitNonDegenerateCombiner` structure is axiom-free). Module
+count unchanged at 77. `lakefile.lean`: 0.2.3 → 0.2.4.
 
 The remaining R-15-residual-* items continue to track at the
 estimates above; they require multi-thousand LOC of dedicated
-Lean infrastructure that R-09/R-12/R-13 did not.
+Lean infrastructure that R-09/R-12/R-13/R-01/R-07 did not.
 
 ### 8.4 Workstream D exit criteria
 
