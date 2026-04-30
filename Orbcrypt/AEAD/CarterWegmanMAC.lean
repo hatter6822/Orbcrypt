@@ -106,32 +106,12 @@ namespace Orbcrypt
 open PMF ENNReal
 
 -- ============================================================================
--- Generic `decide`-equality MAC template
--- ============================================================================
-
-variable {K : Type*} {Msg : Type*} {Tag : Type*}
-
-/--
-A deterministic MAC constructed from any tagging function
-`f : K → Msg → Tag`. Verification tests `t = f k m` by `decide`, which
-discharges both the `correct` and `verify_inj` fields of `MAC`.
-
-This is the canonical "simplest non-trivial MAC" and the template on
-which `carterWegmanMAC` is built: supply a universal-hash function as
-`f`, and the ε-universal property of the family (proved separately
-against `IsEpsilonUniversal`) is preserved by the template.
--/
-def deterministicTagMAC [DecidableEq Tag] (f : K → Msg → Tag) :
-    MAC K Msg Tag where
-  tag := f
-  verify := fun k m t => decide (t = f k m)
-  -- `decide (f k m = f k m) = true` holds by reflexivity of equality.
-  correct := fun _ _ => decide_eq_true rfl
-  -- `decide (t = f k m) = true` unfolds to `t = f k m`.
-  verify_inj := fun _ _ _ hv => of_decide_eq_true hv
-
--- ============================================================================
 -- Carter–Wegman linear hash over a prime field
+-- ============================================================================
+-- Note: `deterministicTagMAC` (the generic MAC template used below) lives
+-- in `Orbcrypt/AEAD/MAC.lean` to avoid a circular import with
+-- `Orbcrypt/AEAD/MACSecurity.lean` (which uses both this file and the
+-- template).
 -- ============================================================================
 
 /--
