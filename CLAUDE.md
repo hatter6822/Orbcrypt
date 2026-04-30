@@ -665,6 +665,98 @@ When changing behavior, theorems, or formalization status, update in the same PR
 
 Canonical ownership: `DEVELOPMENT.md` owns the full scheme specification. `formalization/FORMALIZATION_PLAN.md` owns the Lean 4 architecture and conventions. Phase documents own implementation-level guidance for their respective phases. `POE.md` and `COUNTEREXAMPLE.md` own the high-level concept exposition and vulnerability analysis respectively.
 
+## Pull request authoring policy (ABSOLUTE)
+
+**Forbidden in PR summaries / descriptions / bodies:** session URLs of
+the shape `https://claude.ai/code/session_*` (or any equivalent
+agent-harness session permalink). Examples of the forbidden form:
+
+* `https://claude.ai/code/session_019S9v23eC235cqr76MNWe5S`
+* `claude.ai/code/session_<any-id>`
+* Any other URL whose path identifies a private agent-harness
+  conversation (Claude Code Web, Claude Agent SDK, GitHub-side
+  Claude Action sessions, etc.).
+
+**Why this rule exists.**
+
+1. *Privacy / opacity.* A session URL points at a private workspace
+   artefact: full transcript, tool calls, intermediate code, plan
+   discussions. It is not a public reference. PR readers — including
+   reviewers, downstream maintainers, security auditors — cannot
+   open it; the link is dead from their perspective and adds no
+   discoverable context.
+2. *Link rot.* Session URLs are ephemeral: harness sessions expire,
+   compress, or get archived behind authentication. A PR description
+   that points at one will break in days or weeks, leaving a
+   permanent dead reference in the repository's release history.
+3. *Provenance leakage.* Session URLs embed harness internals
+   (Claude Code vs Web vs Action, session-id format, etc.) which
+   reveal authoring tooling that the PR description otherwise needn't
+   disclose. The PR's *content* (theorems, audit findings, build
+   posture) is what matters, not which agent-harness session
+   produced it.
+4. *Citation discipline.* Per `CLAUDE.md`'s **Names describe content,
+   never provenance** rule (Key Conventions), declarations and
+   release-facing references must describe what they prove or what
+   they document, not the workflow / phase / session that produced
+   them. PR summaries are release-facing prose; the same discipline
+   applies. A reader needs the theorem name, the audit plan section,
+   the file path — not a workspace-private session pointer.
+
+**Allowed alternatives — what to cite instead.**
+
+* The audit / planning document under `docs/planning/` (e.g.
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07).
+* The headline theorem name + file path (e.g.
+  `combinerDistinguisherAdvantage_ge_inv_card`
+  `Orbcrypt/PublicKey/CombineImpossibility.lean`).
+* The CLAUDE.md changelog entry that records the work
+  (e.g. "Workstream R-07 Research-Scope Discharge").
+* The `docs/VERIFICATION_REPORT.md` Document-history entry.
+* The relevant audit-script entry in `scripts/audit_phase_16.lean`'s
+  `R07NonVacuity` namespace.
+
+**Scope of the rule.**
+
+* **In scope (forbidden):** PR descriptions / bodies; PR review
+  comments; PR-edit `body` arguments to
+  `mcp__github__update_pull_request`; cross-link inserts in PR
+  comments via `mcp__github__add_issue_comment` /
+  `mcp__github__add_reply_to_pull_request_comment`. Anywhere the
+  resulting URL would be visible in the PR's GitHub UI or
+  retrievable via the GitHub API's public endpoints.
+* **Out of scope:** local commit messages (the agent harness's
+  default `gh commit` template may auto-append a session footer to
+  *commits*, which lives in `git log`; this policy concerns
+  *PR-level* surfaces, not commit-trailer hygiene). If a project
+  later wants to remove session URLs from commit messages too, that
+  is a separate policy decision.
+
+**Enforcement.**
+
+1. Before invoking `mcp__github__create_pull_request` or
+   `mcp__github__update_pull_request`, scan the prepared `body`
+   string for the regex
+   `https?://(?:www\.)?claude\.ai/code/session_[A-Za-z0-9]+` (or any
+   equivalent agent-harness session-permalink shape). Strip every
+   match before submission.
+2. If a session URL is discovered in an already-open PR, update
+   the PR body via `mcp__github__update_pull_request` to remove the
+   offending substring. The remediation should preserve the rest
+   of the PR description verbatim — only the URL line(s) and any
+   trailing whitespace they introduce should be removed.
+3. The same scan applies whenever the agent edits a PR body, even
+   for unrelated reasons (e.g. fixing a typo, adding a checklist
+   item). Removing pre-existing session URLs is a "free cleanup" —
+   never re-introduce them.
+
+**Historical note.** Earlier PRs in this repository may carry
+session URLs in their bodies (the policy is being introduced in this
+PR). Those PRs are merged / closed historical artefacts and are not
+subject to retroactive scrubbing; the rule is forward-looking. The
+PR introducing this policy itself has its body scrubbed of the
+session URL as part of the same change.
+
 ## Key documents reference
 
 | File | Size | Purpose | Read This To Understand |
