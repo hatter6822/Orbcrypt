@@ -534,6 +534,24 @@ These theorems depend only on Lean's standard axioms (`propext`,
   § R-01 for the discharge plan and the KEM-layer-companion-vacuity
   finding (`det_kemoia_false_of_nontrivial_orbit` already provides
   the KEM-layer parallel of the existential content)
+- `combinerDistinguisherAdvantage_ge_inv_card`
+  (`PublicKey/CombineImpossibility.lean`) — Workstream R-07
+  quantitative cross-orbit advantage lower bound for equivariant
+  combiners. Under `CrossOrbitNonDegenerateCombiner` (intra-orbit
+  non-triviality on `m_bp`'s orbit + cross-orbit constant-false
+  witness on `m_target`'s orbit), the combiner-induced
+  distinguisher's cross-orbit advantage is at least `1/|G|`.
+  Closes the Workstream-E6 disclosure that intra-orbit mass bounds
+  alone do *not* imply cross-orbit advantage lower bounds. The
+  corollary `no_concreteOIA_below_inv_card_of_combiner` composes
+  this with the existing `concrete_combiner_advantage_bounded_by_oia`
+  upper bound to deliver `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε`. Built
+  on the bridge lemma `combinerOrbitDist_apply_true_eq_probTrue`
+  and the two probTrue mass lemmas
+  (`probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
+  `probTrue_combinerDistinguisher_target_eq_zero`). See
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07 for the discharge
+  plan
 - `kem_correctness` (`KEM/Correctness.lean`) — decaps recovers encapsulated key
 - `kem_key_constant_direct` (`KEM/Security.lean`) — key constancy from
   canonical form G-invariance (no KEMOIA needed)

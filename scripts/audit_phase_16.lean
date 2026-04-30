@@ -725,6 +725,22 @@ open Orbcrypt
 #print axioms combinerDistinguisherAdvantage
 #print axioms combinerDistinguisherAdvantage_eq
 #print axioms concrete_combiner_advantage_bounded_by_oia
+-- Workstream R-07 (audit 2026-04-29 § 8.1, plan
+-- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07): cross-orbit
+-- advantage lower bound for equivariant combiners. The intra-orbit
+-- mass bound `combinerOrbitDist_mass_bounds` (E6b) is *not* by itself
+-- a cross-orbit advantage lower bound; R-07 supplies the missing
+-- cross-orbit witness via `CrossOrbitNonDegenerateCombiner` and
+-- delivers the headline `combinerDistinguisherAdvantage ≥ 1/|G|`.
+-- Composed with `concrete_combiner_advantage_bounded_by_oia` (E6
+-- upper bound), this refutes `ConcreteOIA scheme ε` for any `ε <
+-- 1/|G|` whenever a cross-orbit non-degenerate combiner exists.
+#print axioms combinerOrbitDist_apply_true_eq_probTrue
+#print axioms CrossOrbitNonDegenerateCombiner
+#print axioms probTrue_combinerDistinguisher_basePoint_ge_inv_card
+#print axioms probTrue_combinerDistinguisher_target_eq_zero
+#print axioms combinerDistinguisherAdvantage_ge_inv_card
+#print axioms no_concreteOIA_below_inv_card_of_combiner
 
 -- ============================================================================
 -- §12  Non-vacuity witnesses
@@ -5180,3 +5196,321 @@ example :
      id_isGInvariant_trivialPermFin1 (by decide)⟩
 
 end R01NonVacuity
+
+/-! ## R-07 non-vacuity witnesses (audit 2026-04-29 § 8.1) -/
+namespace R07NonVacuity
+
+open Orbcrypt
+
+-- R-07 lands the structural cross-orbit lower bound
+-- `combinerDistinguisherAdvantage ≥ 1/|G|` under
+-- `CrossOrbitNonDegenerateCombiner` and the corresponding
+-- `1/|G| ≤ ε` corollary under `ConcreteOIA scheme ε`. The headline
+-- composition proof goes through unconditionally (zero `sorry`,
+-- zero custom axioms) and is exercised in parametric form below: each
+-- example takes a generic scheme + combiner + cross-orbit hypothesis
+-- and discharges the headline conclusion. This is the "parametric
+-- type-elaboration witness" route from the plan's risks-and-mitigations
+-- table; constructing a fully concrete cross-orbit-non-degenerate
+-- combiner on a small finite fixture would require a non-trivial
+-- group action with two disjoint orbits and is beyond audit-script
+-- scope (the inhabitedness of `CrossOrbitNonDegenerateCombiner` on a
+-- general scheme is documented in the structure's docstring; the
+-- `intra` and `cross_constant_false` fields are jointly satisfiable
+-- on every scheme with `|G| ≥ 2` and at least two messages whose
+-- representatives lie in disjoint orbits with the combiner constant
+-- on the second one).
+
+/-- **Non-vacuity (1): bridge lemma.** The mass at `true` of
+    `combinerOrbitDist scheme m_bp comb m` equals
+    `probTrue (orbitDist (reps m)) (combinerDistinguisher comb)`. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp)) (m : M) :
+    combinerOrbitDist scheme m_bp comb m true =
+      probTrue (orbitDist (G := G) (scheme.reps m))
+        (combinerDistinguisher comb) :=
+  combinerOrbitDist_apply_true_eq_probTrue scheme m_bp comb m
+
+/-- **Non-vacuity (2): intra-orbit mass bound rephrased via
+    `probTrue`.** Under `NonDegenerateCombiner`, the basepoint orbit
+    distribution assigns mass at least `1/|G|` to the `true` branch
+    of the combiner-induced distinguisher. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (hND : NonDegenerateCombiner comb) :
+    (Fintype.card G : ENNReal)⁻¹ ≤
+    probTrue (orbitDist (G := G) (scheme.reps m_bp))
+      (combinerDistinguisher comb) :=
+  probTrue_combinerDistinguisher_basePoint_ge_inv_card scheme m_bp comb hND
+
+/-- **Non-vacuity (3): cross-orbit zero-mass.** Under the cross-orbit
+    constant-false hypothesis, the target orbit distribution assigns
+    mass exactly `0` to the `true` branch. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M) (hCross : ∀ g : G,
+      combinerDistinguisher comb (g • scheme.reps m_target) = false) :
+    probTrue (orbitDist (G := G) (scheme.reps m_target))
+        (combinerDistinguisher comb) = 0 :=
+  probTrue_combinerDistinguisher_target_eq_zero scheme m_bp comb m_target hCross
+
+/-- **Non-vacuity (4): R-07 headline.** Under
+    `CrossOrbitNonDegenerateCombiner`, the cross-orbit advantage is
+    bounded below by `1/|G|`. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M)
+    (hND : CrossOrbitNonDegenerateCombiner scheme m_bp comb m_target) :
+    (1 : ℝ) / (Fintype.card G : ℝ) ≤
+    combinerDistinguisherAdvantage scheme m_bp comb m_bp m_target :=
+  combinerDistinguisherAdvantage_ge_inv_card scheme m_bp comb m_target hND
+
+/-- **Non-vacuity (5): R-07 corollary.** Under
+    `CrossOrbitNonDegenerateCombiner`, every `ConcreteOIA` bound `ε`
+    satisfies `ε ≥ 1/|G|`. This refutes any sub-`1/|G|` security
+    claim once a cross-orbit non-degenerate combiner is exhibited. -/
+example {G X M : Type*} [Group G] [Fintype G] [Nonempty G]
+    [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M)
+    (hND : CrossOrbitNonDegenerateCombiner scheme m_bp comb m_target)
+    (ε : ℝ) (hOIA : ConcreteOIA scheme ε) :
+    (1 : ℝ) / (Fintype.card G : ℝ) ≤ ε :=
+  no_concreteOIA_below_inv_card_of_combiner scheme m_bp comb m_target hND ε hOIA
+
+/-- **Non-vacuity (6): structural sanity — `CrossOrbitNonDegenerate
+    Combiner` deconstructs to its two component witnesses.** Confirms
+    the structure's `intra` and `cross_constant_false` projections
+    work as expected. -/
+example {G X M : Type*} [Group G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M) (m_bp : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp))
+    (m_target : M)
+    (hND : CrossOrbitNonDegenerateCombiner scheme m_bp comb m_target) :
+    NonDegenerateCombiner comb ∧
+    (∀ g : G, combinerDistinguisher comb (g • scheme.reps m_target) = false) :=
+  ⟨hND.intra, hND.cross_constant_false⟩
+
+-- ============================================================================
+-- Concrete R-07 fixture: the `1/2` bound on `S_2 ⤳ Bitstring 2`
+-- ============================================================================
+--
+-- Above we exercise the R-07 theorems parametrically against generic
+-- schemes and combiners. To honestly witness that
+-- `CrossOrbitNonDegenerateCombiner` is *inhabited* on a concrete
+-- model — and hence that the headline theorem is non-vacuous —
+-- we now construct an explicit fixture and instantiate every R-07
+-- declaration on it.
+--
+-- Concrete model:
+--   • `G := ⊤ ≤ Equiv.Perm (Fin 2)` (the full S_2; `Fintype.card = 2`).
+--   • `X := Bitstring 2 = Fin 2 → Bool`.
+--   • Action: `subgroupBitstringAction` (existing in `Construction/HGOE.lean`),
+--     by permuting bit positions. The two relevant orbits are:
+--       - `orbit (↥⊤) ![T, F] = {![T, F], ![F, T]}` (size 2, weight 1).
+--       - `orbit (↥⊤) ![F, F] = {![F, F]}` (singleton, weight 0).
+--   • `M := Bool`, `reps := Bool.rec ![F, F] ![T, F]`.
+--   • Combiner: `combine x y := y` (projection on the second argument).
+--     Closed on the basepoint orbit (the second argument's orbit
+--     membership is preserved); G-equivariant by definition; satisfies
+--     intra-orbit non-triviality (the swap σ moves `![T, F] → ![F, T]
+--     ≠ ![T, F]`); satisfies cross-orbit constant-false (every σ ∈ ⊤
+--     fixes `![F, F]`, and `![F, F] ≠ ![T, F]` makes the distinguisher
+--     constantly `false` on the target orbit).
+--
+-- This fixture exhibits `CrossOrbitNonDegenerateCombiner` on a
+-- non-trivial finite scheme and produces the explicit `1/2 ≤ advantage`
+-- bound from R-07's headline.
+
+/-- Decidable membership in `(⊤ : Subgroup (Equiv.Perm (Fin 2)))`:
+    every element trivially satisfies `True`. Required for `Fintype
+    ↥⊤` synthesis (`Subgroup.fintype` derives from `Fintype G` plus
+    `DecidablePred (· ∈ S)`). -/
+local instance decidableMemTopPermFin2 :
+    DecidablePred (· ∈ (⊤ : Subgroup (Equiv.Perm (Fin 2)))) :=
+  fun _ => isTrue trivial
+
+/-- The basepoint message's representative (`![T, F]` — weight 1)
+    and the target representative (`![F, F]` — weight 0). Defined
+    by pattern matching on `Bool` so that `repsR07 true` and
+    `repsR07 false` reduce definitionally to their literal forms. -/
+private def repsR07 : Bool → Bitstring 2
+  | true  => ![true,  false]
+  | false => ![false, false]
+
+/-- Computation lemma: `repsR07 true = ![T, F]`. By `rfl`, since
+    `repsR07` matches definitionally. Used to rewrite occurrences
+    of `schemeR07.reps true` (which goes through `hgoeScheme.ofLexMin
+    .reps`, set by definition to `repsR07`). -/
+private theorem repsR07_true : repsR07 true = ![true, false] := rfl
+
+/-- Computation lemma: `repsR07 false = ![F, F]`. -/
+private theorem repsR07_false : repsR07 false = ![false, false] := rfl
+
+/-- The two orbit-distinct representatives have different Hamming
+    weights (`1` vs `0`); since `hammingWeight` is G-invariant under
+    any subgroup, `separating_implies_distinct_orbits` lifts the
+    weight gap to an orbit inequality. -/
+private theorem repsR07_distinct :
+    ∀ m₁ m₂ : Bool, m₁ ≠ m₂ →
+      MulAction.orbit (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) (repsR07 m₁) ≠
+        MulAction.orbit (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) (repsR07 m₂) := by
+  intro m₁ m₂ hNeq
+  -- Hamming weights of the two reps (1 and 0) separate the orbits.
+  have hSep : hammingWeight (repsR07 m₁) ≠ hammingWeight (repsR07 m₂) := by
+    cases m₁ <;> cases m₂ <;> first | exact (hNeq rfl).elim | decide
+  -- `separating_implies_distinct_orbits` needs the IsSeparating package.
+  exact separating_implies_distinct_orbits
+    ⟨hammingWeight_invariant_subgroup _, hSep⟩
+
+/-- The R-07 fixture scheme: `S_2` acts on `Bitstring 2`, two
+    messages map to weight-1 and weight-0 orbits. The canonical form
+    is auto-filled by `hgoeScheme.ofLexMin` (matches the GAP
+    reference's lex-min orbit representative choice). -/
+private noncomputable def schemeR07 :
+    OrbitEncScheme (↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+      (Bitstring 2) Bool :=
+  hgoeScheme.ofLexMin (n := 2) ⊤ repsR07 repsR07_distinct
+
+/-- Computation lemma: `schemeR07.reps = repsR07`. The
+    `hgoeScheme.ofLexMin_reps` simp lemma confirms that
+    `hgoeScheme.ofLexMin` preserves its `reps` field; consumers can
+    rewrite the goal's `schemeR07.reps` to the explicit `repsR07`
+    and then to a concrete bitstring via `repsR07_true /
+    repsR07_false`. -/
+private theorem schemeR07_reps : schemeR07.reps = repsR07 :=
+  hgoeScheme.ofLexMin_reps (n := 2) ⊤ repsR07 repsR07_distinct
+
+/-- The fixture's combiner: `combine x y := y` (projection on the
+    second argument). Closed on the basepoint orbit; G-equivariant
+    by the trivial computation `g • y = g • y`. -/
+private noncomputable def combR07 :
+    GEquivariantCombiner (↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+      (Bitstring 2) (schemeR07.reps true) where
+  combine := fun _ y => y
+  closed := fun _ _ _ hy => hy
+  equivariant := fun _ _ _ => rfl
+
+/-- Computation lemma: `combR07.combine x y = y`. Reduces structure-
+    field projection to the underlying `fun _ y => y`. -/
+private theorem combR07_combine_eq (x y : Bitstring 2) :
+    combR07.combine x y = y := rfl
+
+/-- The non-trivial element of `↥⊤ ≤ S_2`: the swap of bit positions
+    `0` and `1`, packaged as a member of `⊤`. Used both as the
+    `intra` witness for `combR07` and as a probe for the cross-orbit
+    constant-false condition. -/
+private def swapR07 : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))) :=
+  ⟨Equiv.swap 0 1, Subgroup.mem_top _⟩
+
+/-- Computation lemma: applying the swap to `![T, F]` flips the
+    first two bits, producing `![F, T]`. Proved by Fin-extensional
+    case analysis at indices `0` and `1`. -/
+private theorem swapR07_smul_TF :
+    (swapR07 • (![true, false] : Bitstring 2)) = ![false, true] := by
+  funext i
+  -- `(g • b) i = b (g⁻¹ i)` from `perm_smul_apply`.
+  -- `swapR07 = ⟨Equiv.swap 0 1, _⟩`, so `(↑swapR07)⁻¹ = (Equiv.swap 0 1)⁻¹ = Equiv.swap 0 1`.
+  show (![true, false] : Bitstring 2) ((Equiv.swap (0 : Fin 2) 1)⁻¹ i) = _
+  rw [Equiv.swap_inv]
+  fin_cases i
+  · simp [Equiv.swap_apply_left]
+  · simp [Equiv.swap_apply_right]
+
+/-- The basepoint orbit moves under `swapR07`: applying the swap to
+    `![T, F]` yields `![F, T] ≠ ![T, F]`. This is the intra-orbit
+    non-triviality witness for `combR07`. -/
+private theorem combR07_intra :
+    NonDegenerateCombiner combR07 := by
+  refine ⟨swapR07, ?_⟩
+  -- Goal: combR07.combine (reps true) (swapR07 • reps true) ≠ combR07.combine (reps true) (reps true).
+  -- Reduce `combR07.combine` to second-argument projection; reduce
+  -- `schemeR07.reps true` to the concrete `![T, F]`.
+  rw [combR07_combine_eq, combR07_combine_eq, schemeR07_reps, repsR07_true,
+      swapR07_smul_TF]
+  -- Goal: ![F, T] ≠ ![T, F]. Decide by Fin-extensional comparison.
+  intro h
+  have h0 := congr_fun h 0
+  exact Bool.noConfusion h0
+
+/-- Every group element fixes the all-false bitstring `![F, F]`:
+    `g • ![F, F] = ![F, F]` because the action permutes indices and
+    every index reads `false`.
+
+    **Proof.** Pointwise: `(g • b) i` reduces (via the
+    `subgroupBitstringAction` `compHom`-derived instance + the
+    underlying perm action `(σ • b) i = b (σ⁻¹ i)` from
+    `perm_smul_apply`) to `b ((↑g)⁻¹ i)`. Since `b = ![F, F]` is the
+    constant-false function, both sides read `false` regardless of
+    which index `(↑g)⁻¹ i` resolves to. We use `generalize` to lift
+    the inner perm-applied index to a fresh variable, then close by
+    Fin-extensional case-splitting on the two indices. -/
+private theorem smul_FF_eq_FF
+    (g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) :
+    g • (![false, false] : Bitstring 2) = ![false, false] := by
+  funext i
+  -- Reduce `g • b` (subgroup action) to `(↑g) • b` (underlying perm action).
+  show ((↑g : Equiv.Perm (Fin 2)) • (![false, false] : Bitstring 2)) i =
+      ![false, false] i
+  rw [perm_smul_apply]
+  -- Goal: `![false, false] ((↑g)⁻¹ i) = ![false, false] i`. Generalise
+  -- the inner perm-applied index to expose both arguments to `fin_cases`.
+  generalize ((↑g : Equiv.Perm (Fin 2))⁻¹) i = j
+  fin_cases j <;> fin_cases i <;> rfl
+
+/-- Cross-orbit constant-false witness for `combR07`: every group
+    element fixes the all-false bitstring `![F, F]`, so the combiner-
+    induced distinguisher (which compares `combine bp (g • reps false)
+    = g • ![F, F] = ![F, F]` to `combine bp bp = ![T, F]`) returns
+    `false` on every input from the target orbit. -/
+private theorem combR07_cross_constant_false :
+    ∀ g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))),
+      combinerDistinguisher combR07 (g • schemeR07.reps false) = false := by
+  intro g
+  -- Reduce: `combinerDistinguisher comb x = decide (combR07.combine bp x = combR07.combine bp bp)`.
+  -- combR07's combine is second-argument projection.
+  unfold combinerDistinguisher
+  rw [combR07_combine_eq, combR07_combine_eq, schemeR07_reps, repsR07_true,
+      repsR07_false, smul_FF_eq_FF]
+  -- Goal: `decide (![F, F] = ![T, F]) = false`. Decided by `decide`.
+  decide
+
+/-- The R-07 cross-orbit non-degenerate combiner package on the
+    concrete fixture: `combR07` satisfies both the intra-orbit
+    non-triviality witness (via the swap) and the cross-orbit
+    constant-false witness (via `![F, F]` being a fixed point of
+    every permutation). -/
+private def hND_R07 :
+    CrossOrbitNonDegenerateCombiner schemeR07 true combR07 false where
+  intra := combR07_intra
+  cross_constant_false := combR07_cross_constant_false
+
+/-- **Concrete R-07 headline witness.** On the `S_2 ⤳ Bitstring 2`
+    fixture, the combiner-distinguisher's cross-orbit advantage
+    between the weight-1 orbit (`![T, F]`'s orbit) and the weight-0
+    orbit (`![F, F]`'s singleton orbit) is at least `1 / |↥⊤|`,
+    which equals `1/2` since `Fintype.card (↥⊤ : Subgroup
+    (Equiv.Perm (Fin 2))) = 2! = 2`. -/
+example :
+    (1 : ℝ) / (Fintype.card (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) : ℝ) ≤
+    combinerDistinguisherAdvantage schemeR07 true combR07 true false :=
+  combinerDistinguisherAdvantage_ge_inv_card schemeR07 true combR07 false hND_R07
+
+/-- **Concrete R-07 corollary witness.** On the same fixture, every
+    `ConcreteOIA schemeR07 ε` bound satisfies `ε ≥ 1 / |↥⊤|`. The
+    cross-orbit non-degenerate combiner makes any sub-`1/2` security
+    claim impossible on this scheme. -/
+example (ε : ℝ) (hOIA : ConcreteOIA schemeR07 ε) :
+    (1 : ℝ) / (Fintype.card (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) : ℝ) ≤ ε :=
+  no_concreteOIA_below_inv_card_of_combiner schemeR07 true combR07 false hND_R07 ε hOIA
+
+end R07NonVacuity

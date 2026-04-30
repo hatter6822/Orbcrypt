@@ -7838,6 +7838,168 @@ completed (2026-04-30):
   document but are *not* landed by this PR; their discharge is
   planned for follow-up work units.
 
+Workstream R-07 Research-Scope Discharge (audit 2026-04-29 § 8.1,
+plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) has been
+completed (2026-04-30):
+
+- **R-07 — Cross-orbit advantage lower bound for equivariant
+  combiners.** The Workstream-E6 results
+  (`concrete_combiner_advantage_bounded_by_oia`,
+  `combinerOrbitDist_mass_bounds`) deliver only the *upper-bound*
+  half of the combiner story: under `ConcreteOIA(ε)` the combiner-
+  induced distinguisher's advantage is at most `ε`. The intra-orbit
+  mass bound on the basepoint orbit (`combinerOrbitDist_mass_bounds`,
+  E6b) is by itself *not* a cross-orbit advantage lower bound —
+  two orbits could place identical Pr[true] = 1/2, yielding
+  cross-orbit advantage 0 (the `combinerOrbitDist_mass_bounds`
+  docstring discloses this gap). R-07 closes the gap by exhibiting
+  a structural predicate (`CrossOrbitNonDegenerateCombiner`) that
+  combines intra-orbit non-triviality on `m_bp` with a cross-orbit
+  constant-false witness on `m_target`, together forcing
+  `combinerDistinguisherAdvantage ≥ 1/|G|` and hence (composed with
+  the upper bound) `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε`.
+
+  The discharge lands six new public declarations under
+  `Orbcrypt/PublicKey/CombineImpossibility.lean`:
+
+  * **WU-07.1** — `combinerOrbitDist_apply_true_eq_probTrue`:
+    bridge lemma identifying the apply-form mass `combinerOrbitDist
+    scheme m_bp comb m true` with the `probTrue` form `probTrue
+    (orbitDist (reps m)) (combinerDistinguisher comb)`. Proof
+    routes both sides through the same outer-measure expression on
+    `uniformPMF G` via `PMF.toOuterMeasure_apply_singleton` +
+    `PMF.toOuterMeasure_map_apply`. This bridge lets us reuse the
+    `1/|G|` mass bound from `combinerOrbitDist_mass_bounds.1` in
+    `probTrue` form, where it composes naturally with `advantage`'s
+    `probTrue`-based definition.
+  * **WU-07.2** — `CrossOrbitNonDegenerateCombiner`: `Prop`-valued
+    structure with two fields, `intra : NonDegenerateCombiner comb`
+    (intra-orbit non-triviality on `m_bp`'s orbit) and
+    `cross_constant_false : ∀ g : G, combinerDistinguisher comb
+    (g • reps m_target) = false` (cross-orbit constant-false
+    witness on `m_target`'s orbit). Edge cases documented in the
+    docstring: at `m_bp = m_target` and at `|G| = 1` the structure
+    is `False` (the two fields contradict on the same orbit / the
+    intra hypothesis is unsatisfiable on a singleton group), so the
+    headline holds vacuously in those cases. Inhabited by the
+    concrete fixture below at `|G| = 2`, `m_bp ≠ m_target`.
+  * **WU-07.3** —
+    `probTrue_combinerDistinguisher_basePoint_ge_inv_card`: rephrases
+    the existing `combinerOrbitDist_mass_bounds.1 hND` (`1/|G| ≤
+    combinerOrbitDist ... true`) into `1/|G| ≤ probTrue (orbitDist
+    (reps m_bp)) (combinerDistinguisher comb)` via the WU-07.1
+    bridge.
+  * **WU-07.4** —
+    `probTrue_combinerDistinguisher_target_eq_zero`: under the
+    cross-orbit constant-false hypothesis, the orbit distribution
+    of `m_target` assigns mass exactly `0` to the `true` branch.
+    Proof: push `probTrue` through `orbitDist`'s `PMF.map`-bridge
+    via `PMF.toOuterMeasure_map_apply`; the resulting preimage set
+    `{g | combinerDistinguisher comb (g • reps m_target) = true}` is
+    *empty* under the hypothesis (every `g` falsifies the predicate
+    via `Bool.noConfusion`); the outer measure of the empty set is
+    `0` via Mathlib's `MeasureTheory.measure_empty`.
+  * **WU-07.5** —
+    `combinerDistinguisherAdvantage_ge_inv_card` (headline):
+    composes WU-07.3 + WU-07.4 with `combinerDistinguisherAdvantage
+    _eq` (existing E6 unfolding lemma) and `advantage`'s `|p_R - p_L|`
+    form. The ENNReal-to-ℝ conversion uses `ENNReal.toReal_le_toReal`
+    with finiteness side conditions (`(|G| : ENNReal)⁻¹ ≠ ⊤` from
+    `|G| ≠ 0`; `probTrue ≤ 1 ≠ ⊤` via `ne_top_of_le_ne_top`); the
+    final identification `((|G| : ENNReal)⁻¹).toReal = 1 / (|G| : ℝ)`
+    uses `ENNReal.toReal_inv` + `ENNReal.toReal_natCast`.
+  * **WU-07.6** —
+    `no_concreteOIA_below_inv_card_of_combiner` (corollary): one-
+    line `le_trans` chaining the lower bound (WU-07.5) with the
+    existing upper bound `concrete_combiner_advantage_bounded_by_oia`.
+    Cryptographic content: a scheme that admits any cross-orbit
+    non-degenerate equivariant combiner is provably *not* `ε`-
+    ConcreteOIA-secure for any `ε < 1/|G|`, refuting the
+    deterministic refutation `equivariant_combiner_breaks_oia`'s
+    quantitative descendant.
+
+  **Cryptographic interpretation.** R-07 is the quantitative
+  refinement of the deterministic `equivariant_combiner_breaks_oia`:
+  that theorem says non-degenerate equivariant combiners refute the
+  all-or-nothing deterministic OIA; R-07 says the refutation lifts
+  to the probabilistic level with an explicit `1/|G|` lower bound
+  on `ε` whenever a cross-orbit non-degenerate combiner is exhibited.
+  The `cross_constant_false` hypothesis is *strong* — most natural
+  combiners don't satisfy it on arbitrary target orbits — so R-07's
+  `1/|G|` is a sufficient-condition refutation; tighter cross-orbit
+  bounds at weaker hypotheses (e.g. `1/2` instead of `1/|G|`)
+  require problem-specific structure and remain research-scope
+  follow-ups.
+
+  **Concrete fixture (audit-script non-vacuity witness).**
+  `scripts/audit_phase_16.lean`'s `R07NonVacuity` namespace exhibits
+  the structure on a concrete `S_2 ⤳ Bitstring 2` model:
+  * `G := ⊤ ≤ Equiv.Perm (Fin 2)` (the full S_2; cardinality 2).
+  * `X := Bitstring 2` with `subgroupBitstringAction` permuting
+    indices.
+  * `M := Bool`, `repsR07 true := ![T, F]` (basepoint, in the
+    weight-1 doubleton orbit `{![T, F], ![F, T]}`); `repsR07
+    false := ![F, F]` (target, in the weight-0 singleton orbit).
+    Orbits disjoint by Hamming-weight separation
+    (`hammingWeight_invariant_subgroup` +
+    `separating_implies_distinct_orbits`).
+  * `combR07.combine x y := y` (projection on second argument):
+    closed on the basepoint orbit, G-equivariant by definition.
+    Intra-orbit non-triviality witness: the swap moves `![T, F]`
+    to `![F, T] ≠ ![T, F]`. Cross-orbit constant-false witness:
+    every permutation fixes `![F, F]`, and `![F, F] ≠ ![T, F]`
+    makes the combinerDistinguisher constantly `false` on the
+    target orbit.
+  * Headline: `(1 : ℝ) / 2 ≤ combinerDistinguisherAdvantage
+    schemeR07 true combR07 true false`. Concrete instance proves
+    the predicate is genuinely inhabited and the headline theorem
+    fires non-vacuously.
+
+  **Files touched.**
+  * `Orbcrypt/PublicKey/CombineImpossibility.lean` — extended with
+    six new public theorems / structures; module docstring
+    extended with R-07 section. No new imports needed (already
+    imports `CompOIA`, `Probability/Advantage`).
+  * `scripts/audit_phase_16.lean` — six new `#print axioms`
+    entries plus a new `R07NonVacuity` namespace with parametric
+    examples (one per WU) and a concrete `S_2 ⤳ Bitstring 2`
+    fixture witnessing the structure's inhabitedness. The
+    `decidableMemTopPermFin2` `local instance` in the namespace
+    enables `Fintype ↥⊤` synthesis for `hgoeScheme.ofLexMin` and
+    the headline-bound application.
+  * `lakefile.lean` — version bumped from `0.2.3` to `0.2.4`;
+    "Last verified" comment block extended with a Workstream-R-07
+    entry.
+
+  **Verification.** Every new declaration depends only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+  The `CrossOrbitNonDegenerateCombiner` structure is axiom-free
+  (Prop bundle). Zero `sorry`, zero custom axioms, zero warnings.
+  Full `lake build` succeeds across 3,420 jobs (R-07 lands inside
+  an existing module, no new `.lean` file is added). Phase-16
+  audit script (`scripts/audit_phase_16.lean`) runs cleanly with
+  exit code 0; emits zero `sorryAx`; emits zero non-standard-trio
+  axioms; the six new R-07 `#print axioms` entries report
+  standard-trio (or "does not depend on any axioms" for the Prop
+  structure).
+
+  **Patch version.** `lakefile.lean` bumped from `0.2.3` to `0.2.4`
+  for Workstream R-07 — six new public declarations land within
+  the existing `Orbcrypt/PublicKey/CombineImpossibility.lean`
+  module, warranting a patch-version bump per `CLAUDE.md`'s
+  version-bump discipline. The 77-module total, the zero-sorry /
+  zero-custom-axiom posture, and the standard-trio-only axiom-
+  dependency posture are all preserved. Public declaration count
+  rises by six (953 → 959, accounting only for the in-scope
+  additions). Audit-script `#print axioms` entries rise by six
+  (953 → 959).
+
+  **Remaining R-07 follow-ups: none.** R-07 is fully discharged in
+  this PR. The remaining audit-2026-04-29 § 8.1 research-scope items
+  (R-08, R-13⁺, R-14, R-16) are tracked by the same plan document
+  but are *not* landed by this PR; their discharge is planned for
+  follow-up work units.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
