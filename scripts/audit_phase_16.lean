@@ -200,6 +200,32 @@ open Orbcrypt
 #print axioms hgoeScheme_toKEM
 #print axioms hgoeScheme_toKEM_correct
 
+-- Construction.BitstringSupport — Workstream C of audit 2026-04-29
+-- (finding D-02a / C5): the support representation of bitstrings as a
+-- bijection with `Finset (Fin n)`, with G-equivariance (the OnSets
+-- correspondence) and order-preservation. Headline application: GAP /
+-- Lean canonical-image equivalence at arbitrary `n`, closing the
+-- pre-C5 prose-level disclosure in `Construction/HGOE.lean:88-113`.
+#print axioms support
+#print axioms mem_support_iff
+#print axioms ofSupport
+#print axioms ofSupport_apply
+#print axioms support_ofSupport
+#print axioms ofSupport_support
+#print axioms bitstringSupportEquiv
+#print axioms bitstringSupportEquiv_apply
+#print axioms bitstringSupportEquiv_symm_apply
+#print axioms support_injective
+#print axioms support_smul
+#print axioms support_smul_apply
+#print axioms listLex_ofFn_iff
+#print axioms bitstringLinearOrder_lt_iff_first_differ
+#print axioms gapSetLT
+#print axioms bitstringLinearOrder_lt_iff_gapSetLT_support
+#print axioms support_canon_minimal
+#print axioms support_canon_gapSetLT_minimal
+#print axioms support_canon_in_support_orbit
+
 -- ============================================================================
 -- §5  KEM reformulation (Phase 7)
 -- ============================================================================
@@ -1552,6 +1578,96 @@ example
       MulAction.orbit (↥G) (reps m₁) ≠ MulAction.orbit (↥G) (reps m₂)) :
     (hgoeScheme.ofLexMin G reps hDistinct).reps = reps :=
   hgoeScheme.ofLexMin_reps G reps hDistinct
+
+/-! ## Workstream C / C5 non-vacuity witnesses
+
+The Workstream-C / C5 deliverable of audit 2026-04-29 (finding
+D-02a) lands a formal GAP/Lean canonical-image-equivalence module
+under `Orbcrypt/Construction/BitstringSupport.lean`. The non-vacuity
+witnesses below confirm each headline theorem is non-trivially
+applicable on concrete `Bitstring 3` inputs at full and weight-
+restricted subgroups of `Equiv.Perm (Fin 3)`, mirroring the
+small-`n` verification pattern the audit-plan finding asked for
+while the symbolic theorems handle arbitrary `n`. -/
+
+/-- `support` and `ofSupport` round-trip on a concrete bitstring,
+    discharged by `decide`. This exercises both directions of the
+    `bitstringSupportEquiv`. -/
+example :
+    support (![true, false, true] : Bitstring 3) =
+      ({0, 2} : Finset (Fin 3)) := by
+  ext i
+  fin_cases i <;> simp [support, mem_support_iff]
+
+/-- The `ofSupport_support` round-trip on `![true, false, true]`. -/
+example :
+    ofSupport (support (![true, false, true] : Bitstring 3)) =
+      ![true, false, true] :=
+  ofSupport_support _
+
+/-- The `support_ofSupport` round-trip on a concrete finset. -/
+example :
+    support (ofSupport (({0, 2} : Finset (Fin 3)))) =
+      ({0, 2} : Finset (Fin 3)) :=
+  support_ofSupport _
+
+/-- **G-equivariance / OnSets correspondence on a concrete
+    permutation.** Take `σ = Equiv.swap 0 1 : Equiv.Perm (Fin 3)`
+    and `x = ![true, false, false] : Bitstring 3` (support `{0}`).
+    Then `σ • x = ![false, true, false]` (support `{1}`), which is
+    the OnSets-image `{σ 0} = {1}` of the original support `{0}`.
+
+    Because the equation has dependently-typed sides (Finset over
+    Fin 3), we discharge by `decide` after applying `support_smul`. -/
+example :
+    support ((Equiv.swap (0 : Fin 3) 1) • (![true, false, false] : Bitstring 3))
+      = (support (![true, false, false] : Bitstring 3)).image
+          (Equiv.swap (0 : Fin 3) 1).toEmbedding := by
+  exact support_smul (Equiv.swap (0 : Fin 3) 1) ![true, false, false]
+
+/-- Order-correspondence on concrete bitstrings. Take
+    `x = ![true, true, false]` and `y = ![true, false, true]`. They
+    differ first at index `1` (`x 1 = true`, `y 1 = false`), so
+    `x < y` under `bitstringLinearOrder` (and equivalently,
+    `support x = {0, 1} < {0, 2} = support y` in GAP set-lex). -/
+example :
+    @LT.lt (Bitstring 3) bitstringLinearOrder.toLT
+      (![true, true, false] : Bitstring 3)
+      (![true, false, true] : Bitstring 3) ↔
+    gapSetLT (support (![true, true, false] : Bitstring 3))
+             (support (![true, false, true] : Bitstring 3)) :=
+  bitstringLinearOrder_lt_iff_gapSetLT_support _ _
+
+/-- The first-differing-index characterization of `bitstringLinearOrder.lt`
+    fires on a concrete pair of bitstrings. -/
+example :
+    (@LT.lt (Bitstring 3) bitstringLinearOrder.toLT
+      (![true, true, false] : Bitstring 3)
+      (![true, false, true] : Bitstring 3)) ↔
+    ∃ i : Fin 3, (∀ j : Fin 3, j.val < i.val →
+        (![true, true, false] : Bitstring 3) j =
+          (![true, false, true] : Bitstring 3) j) ∧
+      (![true, true, false] : Bitstring 3) i = true ∧
+      (![true, false, true] : Bitstring 3) i = false :=
+  bitstringLinearOrder_lt_iff_first_differ _ _
+
+/-- The headline equivalence applied to the top subgroup `⊤ ≤ S_3`
+    on a weight-2 bitstring `![true, false, true]`. This exhibits
+    that some `g : ↥⊤` makes `support (canon ![T, F, T]) =
+    (support ![T, F, T]).image g.toEmbedding`. The witness lives
+    inside the existential statement of `support_canon_in_support_orbit`. -/
+example :
+    let G : Subgroup (Equiv.Perm (Fin 3)) := ⊤
+    letI : DecidablePred (· ∈ G) := fun _ => isTrue trivial
+    letI : LinearOrder (Bitstring 3) := bitstringLinearOrder
+    ∃ g : ↥G, support
+      ((CanonicalForm.ofLexMin (G := ↥G) (X := Bitstring 3)).canon
+        (![true, false, true] : Bitstring 3)) =
+      (support (![true, false, true] : Bitstring 3)).image
+        ((g : Equiv.Perm (Fin 3)).toEmbedding) := by
+  letI : DecidablePred (· ∈ (⊤ : Subgroup (Equiv.Perm (Fin 3)))) :=
+    fun _ => isTrue trivial
+  exact support_canon_in_support_orbit ![true, false, true]
 
 /-! ## Workstream G non-vacuity witnesses
 

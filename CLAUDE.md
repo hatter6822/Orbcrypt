@@ -7108,6 +7108,522 @@ declarations.  The 75-module post-B total, the zero-sorry /
 zero-custom-axiom posture, and the standard-trio-only
 axiom-dependency posture are all preserved.
 
+Audit 2026-04-29 — Workstream C (optional v1.1+ engineering
+enhancements, A-03 / A-04 / A-05 / A-08 / D-02a, INFO; B-03a /
+B-03b / C-03a / C-13a / F-03a, INFO no-action) has been
+completed (2026-04-30 — promoted from "defer to v1.1+" to
+pre-1.0 release work per project sponsor's request):
+
+- **C1 (A-03) — Explicit `lakefile.lean` globs.** `lakefile.lean`'s
+  `lean_lib Orbcrypt where srcDir := "."` now also declares
+  `globs := #[.andSubmodules \`Orbcrypt]`. The `.andSubmodules`
+  glob (sugar for Lake's `Orbcrypt.*` matcher; see
+  `Lake/Config/Glob.lean` `Glob.andSubmodules` constructor)
+  matches the root module `Orbcrypt` and every submodule
+  `Orbcrypt.<sub>`. Pre-C1 the lakefile relied on the implicit
+  default `globs := roots.map Glob.one` together with
+  `srcDir := "."`, which expanded to "every `.lean` file under
+  the workspace root that Lake reaches through transitive
+  imports". The explicit glob is a structural tripwire: a
+  transient stub placed *outside* `Orbcrypt/` (e.g. under
+  `experiments/`, `playground/`, `scratch/`) is now provably
+  excluded from the default-target build by the lakefile's
+  declaration alone, not by maintainer convention. A stub placed
+  *inside* `Orbcrypt/` (e.g. the `_ApiSurvey.lean` removed by
+  Workstream B1 of this same audit) would still be matched by
+  `Orbcrypt.*` and is therefore caught by Workstream B1's
+  deletion + the explicit module count in CLAUDE.md and
+  `Orbcrypt.lean`'s import list. The lakefile's `Last verified`
+  comment is refreshed to `2026-04-30`.
+
+- **C2 (A-04) — Toolchain binary integrity verification.**
+  `scripts/setup_lean_env.sh` gains a write-once snapshot guard.
+  After a fresh install (whose archive's SHA-256 was already
+  verified by `verify_toolchain_sha256` against the per-arch
+  pin), `bin_sha256_snapshot_create` records the SHA-256 of
+  `bin/lean` and `bin/lake` to `${tc_dir}/.bin_sha256.lock`. On
+  every subsequent fast-path entry, `bin_sha256_snapshot_verify`
+  recomputes those SHAs and compares them to the marker. Three
+  outcomes: (0) marker present and SHAs match — proceed; (1)
+  marker missing — toolchain was installed before C2 landed (or
+  the marker was deleted manually), so we take a snapshot now
+  rather than fail-closed (the fast-path's binaries are the
+  same ones the slow-path would have verified via the archive
+  SHA pin); (2) genuine mismatch — fatal. The fatal case
+  exits the script with code 1, not just "fall through to slow
+  path", because the slow path would skip re-installation when
+  `[ -x bin/lean ]` is true (the file *exists*, just with the
+  wrong content). The remediation message directs the user at
+  `rm -rf "${tc_dir}"` followed by re-run, which triggers a
+  fresh archive download with `verify_toolchain_sha256`
+  re-verifying the archive against the per-arch pin.
+
+  **Threat model.** C2 is defense-in-depth, not a replacement
+  for filesystem-level access controls: an attacker with write
+  access to both the toolchain binaries *and* the marker file
+  can update both consistently and bypass the check. With
+  write access to `~/.elan/`, the attacker has already won.
+  C2 closes the narrower window of accidental modification
+  (system updates that touch toolchain binaries; backup
+  restore mishaps; partial copies; file-system corruption) and
+  raises the bar for a class of malicious post-install
+  modification.
+
+  **Implementation note.** The `compute_sha256` helper is
+  hoisted from below the package-management section to the
+  top of the script (immediately after `cache_host_reachable`)
+  because the snapshot helpers run inside `fast_path_ready`,
+  which is called *before* the package-management section
+  loads its helpers. Hoisting `compute_sha256` was the cleanest
+  fix; the alternative (moving the snapshot helpers below
+  `fast_path_ready`) would have required restructuring the
+  fast-path's exit-on-success flow.
+
+  **Manual unit testing.** Six C2 unit tests verify: (1)
+  snapshot creation produces a well-formed marker; (2)
+  verification on un-tampered binaries succeeds; (3)
+  verification detects a tamper (returns exit 2); (4) missing
+  marker returns exit 1 (caller-decides); (5) snapshot
+  creation is idempotent (marker mtime preserved across
+  re-invocation); (6) missing-binary post-snapshot detection
+  returns exit 2. End-to-end test on the live toolchain
+  (`bash scripts/setup_lean_env.sh --quiet`) confirms snapshot
+  is created on first fast-path entry, verification is silent
+  on subsequent entries, and tamper detection produces the
+  expected error message + exit-1 fail-fast behaviour.
+- **C3 (A-05) — Recursive sorry-strip regex in CI.**
+  `.github/workflows/lean4-build.yml`'s "Verify no sorry" step
+  upgrades from the non-greedy `/-.*?-/` Perl substitution to
+  a recursive `(\/\-(?:[^\/\-]++|\-(?!\/)|\/(?!\-)|(?1))*+\-\/)`
+  that handles arbitrarily-nested Lean block comments. The
+  pre-C3 non-greedy regex would *false-positive* on a fragment
+  like
+  ```
+  /- a /- b -/ sorry /- c -/ -/
+  ```
+  because the non-greedy match strips `/- a /- b -/` (innermost
+  `-/` wins) and `/- c -/`, leaving `\sorry  -/` un-stripped.
+  The literal `sorry` survives the strip and `grep` flags it,
+  even though the original Lean source places `sorry` inside
+  the outermost block comment.
+
+  **Pattern anatomy.** `(?1)` is Perl's self-reference: refers
+  back to the captured group `1` recursively. The body
+  alternation matches: any non-`/`-non-`-` character (possessive
+  `++` to avoid catastrophic backtracking on long bodies); a
+  `-` not followed by `/`; a `/` not followed by `-`; or a
+  recursive `(?1)` reference matching another nested block.
+  Possessive `*+` on the body's outer alternation eliminates
+  backtracking once a body character has been consumed,
+  keeping complexity O(n) on well-formed input.
+
+  **Manual testing.** Verified on 9 unit-test cases including
+  simple comments, double-strip, basic nesting, sorry-in-inner,
+  sorry-in-outer-after-inner-close, docstrings (`/-! -/`),
+  doc-comments (`/-- -/`), and unclosed-outer (an invalid
+  Lean fragment). Also verified on the entire codebase: 75
+  modules pass the recursive strip cleanly, identical to the
+  pre-C3 behaviour on the actual codebase (which has no
+  nested block comments today). The C3 upgrade is a tripwire
+  for *future* nested-comment usage.
+
+- **C4 (A-08) — `lake-manifest.json` drift check in CI.**
+  `.github/workflows/lean4-build.yml` gains a new "Verify
+  lake-manifest.json drift" step (after Verify-no-sorry,
+  Verify-no-axioms, before Phase-16). The step extracts every
+  direct `require ... @ git "<rev>"` directive from
+  `lakefile.lean` (regex-parsed: `require "<scope>" / "<name>"
+  @ git "<40-hex>"`) and cross-checks each against the
+  corresponding `rev` field in `lake-manifest.json` (parsed
+  with `python3` — always present on `ubuntu-latest` runners,
+  no `jq` dependency). Mismatches fail CI with an explicit
+  error pointing the developer at `lake update <name>` for
+  re-sync.
+
+  **Audit-plan note.** The plan's C4 skeleton suggested
+  `lake update --dry-run`, but Lake at `v4.30.0-rc1` has no
+  `--dry-run` flag (`lake update --help` documents only the
+  bare invocation, which mutates the manifest). The structural
+  cross-check landed here is exact — it compares the two files
+  directly without invoking Lake — and is therefore safer
+  (no manifest mutation under any circumstances).
+
+  **Direct requires only.** Transitive Mathlib dependencies
+  (the eight `inherited: true` packages in `lake-manifest.json`)
+  are managed by Mathlib's own lakefile and are not re-pinned
+  in this lakefile, so they are not checked here. The check is
+  concerned only with this package's *own* declared pins
+  (currently just Mathlib at `fa6418a8...`).
+
+  **Manual testing.** Verified on the current state (passes:
+  one direct require, manifest agrees) and on a simulated
+  drift state (manifest's mathlib `rev` modified to a
+  different 40-hex; check fails with a clear "DRIFT" message
+  and exit 1).
+- **C5 (D-02a) — Formal GAP/Lean canonical-image equivalence
+  at arbitrary `n`.** `Orbcrypt/Construction/BitstringSupport.lean`
+  (NEW module 76) closes the pre-C5 prose-level disclosure in
+  `Construction/HGOE.lean:88-113` by machine-checking the
+  equivalence between Lean's `CanonicalForm.ofLexMin`
+  (lex-min canonical image computed via `bitstringLinearOrder`
+  on `Bitstring n`) and GAP's `CanonicalImage(G, support x,
+  OnSets)` (lex-min support set in the orbit under GAP's
+  set-lex). The equivalence rests on three structural
+  correspondences:
+
+  1. **Bijection via `support`.** `support : Bitstring n →
+     Finset (Fin n)` (the indicator's true-set) and `ofSupport`
+     (the indicator function of a finset) are mutual inverses,
+     packaged as `bitstringSupportEquiv : Bitstring n ≃
+     Finset (Fin n)`. Direct corollary: `support_injective`.
+
+  2. **G-equivariance (OnSets correspondence).**
+     `support_smul (σ : Equiv.Perm (Fin n)) (x : Bitstring n) :
+     support (σ • x) = (support x).image σ.toEmbedding`. This
+     formalises the claim that Lean's `MulAction (Equiv.Perm
+     (Fin n)) (Bitstring n)` corresponds to GAP's
+     `OnSets(S, σ) = {σ(i) : i ∈ S}` action on `Finset (Fin n)`
+     exactly. Proof: routine `ext` + `MulAction` unfolding,
+     mirroring the existing `hammingWeight_invariant` proof
+     in `Construction/Permutation.lean`.
+
+  3. **Order correspondence.** Both `bitstringLinearOrder`
+     (via `LinearOrder.lift'` on `List.ofFn (! ∘ ·)`) and
+     `gapSetLT` (defined directly via the "first-differing
+     index" rule on `Finset (Fin n)`) are characterized by
+     the same per-position rule: at the smallest index where
+     `x` and `y` differ, the smaller bitstring has `true`
+     (resp. the smaller support set contains the element).
+
+  Headline theorems (all axiom-dependency: standard Lean trio
+  only, zero `sorry`, zero custom axioms):
+
+  * `support_smul` — G-equivariance.
+  * `listLex_ofFn_iff` — first-differing-index characterization
+    of `List.Lex` on `List.ofFn`. Proof by recursion on `n`
+    using `List.lex_cons_iff` (heads-equal collapse) and
+    `List.head_le_of_lt` (heads-differ ⇒ rel constructor).
+  * `bitstringLinearOrder_lt_iff_first_differ` — per-bitstring
+    first-differing-index characterization of the Lean lex
+    order, derived from `listLex_ofFn_iff`.
+  * `gapSetLT` — definition of the GAP set-lex order via
+    "first-differing-index" rule on `Finset (Fin n)`.
+  * `bitstringLinearOrder_lt_iff_gapSetLT_support` — the
+    central order-correspondence lemma: the Lean lex order on
+    `Bitstring n` and the GAP set-lex order on `Finset (Fin n)`
+    are *the same* relation, mediated by `support`.
+  * `support_canon_minimal` — the Lean canonical image is
+    `Finset.min'`-minimal in the bitstring orbit (the
+    substantive lex-minimality property).
+  * `support_canon_gapSetLT_minimal` — for any group element
+    `g : ↥G`, the support of the Lean canonical image is
+    either equal to the support-orbit element under `g` (the
+    canonical case) or strictly less under `gapSetLT` (the
+    general case). This is the GAP-side "set-lex minimum"
+    property.
+  * `support_canon_in_support_orbit` — the support of the Lean
+    canonical image lies in the OnSets-orbit of `support x`.
+
+  **Audit-script witnesses.** `scripts/audit_phase_16.lean`
+  gains 19 new `#print axioms` entries (one per public C5
+  declaration) plus 7 non-vacuity `example` bindings on
+  concrete `Bitstring 3` inputs at `Equiv.Perm (Fin 3)` and
+  the top subgroup `⊤ ≤ S_3`: support-of-concrete-bitstring
+  evaluation; both round-trips of `bitstringSupportEquiv`;
+  `support_smul` on a concrete `Equiv.swap`; the order-
+  correspondence on a concrete `<` witness; the
+  first-differing-index characterization; and the headline
+  existential `support_canon_in_support_orbit` evaluated on
+  the weight-2 bitstring `![T, F, T]` with the top subgroup.
+
+  **Module dependency.** `BitstringSupport.lean` imports only
+  `Construction.Permutation` (for `Bitstring`,
+  `bitstringLinearOrder`, the `MulAction` instance) and
+  `GroupAction.CanonicalLexMin` (for `CanonicalForm.ofLexMin`).
+  Wired into `Orbcrypt.lean`'s root import block immediately
+  after `Construction.HGOEKEM`. Module count: 75 → **76**.
+
+- **C6 (B-03a, B-03b, C-03a, C-13a, F-03a) — INFO docstring
+  observations: NO action.** All five are explicitly disclosed
+  by the audit as "no action needed" or "intentional API
+  design". Verified each is honestly disclosed in the existing
+  source: B-03a (`bitstringLinearOrder` `letI` discipline) is
+  documented in `Construction/Permutation.lean:206-237`'s
+  docstring comment; B-03b (`orbitFintype` global instance)
+  is documented in `GroupAction/CanonicalLexMin.lean:87-92`;
+  C-03a (`-- Justification:` block on a `def` rather than an
+  `axiom`) is appropriate because `OIA` carries assumption
+  semantics that warrant the same rationale documentation;
+  C-13a (the `Orbcrypt.Hardness.Reductions` import in
+  `KEM/CompSecurity.lean:13`) is intentional KEM-chain-above-
+  scheme-chain layering, recorded in CLAUDE.md's Workstream H
+  snapshot; F-03a (the underscore-prefixed `_hDistinct`
+  parameter on `concrete_hardness_chain_implies_1cpa_advantage_
+  bound_distinct`) is intentional API design honestly
+  disclosed in the docstring at the call site. C6 lands with
+  zero source changes.
+**Files touched:**
+- `lakefile.lean` (C1: explicit `globs` + version bump
+  `0.2.0 → 0.2.1` + comment-metadata refresh).
+- `scripts/setup_lean_env.sh` (C2: snapshot helpers +
+  `compute_sha256` hoist + fast-path verification + post-
+  install snapshot creation).
+- `.github/workflows/lean4-build.yml` (C3: recursive sorry-
+  strip regex + updated comment block; C4: new "Verify
+  lake-manifest.json drift" step).
+- `Orbcrypt/Construction/BitstringSupport.lean` (C5: NEW
+  module — 19 public declarations).
+- `Orbcrypt.lean` (C5: import line for the new module).
+- `scripts/audit_phase_16.lean` (C5: 19 `#print axioms`
+  entries + 7 non-vacuity `example` bindings).
+- `CLAUDE.md` (this Workstream-C snapshot; status-tracker
+  checkboxes ticked).
+
+**Verification.** Workstream C is *additive* in three
+distinct surfaces:
+1. **Lean source.** One new module
+   (`Orbcrypt/Construction/BitstringSupport.lean`) adds 19
+   public declarations. Module count: 75 → 76. Public
+   declaration count rises by 19. `lake build Orbcrypt`
+   succeeds with **3,419 jobs**, zero warnings, zero errors
+   (up from the pre-C 3,418 — exactly +1 for the new
+   module's build node). Every new declaration depends only
+   on the standard Lean trio (`propext`, `Classical.choice`,
+   `Quot.sound`); zero `sorry`, zero custom axioms.
+2. **Build configuration.** `lakefile.lean` gains an explicit
+   `globs` field (no public-API surface change; the build
+   target set is unchanged). Version bump `0.2.0 → 0.2.1`
+   for the `globs` declaration (a build-configuration change
+   visible to downstream consumers running `lake env …`).
+3. **CI / shell tooling.** The setup script and CI workflow
+   gain defense-in-depth checks (sorry-strip recursive
+   regex, manifest drift check, toolchain binary integrity).
+   No Lean source semantics change.
+
+The audit script (`scripts/audit_phase_16.lean`) now exercises
+**947** `#print axioms` entries (up from 928 — 19 new for
+C5) plus **245** non-vacuity `example` bindings (up from 238
+— 7 new for C5). Audit-script runs cleanly with exit 0,
+zero `sorryAx`, zero non-trio axioms.
+
+**Patch version.** `lakefile.lean` bumped from `0.2.0` to
+`0.2.1` for Workstream C — the C1 `globs` declaration is a
+consumer-visible build-configuration change, the C5 module
+is a new public-API surface (19 new declarations), and C2
+introduces a new on-disk artifact (`${tc_dir}/.bin_sha256.lock`)
+that downstream tooling consumers may need to be aware of.
+The 76-module post-C total, the zero-sorry / zero-custom-
+axiom posture, and the standard-trio-only axiom-dependency
+posture are all preserved.
+
+**Audit-plan reclassification.** The 2026-04-29 audit plan
+classified Workstream C as "defer to v1.1+ engineering". Per
+the project sponsor's request (2026-04-30), Workstream C was
+promoted to pre-1.0 release work and landed alongside
+Workstream A and Workstream B. The audit plan's § 7.4 ("No
+exit criteria for v1.0") and the workstream tracker's
+"deferred" entries are updated to reflect this promotion.
+The cryptographic-correctness posture (zero `sorry`, zero
+custom axioms, all 947 `#print axioms` results on the
+standard Lean trio) is preserved.
+
+**Audit pass (2026-04-30, post-Workstream-C landing).** A deep
+audit of the Workstream-C changes surfaced three substantive
+findings, all fixed in the audit-pass commit on the same branch:
+
+1. **C2 fragile `set -e` interaction.** The original
+   `bin_sha256_snapshot_verify "${tc_dir}"; verify_status=$?`
+   pattern in `fast_path_ready` is fragile: `set -e` (set at
+   script top) DOES trigger on a function returning non-zero
+   unless the function call is inside a context that suppresses
+   `set -e` (`if`, `while`, `&&`, `||`, `!`). Today
+   `fast_path_ready` is invoked via `if fast_path_ready; then ...
+   fi`, so the suppression holds — but a future refactor that
+   calls `fast_path_ready` outside such a context would silently
+   exit on the first non-zero return from
+   `bin_sha256_snapshot_verify` (the "marker missing" case)
+   BEFORE the `verify_status=$?` line could capture the exit
+   code. **Fix.** Replace with `bin_sha256_snapshot_verify
+   "${tc_dir}" || verify_status=$?` — the `||`-bound capture is
+   robust regardless of caller context.
+
+2. **C2 silent skip on missing marker entry.** The original
+   verify function silently `continue`d on entries not recorded
+   in the marker (with a `log_elapsed` warning suppressed in
+   `--quiet` mode). An attacker with marker write access (a
+   strictly weaker capability than full toolchain write access,
+   but still worth defending against in defense-in-depth) could
+   delete a line from the marker to skip verification of that
+   binary. **Fix.** Treat any missing entry as a mismatch (return
+   exit 2) — fail closed. Documented in the function docstring
+   as the audit-pass strengthening of C2's missing-entry-as-
+   mismatch rule.
+
+3. **C4 misleading error on missing/malformed manifest.** The
+   drift check captured `python3` errors via `2>/dev/null || echo
+   ""`, conflating "manifest file missing" and "manifest JSON
+   malformed" with "package missing from manifest". All three
+   surfaced the same generic "no entry in lake-manifest.json"
+   error, leading the user to investigate the wrong thing.
+   **Fix.** Split out explicit checks for file existence
+   (`[ ! -f lake-manifest.json ]`) and JSON validity (`python3 -m
+   json.tool lake-manifest.json`) up front, with distinct error
+   messages pointing the user at the actual remediation
+   (`lake update` for missing/malformed; `lake update <name>` for
+   missing-entry; `lake update <name>` again for drift).
+
+**Plus one cosmetic cleanup:**
+- Stale `.lake/build/lib/lean/Orbcrypt/Construction/GAPEquivalence.olean`
+  (and friends — `.c.hash`, `.ilean.hash`, `.trace`, etc.) from
+  the pre-rename state were lingering in the build cache. Lake
+  doesn't auto-clean orphaned build artefacts when source files
+  are renamed. Manually deleted in the audit pass; subsequent
+  `lake build` invocations recover the canonical 76-source +
+  1-root = 77 .olean state.
+
+**Verification.** All audit-pass fixes verified via:
+- 6 C2 unit tests (snapshot create, idempotency, verification,
+  tamper detection, missing marker, **NEW: missing-entry-as-
+  mismatch**, missing binary).
+- C2 set-e robustness test (function called WITHOUT
+  if-guard — confirms `||` pattern is robust).
+- C4 4 edge-case tests (missing manifest, malformed manifest,
+  matching rev, drift detected).
+- Full lake build (3,419 jobs, zero warnings, zero errors).
+- Phase-16 audit script (947 entries, exit 0, zero `sorryAx`,
+  zero non-trio axioms).
+- All 5 CI checks (build, sorry-strip, axiom-check, drift-check,
+  Phase-16 audit) pass on the current tree.
+
+**Patch version.** `lakefile.lean` retains `0.2.1` — the audit-
+pass fixes are bug-fix-grade improvements to existing C2 and
+C4 code, not new public API. The 76-module total, the
+zero-sorry / zero-custom-axiom posture, and the standard-trio-
+only axiom-dependency posture are all preserved.
+
+**Second audit pass (2026-04-30, post-Workstream-C deep re-audit).**
+A subsequent fresh-eyes audit surfaced four additional findings —
+one CRITICAL CI workflow bug, one defense-in-depth concurrency
+issue, and two documentation-parity gaps. All fixed in the same-day
+audit-2 commit.
+
+1. **CRITICAL: malformed CI workflow YAML.** The C4 drift-check
+   step's multi-line `python3 -c "..."` invocation had python
+   source lines at column 0, dedented below the YAML literal-block
+   (`run: |`) indentation. YAML's literal-block parser terminated
+   the block prematurely at the python code, then tried to parse
+   the python lines as new YAML mapping keys — which fail because
+   `import json, sys` doesn't have the required `:` separator.
+
+   Verified by `python3 -c "import yaml;
+   yaml.safe_load(open('.github/workflows/lean4-build.yml'))"` —
+   raised `ScannerError: while scanning a simple key in line 191
+   column 1 could not find expected ':'`. **The CI workflow would
+   fail to parse on the first push to GitHub Actions.**
+
+   **Fix.** Compress the multi-line python invocation into a
+   single-line semicolon-separated form:
+   ```python
+   python3 -c "import json,sys; data=json.load(open('lake-manifest.json')); print(next((p['rev'] for p in data.get('packages', []) if p.get('name') == sys.argv[1]), ''))"
+   ```
+   Single-line python avoids any indentation issue with YAML
+   literal blocks. Verified: post-fix YAML parses cleanly; C4
+   logic still works (clean-state PASS, drift-state DETECTS).
+
+2. **C2 concurrency bug in `bin_sha256_snapshot_create`.** When
+   multiple invocations of `setup_lean_env.sh` race (e.g., a
+   developer accidentally launches two terminals), all processes
+   would `: > "${marker}.tmp"` at the same path, then interleave
+   their write-and-rename steps. The losing race could blow away
+   another process's partial content, producing a marker file
+   with fewer than `${#TOOLCHAIN_PROTECTED_BINS[@]}` lines.
+   Subsequent verifications would then trigger the missing-entry-
+   as-mismatch rule (added in audit pass #1) on the LEGITIMATE
+   marker, locking the user out of the toolchain.
+
+   **Fix.** Replace the fixed `${marker}.tmp` filename with
+   `mktemp "${marker}.XXXXXX.tmp"` — each process gets a unique
+   per-process scratch file, so concurrent writes don't interleave.
+   The final atomic `mv` resolves the race by last-writer-wins,
+   but every contender's `mv` produces a complete marker (no
+   partial-content possible).
+
+   Verified: 10 concurrent invocations produce exactly 1
+   complete marker with 0 leftover `.tmp` files.
+
+   Note: `mktemp`'s default 0600 mode is more restrictive than
+   the previous 0644 (umask default). For per-user toolchains
+   (`~/.elan/`) this is appropriate and arguably more secure;
+   shared toolchains can `chmod 0644` post-snapshot.
+
+3. **Audit-plan reclassification consistency.** Four areas of
+   `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+   still described Workstream C as "deferred to v1.1+":
+   - § 0 executive summary opening paragraph.
+   - § 0 release-gate commitment.
+   - § 1.2 severity-distribution table.
+   - § 2 finding-to-workstream mapping (10 rows, "defer (v1.1+)").
+   - § 4 dependency-graph ASCII art ("DEFERRED" header for C).
+   - § 7 section header ("Optional v1.1+ engineering enhancements").
+   - § 7.2 fix scope ("Workstream C does not produce v1.0
+     deliverables").
+   - § 7.3 sub-section headers (5 headers, "(A-XX, v1.1+)" /
+     "(D-02a, v1.1+ research-scope)").
+   - § 7.3 Status fields (5 fields, "Deferred to v1.1+" /
+     "Research-scope").
+   - § 7.4 exit-criteria text ("No exit criteria for v1.0").
+   - § 10.3 release-readiness checkbox list (6 unchecked rows).
+
+   **Fix.** All updated with explicit "originally deferred to v1.1+
+   → landed pre-1.0 2026-04-30" framing or substantive closure
+   text (e.g., § 7.4 expanded with per-work-unit acceptance
+   criteria; § 10.3 boxes ticked with implementation summary per
+   work unit). The original audit-time framing is preserved as
+   historical context where relevant.
+
+4. **Documentation parity gaps in VERIFICATION_REPORT.md and
+   README.md.** Five current-state references missed in audit-1:
+   - VERIFICATION_REPORT.md line 112: "Step 5 prints `#print
+     axioms` for 928 declarations" → 947.
+   - VERIFICATION_REPORT.md line 494: "runs `#print axioms` on
+     928 declarations" → 947.
+   - VERIFICATION_REPORT.md line 515: "928 declarations
+     exercised" (in Result block) → 947.
+   - VERIFICATION_REPORT.md line 545: "Every one of the 75
+     modules" → 76.
+   - VERIFICATION_REPORT.md line 579: "imports all 75 modules" → 76.
+   - VERIFICATION_REPORT.md line 586: "exercises the complete
+     graph (3,418 jobs)" → 3,419.
+   - VERIFICATION_REPORT.md line 681: "928 declarations
+     exercised" (in Theorem-inventory close) → 947.
+   - README.md line 51: "75 (+ root import file)" → 76.
+   - README.md line 53: "900+ `#print axioms`" → 940+.
+   - README.md line 56: Package version "0.2.0" → 0.2.1.
+   - README.md line 55: CI step list missing "lake-manifest drift
+     check" — added.
+
+   All current-state references updated; historical-snapshot
+   references inside per-Workstream Document-history bullets are
+   preserved verbatim (they correctly describe state-at-the-time).
+
+**Cumulative verification posture preserved.**
+- Lake build: 3,419 jobs, zero warnings, zero errors.
+- audit_phase_16.lean: exit 0, 947 entries, zero `sorryAx`,
+  zero non-trio axioms.
+- Shellcheck on `scripts/setup_lean_env.sh`: zero issues at
+  every severity level.
+- YAML parses cleanly (post-audit-2 fix).
+- All 5 CI checks pass locally (build, sorry-strip,
+  axiom-check, drift-check, Phase-16 audit).
+- C2 concurrency test: 10 concurrent invocations → 1 complete
+  marker, 0 leftover `.tmp` files.
+- C4 drift detection: clean PASS; simulated drift correctly
+  fails.
+
+**Patch version.** `lakefile.lean` retains `0.2.1` — the
+audit-2 fixes are bug-fix-grade improvements (CI YAML, C2
+concurrency, doc-parity). No new public API.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
