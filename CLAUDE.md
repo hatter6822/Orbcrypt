@@ -7711,6 +7711,133 @@ audit 2026-04-29 § 8.1) has been completed (2026-04-30):
 public-API module + ~36 new public declarations warrants the
 patch bump per `CLAUDE.md`'s version-bump discipline.
 
+Workstream R-01 Research-Scope Discharge (audit 2026-04-29 § 8.1,
+plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) has been
+completed (2026-04-30):
+
+- **R-01 — Quantitative cross-orbit advantage lower bound for
+  `invariant_attack`.** Pre-R-01, `Orbcrypt/Theorems/InvariantAttack.lean`
+  delivered only the *existential* form of the invariant attack —
+  `∃ A : Adversary X M, hasAdvantage scheme A` (existence of one
+  distinguishing `(g₀, g₁)` pair, the strongest deterministic-
+  advantage form per the `invariant_attack` docstring's three-
+  convention catalogue). R-01 strengthens this to a *tight
+  probabilistic equality* at the IND-1-CPA layer: under a separating
+  G-invariant, the invariant-attack adversary's `indCPAAdvantage`
+  equals exactly `1` (the maximum advantage in the two-distribution
+  convention; cf. `advantage_le_one`).
+
+  The discharge lands three new public declarations under
+  `Orbcrypt/Theorems/InvariantAttack.lean`:
+
+  * **WU-01.1** — `probTrue_orbitDist_invariant_eq_one`: under a
+    G-invariant `f` with `f x = f y`, the Boolean predicate
+    `fun c => decide (f c = f y)` is constantly `true` on the orbit
+    of `x`, so `probTrue (orbitDist x) (decide (f · = f y)) = 1` in
+    `ℝ≥0∞`. Proof: route through `orbitDist x = PMF.map (· • x)
+    (uniformPMF G)` via `probTrue_map`; apply `probTrue_uniformPMF_card`
+    to get a filter-card ratio; show the filter equals `Finset.univ`
+    via `Finset.filter_true_of_mem` (each `g : G` satisfies `f (g •
+    x) = f x = f y` by composing `hInv g x` with `hEq`); collapse
+    `|G| / |G| = 1` via `ENNReal.div_self` with `|G| ≠ 0` from
+    `Fintype.card_pos.ne'` and `|G| ≠ ⊤` from `ENNReal.natCast_ne_top`.
+  * **WU-01.2** — `probTrue_orbitDist_invariant_eq_zero`: symmetric
+    `= 0` companion when `f x ≠ f y` (the predicate is constantly
+    `false` on the orbit). Same proof shape with
+    `Finset.filter_false_of_mem` + `Finset.card_empty` + `0 / |G| =
+    0`.
+  * **WU-01.3 (headline)** —
+    `indCPAAdvantage_invariantAttackAdversary_eq_one`: composes the
+    two mass lemmas via `indCPAAdvantage_eq` to deliver
+    `indCPAAdvantage scheme (invariantAttackAdversary f m₀ m₁) = 1`.
+    The bridge from the adversary's `if-then-else` guess form to the
+    `decide` form needed by the mass lemmas is closed by a per-`c`
+    `funext` + `by_cases` analysis.
+
+  **Cryptographic interpretation.** `indCPAAdvantage_le_one` provides
+  the universal `≤ 1` bound; R-01 says the bound is *attained* by
+  the invariant-attack adversary on every scheme that admits a
+  separating G-invariant. The bound is tight in both directions
+  (no scheme can exceed the universal `≤ 1`; some schemes attain it
+  exactly). Composed with `concrete_oia_implies_1cpa`, R-01 forces:
+  *any scheme admitting a separating G-invariant cannot satisfy
+  `ConcreteOIA scheme ε` for any `ε < 1`*. This formalises the
+  audit-disclosed "complete break" semantics quantitatively, ruling
+  out non-trivial probabilistic security in addition to the
+  vacuously-true deterministic-OIA gap.
+
+  **KEM-layer companion: dropped.** The KEM-layer companion of R-01
+  was found mathematically vacuous during plan review (see
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § "KEM-layer companion:
+  dropped"). The KEM uniform-form game's two distributions live in
+  the basepoint's single orbit, so any G-invariant distinguisher
+  gives advantage `0`, not `1`. The KEM-layer parallel of R-01's
+  *existential* content (`G-invariant attack ⇒ KEMOIA is False`) is
+  already discharged by `det_kemoia_false_of_nontrivial_orbit` in
+  `Orbcrypt/KEM/Security.lean` (post-Workstream-E of audit
+  2026-04-23, finding E-06). That theorem uses the *non*-G-invariant
+  test `fun c => decide (c = g₀ • basePoint)` to refute deterministic
+  KEMOIA — exactly the right adversarial shape because the KEM game
+  distinguishes ciphertexts within ONE orbit (so a G-invariant
+  function carries no signal there).
+
+  **Files touched.**
+  * `Orbcrypt/Theorems/InvariantAttack.lean` — extended with three
+    new theorems (WU-01.1, WU-01.2, WU-01.3 headline) plus an
+    expanded module docstring documenting the probabilistic
+    strengthening and the KEM-layer-companion-vacuity finding.
+    Imports added: `Orbcrypt.Crypto.CompOIA`,
+    `Orbcrypt.Crypto.CompSecurity`, `Orbcrypt.Probability.Monad`.
+    `open ENNReal` added to the new section so the `ℝ≥0∞` notation
+    is in scope.
+  * `scripts/audit_phase_16.lean` — three new `#print axioms`
+    entries (line ~150 of the script, immediately after the existing
+    `invariant_attack` entry) plus a new `R01NonVacuity` namespace
+    at the end of the script with four non-vacuity `example`
+    bindings: (1) `_eq_one` mass lemma at the trivial action
+    (`Equiv.Perm (Fin 1)` on `Bool`); (2) `_eq_zero` mass lemma at
+    the same fixture; (3) headline `= 1` equality on
+    `NonVacuityWitnesses.trivialSchemeBool`; (4) tightness witness
+    showing the R-01 bound is attained (composed with
+    `indCPAAdvantage_le_one`). The fixture re-uses
+    `NonVacuityWitnesses.trivialSchemeBool` (the two-message scheme
+    on `Bool` under the trivial action) and a fresh
+    `id_isGInvariant_trivialPermFin1` helper proving `id` is
+    G-invariant under the trivial action.
+  * `lakefile.lean` — version bumped from `0.2.2` to `0.2.3`;
+    "Last verified" comment block extended with a Workstream-R-01
+    entry.
+
+  **Verification.** Every new declaration depends only on the
+  standard Lean trio (`propext`, `Classical.choice`, `Quot.sound`).
+  Zero `sorry`, zero custom axioms, zero warnings. Full `lake build`
+  succeeds across 3,420 jobs (unchanged from the pre-R-01 baseline:
+  R-01 lands inside an existing module, no new `.lean` file is
+  added, so the module count remains at 77; the build-job count is
+  unchanged because `Orbcrypt/Theorems/InvariantAttack.lean` was
+  already a build node). Phase-16 audit script (`scripts/audit_phase_16.lean`)
+  runs cleanly with exit code 0; emits zero `sorryAx`; emits zero
+  non-standard-trio axioms; the three new R-01 `#print axioms`
+  entries report `[propext, Classical.choice, Quot.sound]` for each
+  theorem.
+
+  **Patch version.** `lakefile.lean` bumped from `0.2.2` to `0.2.3`
+  for Workstream R-01 — three new public declarations land within
+  the existing `Orbcrypt/Theorems/InvariantAttack.lean` module,
+  warranting a patch-version bump per `CLAUDE.md`'s version-bump
+  discipline. The 77-module total, the zero-sorry / zero-custom-
+  axiom posture, and the standard-trio-only axiom-dependency
+  posture are all preserved. Public declaration count rises by
+  three (947 → 950, accounting only for the in-scope additions).
+  Audit-script `#print axioms` entries rise from 947 to 950 (three
+  new lines).
+
+  **Remaining R-01 follow-ups: none.** R-01 is fully discharged in
+  this PR. The remaining audit-2026-04-29 § 8.1 research-scope items
+  (R-07, R-08, R-13⁺, R-14, R-16) are tracked by the same plan
+  document but are *not* landed by this PR; their discharge is
+  planned for follow-up work units.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

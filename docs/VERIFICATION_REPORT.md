@@ -270,6 +270,9 @@ is honest about which assumption is doing the cryptographic work.
 | 32  | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | `Hardness/Reductions.lean`                  | **Quantitative** — classical IND-1-CPA form of the probabilistic chain bound (Workstream K4 companion), conditional on `ConcreteHardnessChain`; same ε = 1 inhabitation posture as row #22 |
 | 33  | `det_oia_false_of_distinct_reps`                              | `Crypto/OIA.lean`                             | **Standalone** — machine-checked vacuity witness for the deterministic `OIA` under the distinct-representatives hypothesis (Workstream E of 2026-04-23 audit, finding C-07). Closes the prose-only vacuity disclosure that previously lived in `Crypto/OIA.lean`'s module docstring. The distinguisher is `fun x => decide (x = scheme.reps m₀)` at identity group elements; LHS decides `true`, RHS decides `false`, contradiction |
 | 34  | `det_kemoia_false_of_nontrivial_orbit`                        | `KEM/Security.lean`                           | **Standalone** — KEM-layer parallel of row #33 (Workstream E of 2026-04-23 audit, finding E-06). Refutes `KEMOIA kem` under the non-trivial base-point-orbit hypothesis `g₀ • basePoint ≠ g₁ • basePoint`; holds on every realistic KEM (production HGOE has `\|orbit\| ≫ 2`). Written against the post-L5 single-conjunct `KEMOIA`; no `.1` / `.2` destructuring |
+| 35  | `indCPAAdvantage_invariantAttackAdversary_eq_one`             | `Theorems/InvariantAttack.lean`               | **Standalone — R-01 discharged 2026-04-30**. Quantitative companion of headline #2 (`invariant_attack`): under a separating G-invariant `f` (with `f (reps m₀) ≠ f (reps m₁)`), the IND-1-CPA advantage of the invariant-attack adversary is *exactly* `1`. Strengthens row #2's existential deterministic form (`∃ A, hasAdvantage`) to the tight probabilistic equality. Composed with `concrete_oia_implies_1cpa`, this rules out `ConcreteOIA scheme ε` for any `ε < 1` whenever a separating G-invariant exists |
+| 35a | `probTrue_orbitDist_invariant_eq_one`                         | `Theorems/InvariantAttack.lean`               | **Standalone** — constant-true mass lemma supporting #35 (Workstream R-01). Under G-invariance with `f x = f y`, `probTrue (orbitDist x) (decide (f · = f y)) = 1` |
+| 35b | `probTrue_orbitDist_invariant_eq_zero`                        | `Theorems/InvariantAttack.lean`               | **Standalone** — constant-false mass lemma supporting #35 (Workstream R-01). Symmetric `= 0` companion under `f x ≠ f y` |
 
 Every one of #1–#34 was confirmed to depend only on standard Lean axioms by
 running `scripts/audit_phase_16.lean` — all declarations exercised
@@ -1310,6 +1313,45 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-04-30 (Workstream R-01 — Quantitative cross-orbit advantage
+  lower bound)** — One additional research-scope item from the
+  2026-04-29 audit plan (§ 8.1, plan
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) discharged within
+  the existing `Orbcrypt/Theorems/InvariantAttack.lean` module:
+
+  * **R-01 — `indCPAAdvantage = 1` under separating G-invariant** (3
+    declarations on standard-trio axioms; in-place extension of
+    `Theorems/InvariantAttack.lean`). Pre-R-01, the
+    `invariant_attack` headline delivered only the *existential*
+    deterministic form `∃ A, hasAdvantage scheme A` (existence of
+    one distinguishing `(g₀, g₁)` pair). R-01 strengthens this to a
+    *tight* probabilistic equality at the IND-1-CPA layer:
+    `indCPAAdvantage scheme (invariantAttackAdversary f m₀ m₁) = 1`
+    whenever a separating G-invariant `f` is supplied. Three new
+    public declarations:
+    - `probTrue_orbitDist_invariant_eq_one` (constant-true mass
+      lemma: orbit distribution assigns mass `1` when the predicate
+      is constantly `true` on the orbit, via `Finset.filter_true_of_mem`
+      + `ENNReal.div_self`).
+    - `probTrue_orbitDist_invariant_eq_zero` (symmetric `= 0`
+      companion via `Finset.filter_false_of_mem`).
+    - `indCPAAdvantage_invariantAttackAdversary_eq_one` (the
+      headline, composing the two mass lemmas via `indCPAAdvantage_eq`).
+    Composed with `concrete_oia_implies_1cpa`, R-01 forces:
+    *any scheme admitting a separating G-invariant cannot satisfy
+    `ConcreteOIA scheme ε` for any `ε < 1`*. The KEM-layer companion
+    of R-01 was found mathematically vacuous during plan review; the
+    KEM-layer parallel is already discharged by
+    `det_kemoia_false_of_nontrivial_orbit` (post-Workstream-E of
+    audit 2026-04-23).
+
+  Build posture preserved (3,420 jobs, zero warnings, zero errors,
+  zero sorry, zero custom axioms). Audit script gained 3 new
+  `#print axioms` entries plus a new `R01NonVacuity` namespace with
+  4 non-vacuity `example` bindings on the
+  `NonVacuityWitnesses.trivialSchemeBool` fixture. Patch version
+  bump `lakefile.lean` 0.2.2 → 0.2.3.
 
 * **2026-04-30 (Workstream D research-scope discharge — R-09 +
   R-12 + R-13)** — Three research-scope items from the 2026-04-29

@@ -520,6 +520,20 @@ These theorems depend only on Lean's standard axioms (`propext`,
   implies `∃ A, hasAdvantage` (existence of one distinguishing adversary;
   informal shorthand "complete break" — see the `invariant_attack` docstring
   for the three-convention advantage catalogue)
+- `indCPAAdvantage_invariantAttackAdversary_eq_one`
+  (`Theorems/InvariantAttack.lean`) — Workstream R-01 quantitative
+  companion of the invariant-attack theorem: under a separating
+  G-invariant `f` (with `f (reps m₀) ≠ f (reps m₁)`), the IND-1-CPA
+  advantage of the invariant-attack adversary equals exactly `1`.
+  Strengthens the existential `invariant_attack` to a tight
+  probabilistic equality. Built on two mass lemmas
+  (`probTrue_orbitDist_invariant_eq_one`,
+  `probTrue_orbitDist_invariant_eq_zero`) that compute the
+  orbit-distribution mass of the constant-true / constant-false
+  predicate under G-invariance. See `docs/planning/PLAN_R_01_07_08_14_16.md`
+  § R-01 for the discharge plan and the KEM-layer-companion-vacuity
+  finding (`det_kemoia_false_of_nontrivial_orbit` already provides
+  the KEM-layer parallel of the existential content)
 - `kem_correctness` (`KEM/Correctness.lean`) — decaps recovers encapsulated key
 - `kem_key_constant_direct` (`KEM/Security.lean`) — key constancy from
   canonical form G-invariance (no KEMOIA needed)

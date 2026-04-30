@@ -141,6 +141,16 @@ open Orbcrypt
 #print axioms invariant_on_encrypt
 #print axioms invariantAttackAdversary_correct
 #print axioms invariant_attack
+-- Workstream R-01 (audit 2026-04-29 § 8.1): quantitative cross-orbit
+-- advantage lower bound. The deterministic `invariant_attack` above
+-- delivers existence of one distinguishing `(g₀, g₁)` pair; R-01
+-- strengthens this to the tight probabilistic equality
+-- `indCPAAdvantage = 1` whenever a separating G-invariant is supplied.
+-- See `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01 for the
+-- discharge plan and the KEM-layer-companion-vacuity finding.
+#print axioms probTrue_orbitDist_invariant_eq_one
+#print axioms probTrue_orbitDist_invariant_eq_zero
+#print axioms indCPAAdvantage_invariantAttackAdversary_eq_one
 
 -- OIAImpliesCPA
 #print axioms oia_specialized
@@ -5081,3 +5091,92 @@ example :
     trivialMQABool (concreteOIA_one _)
 
 end R09NonVacuity
+
+/-! ## R-01 non-vacuity witnesses (audit 2026-04-29 § 8.1) -/
+namespace R01NonVacuity
+
+open Orbcrypt
+
+-- The R-01 mass lemmas and headline are stated in the explicit-action
+-- form `f (g • x)`. The non-vacuity witnesses here exercise the
+-- theorems on a concrete fixture: the trivial action of
+-- `Equiv.Perm (Fin 1)` on `Bool` (every group element acts as the
+-- identity), under which `id : Bool → Bool` is G-invariant and
+-- separates `true` from `false`. This re-uses the
+-- `NonVacuityWitnesses.trivialSchemeBool` fixture; the local MulAction
+-- instance is re-registered here because `local instance`s do not
+-- propagate across namespace boundaries.
+local instance trivialPermFin1ActionBoolR01 :
+    MulAction (Equiv.Perm (Fin 1)) Bool where
+  smul _ b := b
+  one_smul _ := rfl
+  mul_smul _ _ _ := rfl
+
+/-- `id : Bool → Bool` is G-invariant under the trivial action of
+    `Equiv.Perm (Fin 1)` on `Bool` (every group element acts as the
+    identity, so `id (g • b) = id b = b` definitionally). Used as the
+    invariant function for the R-01 non-vacuity witnesses. -/
+private theorem id_isGInvariant_trivialPermFin1 :
+    IsGInvariant (G := Equiv.Perm (Fin 1)) (id : Bool → Bool) := by
+  intro _ _; rfl
+
+/-- **Non-vacuity (1): constant-true mass lemma at the trivial action.**
+    Specialises `probTrue_orbitDist_invariant_eq_one` at the trivial
+    `Equiv.Perm (Fin 1)` action on `Bool` with `f := id`, `x := false`,
+    `y := false`. Under the trivial action, `g • false = false` for
+    every `g`, so the predicate `decide (id c = id false)` is constantly
+    `true` on the orbit of `false` (which is the singleton `{false}`).
+    The orbit distribution therefore assigns mass `1` to the predicate. -/
+example :
+    probTrue (orbitDist (G := Equiv.Perm (Fin 1)) (false : Bool))
+        (fun c => decide ((id : Bool → Bool) c = id false)) = 1 :=
+  probTrue_orbitDist_invariant_eq_one (G := Equiv.Perm (Fin 1))
+    id_isGInvariant_trivialPermFin1 false false rfl
+
+/-- **Non-vacuity (2): constant-false mass lemma at the trivial action.**
+    Specialises `probTrue_orbitDist_invariant_eq_zero` at `f := id`,
+    `x := true`, `y := false`. Under the trivial action,
+    `g • true = true` for every `g`, and `id true = true ≠ false = id
+    false`, so the predicate is constantly `false` on the orbit of
+    `true`. The orbit distribution therefore assigns mass `0`. -/
+example :
+    probTrue (orbitDist (G := Equiv.Perm (Fin 1)) (true : Bool))
+        (fun c => decide ((id : Bool → Bool) c = id false)) = 0 :=
+  probTrue_orbitDist_invariant_eq_zero (G := Equiv.Perm (Fin 1))
+    id_isGInvariant_trivialPermFin1 true false (by decide)
+
+/-- **Non-vacuity (3): R-01 headline equality at the trivial action.**
+    The end-to-end IND-1-CPA bound on `NonVacuityWitnesses.
+    trivialSchemeBool`, exhibiting `indCPAAdvantage = 1` for the
+    invariant-attack adversary with `f := id`, `m₀ := true`, `m₁ :=
+    false`. Establishes the *tight* equality (not just the upper bound)
+    on a concrete two-message scheme — the cryptographic content of
+    R-01. Pre-R-01, the only quantitative bound available on this
+    fixture was `indCPAAdvantage_le_one` (the universal `≤ 1`); R-01
+    promotes the bound to an exact `= 1` whenever a separating
+    G-invariant is supplied. -/
+example :
+    indCPAAdvantage NonVacuityWitnesses.trivialSchemeBool
+        (invariantAttackAdversary (id : Bool → Bool) true false) = 1 :=
+  indCPAAdvantage_invariantAttackAdversary_eq_one
+    NonVacuityWitnesses.trivialSchemeBool (id : Bool → Bool) true false
+    id_isGInvariant_trivialPermFin1 (by decide)
+
+/-- **Non-vacuity (4): R-01 strictly improves the universal `≤ 1`
+    bound.** Composing the R-01 headline equality with
+    `indCPAAdvantage_le_one` shows that the R-01 bound is *attained*
+    (not merely satisfied): on `trivialSchemeBool` the invariant-attack
+    adversary saturates the universal upper bound. This is the
+    quantitative content R-01 delivers beyond the deterministic
+    `invariant_attack`'s existential form. -/
+example :
+    indCPAAdvantage NonVacuityWitnesses.trivialSchemeBool
+        (invariantAttackAdversary (id : Bool → Bool) true false) ≤ 1 ∧
+    indCPAAdvantage NonVacuityWitnesses.trivialSchemeBool
+        (invariantAttackAdversary (id : Bool → Bool) true false) = 1 :=
+  ⟨indCPAAdvantage_le_one _ _,
+   indCPAAdvantage_invariantAttackAdversary_eq_one
+     NonVacuityWitnesses.trivialSchemeBool (id : Bool → Bool) true false
+     id_isGInvariant_trivialPermFin1 (by decide)⟩
+
+end R01NonVacuity
