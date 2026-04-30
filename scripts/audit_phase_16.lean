@@ -1597,7 +1597,10 @@ example :
     support (![true, false, true] : Bitstring 3) =
       ({0, 2} : Finset (Fin 3)) := by
   ext i
-  fin_cases i <;> simp [support, mem_support_iff]
+  -- `mem_support_iff` is already `@[simp]`, so `simp [support]` suffices
+  -- (the linter flagged the explicit redundant entry pre-Workstream-D
+  -- discharge audit; fixed 2026-04-30).
+  fin_cases i <;> simp [support]
 
 /-- The `ofSupport_support` round-trip on `![true, false, true]`. -/
 example :
@@ -5046,5 +5049,35 @@ example {G X M : Type*} [Group G] [Fintype G] [Nonempty G] [MulAction G X]
     (A : DistinctMultiQueryAdversary X M Q) (hOIA : ConcreteOIA scheme ε) :
     indQCPAAdvantage scheme A.toMultiQueryAdversary ≤ (Q : ℝ) * ε :=
   indQCPA_from_concreteOIA_distinct scheme ε A hOIA
+
+-- A *concrete* witness using the `trivialSchemeBool` fixture from
+-- `NonVacuityWitnesses` (the OrbitEncScheme on `Bool` under the trivial
+-- `Equiv.Perm (Fin 1)` action). Re-registers the local MulAction instance
+-- since `local instance` does not propagate across namespace boundaries.
+local instance trivialPermFin1ActionBoolR09 :
+    MulAction (Equiv.Perm (Fin 1)) Bool where
+  smul _ b := b
+  one_smul _ := rfl
+  mul_smul _ _ _ := rfl
+
+/-- A trivial `MultiQueryAdversary` on `Bool` × `Bool` at Q = 2: always
+    chooses the same pair `(true, false)` and always guesses `true`.
+    Used as the concrete adversary for the end-to-end R-09 witness. -/
+def trivialMQABool : MultiQueryAdversary Bool Bool 2 where
+  choose := fun _ _ => (true, false)
+  guess := fun _ _ => true
+
+/-- **Non-vacuity (5) — concrete end-to-end R-09 witness.**
+    Specialises `indQCPA_from_concreteOIA` at `scheme := NonVacuityWitnesses.
+    trivialSchemeBool`, `Q := 2`, and the trivial `ConcreteOIA scheme 1`
+    bound (via `concreteOIA_one`). Establishes the full chain
+    `ConcreteOIA → indQCPA_from_concreteOIA → bounded multi-query
+    advantage` on a concrete fixture (not just a parametric signature
+    elaboration). -/
+example :
+    indQCPAAdvantage NonVacuityWitnesses.trivialSchemeBool trivialMQABool ≤
+      (2 : ℝ) * 1 :=
+  indQCPA_from_concreteOIA NonVacuityWitnesses.trivialSchemeBool 1
+    trivialMQABool (concreteOIA_one _)
 
 end R09NonVacuity

@@ -3435,7 +3435,7 @@ not adapt via `Bitstring n → ZMod p`.
     post-Workstream-B `authEncrypt_is_int_ctxt`).
 
 Closes 18 declarations on standard-trio axioms. Module count rises
-from 75 to 76.
+from 76 to 77.
 
 ### R-09 — Discharge of `h_step` from `ConcreteOIA`
 
@@ -3478,7 +3478,7 @@ Closes 7 declarations on standard-trio axioms.
   errors.
 * Phase-16 audit script exercises 36 new declarations (11 R-12 + 18
   R-13 + 7 R-09); all on standard-trio axioms.
-* Module count rises from 75 to 76 (one new module:
+* module count rises from 76 to 77 (one new module:
   `AEAD/BitstringPolynomialMAC.lean`).
 * Public-declaration count rises by ~36 across the three R-items.
 * Zero-sorry / zero-custom-axiom posture preserved.

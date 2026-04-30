@@ -7383,7 +7383,7 @@ pre-1.0 release work per project sponsor's request):
 distinct surfaces:
 1. **Lean source.** One new module
    (`Orbcrypt/Construction/BitstringSupport.lean`) adds 19
-   public declarations. Module count: 75 → 76. Public
+   public declarations. Module count: 76 → 77. Public
    declaration count rises by 19. `lake build Orbcrypt`
    succeeds with **3,419 jobs**, zero warnings, zero errors
    (up from the pre-C 3,418 — exactly +1 for the new
@@ -7668,7 +7668,7 @@ audit 2026-04-29 § 8.1) has been completed (2026-04-30):
   INT-CTXT for `Bitstring n`-typed authenticated KEM).
 
   Closes 18 declarations on standard-trio axioms; module count
-  rises from 75 to 76.
+  rises from 76 to 77.
 
 - **R-09 — Discharge of `h_step` from `ConcreteOIA`.** Closes
   audit finding V1-8 / C-13 / D10. The discharge runs through
@@ -7702,7 +7702,7 @@ audit 2026-04-29 § 8.1) has been completed (2026-04-30):
 - Phase-16 audit script exercises +36 new declarations (11 R-12
   + 18 R-13 + 7 R-09); all on standard-trio axioms; zero
   `sorryAx`.
-- Module count: 75 → 76 (one new module
+- Module count: 76 → 77 (one new module
   `AEAD/BitstringPolynomialMAC.lean`).
 - Zero-sorry / zero-custom-axiom posture preserved.
 
