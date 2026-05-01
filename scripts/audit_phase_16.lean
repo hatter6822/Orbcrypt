@@ -5746,3 +5746,153 @@ example
   same_blockSum_not_separating block _ _ h_same
 
 end R16NonVacuity
+
+-- ============================================================================
+-- § 15.26 Workstream R-05 — Random-oracle / nonce-MAC framework
+-- (audit 2026-04-29 § 8.1, plan PLAN_R_05_11_15.md § R-05)
+-- ============================================================================
+--
+-- The R-05 framework formalises the Wegman–Carter 1981 §3 nonce-MAC
+-- construction. The structures (NoncedMAC, NoncedMultiQueryMACAdversary,
+-- IsPRF, idealRandomOraclePRF) and the concrete specialisations
+-- (nonceCarterWegmanMAC, nonceBitstringPolynomialMAC) are landed
+-- unconditionally; the headline reduction theorem
+-- noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF is research-scope
+-- (R-05⁺) per the plan's Phase 3 budget (~280 LOC / ~4.5 days).
+-- The non-vacuity witnesses verify the framework's hypotheses are
+-- met at concrete primes (Carter–Wegman / bitstring-polynomial)
+-- composed with the truly-random oracle.
+
+#print axioms Orbcrypt.NoncedMAC
+#print axioms Orbcrypt.NoncedMAC.tag
+#print axioms Orbcrypt.NoncedMAC.verify
+#print axioms Orbcrypt.NoncedMAC.verify_tag
+#print axioms Orbcrypt.NoncedMAC.verify_iff
+#print axioms Orbcrypt.NoncedMultiQueryMACAdversary
+#print axioms Orbcrypt.NoncedMultiQueryMACAdversary.forges
+#print axioms Orbcrypt.noncedForgeryAdvantage_Qtime
+#print axioms Orbcrypt.IsNoncedQtimeSUFCMASecure
+#print axioms Orbcrypt.noncedForgeryAdvantage_Qtime_nonneg
+#print axioms Orbcrypt.noncedForgeryAdvantage_Qtime_le_one
+#print axioms Orbcrypt.IsNoncedQtimeSUFCMASecure.le_one
+#print axioms Orbcrypt.IsNoncedQtimeSUFCMASecure.mono
+
+#print axioms Orbcrypt.IsPRF
+#print axioms Orbcrypt.IsPRF.mono
+#print axioms Orbcrypt.IsPRF.le_one
+#print axioms Orbcrypt.idealRandomOraclePRF
+#print axioms Orbcrypt.idealRandomOraclePRF_isPRF
+
+#print axioms Orbcrypt.nonceCarterWegmanMAC
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC
+#print axioms Orbcrypt.nonceCarterWegmanMAC_hash
+#print axioms Orbcrypt.nonceCarterWegmanMAC_prf
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC_hash
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC_prf
+
+#print axioms Orbcrypt.nonceCarterWegmanMAC_isPRF
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC_isPRF
+#print axioms Orbcrypt.nonceCarterWegmanMAC_isEpsilonAXU
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC_isEpsilonAXU
+#print axioms Orbcrypt.nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one
+#print axioms Orbcrypt.r05_research_scope_disclosure
+
+namespace RandomOracleNonVacuity
+open Orbcrypt
+
+/-- Witness `Fact (Nat.Prime 5)` (Mathlib provides only `fact_prime_two` and
+    `fact_prime_three` as `ℕ`-Prime instances; for `p = 5` we discharge
+    primality manually via `decide` and pack into a local instance so
+    that subsequent witnesses involving `nonceCarterWegmanMAC 5` can
+    elaborate without the goal-state requiring an out-of-band `haveI`). -/
+local instance fact_prime_five : Fact (Nat.Prime 5) := ⟨by decide⟩
+
+/-- Sentinel: the truly-random-oracle PRF on a finite Nonce / Tag is a
+    `0`-PRF (the canonical non-vacuity witness for `IsPRF`). -/
+example : IsPRF (idealRandomOraclePRF (Fin 8) (ZMod 5)) 0 :=
+  idealRandomOraclePRF_isPRF
+
+/-- Sentinel: every PRF is trivially `1`-PRF. -/
+example
+    (prf : (ZMod 5) → (Fin 4) → (Fin 16)) :
+    IsPRF prf 1 := IsPRF.le_one prf
+
+/-- Sentinel: `IsPRF.mono` widens the bound. -/
+example
+    (prf : (ZMod 5) → (Fin 4) → (Fin 16))
+    (h : IsPRF prf 0) :
+    IsPRF prf ((1 : ENNReal) / 2) := by
+  refine h.mono (zero_le _) (by simp) ?_
+  -- Goal: (1 : ENNReal) / 2 ≠ ⊤
+  rw [ENNReal.div_eq_inv_mul, mul_one]
+  exact ENNReal.inv_ne_top.mpr (by norm_num)
+
+/-- Sentinel: the Carter–Wegman nonced MAC's PRF is `0`-PRF (Carter–
+    Wegman composed with truly-random oracle). -/
+example : IsPRF (nonceCarterWegmanMAC 5 (Fin 8)).prf 0 :=
+  nonceCarterWegmanMAC_isPRF 5 (Fin 8)
+
+/-- Sentinel: the Carter–Wegman nonced MAC's hash is `(1/5)`-AXU. -/
+example :
+    IsEpsilonAXU (nonceCarterWegmanMAC 5 (Fin 8)).hash
+      ((1 : ENNReal) / 5) :=
+  nonceCarterWegmanMAC_isEpsilonAXU 5 (Fin 8)
+
+/-- Sentinel: the bitstring-polynomial nonced MAC's PRF is `0`-PRF. -/
+example : IsPRF (nonceBitstringPolynomialMAC 5 3 (Fin 8)).prf 0 :=
+  nonceBitstringPolynomialMAC_isPRF 5 3 (Fin 8)
+
+/-- Sentinel: the bitstring-polynomial nonced MAC's hash is `(3/5)`-AXU. -/
+example :
+    IsEpsilonAXU (nonceBitstringPolynomialMAC 5 3 (Fin 8)).hash
+      ((3 : ENNReal) / 5) :=
+  nonceBitstringPolynomialMAC_isEpsilonAXU 5 3 (Fin 8)
+
+/-- Sentinel: the trivial `≤ 1` bound for `nonceCarterWegmanMAC` at
+    Q = 0 (no queries; degenerate but unconditionally satisfiable). -/
+example :
+    IsNoncedQtimeSUFCMASecure (Q := 0) (nonceCarterWegmanMAC 5 (Fin 8)) 1 :=
+  nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one 5 (Fin 8)
+
+/-- Sentinel: the trivial `≤ 1` bound at Q = 3 (multi-query). -/
+example :
+    IsNoncedQtimeSUFCMASecure (Q := 3) (nonceCarterWegmanMAC 5 (Fin 8)) 1 :=
+  nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one 5 (Fin 8)
+
+/-- Sentinel: the framework's status disclosure conjunction holds. -/
+example :
+    IsPRF (nonceCarterWegmanMAC 5 (ZMod 5)).prf 0 ∧
+    IsEpsilonAXU (nonceCarterWegmanMAC 5 (ZMod 5)).hash
+      ((1 : ENNReal) / 5) ∧
+    IsNoncedQtimeSUFCMASecure (Q := 0) (nonceCarterWegmanMAC 5 (ZMod 5)) 1 :=
+  r05_research_scope_disclosure 5
+
+/-- Sentinel: tag/verify round-trip on a concrete instance. The honest
+    tag verifies under the same key. -/
+example
+    (k_h : ZMod 5 × ZMod 5) (k_p : Fin 8 → ZMod 5)
+    (n : Fin 8) (m : ZMod 5) :
+    (nonceCarterWegmanMAC 5 (Fin 8)).verify k_h k_p n m
+      ((nonceCarterWegmanMAC 5 (Fin 8)).tag k_h k_p n m) = true :=
+  NoncedMAC.verify_tag _ _ _ _ _
+
+/-- Sentinel: `verify_iff` decomposition. -/
+example
+    (k_h : ZMod 5 × ZMod 5) (k_p : Fin 8 → ZMod 5)
+    (n : Fin 8) (m : ZMod 5) (t : ZMod 5) :
+    (nonceCarterWegmanMAC 5 (Fin 8)).verify k_h k_p n m t = true ↔
+    t = (nonceCarterWegmanMAC 5 (Fin 8)).tag k_h k_p n m :=
+  NoncedMAC.verify_iff _ _ _ _ _ _
+
+/-- Sentinel: `IsNoncedQtimeSUFCMASecure.mono` widens the bound. -/
+example
+    {K_h K_p Nonce Msg Tag : Type*} {Q : ℕ}
+    [Fintype K_h] [Fintype K_p] [Nonempty K_h] [Nonempty K_p]
+    [Add Tag] [DecidableEq Tag] [DecidableEq Nonce] [DecidableEq Msg]
+    {mac : NoncedMAC K_h K_p Nonce Msg Tag} {ε₁ ε₂ : ℝ}
+    (h : IsNoncedQtimeSUFCMASecure (Q := Q) mac ε₁) (hle : ε₁ ≤ ε₂) :
+    IsNoncedQtimeSUFCMASecure (Q := Q) mac ε₂ :=
+  h.mono hle
+
+end RandomOracleNonVacuity

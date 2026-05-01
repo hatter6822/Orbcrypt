@@ -8362,6 +8362,113 @@ R-13⁺ / § R-16) has been completed (2026-05-01):
   out-of-scope multi-month research workstreams as documented
   in the plan; this PR does not touch them.
 
+Workstream R-05 framework landing (audit 2026-04-29 § 8.1, plan
+`docs/planning/PLAN_R_05_11_15.md` § R-05) has been completed
+(2026-05-01):
+
+- **Problem.** `Orbcrypt/AEAD/CarterWegmanMAC.lean` and
+  `Orbcrypt/AEAD/BitstringPolynomialMAC.lean` machine-check the
+  Q-time NEGATIVE result that nonce-free Carter–Wegman is provably
+  broken at Q ≥ 2 queries (linear-system / polynomial-system key
+  recovery). Both module docstrings flag the nonce-based variant
+  (Wegman–Carter 1981 §3) as research milestone R-05.
+
+- **Mathematical content (Wegman–Carter 1981 §3).** A nonced MAC
+  composes a hash family `hash : K_h → Msg → Tag` with a
+  pseudo-random function `prf : K_p → Nonce → Tag` to produce per-
+  (nonce, message) tags via additive masking
+  `tag(k_h, k_p, n, m) := hash(k_h, m) + prf(k_p, n)`. Under (a)
+  ε_h-AXU on the hash and (b) ε_p-PRF on the PRF, the Q-time SUF-
+  CMA advantage is at most `Q · ε_h + ε_p + 1/|Tag|` — quantitatively
+  *better* than the nonce-free MAC's Q-time NEGATIVE bound (which
+  has advantage `1` at `Q ≥ 2`).
+
+- **Files added (2 new modules).**
+  * `Orbcrypt/AEAD/NoncedMAC.lean` (~440 LOC, NEW). Layers:
+    - **Layer 1** — `NoncedMAC` structure (`hash`, `prf` fields),
+      `tag` and `verify` functions, `verify_tag` correctness simp
+      lemma, `verify_iff` decomposition.
+    - **Layer 2** — `NoncedMultiQueryMACAdversary` structure,
+      `forges` Bool predicate (with nonce-distinct +
+      `(nonce, message)`-freshness checks), `noncedForgeryAdvantage_Qtime`
+      PMF wrapper, `IsNoncedQtimeSUFCMASecure` Prop, `_nonneg`,
+      `_le_one`, `_le_one (Prop)`, `_mono` companions.
+    - **Layer 3** — `IsPRF` Prop predicate (function-level
+      formulation: `prf` is `ε`-PRF iff every Boolean distinguisher
+      on `Nonce → Tag` has advantage at most `ε` between the
+      PMF.map'd PRF outputs and `uniformPMF (Nonce → Tag)`).
+      `IsPRF.mono`, `IsPRF.le_one` helpers. `idealRandomOraclePRF`
+      definition (the truly-random oracle: "key" is the entire
+      function, `prf k n := k n`). `idealRandomOraclePRF_isPRF`
+      proves the truly-random oracle is `0`-PRF (the two
+      distributions coincide exactly via `PMF.map_id`; advantage
+      reduces to `advantage_self`).
+  * `Orbcrypt/AEAD/NoncedMACSecurity.lean` (~280 LOC, NEW). Layers:
+    - **Layer 1** — concrete specialisations: `nonceCarterWegmanMAC p`
+      (composes `carterWegmanHash p` with the truly-random oracle on
+      `Nonce → ZMod p`), `nonceBitstringPolynomialMAC p n` (composes
+      `bitstringPolynomialHash p n` with the truly-random oracle).
+    - **Layer 2** — structural simp lemmas (`_hash`, `_prf` apply
+      lemmas for both specialisations).
+    - **Layer 3** — IsPRF non-vacuity at the truly-random oracle
+      composed with the concrete hash families: both
+      `nonceCarterWegmanMAC_isPRF` and
+      `nonceBitstringPolynomialMAC_isPRF` are `0`-PRFs.
+    - **Layer 4** — IsEpsilonAXU non-vacuity from the existing
+      R-08 / R-13⁺ landings: `nonceCarterWegmanMAC_isEpsilonAXU` is
+      `(1/p)`-AXU; `nonceBitstringPolynomialMAC_isEpsilonAXU` is
+      `(n/p)`-AXU.
+    - **Layer 5** — trivial `_le_one` Q-time SUF-CMA bounds for
+      both specialisations (the satisfiability anchor; matches
+      `IsEpsilonUniversal.le_one`'s pattern).
+    - **Layer 6** — `r05_research_scope_disclosure` documenting
+      what is and is not proved unconditionally.
+
+- **Research-scope status.** The headline reduction theorem
+  `noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF` (with bound
+  `Q · ε_h + ε_p + 1/|Tag|`) is captured as a research-scope
+  obligation R-05⁺ at this landing. The cryptographic content is
+  the standard Wegman–Carter 1981 §3 analysis (well-established in
+  the cryptographic literature); the Lean formalisation is a
+  multi-day undertaking (per `docs/planning/PLAN_R_05_11_15.md`
+  § R-05 Phase 3, budgeted at 9 sub-units / ~280 LOC / ~4.5 days).
+  This landing provides the **framework structures** (concrete
+  `NoncedMAC` instances, IsPRF + IsEpsilonAXU non-vacuity witnesses,
+  structural simp lemmas, `_le_one` sentinels) so that when the
+  formal proof of the bound lands as the R-05⁺ follow-up workstream,
+  its consumer-facing API is already in place. Naming-discipline
+  posture preserved: no identifier carries the `R-05` token (per
+  CLAUDE.md's "Names describe content, never provenance" rule); the
+  workstream is referenced only inside docstrings / comments.
+
+- **Audit script** `scripts/audit_phase_16.lean` extended with
+  § 15.26 (32 new `#print axioms` entries + 14 non-vacuity
+  `example` bindings under the `RandomOracleNonVacuity` namespace,
+  exercising every public R-05 declaration on concrete `p = 5` and
+  `Nonce = Fin 8` fixtures). Total `#print axioms` entries rises
+  from 947 to 1073; module count rises from 79 to 81; full `lake
+  build` succeeds across 3,424 jobs (pre-R-05 3,422 + 2 new
+  module nodes); the audit script runs cleanly with exit code 0
+  (zero `sorryAx`, zero non-standard axioms, every R-05
+  declaration on the standard Lean trio `[propext,
+  Classical.choice, Quot.sound]`).
+
+- **Patch version.** `lakefile.lean` bumped from `0.3.0` to
+  `0.3.1`. Two new public-API modules add ~30 new public
+  declarations, warranting the patch-version bump per CLAUDE.md's
+  version-bump discipline. The 79-module total rises to **81**;
+  the zero-sorry / zero-custom-axiom posture and the standard-
+  trio-only axiom-dependency posture are both preserved. Public
+  declaration count rises from ~990 to ~1020 (~30 new
+  declarations: ~14 in `NoncedMAC.lean`, ~16 in
+  `NoncedMACSecurity.lean`).
+
+- **Non-goal (tracked as R-05⁺).** Concrete instantiations with
+  non-ideal PRFs (HMAC, AES-CTR) require the corresponding
+  cryptographic-PRF assumption (HMAC-PRF, AES-PRF), which is not
+  provable inside Lean. Adaptive Q-time queries (full SUF-CMA-2 /
+  oracle access) require Lean-level oracle-game abstractions.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push

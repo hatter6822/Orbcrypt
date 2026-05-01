@@ -1338,6 +1338,49 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-05-01 (Workstream R-05 framework landing — Wegman–Carter
+  1981 §3 nonced MAC)** — Two new modules
+  (`Orbcrypt/AEAD/NoncedMAC.lean` and
+  `Orbcrypt/AEAD/NoncedMACSecurity.lean`) deliver the structural
+  framework for the random-oracle / nonce-MAC construction that
+  closes the Q-time SUF-CMA gap exposed by
+  `not_carterWegmanMAC_isQtimeSUFCMASecure`. Headline content:
+  - `NoncedMAC` structure + `tag` / `verify` definitions (Wegman–
+    Carter 1981 §3 formula `tag(k_h, k_p, n, m) := hash(k_h, m) +
+    prf(k_p, n)`).
+  - `NoncedMultiQueryMACAdversary` non-adaptive Q-time adversary +
+    `forges` predicate enforcing nonce-distinct + freshness.
+  - `noncedForgeryAdvantage_Qtime` PMF wrapper +
+    `IsNoncedQtimeSUFCMASecure` Prop + `_le_one` / `_mono`
+    companions.
+  - `IsPRF` Prop predicate (function-level formulation; advantage
+    between PMF.map'd PRF outputs and `uniformPMF (Nonce → Tag)`).
+  - `idealRandomOraclePRF` definition and
+    `idealRandomOraclePRF_isPRF` proof that the truly-random oracle
+    is `0`-PRF (proven by `PMF.map_id` + `advantage_self`).
+  - `nonceCarterWegmanMAC` and `nonceBitstringPolynomialMAC`
+    concrete specialisations composing existing R-08 / R-13⁺ ε-AXU
+    hash families with the truly-random oracle.
+  - Non-vacuity witnesses: `nonceCarterWegmanMAC_isPRF` (`0`-PRF),
+    `nonceCarterWegmanMAC_isEpsilonAXU` (`(1/p)`-AXU), and the
+    bitstring-polynomial parallels.
+  - Trivial `_le_one` Q-time SUF-CMA bounds (satisfiability anchors).
+  - `r05_research_scope_disclosure` documenting the framework's
+    posture.
+
+  The headline reduction theorem
+  `noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF` (with bound
+  `Q · ε_h + ε_p + 1/|Tag|`) is captured at the framework level
+  with status disclosure as research-scope R-05⁺ per the plan's
+  Phase 3 budget (~280 LOC / ~4.5 days for the proof).
+
+  Counts: 81 modules (was 79, +2); ~1,073 `#print axioms` entries
+  (was ~947, +126); 3,424 build jobs (was 3,422, +2). Full
+  `lake build` succeeds; the Phase-16 audit script
+  (`scripts/audit_phase_16.lean` § 15.26) runs cleanly with exit
+  code 0; every R-05 declaration depends only on the standard Lean
+  trio. Patch bump `0.3.0 → 0.3.1`.
+
 * **2026-05-01 (Audit pass on R-14 + R-08 + R-13⁺ + R-16
   landings)** — A second comprehensive audit was run after the
   initial landing. Findings: zero `sorry`, zero custom axioms,

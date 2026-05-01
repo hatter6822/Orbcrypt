@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.0"
+  version := v!"0.3.1"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -19,7 +19,8 @@ package "orbcrypt" where
 
 -- Pinned to Mathlib4 commit fa6418a8 (matches lake-manifest.json)
 -- Compatible with lean4:v4.30.0-rc1 (see lean-toolchain)
--- Last verified: 2026-04-30 (Workstream C of audit 2026-04-29
+-- Last verified: 2026-05-01 (Workstream R-05 landing
+-- + Workstream C of audit 2026-04-29
 -- + post-landing audit-pass fixes:
 -- explicit globs + defense-in-depth checks + GAP/Lean equivalence
 -- + C2 set-e robustness + C2 missing-entry-as-mismatch + C4 explicit
@@ -50,6 +51,22 @@ package "orbcrypt" where
 -- is at least `1/|G|`, refuting `ConcreteOIA scheme ε` for ε <
 -- 1/|G|. Concrete `S_2 ⤳ Bitstring 2` fixture witnesses the
 -- structure is genuinely inhabited. Patch bump 0.2.3 → 0.2.4.)
+-- Workstream R-05 (audit 2026-04-29 § 8.1, plan
+-- `docs/planning/PLAN_R_05_11_15.md` § R-05, 2026-05-01):
+-- Wegman–Carter 1981 §3 nonce-MAC framework. Two new modules
+-- (`Orbcrypt/AEAD/NoncedMAC.lean` + `Orbcrypt/AEAD/NoncedMACSecurity.lean`)
+-- introduce the `NoncedMAC` structure, `IsPRF` Prop predicate
+-- (function-level formulation), `idealRandomOraclePRF` non-vacuity
+-- witness at ε = 0 (proved via `advantage_self`), and concrete
+-- specialisations `nonceCarterWegmanMAC` /
+-- `nonceBitstringPolynomialMAC` composing the existing R-08 / R-13⁺
+-- ε-AXU hash families with the truly-random oracle. The headline
+-- reduction theorem `noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF`
+-- (with bound `Q · ε_h + ε_p + 1/|Tag|`) is captured at the
+-- framework level + status disclosure as research-scope R-05⁺ per
+-- the plan's Phase 3 budget (~280 LOC / ~4.5 days for the proof).
+-- Trivial `_le_one` Q-time SUF-CMA bounds are unconditional. Patch
+-- bump 0.3.0 → 0.3.1.
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md
