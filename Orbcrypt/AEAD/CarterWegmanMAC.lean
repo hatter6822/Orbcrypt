@@ -510,7 +510,6 @@ theorem carterWegmanMAC_isSUFCMASecure (p : ℕ) [Fact (Nat.Prime p)] :
   have h_finite : ((1 : ℝ≥0∞) / (p : ℝ≥0∞)) ≠ ⊤ := by
     have h_prime : Nat.Prime p := Fact.out
     have h_p_ne_zero : (p : ℝ≥0∞) ≠ 0 := by exact_mod_cast h_prime.pos.ne'
-    have h_p_ne_top : (p : ℝ≥0∞) ≠ ⊤ := ENNReal.natCast_ne_top p
     -- 1 / p is finite when p is finite and non-zero (gives 1/p which is finite).
     rw [ENNReal.div_eq_inv_mul, mul_one]
     exact ENNReal.inv_ne_top.mpr h_p_ne_zero

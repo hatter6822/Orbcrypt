@@ -8315,6 +8315,46 @@ R-13⁺ / § R-16) has been completed (2026-05-01):
   zero-sorry / zero-custom-axiom posture and the standard-trio-
   only axiom-dependency posture are preserved.
 
+- **Deep audit pass (2026-05-01).** A second comprehensive audit
+  was run after the initial landing. Findings:
+  * **No `sorry`, no custom axioms** across all five PR-touched
+    files (verified by comment-stripped grep).
+  * **No naming-hygiene violations** (no `R0[0-9]`, `r08`, `r13`,
+    `r14`, `r16`, `workstream`, `phase`, `audit` tokens in any
+    new declaration name).
+  * **No theatrical theorems**: every theorem proof genuinely
+    consumes its hypotheses; the only `fun _ _ _ => rfl` patterns
+    are the discharge of `IsDeterministicTagMAC` for
+    `deterministicTagMAC` (correct: the predicate's conclusion
+    is `rfl`-level on the body of `deterministicTagMAC`).
+  * **Math soundness** verified by tracing each headline proof
+    (SU2 reduction, SU2 → AXU, joint-collision-card bounds, key
+    recovery, blockSum invariance via `Finset.card_bij`).
+  * **Audit-coverage gap closed**: added explicit non-vacuity
+    examples for `IsEpsilonSU2.mono`, `IsEpsilonAXU.mono`,
+    `IsEpsilonSU2.ofJointCollisionCardBound`, and
+    `IsEpsilonAXU.ofCollisionCardBound` in the
+    `R14NonVacuity` namespace (previously these were only
+    exercised transitively via R-08 / R-13⁺ specialisations).
+  * **Docstring corrections**: tightened the `sortedBits` and
+    `IsEpsilonAXU.toIsEpsilonUniversal` docstrings to honestly
+    disclose the `S_n`-orbit relationship (sortedBits is
+    determined by Hamming weight) and the `AddGroup` typeclass
+    requirement, respectively. No content changes — only
+    docstring honesty.
+  * **Cleanup**: removed an unused `h_p_ne_top` hypothesis in
+    `carterWegmanMAC_isSUFCMASecure` (the cleanup was
+    silenced by Lean's linter because the variable did not
+    trigger a warning at our linter settings, but the removal
+    is good hygiene).
+  * **Edge cases verified**: small-`p` Carter–Wegman (`p = 2`),
+    `n = 0` bitstring-polynomial, empty block partition (`ℓ = 0`),
+    overlapping blocks all behave correctly. The negative
+    theorems' cardinality side conditions (`p ≥ 4` for R-08,
+    `n ≥ 2` for R-13⁺) correctly exclude the small-cardinality
+    cases where the framework's `Q + 1 < |Msg|` requirement
+    fails.
+
 - **R-14 / R-08 / R-13⁺ / R-16 follow-ups: none.** All four
   workstreams are fully discharged in this PR. The remaining
   audit-2026-04-29 § 8.1 research-scope items (R-02, R-03,

@@ -247,7 +247,11 @@ theorem IsEpsilonAXU.mono [Fintype K] [Nonempty K] [DecidableEq Tag]
 /--
 **AXU implies ε-universal.** AXU is the `δ = 0` specialisation of
 universal once `Tag` has additive-group structure: `h k m₁ - h k m₂ = 0`
-in a `SubtractionMonoid` is equivalent to `h k m₁ = h k m₂`.
+in an `AddGroup` is equivalent to `h k m₁ = h k m₂` via `sub_eq_zero`.
+
+(The base `IsEpsilonAXU` predicate only requires `SubtractionMonoid`
+to express the difference, but the `↔ h k m₁ = h k m₂` round-trip
+needs the full `AddGroup` cancellation property of `sub_eq_zero`.)
 -/
 theorem IsEpsilonAXU.toIsEpsilonUniversal [Fintype K] [Nonempty K]
     [DecidableEq Tag] [AddGroup Tag]

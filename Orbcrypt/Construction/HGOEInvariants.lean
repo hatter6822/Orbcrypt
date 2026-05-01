@@ -308,16 +308,30 @@ This is the **canonical form** under `Equiv.Perm (Fin n)`. Because
 canonical forms are by construction `G`-invariant
 (`canonical_isGInvariant`), `sortedBits` is `S_n`-invariant.
 
-**Cryptographic significance.** Sorted-bits is the *strongest*
-`S_n`-invariant: it preserves the entire orbit identity. Any pair
-of distinct messages whose representatives lie in different orbits
-under `S_n` is broken by `sortedBits` (since distinct orbits have
-distinct lex-min elements). The
-`OrbitEncScheme.reps_distinct` field already prohibits the
-shared-orbit case at the scheme level, so any `S_n`-respecting
-HGOE scheme is *automatically broken* by the sorted-bits attack.
-This is the formal version of the "deterministic OIA is vacuous"
-result `det_oia_false_of_distinct_reps` (in `Crypto/OIA.lean`).
+**Cryptographic significance.** Sorted-bits is *the strongest
+`S_n`-invariant by construction*: every `S_n`-orbit gets a unique
+lex-min representative, so two bitstrings have equal sortedBits iff
+they are in the same `S_n`-orbit. On `Bitstring n`, two bitstrings
+are in the same `S_n`-orbit iff they have the same `hammingWeight`
+(permutations preserve and *only* preserve the bit-count
+multiset). So as a *separating function* on `Bitstring n`,
+`sortedBits` and `hammingWeight` have the **same kernel** — both
+attack the same defensive choice (same-Hamming-weight reps). The
+value of `sortedBits` over `hammingWeight` is *expository*: it
+makes the canonical-form structure explicit, connecting HGOE
+invariants to the abstract `CanonicalForm` framework and the
+deterministic-OIA vacuity result `det_oia_false_of_distinct_reps`
+(in `Crypto/OIA.lean`).
+
+**Cross-orbit application.** For a scheme using a subgroup `G ≤
+S_n` (the typical HGOE deployment), each `G`-orbit is contained in
+an `S_n`-orbit. The `sortedBits` attack fires precisely when
+`reps m₀` and `reps m₁` are in *different `S_n`-orbits* (i.e.
+different Hamming weights). The `reps_distinct` field guarantees
+they're in different `G`-orbits — strictly weaker than different
+`S_n`-orbits. For the unconditional "any non-trivial scheme
+admits an attack" claim, see `det_oia_false_of_distinct_reps`,
+which uses a *non*-G-invariant test instead.
 
 **Implementation.** `noncomputable` because `CanonicalForm.ofLexMin`
 uses `Finset.min'` which requires classical reasoning to establish
@@ -350,12 +364,35 @@ theorem sortedBits_invariant_subgroup
 
 /--
 **Sorted-bits attack.** If two messages have different sorted-bits
-(lex-min) representatives, an adversary with `hasAdvantage` exists.
-By `OrbitEncScheme.reps_distinct`, distinct messages have distinct
-orbits, hence distinct sorted-bits — so this attack ALWAYS applies
-to `S_n`-respecting schemes. The attack is the cryptographic
-content of "deterministic OIA is vacuous on `S_n`-respecting
-schemes". -/
+(lex-min under the full `Equiv.Perm (Fin n)` action) representatives,
+an adversary with `hasAdvantage` exists.
+
+**When does the attack apply?** `sortedBits` is the canonical form
+under the **full `S_n`** action. The hypothesis
+`sortedBits (reps m₀) ≠ sortedBits (reps m₁)` holds **iff**
+`reps m₀` and `reps m₁` lie in different `S_n`-orbits (i.e.,
+have different "sorted-bit pattern", equivalently different
+multisets of `true`/`false` bit values, equivalently different
+Hamming weights — `sortedBits` is determined by the bit multiset
+which is determined by Hamming weight on `Bool`).
+
+**Relationship to the scheme's group `G`.** For a scheme using a
+subgroup `G ≤ S_n` (the typical HGOE deployment), each `G`-orbit
+is contained in an `S_n`-orbit. So:
+* If `reps m₀, reps m₁` are in **different `S_n`-orbits**, the
+  attack applies. By `reps_distinct`, they're in different
+  `G`-orbits, but this is *strictly weaker* than being in
+  different `S_n`-orbits — the latter is what triggers the attack.
+* If `reps m₀, reps m₁` are in the **same `S_n`-orbit** but
+  different `G`-orbits (a permitted case under `reps_distinct`),
+  the sorted-bits attack does NOT fire (their `S_n`-canonical
+  forms agree), but other invariants may.
+
+For the strongest statement — "any `S_n`-respecting scheme is
+automatically broken" — see the `det_oia_false_of_distinct_reps`
+companion in `Crypto/OIA.lean`, which uses a *non*-canonical
+G-invariant test that fires on every distinct-rep pair regardless
+of orbit relationships. -/
 theorem hgoe_sortedBits_attack {M : Type*}
     (G : Subgroup (Equiv.Perm (Fin n)))
     (scheme : OrbitEncScheme (↥G) (Bitstring n) M) (m₀ m₁ : M)

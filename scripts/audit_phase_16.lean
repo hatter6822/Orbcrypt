@@ -5567,6 +5567,44 @@ example {K Msg : Type*} [Fintype K] [Nonempty K]
     (hash : K → Msg → (ZMod 2)) (ε : ENNReal) (hSU2 : IsEpsilonSU2 hash ε) :
     IsEpsilonUniversal hash ε := hSU2.toIsEpsilonUniversal
 
+/-- Sentinel: `IsEpsilonSU2.mono` widens the bound. If `ε₁ ≤ ε₂` and
+    `h` is `ε₁`-SU2, then `h` is `ε₂`-SU2. -/
+example {K Msg Tag : Type*} [Fintype K] [Nonempty K] [Fintype Tag]
+    [Nonempty Tag] [DecidableEq Tag] (hash : K → Msg → Tag)
+    (ε₁ ε₂ : ENNReal) (hle : ε₁ ≤ ε₂) (hSU2 : IsEpsilonSU2 hash ε₁) :
+    IsEpsilonSU2 hash ε₂ := hSU2.mono hle
+
+/-- Sentinel: `IsEpsilonAXU.mono` widens the bound. -/
+example {K Msg Tag : Type*} [Fintype K] [Nonempty K] [DecidableEq Tag]
+    [SubtractionMonoid Tag] (hash : K → Msg → Tag)
+    (ε₁ ε₂ : ENNReal) (hle : ε₁ ≤ ε₂) (hAXU : IsEpsilonAXU hash ε₁) :
+    IsEpsilonAXU hash ε₂ := hAXU.mono hle
+
+/-- Sentinel: `IsEpsilonSU2.ofJointCollisionCardBound` produces ε from a
+    joint-collision-card uniform bound `C`. With `C = 0` (no
+    collisions), the result is `(0 * |Tag|) / |K|`-SU2 = `0`-SU2
+    (perfectly non-colliding hash family). -/
+example {K Msg Tag : Type*} [Fintype K] [Nonempty K] [Fintype Tag]
+    [Nonempty Tag] [DecidableEq Tag] (hash : K → Msg → Tag)
+    (hCard : ∀ (m₁ m₂ : Msg) (t₁ t₂ : Tag), m₁ ≠ m₂ →
+      (Finset.univ.filter
+        (fun k : K => hash k m₁ = t₁ ∧ hash k m₂ = t₂)).card ≤ 0) :
+    IsEpsilonSU2 hash
+      (((0 : ℕ) : ENNReal) * (Fintype.card Tag : ENNReal) /
+        (Fintype.card K : ENNReal)) :=
+  IsEpsilonSU2.ofJointCollisionCardBound (h := hash) (C := 0) hCard
+
+/-- Sentinel: `IsEpsilonAXU.ofCollisionCardBound` produces ε from a
+    diff-collision-card uniform bound. With `C = 0`, the family is
+    `0/|K|`-AXU (perfectly diff-non-colliding). -/
+example {K Msg Tag : Type*} [Fintype K] [Nonempty K] [DecidableEq Tag]
+    [SubtractionMonoid Tag] (hash : K → Msg → Tag)
+    (hCard : ∀ (m₁ m₂ : Msg) (δ : Tag), m₁ ≠ m₂ →
+      (Finset.univ.filter
+        (fun k : K => hash k m₁ - hash k m₂ = δ)).card ≤ 0) :
+    IsEpsilonAXU hash (((0 : ℕ) : ENNReal) / (Fintype.card K : ENNReal)) :=
+  IsEpsilonAXU.ofCollisionCardBound (h := hash) (C := 0) hCard
+
 end R14NonVacuity
 
 -- ============================================================================

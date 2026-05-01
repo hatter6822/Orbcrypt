@@ -1338,6 +1338,27 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-05-01 (Audit pass on R-14 + R-08 + R-13⁺ + R-16
+  landings)** — A second comprehensive audit was run after the
+  initial landing. Findings: zero `sorry`, zero custom axioms,
+  no naming-hygiene violations, no theatrical theorems, full
+  math-soundness verification of headline proofs. Two
+  improvements landed by the pass:
+  - Audit-script coverage extension: 4 new non-vacuity
+    `example` bindings exercising `IsEpsilonSU2.mono`,
+    `IsEpsilonAXU.mono`, `IsEpsilonSU2.ofJointCollisionCardBound`,
+    and `IsEpsilonAXU.ofCollisionCardBound` directly (rather
+    than only transitively via R-08 / R-13⁺ specialisations).
+  - Docstring corrections: tightened the `sortedBits` and
+    `IsEpsilonAXU.toIsEpsilonUniversal` docstrings to honestly
+    disclose the `S_n`-orbit relationship and the `AddGroup`
+    typeclass requirement; removed an unused hypothesis in
+    `carterWegmanMAC_isSUFCMASecure`. No content changes — only
+    docstring honesty + hygiene cleanup.
+  Build / audit-script posture unchanged: 3,422 jobs, 0 errors,
+  0 warnings, 0 sorryAx, 875 axiom-print results all on standard
+  trio.
+
 * **2026-05-01 (Workstream R-14 + R-08 + R-13⁺ + R-16 —
   Probabilistic MAC SUF-CMA framework + specialisations + HGOE
   invariants beyond Hamming weight)** — Four additional research-
