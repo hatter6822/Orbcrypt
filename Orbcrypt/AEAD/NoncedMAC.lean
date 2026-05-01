@@ -82,6 +82,22 @@ reduction itself lives in `Orbcrypt/AEAD/NoncedMACSecurity.lean`.
   trivial `1`-PRF bounds.
 * `Orbcrypt.idealRandomOraclePRF_isPRF` — the truly-random oracle is
   a `0`-PRF (the two distributions coincide exactly).
+* `Orbcrypt.PMF.map_eval_uniformOfFintype_at_injective_eq` —
+  marginal-uniformity headline: pushing a uniform distribution on
+  `(Nonce → Tag)` through the projection at an injective Q-tuple of
+  nonces yields a uniform distribution on `(Fin Q → Tag)`. Proof
+  uses Pi-type cardinality counting via `constrainedPiEquiv` +
+  `constrainedPiCard` + ENNReal pow arithmetic.
+* `Orbcrypt.idealRandomOraclePRF_isPRFAtQueries` — substantive
+  Q-tuple witness: the truly-random oracle is `0`-PRF at every
+  finite Q (proved unconditionally via the marginal-uniformity
+  headline, not as a research-scope obligation).
+* `Orbcrypt.IsPRF.toIsPRFAtQueries` — function-level → Q-tuple
+  bridge. Under `[Fintype Nonce]`, `IsPRF prf ε` implies
+  `IsPRFAtQueries prf Q ε` for every `Q : ℕ`. Proof composes the
+  marginal-uniformity headline with the simulating-distinguisher
+  argument (post-compose Q-tuple distinguisher with the projection
+  at the supplied nonces).
 
 ## Design rationale
 
@@ -483,8 +499,9 @@ most ε.
   nonces, so it makes sense for *any* nonce type — finite or
   infinite. This matches Bellare-Rogaway 2005 and the standard
   cryptographic literature's PRF security definition.
-* The two variants are linked by `IsPRF.toAtQueries`: function-level
-  PRF security implies Q-tuple security at every Q.
+* The two variants are linked by `IsPRF.toIsPRFAtQueries`: function-
+  level PRF security implies Q-tuple security at every Q (under
+  finite nonce types).
 
 **Cryptographic interpretation.** Concrete PRFs (HMAC, AES-CTR) have
 Q-specific bounds (e.g., AES-CTR's PRF advantage at Q queries is

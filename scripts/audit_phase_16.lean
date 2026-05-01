@@ -5780,6 +5780,9 @@ end R16NonVacuity
 #print axioms Orbcrypt.IsPRF
 #print axioms Orbcrypt.IsPRF.mono
 #print axioms Orbcrypt.IsPRF.le_one
+#print axioms Orbcrypt.IsPRFAtQueries
+#print axioms Orbcrypt.IsPRFAtQueries.mono
+#print axioms Orbcrypt.IsPRFAtQueries.le_one
 #print axioms Orbcrypt.idealRandomOraclePRF
 #print axioms Orbcrypt.idealRandomOraclePRF_isPRF
 

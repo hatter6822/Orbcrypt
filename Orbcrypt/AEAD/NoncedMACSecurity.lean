@@ -378,12 +378,36 @@ nonced-MAC construction in Lean 4 with the following posture:
 * `idealRandomOraclePRF` definition.
 * `idealRandomOraclePRF_isPRF` — the truly-random oracle is `0`-PRF
   (function-level), proved cleanly via `PMF.map_id`.
+* `PMF.map_eval_uniformOfFintype_at_injective_eq` — marginal-
+  uniformity headline: pushing a uniform distribution on `(Nonce →
+  Tag)` through projection at an injective Q-tuple of nonces yields
+  `uniformPMFTuple Tag Q`. Proved unconditionally via Pi-type
+  cardinality counting (`constrainedPiEquiv` + `constrainedPiCard`)
+  + ENNReal pow arithmetic (~280 LOC; lives in
+  `Orbcrypt/AEAD/NoncedMAC.lean`).
+* `idealRandomOraclePRF_isPRFAtQueries` — substantive Q-tuple
+  witness: the truly-random oracle is `0`-PRF at every finite Q
+  (proved unconditionally via the marginal-uniformity headline +
+  `advantage_self`). Note: requires `[Fintype Nonce]` (to support
+  the `idealRandomOraclePRF`'s key space `(Nonce → Tag)`); for
+  infinite nonce types, no concrete in-Lean witness is possible
+  and consumers carry `IsPRFAtQueries` as an assumption.
+* `IsPRF.toIsPRFAtQueries` — function-level → Q-tuple bridge.
+  Under `[Fintype Nonce]`, `IsPRF prf ε` implies `IsPRFAtQueries
+  prf Q ε` for every `Q : ℕ`. Proved unconditionally via
+  composition of the marginal-uniformity headline with the
+  simulating-distinguisher argument (post-compose Q-tuple
+  distinguisher with the projection at the supplied nonces).
 * `nonceCarterWegmanMAC` and `nonceBitstringPolynomialMAC`
   definitions.
 * `nonceCarterWegmanMAC_isPRF` /
   `nonceBitstringPolynomialMAC_isPRF` — both specialisations have
   `0`-PRF prf components (function-level, since their nonce types
   carry `[Fintype Nonce]`).
+* `nonceCarterWegmanMAC_isPRFAtQueries` /
+  `nonceBitstringPolynomialMAC_isPRFAtQueries` — Q-tuple variants
+  at every Q (substantively proved via the truly-random-oracle
+  Q-tuple witness).
 * `nonceCarterWegmanMAC_isEpsilonAXU` /
   `nonceBitstringPolynomialMAC_isEpsilonAXU` — `(1/p)`-AXU and
   `(n/p)`-AXU respectively.
@@ -396,21 +420,11 @@ nonced-MAC construction in Lean 4 with the following posture:
   (a) ε_h-AXU on hash and (b) ε_p-PRF on prf. The cryptographic
   content is the standard Wegman–Carter 1981 §3 analysis (well-
   established in the cryptographic literature); the Lean
-  formalisation is a multi-day undertaking budgeted at 9 sub-
-  units / ~280 LOC / ~4.5 days (per
-  `docs/planning/PLAN_R_05_11_15.md` § R-05 Phase 3).
+  formalisation requires a 2-step hybrid (PRF→RO substitution +
+  RO analysis with per-forge-nonce case-split) that is multi-day
+  work (per `docs/planning/PLAN_R_05_11_15.md` § R-05 Phase 3).
 * The concrete `(Q + 1)/p` bound for `nonceCarterWegmanMAC` at the
   truly-random oracle (a corollary of the headline reduction).
-* `IsPRF.toIsPRFAtQueries` bridge — the function-level form
-  implies the Q-tuple form (under finite Nonce), via the marginal-
-  uniformity of uniform-on-`Nonce → Tag` projected at injective Q-
-  tuples. The proof requires proving that the projection of the
-  uniform PMF on `Nonce → Tag` along `fun f => fun i => f (nonces
-  i)` (for injective `nonces`) is `uniformPMFTuple Tag Q` — a
-  cardinality argument via Pi-type bijection (estimated ~150 LOC
-  of Mathlib `Equiv` plumbing).
-* `idealRandomOraclePRF_isPRFAtQueries` — the Q-tuple analogue of
-  `idealRandomOraclePRF_isPRF`. Follows from the bridge above.
 * Concrete instantiations with non-ideal PRFs (HMAC, AES-CTR as
   PRF). Discharging `IsPRF` / `IsPRFAtQueries` for these requires
   the corresponding cryptographic assumption (HMAC-PRF, AES-PRF)
