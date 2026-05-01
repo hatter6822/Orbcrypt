@@ -34,7 +34,7 @@ post-quantum hard.
 
 The cryptographic primitive is small, but five of it's capabilities
 (`canon`, bundle-mediated `OrbitalRandomizers`, `commute`-style
-`CommGroupAction`) enable applications that are awkward with AEAD or
+`CommGroupAction`, PQ-hardness, and compact ciphertexts) enable applications that are awkward with AEAD or
 lattice KEMs — see [`docs/USE_CASES.md`](docs/USE_CASES.md) and
 [`docs/MORE_USE_CASES.md`](docs/MORE_USE_CASES.md).
 
