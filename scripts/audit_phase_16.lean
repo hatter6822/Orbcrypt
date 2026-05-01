@@ -5796,7 +5796,7 @@ end R16NonVacuity
 #print axioms Orbcrypt.nonceBitstringPolynomialMAC_isEpsilonAXU
 #print axioms Orbcrypt.nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one
 #print axioms Orbcrypt.nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one
-#print axioms Orbcrypt.r05_research_scope_disclosure
+#print axioms Orbcrypt.noncedMAC_research_scope_disclosure
 
 namespace RandomOracleNonVacuity
 open Orbcrypt
@@ -5818,15 +5818,13 @@ example
     (prf : (ZMod 5) → (Fin 4) → (Fin 16)) :
     IsPRF prf 1 := IsPRF.le_one prf
 
-/-- Sentinel: `IsPRF.mono` widens the bound. -/
+/-- Sentinel: `IsPRF.mono` widens the bound. Post-refinement, `ε`
+    is `ℝ`-valued (matching the `ConcreteOIA` convention) so
+    monotonicity is trivial transitivity in `ℝ`. -/
 example
     (prf : (ZMod 5) → (Fin 4) → (Fin 16))
     (h : IsPRF prf 0) :
-    IsPRF prf ((1 : ENNReal) / 2) := by
-  refine h.mono (zero_le _) (by simp) ?_
-  -- Goal: (1 : ENNReal) / 2 ≠ ⊤
-  rw [ENNReal.div_eq_inv_mul, mul_one]
-  exact ENNReal.inv_ne_top.mpr (by norm_num)
+    IsPRF prf (1/2 : ℝ) := h.mono (by norm_num)
 
 /-- Sentinel: the Carter–Wegman nonced MAC's PRF is `0`-PRF (Carter–
     Wegman composed with truly-random oracle). -/
@@ -5860,13 +5858,16 @@ example :
     IsNoncedQtimeSUFCMASecure (Q := 3) (nonceCarterWegmanMAC 5 (Fin 8)) 1 :=
   nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one 5 (Fin 8)
 
-/-- Sentinel: the framework's status disclosure conjunction holds. -/
+/-- Sentinel: the framework's status disclosure conjunction holds.
+    Post-refinement (2026-05-01), the conjunction now includes the
+    Q-tuple `IsPRFAtQueries` witness as unconditional content. -/
 example :
     IsPRF (nonceCarterWegmanMAC 5 (ZMod 5)).prf 0 ∧
+    IsPRFAtQueries (nonceCarterWegmanMAC 5 (ZMod 5)).prf 0 0 ∧
     IsEpsilonAXU (nonceCarterWegmanMAC 5 (ZMod 5)).hash
       ((1 : ENNReal) / 5) ∧
     IsNoncedQtimeSUFCMASecure (Q := 0) (nonceCarterWegmanMAC 5 (ZMod 5)) 1 :=
-  r05_research_scope_disclosure 5
+  noncedMAC_research_scope_disclosure 5
 
 /-- Sentinel: tag/verify round-trip on a concrete instance. The honest
     tag verifies under the same key. -/
@@ -5896,3 +5897,68 @@ example
   h.mono hle
 
 end RandomOracleNonVacuity
+
+-- ============================================================================
+-- § 15.27 Workstream R-05 refinement — Q-tuple `IsPRFAtQueries` substantive proof
+-- (audit 2026-05-01 follow-up; plan PLAN_R_05_11_15.md § R-05; substantively
+-- closes the Q-tuple ideal-oracle witness via marginal-uniformity)
+-- ============================================================================
+--
+-- Post-audit refinement (2026-05-01) substantively proves the Q-tuple ideal-
+-- oracle PRF witness via the marginal-uniformity lemma
+-- `PMF.map_eval_uniformOfFintype_at_injective_eq` (Pi-type cardinality
+-- counting + ENNReal pow arithmetic). Adds the `IsPRF.toIsPRFAtQueries`
+-- bridge (function-level → Q-tuple, under finite Nonce). Concrete
+-- specialisations `nonceCarterWegmanMAC_isPRFAtQueries` and
+-- `nonceBitstringPolynomialMAC_isPRFAtQueries` inherit Q-tuple PRF security
+-- from the bridge.
+
+#print axioms Orbcrypt.PMF.map_eval_uniformOfFintype_at_injective_eq
+#print axioms Orbcrypt.idealRandomOraclePRF_isPRFAtQueries
+#print axioms Orbcrypt.IsPRF.toIsPRFAtQueries
+#print axioms Orbcrypt.nonceCarterWegmanMAC_isPRFAtQueries
+#print axioms Orbcrypt.nonceBitstringPolynomialMAC_isPRFAtQueries
+
+namespace MarginalUniformityNonVacuity
+open Orbcrypt
+
+/-- Witness `Fact (Nat.Prime 5)` (matches earlier patterns). -/
+local instance fact_prime_five : Fact (Nat.Prime 5) := ⟨by decide⟩
+
+/-- Sentinel: substantive Q-tuple PRF witness for the truly-random oracle
+    at concrete `Q = 3`, `Nonce = Fin 8`, `Tag = ZMod 5`. -/
+example : IsPRFAtQueries (idealRandomOraclePRF (Fin 8) (ZMod 5)) 3 0 :=
+  idealRandomOraclePRF_isPRFAtQueries 3
+
+/-- Sentinel: bridge from function-level to Q-tuple. -/
+example
+    (prf : (ZMod 5) → (Fin 8) → (ZMod 5))
+    (h : IsPRF prf 0) :
+    IsPRFAtQueries prf 3 0 := h.toIsPRFAtQueries 3
+
+/-- Sentinel: Carter–Wegman Q-tuple PRF witness. -/
+example : IsPRFAtQueries (nonceCarterWegmanMAC 5 (Fin 8)).prf 3 0 :=
+  nonceCarterWegmanMAC_isPRFAtQueries 5 (Fin 8) 3
+
+/-- Sentinel: bitstring-polynomial Q-tuple PRF witness. -/
+example : IsPRFAtQueries (nonceBitstringPolynomialMAC 5 3 (Fin 8)).prf 4 0 :=
+  nonceBitstringPolynomialMAC_isPRFAtQueries 5 3 (Fin 8) 4
+
+/-- Sentinel: `IsPRFAtQueries.mono` widens the bound. -/
+example
+    (prf : (ZMod 5) → (Fin 4) → (ZMod 5))
+    (h : IsPRFAtQueries prf 2 0) :
+    IsPRFAtQueries prf 2 (1/2 : ℝ) := h.mono (by norm_num)
+
+/-- Sentinel: marginal-uniformity headline at concrete Q = 0
+    (degenerate but well-defined: both PMFs are singleton). -/
+example
+    {Nonce Tag : Type*} [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
+    [DecidableEq Nonce] [DecidableEq Tag]
+    (nonces : Fin 0 → Nonce) (h_inj : Function.Injective nonces) :
+    PMF.map (fun f : Nonce → Tag => fun i : Fin 0 => f (nonces i))
+            (uniformPMF (Nonce → Tag))
+    = uniformPMFTuple Tag 0 :=
+  PMF.map_eval_uniformOfFintype_at_injective_eq nonces h_inj
+
+end MarginalUniformityNonVacuity

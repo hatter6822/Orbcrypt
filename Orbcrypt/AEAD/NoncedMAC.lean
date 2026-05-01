@@ -56,18 +56,30 @@ reduction itself lives in `Orbcrypt/AEAD/NoncedMACSecurity.lean`.
 * `Orbcrypt.IsPRF` — a function-level PRF predicate: `prf` is `ε`-
   pseudo-random iff every Boolean distinguisher on `Nonce → Tag` has
   advantage at most `ε` between the PMF.map'd PRF outputs and the
-  uniform PMF on `Nonce → Tag`.
+  uniform PMF on `Nonce → Tag`. Requires `[Fintype Nonce]`.
+* `Orbcrypt.IsPRFAtQueries` — Q-tuple variant of `IsPRF` (matches
+  the plan's formulation). Quantifies over injective `Fin Q → Nonce`
+  query sequences; works for arbitrary (possibly infinite) nonce
+  types.
 * `Orbcrypt.idealRandomOraclePRF` — the truly-random-oracle PRF where
   the "key" is the entire function and `prf k n := k n`.
 
 ## Main results
 
 * `Orbcrypt.noncedForgeryAdvantage_Qtime_nonneg` /
-  `Orbcrypt.noncedForgeryAdvantage_Qtime_le_one` — basic bounds.
-* `Orbcrypt.noncedMAC_tag_correct` — `verify` accepts honest tags
+  `Orbcrypt.noncedForgeryAdvantage_Qtime_le_one` — basic bounds on
+  the forgery advantage.
+* `Orbcrypt.NoncedMAC.verify_tag` — `verify` accepts honest tags
   (the `correct` field in `MAC` parlance).
-* `Orbcrypt.IsPRF.mono` — monotonicity in ε.
-* `Orbcrypt.IsPRF.le_one` — every prf is trivially `1`-PRF.
+* `Orbcrypt.NoncedMAC.verify_iff` — equivalence between `verify =
+  true` and `t = tag`.
+* `Orbcrypt.IsNoncedQtimeSUFCMASecure.le_one` /
+  `Orbcrypt.IsNoncedQtimeSUFCMASecure.mono` — basic bound + ε-
+  monotonicity.
+* `Orbcrypt.IsPRF.mono` / `Orbcrypt.IsPRFAtQueries.mono` — both
+  variants monotone in ε.
+* `Orbcrypt.IsPRF.le_one` / `Orbcrypt.IsPRFAtQueries.le_one` —
+  trivial `1`-PRF bounds.
 * `Orbcrypt.idealRandomOraclePRF_isPRF` — the truly-random oracle is
   a `0`-PRF (the two distributions coincide exactly).
 
@@ -336,7 +348,7 @@ between
   — sample `k_p` uniformly, output the entire PRF function.
 * `μ_ideal := uniformPMF (Nonce → Tag)` — sample a truly-random
   function uniformly.
-is at most `ε.toReal`.
+is at most `ε`.
 
 **Function-level formulation.** This is the cleanest version of the
 PRF predicate: it captures the indistinguishability between sampling
@@ -349,7 +361,17 @@ arbitrary post-processing) is captured by this single predicate.
 Tag)` requires `(Nonce → Tag)` to be a `Fintype`, which holds when
 both `Nonce` and `Tag` are Fintype. For production use cases with
 infinite nonce spaces (e.g., `ℕ`-valued counters), callers restrict
-to `Nonce := Fin N` for some `N`.
+to `Nonce := Fin N` for some `N`. A Q-tuple variant `IsPRFAtQueries`
+that works for arbitrary nonce types is provided alongside this
+function-level version (cf. `IsPRFAtQueries` below).
+
+**Why `ε : ℝ` (not `ℝ≥0∞`).** The codomain of `advantage` is `ℝ` so
+the cleanest comparison is in `ℝ`. Matches the `ConcreteOIA` /
+`ConcreteKEMOIA_uniform` convention. (An earlier formulation using
+`ε : ℝ≥0∞` with `≤ ε.toReal` had a degenerate `⊤`-collapse: at
+`ε = ⊤`, `⊤.toReal = 0` would force advantage = 0, the *strongest*
+property, inverting expected monotonicity. The `ℝ`-valued
+formulation eliminates this corner case.)
 
 **Cryptographic interpretation.** The standard PRF assumption: a PRF
 indexed by a finite key family `K_p` is computationally
@@ -363,26 +385,24 @@ oracle / ideal-cipher model but not provable inside Lean.
 def IsPRF [Fintype K_p] [Nonempty K_p]
     [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
     [DecidableEq Nonce] [DecidableEq Tag]
-    (prf : K_p → Nonce → Tag) (ε : ℝ≥0∞) : Prop :=
+    (prf : K_p → Nonce → Tag) (ε : ℝ) : Prop :=
   ∀ (D : (Nonce → Tag) → Bool),
     advantage D
       (PMF.map (fun k_p : K_p => fun n => prf k_p n) (uniformPMF K_p))
-      (uniformPMF (Nonce → Tag)) ≤ ε.toReal
+      (uniformPMF (Nonce → Tag)) ≤ ε
 
 /--
 Monotonicity in `ε`: if `prf` is `ε₁`-PRF and `ε₁ ≤ ε₂`, then `prf`
-is `ε₂`-PRF.
+is `ε₂`-PRF. Trivial by transitivity in `ℝ`; no finiteness
+hypotheses required.
 -/
 theorem IsPRF.mono [Fintype K_p] [Nonempty K_p]
     [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
     [DecidableEq Nonce] [DecidableEq Tag]
-    {prf : K_p → Nonce → Tag} {ε₁ ε₂ : ℝ≥0∞}
-    (h : IsPRF prf ε₁) (hε : ε₁ ≤ ε₂) (hε₁_finite : ε₁ ≠ ⊤)
-    (hε₂_finite : ε₂ ≠ ⊤) :
-    IsPRF prf ε₂ := by
-  intro D
-  refine (h D).trans ?_
-  exact (ENNReal.toReal_le_toReal hε₁_finite hε₂_finite).mpr hε
+    {prf : K_p → Nonce → Tag} {ε₁ ε₂ : ℝ}
+    (h : IsPRF prf ε₁) (hε : ε₁ ≤ ε₂) :
+    IsPRF prf ε₂ :=
+  fun D => (h D).trans hε
 
 /--
 Trivial bound: every prf is `1`-PRF (advantage is always `≤ 1`).
@@ -393,10 +413,8 @@ theorem IsPRF.le_one [Fintype K_p] [Nonempty K_p]
     [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
     [DecidableEq Nonce] [DecidableEq Tag]
     (prf : K_p → Nonce → Tag) :
-    IsPRF prf 1 := by
-  intro D
-  rw [ENNReal.toReal_one]
-  exact advantage_le_one D _ _
+    IsPRF prf 1 :=
+  fun D => advantage_le_one D _ _
 
 /--
 **The truly-random-oracle PRF.** The "key" is the entire random
@@ -420,9 +438,9 @@ def idealRandomOraclePRF (Nonce : Type w) (Tag : Type y) :
 /-- The truly-random-oracle PRF is a `0`-PRF. Both distributions
 coincide exactly: sampling `k` uniformly and projecting via
 `fun k => fun n => k n` gives back the same uniform PMF on
-`Nonce → Tag` (the projection is the identity), so the advantage
-between the real and ideal distributions is exactly `0` for every
-distinguisher (`advantage_self`). -/
+`Nonce → Tag` (the projection is the identity, after η-reduction),
+so the advantage between the real and ideal distributions is exactly
+`0` for every distinguisher (`advantage_self`). -/
 theorem idealRandomOraclePRF_isPRF
     [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
     [DecidableEq Nonce] [DecidableEq Tag] :
@@ -440,7 +458,440 @@ theorem idealRandomOraclePRF_isPRF
     funext k n; rfl
   rw [h_id_eq, PMF.map_id]
   -- After the rewrite the two distributions coincide; advantage_self closes.
-  rw [ENNReal.toReal_zero]
   exact (advantage_self D _).le
+
+-- ============================================================================
+-- Layer 4 — `IsPRFAtQueries`: Q-tuple variant of `IsPRF`
+-- ============================================================================
+
+/--
+**Q-tuple PRF predicate** (matches the standard cryptographic
+literature's formulation; cf. `docs/planning/PLAN_R_05_11_15.md`
+§ R-05). A function `prf : K_p → Nonce → Tag` is an `ε`-PRF on
+`Q`-tuples of distinct nonces iff for every injective Q-tuple
+`nonces : Fin Q → Nonce` and every Boolean distinguisher
+`D : (Fin Q → Tag) → Bool`, the advantage between the joint
+real-PRF distribution and the uniform `Tag^Q` distribution is at
+most ε.
+
+**Why this Q-tuple variant in addition to `IsPRF`.**
+* `IsPRF` requires `[Fintype Nonce]` (the function space `Nonce →
+  Tag` must be `Fintype` for the ideal distribution `uniformPMF (Nonce
+  → Tag)` to make sense). Production use-cases with infinite nonce
+  spaces (e.g., `Nonce = ℕ`-valued counters) cannot satisfy this.
+* `IsPRFAtQueries` quantifies only over **injective Q-tuples** of
+  nonces, so it makes sense for *any* nonce type — finite or
+  infinite. This matches Bellare-Rogaway 2005 and the standard
+  cryptographic literature's PRF security definition.
+* The two variants are linked by `IsPRF.toAtQueries`: function-level
+  PRF security implies Q-tuple security at every Q.
+
+**Cryptographic interpretation.** Concrete PRFs (HMAC, AES-CTR) have
+Q-specific bounds (e.g., AES-CTR's PRF advantage at Q queries is
+`Q² / 2^128` under the AES-PRP assumption). The Q-tuple variant
+captures these Q-parameterised bounds; the function-level variant is
+the universal-over-Q form (less expressive for non-ideal PRFs but
+sufficient for the truly-random-oracle case).
+-/
+def IsPRFAtQueries [Fintype K_p] [Nonempty K_p]
+    [Fintype Tag] [Nonempty Tag]
+    [DecidableEq Tag]
+    (prf : K_p → Nonce → Tag) (Q : ℕ) (ε : ℝ) : Prop :=
+  ∀ (nonces : Fin Q → Nonce) (D : (Fin Q → Tag) → Bool),
+    Function.Injective nonces →
+    advantage D
+      (PMF.map (fun k_p : K_p => fun i => prf k_p (nonces i))
+        (uniformPMF K_p))
+      (uniformPMFTuple Tag Q) ≤ ε
+
+/-- Monotonicity in `ε` for `IsPRFAtQueries`. -/
+theorem IsPRFAtQueries.mono [Fintype K_p] [Nonempty K_p]
+    [Fintype Tag] [Nonempty Tag] [DecidableEq Tag]
+    {prf : K_p → Nonce → Tag} {Q : ℕ} {ε₁ ε₂ : ℝ}
+    (h : IsPRFAtQueries prf Q ε₁) (hε : ε₁ ≤ ε₂) :
+    IsPRFAtQueries prf Q ε₂ :=
+  fun nonces D h_inj => (h nonces D h_inj).trans hε
+
+/-- Trivial: every prf is `1`-PRF on Q-tuples. -/
+theorem IsPRFAtQueries.le_one [Fintype K_p] [Nonempty K_p]
+    [Fintype Tag] [Nonempty Tag] [DecidableEq Tag]
+    (prf : K_p → Nonce → Tag) (Q : ℕ) :
+    IsPRFAtQueries prf Q 1 :=
+  fun _nonces D _h_inj => advantage_le_one D _ _
+
+-- ============================================================================
+-- Layer 5 — Marginal-uniformity infrastructure
+-- ----------------------------------------------------------------------------
+-- The substantive proof of `idealRandomOraclePRF_isPRFAtQueries` requires
+-- the marginal-uniformity lemma: pushing a uniform distribution on
+-- `(Nonce → Tag)` through the projection at injective `nonces : Fin Q →
+-- Nonce` yields a uniform distribution on `(Fin Q → Tag)`.
+--
+-- The proof factors into:
+--   * **Phase 1** (`constrainedPiEquiv`): bijection between the constrained
+--     Pi-set `{f | ∀ i, f (nonces i) = t i}` and the free Pi-set on the
+--     complement of `range nonces`.
+--   * **Phase 2** (`constrainedPiCard`): cardinality of the constrained
+--     Pi-set is `(Fintype.card Tag) ^ (Fintype.card Nonce - Q)`.
+--   * **Phase 3** (`PMF.map_eval_uniformOfFintype_at_injective_eq`): the
+--     PMF identity `PMF.map proj (uniformPMF (Nonce → Tag)) =
+--     uniformPMFTuple Tag Q`.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- Phase 1 — Pi-type Equiv (≈ 70 LOC)
+-- ----------------------------------------------------------------------------
+
+/-- Decidability of range membership for `nonces : Fin Q → Nonce` under
+    `[Fintype Nonce]` + `[DecidableEq Nonce]`. The membership
+    `n ∈ Set.range nonces` reduces to `∃ i : Fin Q, nonces i = n`,
+    which is decidable when `Fin Q` is Fintype and `Nonce` has
+    `DecidableEq`. -/
+private instance decidableMemRange [Fintype Nonce] [DecidableEq Nonce]
+    {Q : ℕ} (nonces : Fin Q → Nonce) :
+    DecidablePred (· ∈ Set.range nonces) := by
+  intro n
+  exact decidable_of_iff (∃ i, nonces i = n) Set.mem_range.symm
+
+/-- For an injective `nonces : Fin Q → Nonce`, recover the `Fin Q`
+    index of any range element. Built from `Equiv.ofInjective`. -/
+private noncomputable def nonceIndex
+    {Q : ℕ} (nonces : Fin Q → Nonce) (h_inj : Function.Injective nonces)
+    (n : Nonce) (h : n ∈ Set.range nonces) : Fin Q :=
+  (Equiv.ofInjective nonces h_inj).symm ⟨n, h⟩
+
+/-- Round-trip: applying `nonces` to the recovered index of `nonces i`
+    gives back `nonces i`, with the index recovered as `i` itself. -/
+private theorem nonces_nonceIndex
+    {Q : ℕ} (nonces : Fin Q → Nonce) (h_inj : Function.Injective nonces)
+    (i : Fin Q) :
+    nonceIndex nonces h_inj (nonces i) ⟨i, rfl⟩ = i := by
+  unfold nonceIndex
+  exact Equiv.ofInjective_symm_apply h_inj i
+
+/-- **Phase 1 headline.** Bijection between the constrained Pi-set
+    `{f : Nonce → Tag // ∀ i, f (nonces i) = t i}` (functions agreeing
+    with `t` on `range nonces`) and the free Pi-set on the complement
+    `({n : Nonce // n ∉ Set.range nonces} → Tag)`.
+
+    The forward map *restricts* `f` to the complement; the inverse
+    map *extends* a function on the complement to all of `Nonce` by
+    using `t` (composed with the inverse of `nonces` on its range)
+    for the range elements. The bijection is `noncomputable` because
+    `Equiv.ofInjective` uses `Function.invFun`. -/
+private noncomputable def constrainedPiEquiv
+    [Fintype Nonce] [DecidableEq Nonce]
+    {Q : ℕ} (nonces : Fin Q → Nonce) (h_inj : Function.Injective nonces)
+    (t : Fin Q → Tag) :
+    {f : Nonce → Tag // ∀ i, f (nonces i) = t i}
+    ≃ ({n : Nonce // n ∉ Set.range nonces} → Tag) where
+  toFun := fun ⟨f, _⟩ n => f n.val
+  invFun := fun g =>
+    ⟨fun n =>
+        if h : n ∈ Set.range nonces then
+          t (nonceIndex nonces h_inj n h)
+        else
+          g ⟨n, h⟩,
+     fun i => by
+       have h_in : nonces i ∈ Set.range nonces := ⟨i, rfl⟩
+       simp only [dif_pos h_in]
+       congr 1
+       exact nonces_nonceIndex nonces h_inj i⟩
+  left_inv := fun ⟨f, hf⟩ => by
+    apply Subtype.ext
+    funext n
+    by_cases h : n ∈ Set.range nonces
+    · simp only [dif_pos h]
+      obtain ⟨i, rfl⟩ := h
+      rw [nonces_nonceIndex nonces h_inj i]
+      exact (hf i).symm
+    · simp only [dif_neg h]
+  right_inv := fun g => by
+    funext n
+    have h : n.val ∉ Set.range nonces := n.property
+    simp only [dif_neg h]
+
+-- ----------------------------------------------------------------------------
+-- Phase 2 — Cardinality of the constrained Pi-set (≈ 40 LOC)
+-- ----------------------------------------------------------------------------
+
+/-- The cardinality of the complement of `range nonces` (as a subtype)
+    equals `|Nonce| - Q` for an injective `nonces : Fin Q → Nonce`.
+    Combines `Fintype.card_subtype_compl` with the bijection
+    `Set.range nonces ≃ Fin Q` (from `Equiv.ofInjective`). -/
+private theorem compl_range_card
+    [Fintype Nonce] [DecidableEq Nonce]
+    {Q : ℕ} (nonces : Fin Q → Nonce) (h_inj : Function.Injective nonces) :
+    Fintype.card {n : Nonce // n ∉ Set.range nonces}
+    = Fintype.card Nonce - Q := by
+  -- Step 1: rewrite `card {n // ¬ p n}` to `card α - card {n // p n}`.
+  rw [Fintype.card_subtype_compl]
+  -- Step 2: `card {n // n ∈ Set.range nonces} = card (range nonces)` (via
+  -- the trivial `{n // n ∈ S} ≃ ↥S` Equiv) `= card (Fin Q) = Q` (via
+  -- `Equiv.ofInjective`).
+  congr 1
+  rw [show Fintype.card {n : Nonce // n ∈ Set.range nonces}
+      = Fintype.card (Set.range nonces) from rfl,
+      Fintype.card_congr (Equiv.ofInjective nonces h_inj).symm,
+      Fintype.card_fin]
+
+/-- **Phase 2 headline.** The cardinality of the constrained Pi-set
+    `{f : Nonce → Tag // ∀ i, f (nonces i) = t i}` equals
+    `(Fintype.card Tag) ^ (Fintype.card Nonce - Q)`.
+
+    Proof: use the Phase-1 Equiv `constrainedPiEquiv` to swap the
+    constrained Pi-set for the free Pi-set on the complement of
+    `range nonces`. The free Pi-set has cardinality `(Fintype.card
+    Tag) ^ (Fintype.card {n // n ∉ range nonces})` (via
+    `Fintype.card_fun`), and the inner cardinality is `|Nonce| - Q`
+    (via `compl_range_card`). -/
+private theorem constrainedPiCard
+    [Fintype Nonce] [Fintype Tag] [DecidableEq Nonce] [DecidableEq Tag]
+    {Q : ℕ} (nonces : Fin Q → Nonce) (h_inj : Function.Injective nonces)
+    (t : Fin Q → Tag) :
+    Fintype.card {f : Nonce → Tag // ∀ i, f (nonces i) = t i}
+    = (Fintype.card Tag) ^ (Fintype.card Nonce - Q) := by
+  rw [Fintype.card_congr (constrainedPiEquiv nonces h_inj t),
+      Fintype.card_fun, compl_range_card nonces h_inj]
+
+-- ----------------------------------------------------------------------------
+-- Phase 3 — Marginal-uniformity PMF identity (≈ 80 LOC)
+-- ----------------------------------------------------------------------------
+
+/-- **Phase 3 headline.** Pushing the uniform PMF on `(Nonce → Tag)`
+    through the projection `fun f => fun i => f (nonces i)` (for
+    injective `nonces : Fin Q → Nonce`) yields the uniform PMF on
+    `(Fin Q → Tag)`.
+
+    This is the **marginal-uniformity** lemma: the marginal of a
+    uniform distribution on a product Pi-type, projected at a fixed
+    coordinate set with constant preimage size (which the
+    injectivity of `nonces` provides), is uniform on the
+    projection's codomain.
+
+    **Proof outline.**
+    1. Apply `PMF.ext`. For each `t : Fin Q → Tag`, compute LHS via
+       `PMF.toOuterMeasure_map_apply` + `PMF.toOuterMeasure_uniformOfFintype_apply`.
+       This gives `Fintype.card (preimage) / Fintype.card (Nonce → Tag)`.
+    2. The preimage `proj⁻¹ {t}` (as a Set) bijects with the
+       constrained Pi-set `{f // ∀ i, f (nonces i) = t i}` (via
+       `Set.preimage` + `funext_iff`); cardinality from Phase 2 is
+       `|Tag| ^ (|Nonce| - Q)`.
+    3. `Fintype.card (Nonce → Tag) = |Tag| ^ |Nonce|` (by
+       `Fintype.card_fun`).
+    4. ENNReal arithmetic: `|Tag|^(n-Q) / |Tag|^n = 1 / |Tag|^Q`,
+       valid for `|Tag| ≠ 0`, `|Tag| ≠ ⊤`, `Q ≤ n` (from
+       `Fintype.card_le_of_injective` on `nonces`).
+    5. RHS via `uniformPMFTuple_apply`: `1 / |Tag|^Q`.
+    6. Equate. -/
+theorem PMF.map_eval_uniformOfFintype_at_injective_eq
+    [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
+    [DecidableEq Nonce] [DecidableEq Tag]
+    {Q : ℕ} (nonces : Fin Q → Nonce) (h_inj : Function.Injective nonces) :
+    PMF.map (fun f : Nonce → Tag => fun i : Fin Q => f (nonces i))
+            (uniformPMF (Nonce → Tag))
+    = uniformPMFTuple Tag Q := by
+  classical
+  apply PMF.ext
+  intro t
+  -- Set up positivity / finiteness side conditions.
+  have h_tag_pos : 0 < Fintype.card Tag := Fintype.card_pos
+  have h_tag_ne_zero : (Fintype.card Tag : ℝ≥0∞) ≠ 0 := by
+    exact_mod_cast h_tag_pos.ne'
+  have h_tag_ne_top : (Fintype.card Tag : ℝ≥0∞) ≠ ⊤ :=
+    ENNReal.natCast_ne_top _
+  have hQ_le : Q ≤ Fintype.card Nonce := by
+    have := Fintype.card_le_of_injective nonces h_inj
+    rw [Fintype.card_fin] at this
+    exact this
+  -- Step 1: RHS = (Fintype.card Tag)^Q ⁻¹.
+  rw [uniformPMFTuple_apply]
+  -- Step 2: LHS = uniformPMF.toOuterMeasure (preimage of {t}).
+  -- We use the identity (PMF.map f μ) b = (PMF.map f μ).toOuterMeasure {b},
+  -- which follows from PMF apply / outer measure consistency.
+  -- Then PMF.toOuterMeasure_map_apply identifies this with
+  -- μ.toOuterMeasure (f⁻¹ {b}).
+  have h_lhs_apply :
+      (PMF.map (fun f : Nonce → Tag => fun i : Fin Q => f (nonces i))
+              (uniformPMF (Nonce → Tag))) t
+      = ((Fintype.card {f : Nonce → Tag //
+            ∀ i, f (nonces i) = t i} : ℝ≥0∞) /
+        (Fintype.card (Nonce → Tag) : ℝ≥0∞)) := by
+    -- Reduce via PMF.map_apply and tsum_fintype.
+    rw [PMF.map_apply, tsum_fintype]
+    -- Goal: ∑ f, if t = (fun i => f (nonces i)) then (uniformPMF) f else 0 = ...
+    -- Each non-zero term has value uniformPMF f = 1/|Nonce → Tag|.
+    -- Rewrite all occurrences via simp_rw of PMF.uniformOfFintype_apply.
+    simp_rw [show (uniformPMF (Nonce → Tag)) =
+        (PMF.uniformOfFintype (Nonce → Tag)) from rfl,
+      PMF.uniformOfFintype_apply]
+    -- Convert to filter-sum.
+    rw [← Finset.sum_filter]
+    -- Sum of constant over filter.
+    rw [Finset.sum_const, nsmul_eq_mul]
+    -- Convert filter cardinality to subtype cardinality.
+    have h_filter_card_eq :
+        ((Finset.univ.filter
+            (fun f : Nonce → Tag => t = (fun i => f (nonces i)))).card : ℝ≥0∞)
+        = (Fintype.card {f : Nonce → Tag // ∀ i, f (nonces i) = t i} : ℝ≥0∞) := by
+      have h_eq :
+          Finset.univ.filter (fun f : Nonce → Tag => t = (fun i => f (nonces i)))
+          = Finset.univ.filter (fun f : Nonce → Tag => ∀ i, f (nonces i) = t i) := by
+        apply Finset.filter_congr
+        intro f _
+        constructor
+        · intro h i
+          have := congr_fun h i
+          exact this.symm
+        · intro h
+          funext i
+          exact (h i).symm
+      rw [h_eq]
+      rw [Fintype.card_subtype]
+    rw [h_filter_card_eq]
+    -- Goal: card_subtype * |Nonce → Tag|⁻¹ = card_subtype / |Nonce → Tag|.
+    rw [ENNReal.div_eq_inv_mul, mul_comm]
+  rw [h_lhs_apply]
+  -- Step 3: Substitute Phase-2 cardinality.
+  rw [constrainedPiCard nonces h_inj t, Fintype.card_fun]
+  -- After substitution, the goal has Nat.pow inside the cast (`↑(a^b)`).
+  -- Push casts through via `Nat.cast_pow` to get the ENNReal-pow form
+  -- (`↑a ^ b`).
+  simp only [Nat.cast_pow]
+  -- Goal: ((Fintype.card Tag : ℝ≥0∞) ^ (|Nonce|-Q)) / ((Fintype.card Tag : ℝ≥0∞) ^ |Nonce|)
+  --       = ((Fintype.card Tag : ℝ≥0∞) ^ Q)⁻¹
+  -- Step 4: ENNReal pow arithmetic.
+  -- Use |Tag|^|Nonce| = |Tag|^Q * |Tag|^(|Nonce|-Q) (via pow_add + Q + (|Nonce|-Q) = |Nonce|).
+  have h_pow_split :
+      (Fintype.card Tag : ℝ≥0∞) ^ (Fintype.card Nonce)
+      = (Fintype.card Tag : ℝ≥0∞) ^ Q
+        * (Fintype.card Tag : ℝ≥0∞) ^ (Fintype.card Nonce - Q) := by
+    rw [← pow_add]
+    congr 1
+    omega
+  rw [h_pow_split]
+  -- Goal: (|Tag|^(|Nonce|-Q)) / (|Tag|^Q * |Tag|^(|Nonce|-Q)) = (|Tag|^Q)⁻¹
+  -- Need: |Tag|^(|Nonce|-Q) ≠ 0, |Tag|^(|Nonce|-Q) ≠ ⊤.
+  have h_pow_ne_zero : (Fintype.card Tag : ℝ≥0∞) ^ (Fintype.card Nonce - Q) ≠ 0 :=
+    pow_ne_zero _ h_tag_ne_zero
+  have h_pow_ne_top : (Fintype.card Tag : ℝ≥0∞) ^ (Fintype.card Nonce - Q) ≠ ⊤ :=
+    ENNReal.pow_ne_top h_tag_ne_top
+  rw [ENNReal.div_eq_inv_mul, ENNReal.mul_inv (Or.inl (pow_ne_zero _ h_tag_ne_zero))
+        (Or.inl (ENNReal.pow_ne_top h_tag_ne_top))]
+  -- After the two rewrites the goal is:
+  --   ((a^Q)⁻¹ * (a^(n-Q))⁻¹) * a^(n-Q) = (a^Q)⁻¹
+  -- Re-associate: (a^Q)⁻¹ * ((a^(n-Q))⁻¹ * a^(n-Q)).
+  rw [mul_assoc]
+  -- Cancel: (a^(n-Q))⁻¹ * a^(n-Q) = 1.
+  rw [ENNReal.inv_mul_cancel h_pow_ne_zero h_pow_ne_top, mul_one]
+
+-- ----------------------------------------------------------------------------
+-- Phase 4 — `idealRandomOraclePRF_isPRFAtQueries` witness (≈ 25 LOC)
+-- ----------------------------------------------------------------------------
+
+/-- **Phase 4 headline.** The truly-random-oracle PRF is `0`-PRF in
+    the **Q-tuple form**, for every `Q : ℕ` and finite `Nonce`.
+
+    This is the substantive Q-tuple analogue of
+    `idealRandomOraclePRF_isPRF`: while the function-level form
+    follows trivially from `PMF.map_id`, the Q-tuple form requires
+    the marginal-uniformity argument from Phase 3.
+
+    **Cryptographic interpretation.** The Q-tuple ideal-oracle PMF
+    (sample `k_p ← (Nonce → Tag)` uniformly, evaluate at Q distinct
+    nonces) coincides exactly with the `Tag^Q` uniform PMF
+    (`uniformPMFTuple Tag Q`). Hence the advantage between the two
+    distributions is `0` for every distinguisher.
+
+    **Proof**: Apply Phase 3's marginal-uniformity to identify the
+    real and ideal distributions; close with `advantage_self`.
+-/
+theorem idealRandomOraclePRF_isPRFAtQueries
+    [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
+    [DecidableEq Nonce] [DecidableEq Tag] (Q : ℕ) :
+    IsPRFAtQueries (idealRandomOraclePRF Nonce Tag) Q 0 := by
+  intro nonces D h_inj
+  -- Goal: advantage D μ_real μ_ideal ≤ 0
+  -- where μ_real = PMF.map (fun k_p => fun i => idealRandomOraclePRF k_p (nonces i)) ...
+  -- and μ_ideal = uniformPMFTuple Tag Q.
+  unfold idealRandomOraclePRF
+  -- Goal: advantage D (PMF.map (fun k_p => fun i => k_p (nonces i)) ...)
+  --                  (uniformPMFTuple Tag Q) ≤ 0
+  rw [PMF.map_eval_uniformOfFintype_at_injective_eq nonces h_inj]
+  -- Goal: advantage D (uniformPMFTuple Tag Q) (uniformPMFTuple Tag Q) ≤ 0
+  -- Close with advantage_self (= 0, hence ≤ 0).
+  exact (advantage_self D _).le
+
+-- ----------------------------------------------------------------------------
+-- Phase 5 — `IsPRF.toIsPRFAtQueries` bridge (≈ 50 LOC)
+-- ----------------------------------------------------------------------------
+
+/-- **Phase 5 headline.** Function-level PRF security implies Q-tuple
+    PRF security (under finite Nonce).
+
+    Any Q-tuple distinguisher `D : (Fin Q → Tag) → Bool` lifts to a
+    function-level distinguisher `D' : (Nonce → Tag) → Bool` via
+    post-composition with the projection. Their advantages on the
+    respective Q-tuple / function-level distributions are equal,
+    courtesy of the marginal-uniformity (Phase 3): both the real
+    and ideal Q-tuple distributions are pushforwards of their
+    function-level counterparts under the same projection.
+
+    **Cryptographic interpretation.** A PRF whose function-level
+    output is indistinguishable from a uniformly-random function
+    is also indistinguishable when we observe only Q output values
+    at distinct nonces. The reverse direction (Q-tuple ⇒
+    function-level) does *not* hold in general: function-level
+    distinguishers can correlate output values across many nonces,
+    whereas Q-tuple distinguishers see only Q observations. -/
+theorem IsPRF.toIsPRFAtQueries [Fintype K_p] [Nonempty K_p]
+    [Fintype Nonce] [Fintype Tag] [Nonempty Tag]
+    [DecidableEq Nonce] [DecidableEq Tag]
+    {prf : K_p → Nonce → Tag} {ε : ℝ}
+    (h : IsPRF prf ε) (Q : ℕ) :
+    IsPRFAtQueries prf Q ε := by
+  intro nonces D h_inj
+  classical
+  -- Define the simulating function-level distinguisher D':
+  --   D' f := D (fun i => f (nonces i)).
+  set D' : (Nonce → Tag) → Bool := fun f => D (fun i => f (nonces i)) with hD'_def
+  -- Step 5.1: real-side factorisation via PMF.map_comp.
+  -- The Q-tuple real PMF is the function-level real PMF post-composed with proj.
+  have h_real_factor :
+      PMF.map (fun k_p : K_p => fun i => prf k_p (nonces i)) (uniformPMF K_p)
+      = PMF.map (fun f : Nonce → Tag => fun i => f (nonces i))
+          (PMF.map (fun k_p : K_p => fun n => prf k_p n) (uniformPMF K_p)) := by
+    rw [PMF.map_comp]
+    rfl
+  -- Step 5.2: ideal-side factorisation via Phase 3.
+  have h_ideal_factor :
+      uniformPMFTuple Tag Q
+      = PMF.map (fun f : Nonce → Tag => fun i => f (nonces i))
+          (uniformPMF (Nonce → Tag)) :=
+    (PMF.map_eval_uniformOfFintype_at_injective_eq nonces h_inj).symm
+  -- Step 5.3: rewrite the advantage to the function-level shape.
+  -- The key identity: advantage D (μ.map f) (ν.map f) = advantage (D ∘ f) μ ν,
+  -- because probTrue (μ.map f) D = probTrue μ (D ∘ f) (probTrue_map).
+  -- We apply this manually to bridge to the function-level distinguisher D'.
+  have h_advantage_eq :
+      advantage D
+        (PMF.map (fun k_p : K_p => fun i => prf k_p (nonces i)) (uniformPMF K_p))
+        (uniformPMFTuple Tag Q)
+      = advantage D'
+        (PMF.map (fun k_p : K_p => fun n => prf k_p n) (uniformPMF K_p))
+        (uniformPMF (Nonce → Tag)) := by
+    rw [h_real_factor, h_ideal_factor]
+    unfold advantage
+    -- Goal: |(probTrue (μ.map proj) D).toReal - (probTrue (ν.map proj) D).toReal|
+    --       = |(probTrue μ D').toReal - (probTrue ν D').toReal|
+    -- Both probTrue expressions can be pushed through .map via probTrue_map.
+    rw [probTrue_map (μ := PMF.map _ (uniformPMF K_p)),
+        probTrue_map (μ := uniformPMF (Nonce → Tag))]
+    -- The function-composition `D ∘ (fun f => fun i => f (nonces i))`
+    -- is definitionally equal to D' = fun f => D (fun i => f (nonces i)).
+    rfl
+  rw [h_advantage_eq]
+  -- Apply the function-level IsPRF hypothesis to D'.
+  exact h D'
 
 end Orbcrypt

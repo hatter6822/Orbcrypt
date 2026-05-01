@@ -8474,6 +8474,112 @@ Workstream R-05 framework landing (audit 2026-04-29 § 8.1, plan
 - GitHub Actions CI passes on push
 - Dependency graph and axiom transparency report documented
 
+Workstream R-05 refinement — Marginal-uniformity proof + Q-tuple
+ideal-oracle witness (audit 2026-05-01 follow-up, plan
+`/root/.claude/plans/shiny-squishing-sutton.md`) has been completed
+(2026-05-01):
+
+- **Problem.** The R-05 framework landing (2026-05-01) introduced
+  `IsPRFAtQueries` as the Q-tuple PRF predicate (more general than
+  the function-level `IsPRF`; works for arbitrary nonce types).
+  However, the Q-tuple ideal-oracle witness
+  `idealRandomOraclePRF_isPRFAtQueries` was research-scope (R-05⁺)
+  because it required the **marginal-uniformity** lemma: that
+  pushing a uniform PMF on `(Nonce → Tag)` through projection at
+  injective `nonces : Fin Q → Nonce` yields the uniform PMF on
+  `(Fin Q → Tag)`. The user directed this be substantively proved
+  ("the implementation should match the more general approach").
+
+- **Mathematical content.** The marginal-uniformity proof factors
+  into 5 mathematical layers:
+  1. **Pi-type Equiv**: bijection between the constrained Pi-set
+     `{f : Nonce → Tag // ∀ i, f (nonces i) = t i}` (functions
+     agreeing with `t` on `Set.range nonces`) and the free Pi-set
+     `{n : Nonce // n ∉ Set.range nonces} → Tag`. Built via
+     `Equiv.ofInjective` + explicit branching `if h : n ∈ Set.range
+     nonces then ... else ...`.
+  2. **Cardinality**: the constrained set has cardinality
+     `(Fintype.card Tag) ^ (Fintype.card Nonce - Q)`, derived via
+     `Fintype.card_fun` + `Fintype.card_subtype_compl` +
+     `Fintype.card_congr` over the Equiv.
+  3. **PMF identity**: `PMF.map proj uniformPMF = uniformPMFTuple
+     Tag Q` via `PMF.map_apply` + Finset-sum-of-indicators +
+     ENNReal pow arithmetic (`a^(n-Q) / a^n = 1/a^Q` under
+     `a ≠ 0, ⊤` and `Q ≤ n`).
+  4. **Q-tuple ideal-oracle witness**:
+     `idealRandomOraclePRF_isPRFAtQueries` derives from layer 3 +
+     `advantage_self`.
+  5. **Bridge**: `IsPRF.toIsPRFAtQueries` (function-level → Q-tuple
+     under finite Nonce) via `PMF.map_comp` + `probTrue_map`
+     pushing the Q-tuple distinguisher through the projection.
+
+- **Files added/modified.**
+  * `Orbcrypt/AEAD/NoncedMAC.lean` — added Phases 1-5 (~265 LOC):
+    `decidableMemRange`, `nonceIndex`, `constrainedPiEquiv` (Phase
+    1); `constrainedPiCard`, `compl_range_card` (Phase 2);
+    `PMF.map_eval_uniformOfFintype_at_injective_eq` (Phase 3);
+    `idealRandomOraclePRF_isPRFAtQueries` (Phase 4);
+    `IsPRF.toIsPRFAtQueries` (Phase 5). Updated `IsPRF` signature:
+    `(ε : ℝ≥0∞)` → `(ε : ℝ)` (matches `ConcreteOIA` convention;
+    eliminates the `⊤`-collapse degeneracy where `⊤.toReal = 0`
+    inverted expected monotonicity).
+  * `Orbcrypt/AEAD/NoncedMACSecurity.lean` — added Phase 6 (~30
+    LOC): `nonceCarterWegmanMAC_isPRFAtQueries`,
+    `nonceBitstringPolynomialMAC_isPRFAtQueries`. Updated
+    `noncedMAC_research_scope_disclosure` to include the new
+    Q-tuple witness as unconditional content. Phase 7: rename
+    `r05_research_scope_disclosure` →
+    `noncedMAC_research_scope_disclosure` (CLAUDE.md naming-
+    discipline rule); doc-vs-code parity fix removing dangling
+    `IsNoncedQtimeSUFCMABoundShape` reference.
+  * `scripts/audit_phase_16.lean` — Phase 8 (~30 LOC): § 15.27 with
+    5 new `#print axioms` entries + `MarginalUniformityNonVacuity`
+    namespace with 6 non-vacuity examples. Updated old `IsPRF.mono`
+    test to use `ε : ℝ` (post-refinement signature).
+  * `lakefile.lean` — version bump `0.3.1 → 0.3.2`; comment block
+    extended with R-05 refinement entry.
+
+- **Verification posture preserved.**
+  * `lake build` succeeds across **3,424 jobs** (unchanged from
+    pre-refinement; new declarations are inside existing modules).
+  * `scripts/audit_phase_16.lean` runs cleanly with exit code 0;
+    every R-05-refinement declaration depends only on the standard
+    Lean trio (`propext`, `Classical.choice`, `Quot.sound`); zero
+    `sorryAx`, zero non-standard axioms.
+  * Module count: **81** (unchanged).
+  * `#print axioms` total: 1073 → **1078** (+5 new entries:
+    `PMF.map_eval_uniformOfFintype_at_injective_eq`,
+    `idealRandomOraclePRF_isPRFAtQueries`,
+    `IsPRF.toIsPRFAtQueries`,
+    `nonceCarterWegmanMAC_isPRFAtQueries`,
+    `nonceBitstringPolynomialMAC_isPRFAtQueries`).
+  * Public declaration count: rises by ~10 (~5 new theorems + ~5
+    helper definitions).
+
+- **Patch version.** `lakefile.lean` bumped from `0.3.1` to
+  `0.3.2`. The 81-module total, the zero-sorry / zero-custom-axiom
+  posture, and the standard-trio-only axiom-dependency posture are
+  all preserved.
+
+- **Naming-discipline posture.** All new declarations follow the
+  "Names describe content, never provenance" rule. Forbidden
+  tokens (`r05`, `phase`, `audit`, etc.) absent from declaration
+  names.
+
+- **Security-by-docstring posture.** The two PRF predicates
+  (`IsPRF`, `IsPRFAtQueries`) substantively prove their advertised
+  cryptographic property at the truly-random oracle (ε = 0); the
+  bridge `IsPRF.toIsPRFAtQueries` connects the two formulations.
+
+- **Remaining R-05 follow-ups.** The headline reduction theorem
+  `noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF` (with bound
+  `Q · ε_h + ε_p + 1/|Tag|`) remains research-scope R-05⁺. The
+  cryptographic content is the standard Wegman–Carter 1981 §3
+  analysis; the Lean formalisation is multi-day work (per the
+  plan's Phase 3 budget of ~280 LOC / ~4.5 days). This refinement
+  closes the marginal-uniformity gap, making R-05 substantively
+  closer to closure.
+
 ## Vulnerability reporting
 
 While executing any task in this codebase, if you discover a possible software vulnerability that could reasonably warrant a CVE (Common Vulnerabilities and Exposures) designation, you **must** immediately report it to the user before continuing. This applies to vulnerabilities found in:

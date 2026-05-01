@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.1"
+  version := v!"0.3.2"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -67,6 +67,21 @@ package "orbcrypt" where
 -- the plan's Phase 3 budget (~280 LOC / ~4.5 days for the proof).
 -- Trivial `_le_one` Q-time SUF-CMA bounds are unconditional. Patch
 -- bump 0.3.0 → 0.3.1.
+-- Workstream R-05 refinement (2026-05-01, plan
+-- `/root/.claude/plans/shiny-squishing-sutton.md`): substantively
+-- closes the Q-tuple form `IsPRFAtQueries` of the truly-random-
+-- oracle PRF witness via the marginal-uniformity lemma
+-- `PMF.map_eval_uniformOfFintype_at_injective_eq` (Pi-type
+-- cardinality counting via `constrainedPiEquiv` +
+-- `constrainedPiCard` + ENNReal pow arithmetic). Adds the
+-- `IsPRF.toIsPRFAtQueries` bridge (function-level → Q-tuple, under
+-- finite Nonce). New concrete specialisations
+-- `nonceCarterWegmanMAC_isPRFAtQueries`,
+-- `nonceBitstringPolynomialMAC_isPRFAtQueries`. Naming fix: rename
+-- `r05_research_scope_disclosure` → `noncedMAC_research_scope_disclosure`.
+-- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
+-- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
+-- 0.3.1 → 0.3.2.
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md

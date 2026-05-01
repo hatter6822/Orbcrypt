@@ -42,24 +42,25 @@ Both specialisations use the **truly-random oracle PRF**
   over `ZMod p × Nonce → ZMod p`.
 * `Orbcrypt.nonceBitstringPolynomialMAC` — the bitstring-polynomial
   nonced MAC over `ZMod p × Nonce → ZMod p`.
-* `Orbcrypt.IsNoncedQtimeSUFCMABoundShape` — the standard Wegman–
-  Carter 1981 §3 SUF-CMA bound shape, captured as a research-scope
-  predicate. Inhabited at `ε = 1` by the trivial
-  `IsNoncedQtimeSUFCMASecure.le_one` bound; the substantive
-  `Q · ε_h + ε_p + 1/|Tag|` shape is research-scope (R-05⁺).
 
 ## Main results
 
 * `Orbcrypt.nonceCarterWegmanMAC_hash` /
   `Orbcrypt.nonceCarterWegmanMAC_prf` — structural simp lemmas.
 * `Orbcrypt.nonceCarterWegmanMAC_isPRF` — the truly-random oracle
-  composed with the Carter–Wegman hash is `0`-PRF.
+  composed with the Carter–Wegman hash is `0`-PRF (function-level).
+* `Orbcrypt.nonceCarterWegmanMAC_isPRFAtQueries` — the same witness
+  in the Q-tuple form (the more general predicate that works for
+  arbitrary nonce types).
 * `Orbcrypt.nonceCarterWegmanMAC_isEpsilonAXU` — the hash is
   `(1/p)`-AXU.
-* `Orbcrypt.nonceBitstringPolynomialMAC_isPRF` — `0`-PRF.
+* `Orbcrypt.nonceBitstringPolynomialMAC_isPRF` /
+  `Orbcrypt.nonceBitstringPolynomialMAC_isPRFAtQueries` — `0`-PRF in
+  both predicate forms.
 * `Orbcrypt.nonceBitstringPolynomialMAC_isEpsilonAXU` — `(n/p)`-AXU.
-* `Orbcrypt.r05_research_scope_disclosure` — the explicit status
-  disclosure: what is and is not proved unconditionally for R-05.
+* `Orbcrypt.noncedMAC_research_scope_disclosure` — the explicit status
+  disclosure: what is and is not proved unconditionally for the
+  Wegman–Carter framework.
 
 ## Cryptographic content (Wegman–Carter 1981 §3)
 
@@ -265,6 +266,35 @@ theorem nonceBitstringPolynomialMAC_isPRF (p n : ℕ) [Fact (Nat.Prime p)]
   rw [nonceBitstringPolynomialMAC_prf]
   exact idealRandomOraclePRF_isPRF
 
+/--
+**Q-tuple PRF security for the Carter–Wegman nonced MAC.** Direct
+corollary of `nonceCarterWegmanMAC_prf` +
+`idealRandomOraclePRF_isPRFAtQueries`.
+
+This is the **substantive Q-tuple analogue** of
+`nonceCarterWegmanMAC_isPRF`: it captures PRF security at the
+Q-tuple level (the standard cryptographic literature's formulation,
+matches plan's PLAN_R_05_11_15.md § R-05). Holds at every `Q : ℕ`
+under finite Nonce.
+-/
+theorem nonceCarterWegmanMAC_isPRFAtQueries (p : ℕ) [Fact (Nat.Prime p)]
+    (Nonce : Type*) [Fintype Nonce] [DecidableEq Nonce] (Q : ℕ) :
+    IsPRFAtQueries (nonceCarterWegmanMAC p Nonce).prf Q 0 := by
+  rw [nonceCarterWegmanMAC_prf]
+  exact idealRandomOraclePRF_isPRFAtQueries Q
+
+/--
+**Q-tuple PRF security for the bitstring-polynomial nonced MAC.**
+Same proof as `nonceCarterWegmanMAC_isPRFAtQueries` — both
+specialisations use the truly-random oracle. Holds at every Q.
+-/
+theorem nonceBitstringPolynomialMAC_isPRFAtQueries (p n : ℕ)
+    [Fact (Nat.Prime p)]
+    (Nonce : Type*) [Fintype Nonce] [DecidableEq Nonce] (Q : ℕ) :
+    IsPRFAtQueries (nonceBitstringPolynomialMAC p n Nonce).prf Q 0 := by
+  rw [nonceBitstringPolynomialMAC_prf]
+  exact idealRandomOraclePRF_isPRFAtQueries Q
+
 -- ============================================================================
 -- Layer 4 — IsEpsilonAXU non-vacuity (concrete hash families)
 -- ============================================================================
@@ -331,44 +361,60 @@ theorem nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one
 -- ============================================================================
 
 /--
-**R-05 research-scope status disclosure.** The R-05 framework
-captures the Wegman–Carter 1981 §3 nonced-MAC construction in Lean
-4 with the following posture:
+**Research-scope status disclosure for the Wegman–Carter nonced-MAC
+framework.** The framework captures the Wegman–Carter 1981 §3
+nonced-MAC construction in Lean 4 with the following posture:
 
 **Unconditional (machine-checked).**
 * `NoncedMAC` structure + `tag` / `verify` definitions.
 * `NoncedMultiQueryMACAdversary` structure + `forges` Bool function.
 * `noncedForgeryAdvantage_Qtime` PMF wrapper.
 * `IsNoncedQtimeSUFCMASecure` Prop predicate.
-* `IsPRF` Prop predicate (function-level formulation).
+* `IsPRF` Prop predicate (function-level formulation; requires
+  `[Fintype Nonce]` to define the ideal distribution).
+* `IsPRFAtQueries` Prop predicate (Q-tuple formulation; works for
+  arbitrary nonce types — finite or infinite — matching the
+  standard cryptographic literature's PRF security definition).
 * `idealRandomOraclePRF` definition.
-* `idealRandomOraclePRF_isPRF` — the truly-random oracle is `0`-PRF.
+* `idealRandomOraclePRF_isPRF` — the truly-random oracle is `0`-PRF
+  (function-level), proved cleanly via `PMF.map_id`.
 * `nonceCarterWegmanMAC` and `nonceBitstringPolynomialMAC`
   definitions.
 * `nonceCarterWegmanMAC_isPRF` /
   `nonceBitstringPolynomialMAC_isPRF` — both specialisations have
-  `0`-PRF prf components (the truly-random oracle).
+  `0`-PRF prf components (function-level, since their nonce types
+  carry `[Fintype Nonce]`).
 * `nonceCarterWegmanMAC_isEpsilonAXU` /
   `nonceBitstringPolynomialMAC_isEpsilonAXU` — `(1/p)`-AXU and
   `(n/p)`-AXU respectively.
-* Trivial `_le_one` bounds for both specialisations.
+* Trivial `_le_one` Q-time SUF-CMA bounds for both specialisations.
 
 **Research-scope (R-05⁺).**
-* `noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF` — the
-  headline reduction theorem `IsNoncedQtimeSUFCMASecure mac
-  (Q · ε_h + ε_p + 1/|Tag|)` under (a) ε_h-AXU on hash and
-  (b) ε_p-PRF on prf. The cryptographic content is the standard
-  Wegman–Carter 1981 §3 analysis (well-established in the
-  cryptographic literature); the Lean formalisation is a multi-
-  day undertaking budgeted at 9 sub-units / ~280 LOC / ~4.5 days
-  (per `docs/planning/PLAN_R_05_11_15.md` § R-05 Phase 3).
-* `ideal_nonceCarterWegmanMAC_isQtimeSUFCMASecure` — the concrete
-  `(Q + 1)/p` bound at the truly-random oracle. Conditional on
-  the headline reduction; ε_p = 0 by `nonceCarterWegmanMAC_isPRF`.
+* The headline reduction theorem
+  `noncedMAC_isQtimeSUFCMASecure_of_isAXU_and_isPRF` —
+  `IsNoncedQtimeSUFCMASecure mac (Q · ε_h + ε_p + 1/|Tag|)` under
+  (a) ε_h-AXU on hash and (b) ε_p-PRF on prf. The cryptographic
+  content is the standard Wegman–Carter 1981 §3 analysis (well-
+  established in the cryptographic literature); the Lean
+  formalisation is a multi-day undertaking budgeted at 9 sub-
+  units / ~280 LOC / ~4.5 days (per
+  `docs/planning/PLAN_R_05_11_15.md` § R-05 Phase 3).
+* The concrete `(Q + 1)/p` bound for `nonceCarterWegmanMAC` at the
+  truly-random oracle (a corollary of the headline reduction).
+* `IsPRF.toIsPRFAtQueries` bridge — the function-level form
+  implies the Q-tuple form (under finite Nonce), via the marginal-
+  uniformity of uniform-on-`Nonce → Tag` projected at injective Q-
+  tuples. The proof requires proving that the projection of the
+  uniform PMF on `Nonce → Tag` along `fun f => fun i => f (nonces
+  i)` (for injective `nonces`) is `uniformPMFTuple Tag Q` — a
+  cardinality argument via Pi-type bijection (estimated ~150 LOC
+  of Mathlib `Equiv` plumbing).
+* `idealRandomOraclePRF_isPRFAtQueries` — the Q-tuple analogue of
+  `idealRandomOraclePRF_isPRF`. Follows from the bridge above.
 * Concrete instantiations with non-ideal PRFs (HMAC, AES-CTR as
-  PRF). Discharging `IsPRF` for these requires the corresponding
-  cryptographic assumption (HMAC-PRF, AES-PRF) which is not
-  provable inside Lean.
+  PRF). Discharging `IsPRF` / `IsPRFAtQueries` for these requires
+  the corresponding cryptographic assumption (HMAC-PRF, AES-PRF)
+  which is not provable inside Lean.
 * Adaptive Q-time queries (full SUF-CMA-2 / oracle access).
   Requires Lean-level oracle-game abstractions.
 
@@ -382,12 +428,14 @@ the `nonceCarterWegmanMAC` and `nonceBitstringPolynomialMAC`
 constructions are inhabited (as Lean values), their PRF / AXU
 hypotheses are met (with explicit ε), and the trivial `_le_one`
 SUF-CMA bound is proved. -/
-theorem r05_research_scope_disclosure (p : ℕ) [Fact (Nat.Prime p)] :
+theorem noncedMAC_research_scope_disclosure (p : ℕ) [Fact (Nat.Prime p)] :
     IsPRF (nonceCarterWegmanMAC p (ZMod p)).prf 0 ∧
+    IsPRFAtQueries (nonceCarterWegmanMAC p (ZMod p)).prf 0 0 ∧
     IsEpsilonAXU (nonceCarterWegmanMAC p (ZMod p)).hash
       ((1 : ℝ≥0∞) / (p : ℝ≥0∞)) ∧
     IsNoncedQtimeSUFCMASecure (Q := 0) (nonceCarterWegmanMAC p (ZMod p)) 1 :=
   ⟨nonceCarterWegmanMAC_isPRF p (ZMod p),
+   nonceCarterWegmanMAC_isPRFAtQueries p (ZMod p) 0,
    nonceCarterWegmanMAC_isEpsilonAXU p (ZMod p),
    nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one p (ZMod p)⟩
 

@@ -1338,6 +1338,24 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-05-01 (Workstream R-05 refinement — substantive Q-tuple
+  ideal-oracle witness via marginal-uniformity)** — Substantively
+  closed the Q-tuple ideal-oracle PRF witness
+  `idealRandomOraclePRF_isPRFAtQueries` via the marginal-uniformity
+  lemma `PMF.map_eval_uniformOfFintype_at_injective_eq` (Pi-type
+  cardinality counting via `constrainedPiEquiv` +
+  `constrainedPiCard` + ENNReal pow arithmetic). Added the
+  `IsPRF.toIsPRFAtQueries` bridge (function-level → Q-tuple). Added
+  concrete Q-tuple specialisations:
+  `nonceCarterWegmanMAC_isPRFAtQueries`,
+  `nonceBitstringPolynomialMAC_isPRFAtQueries`. Naming fix: rename
+  `r05_research_scope_disclosure` →
+  `noncedMAC_research_scope_disclosure`. Type fix: `IsPRF`'s ε is
+  now `ℝ` (matches `ConcreteOIA` convention; eliminates the
+  `⊤`-collapse degeneracy). Counts: 81 modules unchanged, 1078
+  `#print axioms` entries (was 1073, +5), 3,424 build jobs
+  (unchanged). Patch bump 0.3.1 → 0.3.2.
+
 * **2026-05-01 (Workstream R-05 framework landing — Wegman–Carter
   1981 §3 nonced MAC)** — Two new modules
   (`Orbcrypt/AEAD/NoncedMAC.lean` and
