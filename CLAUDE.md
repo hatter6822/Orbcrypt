@@ -8101,6 +8101,227 @@ completed (2026-04-30):
   but are *not* landed by this PR; their discharge is planned for
   follow-up work units.
 
+Workstream R-14 + R-08 + R-13⁺ + R-16 Research-Scope Discharge
+(audit 2026-04-29 § 8.1, plan
+`docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 / §
+R-13⁺ / § R-16) has been completed (2026-05-01):
+
+- **R-14 — Generic probabilistic MAC SUF-CMA framework.** New module
+  `Orbcrypt/AEAD/MACSecurity.lean` (~770 LOC) plus extensions to
+  `Orbcrypt/Probability/UniversalHash.lean` (~440 LOC of additions).
+
+  * `IsEpsilonAXU` / `IsEpsilonSU2` predicates added to
+    `UniversalHash.lean`. ε-SU2 is the *strongly-universal-2*
+    property: for distinct messages `m₁ ≠ m₂` and arbitrary tag pair
+    `(t₁, t₂)`, the joint probability `Pr_k[h k m₁ = t₁ ∧ h k m₂ =
+    t₂]` is at most `ε / |Tag|`. Strictly stronger than both
+    ε-universal and ε-AXU.
+  * `IsEpsilonSU2.toIsEpsilonUniversal` and `_.toIsEpsilonAXU`:
+    SU2 → universal and SU2 → AXU corollaries via the disjoint-
+    union decomposition of the diagonal / output-difference event
+    over `t : Tag`. Each summing argument exploits Mathlib's
+    `Finset.card_biUnion` (with disjointness from the unique-
+    `h k m₁` value parametrising the partition) plus
+    `Finset.sum_const` and `ENNReal.mul_div_cancel`.
+  * `IsEpsilonSU2.ofJointCollisionCardBound`: structural sufficient
+    condition — bound the joint-collision Finset card by `C`,
+    conclude `(C · |Tag|) / |K|`-SU2.
+  * `MACAdversary` (1-time, functional shape mirroring `Adversary`
+    in `Crypto/Security.lean`), `MACAdversary.forges`,
+    `forgeryAdvantage`, `IsSUFCMASecure` plus the standard `_nonneg`
+    / `_le_one` bounds.
+  * `MultiQueryMACAdversary` (Q-time non-adaptive),
+    `MultiQueryMACAdversary.forges`, `forgeryAdvantage_Qtime`,
+    `IsQtimeSUFCMASecure` plus the standard `_nonneg` / `_le_one`
+    bounds.
+  * **`IsDeterministicTagMAC`** predicate (NEW abstraction):
+    captures the property `verify k m t = decide (t = tag k m)` as
+    a `Prop` over a `MAC` value. Lets the framework reduce
+    `mac.verify` to decide-equality without forcing
+    `MACSecurity.lean` to import any concrete construction. Closes
+    a circular-import gap (MACSecurity uses `deterministicTagMAC`
+    semantics; CarterWegmanMAC supplies `deterministicTagMAC`; the
+    predicate-based abstraction breaks the cycle cleanly).
+  * **Headline reduction `isSUFCMASecure_of_isEpsilonSU2`** (Stinson
+    1994 Theorem 1): any deterministic-tag MAC whose `tag` is an
+    ε-SU2 hash is `ε`-SUF-CMA-secure (1-time). Proof structure:
+    1. Express `Pr[Win]` as a sum over `t_q : Tag` of per-`t_q`
+       conditional probabilities (each `k` has a unique `t_q :=
+       h k m_q`, so the win event partitions over `t_q`).
+    2. Per-`t_q`: case-split on whether `m'(t_q) = m_q`. Collision
+       case contributes 0 (fresh-message constraint fails); non-
+       collision case is bounded by `ε / |Tag|` via SU2.
+    3. Sum over `|Tag|` terms: `|Tag| · (ε / |Tag|) = ε`.
+    Implemented in cardinality space with `Finset.biUnion` +
+    `Finset.card_biUnion` + `ENNReal.div_le_iff` for the final
+    `.toReal` conversion.
+  * **`IsKeyRecoverableForSomeQueries`** predicate: existential
+    witness predicate for the Q-time NEGATIVE result.
+  * **Headline negative theorem
+    `not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries`**:
+    when the hash is key-recoverable from a specific Q-tuple of
+    queries, the corresponding deterministic-tag MAC is **not**
+    `ε`-(Q+1)-time-SUF-CMA-secure for any `ε < 1`. Constructs an
+    explicit (Q+1)-time adversary using two distinct fresh
+    messages (one for query padding, one for the forge target),
+    proves `forgeryAdvantage_Qtime = 1` deterministically, and
+    contradicts `ε < 1`.
+
+- **R-08 — Carter–Wegman SU2 + 1-time SUF-CMA + Q-time NEGATIVE.**
+  Extension to `Orbcrypt/AEAD/CarterWegmanMAC.lean` (~200 LOC).
+
+  * `carterWegmanSolve` (private, noncomputable): closed-form
+    unique-solution map `((t₁ - t₂) / (m₁ - m₂), t₁ - k₁ · m₁)`
+    for the Carter–Wegman 2×2 linear system in the field `ZMod p`.
+  * `carterWegmanHash_joint_collision_card_eq_one` (private):
+    joint-collision filter equals the singleton
+    `{carterWegmanSolve}`, hence card = 1.
+  * **`carterWegmanHash_isEpsilonSU2`** (R-08 SU2 headline):
+    Carter–Wegman is `(1/p)`-SU2 over `ZMod p`. Apply
+    `IsEpsilonSU2.ofJointCollisionCardBound` with `C = 1`, then
+    rewrite `(1 · p) / p² = 1/p`.
+  * **`carterWegmanHash_isEpsilonAXU`**: corollary via
+    `.toIsEpsilonAXU`.
+  * **`carterWegmanMAC_isSUFCMASecure`** (R-08 1-time headline):
+    `(1/p)`-SUF-CMA-secure (1-time), via composition with
+    `isSUFCMASecure_of_isEpsilonSU2`.
+  * `carterWegmanRecover` (private, noncomputable): explicit
+    linear-system inversion at messages `(0, 1)`.
+  * **`carterWegmanHash_isKeyRecoverableForSomeQueries`**: witness
+    `Q = 2` recovery using `![0, 1]` (distinct in `ZMod p` for
+    `p ≥ 2`).
+  * **`not_carterWegmanMAC_isQtimeSUFCMASecure`** (R-08 Q-time
+    NEGATIVE headline): at `p ≥ 4`, no `ε < 1` bound holds for
+    `Q = 3`-time SUF-CMA. Cardinality side condition: `|ZMod p|
+    = p ≥ 4 = (Q + 1) + 1`.
+
+- **R-13⁺ — Bitstring-polynomial SU2 + 1-time SUF-CMA + Q-time
+  NEGATIVE.** Extension to
+  `Orbcrypt/AEAD/BitstringPolynomialMAC.lean` (~280 LOC).
+
+  * `bitstringDiffPolynomialShifted` (private, noncomputable):
+    `Δ - C δ` for the joint-collision-at-(t₁, t₂) reduction.
+  * `bitstringDiffPolynomialShifted_natDegree_le` (private): degree
+    ≤ n via `Polynomial.natDegree_sub_le` + `natDegree_C ≤ 0`.
+  * `bitstringDiffPolynomialShifted_ne_zero_of_ne` (private):
+    non-zero for `b₁ ≠ b₂` via the disagreeing-position coefficient
+    at index ≥ 1 (unaffected by the constant-coefficient shift).
+  * `bitstringPolynomialHash_joint_keys_card_le` (private):
+    k₁-projection of the joint-collision filter has card ≤ n via
+    the polynomial-roots bound on the shifted-difference
+    polynomial.
+  * `bitstringPolynomialHash_joint_collision_card_le` (private):
+    joint-card on `ZMod p × ZMod p` ≤ n via `Set.InjOn` of the
+    k₁-projection (k.2 uniquely determined by k.1 and t₁).
+  * **`bitstringPolynomialHash_isEpsilonSU2`** (R-13⁺ SU2
+    headline): `(n / p)`-SU2.
+  * **`bitstringPolynomialHash_isEpsilonAXU`**: corollary via
+    `.toIsEpsilonAXU`.
+  * **`bitstringPolynomialMAC_isSUFCMASecure`** (R-13⁺ 1-time
+    headline): `(n / p)`-SUF-CMA-secure (1-time).
+  * `bitstringPolynomialRecover` (private, noncomputable): explicit
+    recovery from witness queries `(e₀, 0)` (one-hot at position 0
+    + all-false bitstring).
+  * **`bitstringPolynomialHash_isKeyRecoverableForSomeQueries`**:
+    witness `Q = 2` recovery requires `n ≥ 1`.
+  * **`not_bitstringPolynomialMAC_isQtimeSUFCMASecure`** (R-13⁺
+    Q-time NEGATIVE headline): at `n ≥ 2`, no `ε < 1` bound holds
+    for `Q = 3`-time SUF-CMA. Cardinality side condition:
+    `|Bitstring n| = 2^n ≥ 4`.
+
+- **R-16 — HGOE invariants beyond Hamming weight.** New module
+  `Orbcrypt/Construction/HGOEInvariants.lean` (~310 LOC).
+
+  * **Block-sum invariant.** `blockSum block b j := |{i ∈ block j :
+    b i = true}|` — per-block bit-count vector. Generalises
+    `hammingWeight` (the single-block partition recovers
+    Hamming weight). The `PreservesBlocks` predicate captures
+    "every group element setwise-permutes each block";
+    `blockSum_invariant_of_preservesBlocks` proves G-invariance via
+    a `Finset.card_bij` between `(g • b)`-filter and `b`-filter
+    using `i ↦ σ⁻¹ i` and `PreservesBlocks` at both `g` and
+    `g⁻¹`. Companion `hgoe_blockSum_attack` (existential adversary)
+    and `same_blockSum_not_separating` (defence).
+  * **Bit parity invariant.** `bitParity b := decide (hammingWeight
+    b % 2 = 1)`. `S_n`-invariant by reduction to
+    `hammingWeight_invariant`. Companion attack/defence.
+  * **Sorted-bits invariant.** `sortedBits b` = lex-min element
+    of `b`'s `S_n`-orbit under `bitstringLinearOrder`. Defined
+    via `CanonicalForm.ofLexMin`. `S_n`-invariant by
+    `canonical_isGInvariant`. The strongest `S_n`-invariant —
+    distinct orbits have distinct sorted-bits, so any
+    `S_n`-respecting HGOE scheme is *automatically broken* by
+    the sorted-bits attack (formal cryptographic content of the
+    deterministic-OIA-vacuity result
+    `det_oia_false_of_distinct_reps`).
+
+- **Cross-cutting.** The R-14 framework's headline reduction
+  `isSUFCMASecure_of_isEpsilonSU2` factors through the new
+  `IsDeterministicTagMAC` predicate, so the R-08 + R-13⁺
+  specialisations supply a one-line `rfl`-witness for the
+  predicate (since their `verify` field is *literally*
+  `decide (t = tag k m)` per `deterministicTagMAC`'s body).
+
+  The pipeline order is:
+  - `Orbcrypt/AEAD/MAC.lean` — abstract structure (unchanged).
+  - `Orbcrypt/Probability/UniversalHash.lean` — ε-universal +
+    NEW: ε-AXU, ε-SU2, plus their corollary chain.
+  - `Orbcrypt/AEAD/MACSecurity.lean` — NEW framework module.
+    Imports `MAC.lean` (abstract) + `Probability/UniversalHash.lean`,
+    NOT `CarterWegmanMAC.lean`.
+  - `Orbcrypt/AEAD/CarterWegmanMAC.lean` — concrete Carter–Wegman
+    construction + R-08 specialisation. Imports `MACSecurity.lean`.
+  - `Orbcrypt/AEAD/BitstringPolynomialMAC.lean` — bitstring-
+    polynomial construction + R-13⁺ specialisation. Imports
+    `CarterWegmanMAC.lean` (and transitively `MACSecurity.lean`).
+
+  This avoids the would-be circular import that a naive
+  `MACSecurity` ↔ `CarterWegmanMAC` design would create, while
+  keeping `MAC.lean` free of concrete-construction pollution.
+
+- **`Orbcrypt.lean`** root file extended with two new explicit
+  imports: `Orbcrypt.AEAD.MACSecurity` and
+  `Orbcrypt.Construction.HGOEInvariants`.
+
+- **`scripts/audit_phase_16.lean`** extended with four new sections
+  (§ 15.22 R-14, § 15.23 R-08, § 15.24 R-13⁺, § 15.25 R-16)
+  containing 50 new `#print axioms` entries plus 17 non-vacuity
+  `example` bindings exercising every public R-14 / R-08 / R-13⁺
+  / R-16 declaration on concrete fixtures (`p = 5` for
+  R-08, `(p, n) = (5, 3)` for R-13⁺, `Bitstring 4` with a 2-block
+  partition for R-16). Each section uses a `local instance
+  fact_prime_five : Fact (Nat.Prime 5)` (decide-discharged)
+  because Mathlib only provides `fact_prime_two` and
+  `fact_prime_three` natively.
+
+- **Verification posture (R-14 + R-08 + R-13⁺ + R-16).**
+  * `lake build` succeeds with **3,422 jobs** (up from 3,420 — two
+    new modules: `MACSecurity.lean` and `HGOEInvariants.lean`),
+    zero errors, zero warnings.
+  * `lake env lean scripts/audit_phase_16.lean` runs cleanly:
+    zero `sorryAx`, zero non-standard-trio axioms (875 `#print
+    axioms` results, all on `[propext, Classical.choice,
+    Quot.sound]` or a subset).
+  * Every new public declaration depends only on the standard
+    Lean trio.
+
+- **Patch version.** `lakefile.lean` bumped from `0.2.4` to
+  `0.3.0` — minor-version bump signalling the cohesive feature
+  cluster of four new workstream discharges (R-14 + R-08 +
+  R-13⁺ + R-16) plus two new modules. The 75-module total rises
+  to **77** (`MACSecurity.lean` + `HGOEInvariants.lean`); public
+  declaration count rises by approximately 30 (R-14: ~15, R-08:
+  5, R-13⁺: 5, R-16: 15 — minus some private helpers). The
+  zero-sorry / zero-custom-axiom posture and the standard-trio-
+  only axiom-dependency posture are preserved.
+
+- **R-14 / R-08 / R-13⁺ / R-16 follow-ups: none.** All four
+  workstreams are fully discharged in this PR. The remaining
+  audit-2026-04-29 § 8.1 research-scope items (R-02, R-03,
+  R-04, R-05, R-06, R-10, R-11, R-15, R-15-residual-*) are
+  out-of-scope multi-month research workstreams as documented
+  in the plan; this PR does not touch them.
+
 - Every `.lean` file has a module-level docstring
 - Every public theorem and def has a docstring
 - GitHub Actions CI passes on push
