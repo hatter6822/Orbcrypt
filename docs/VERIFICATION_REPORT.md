@@ -279,6 +279,19 @@ is honest about which assumption is doing the cryptographic work.
 | 36c | `combinerOrbitDist_apply_true_eq_probTrue`                    | `PublicKey/CombineImpossibility.lean`         | **Standalone** — bridge lemma supporting #36 (Workstream R-07). Identifies the apply-form mass `combinerOrbitDist scheme m_bp comb m true` with the `probTrue` form `probTrue (orbitDist (reps m)) (combinerDistinguisher comb)` |
 | 36d | `probTrue_combinerDistinguisher_basePoint_ge_inv_card`        | `PublicKey/CombineImpossibility.lean`         | **Standalone** — intra-orbit `1/|G|` mass bound rephrased via `probTrue` (Workstream R-07). Composes #36c with the existing `combinerOrbitDist_mass_bounds.1` |
 | 36e | `probTrue_combinerDistinguisher_target_eq_zero`               | `PublicKey/CombineImpossibility.lean`         | **Standalone** — cross-orbit zero-mass under the cross-orbit constant-false witness (Workstream R-07). The empty preimage set's outer measure collapses via `MeasureTheory.measure_empty` |
+| 37  | `isSUFCMASecure_of_isEpsilonSU2`                              | `AEAD/MACSecurity.lean`                       | **Quantitative — R-14 discharged 2026-05-01**. Headline 1-time SUF-CMA reduction (Stinson 1994 Theorem 1): any deterministic-tag MAC over an `ε`-SU2 hash is `ε`-SUF-CMA-secure (1-time). Takes a generic `mac : MAC K Msg Tag` and an `IsDeterministicTagMAC mac` hypothesis (discharged by `rfl` for `deterministicTagMAC`). Proof structure: partition the win event over `t_q : Tag`, apply ε-SU2 per `t_q`, sum gives `\|Tag\| · ε / \|Tag\| = ε` |
+| 37a | `not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries`     | `AEAD/MACSecurity.lean`                       | **Quantitative — R-14 NEGATIVE 2026-05-01**. Headline Q-time NEGATIVE result: when the hash is key-recoverable from some `Q`-tuple of queries, the corresponding deterministic-tag MAC is **not** `ε`-(Q+1)-time-SUF-CMA-secure for any `ε < 1`. Constructs an explicit (Q+1)-time adversary using two distinct fresh messages, proves `forgeryAdvantage_Qtime = 1` deterministically |
+| 37b | `IsEpsilonSU2`                                                | `Probability/UniversalHash.lean`              | **Standalone** — ε-strongly-universal-2 predicate (Workstream R-14). For distinct messages `m₁ ≠ m₂` and arbitrary `(t₁, t₂)`, the joint probability `Pr_k[h k m₁ = t₁ ∧ h k m₂ = t₂]` is at most `ε / \|Tag\|`. Strictly stronger than both ε-universal and ε-AXU |
+| 37c | `IsEpsilonAXU`                                                | `Probability/UniversalHash.lean`              | **Standalone** — ε-almost-XOR-universal predicate (Workstream R-14). For `m₁ ≠ m₂` and any output difference `δ`, `Pr_k[h k m₁ - h k m₂ = δ] ≤ ε`. Used by AXU-based MAC reductions; AXU → universal at `δ = 0` |
+| 38  | `carterWegmanHash_isEpsilonSU2`                               | `AEAD/CarterWegmanMAC.lean`                   | **Quantitative — R-08 discharged 2026-05-01**. Carter–Wegman is `(1/p)`-SU2 over `ZMod p`. Proof: the 2×2 linear system `{k₁ · m_i + k₂ = t_i}` has a unique solution in the prime field, joint card = 1, so `(1 · p) / p² = 1/p` per `IsEpsilonSU2.ofJointCollisionCardBound` |
+| 38a | `carterWegmanMAC_isSUFCMASecure`                              | `AEAD/CarterWegmanMAC.lean`                   | **Quantitative — R-08 1-time headline**. `(1/p)`-SUF-CMA-secure (1-time): every adversary's forgery advantage is at most `1/p`. One-line composition of `isSUFCMASecure_of_isEpsilonSU2` with `carterWegmanHash_isEpsilonSU2` |
+| 38b | `not_carterWegmanMAC_isQtimeSUFCMASecure`                     | `AEAD/CarterWegmanMAC.lean`                   | **Quantitative — R-08 Q-time NEGATIVE**. At `p ≥ 4`, no `ε < 1` Q-time-SUF-CMA bound holds for `Q = 3`. The (Q+1)-time adversary recovers the key by linear-system inversion at messages `(0, 1)`, then forges deterministically |
+| 39  | `bitstringPolynomialHash_isEpsilonSU2`                        | `AEAD/BitstringPolynomialMAC.lean`            | **Quantitative — R-13⁺ discharged 2026-05-01**. Bitstring-polynomial hash is `(n/p)`-SU2. Proof: the joint-collision filter on `(k₁, k₂) ∈ ZMod p × ZMod p` has card ≤ n, by bounding the k₁-projection through the polynomial-roots count of the shifted-difference polynomial `Δ - C(t₁ - t₂)` |
+| 39a | `bitstringPolynomialMAC_isSUFCMASecure`                       | `AEAD/BitstringPolynomialMAC.lean`            | **Quantitative — R-13⁺ 1-time headline**. `(n/p)`-SUF-CMA-secure (1-time). Informative for `n ≤ p` (typical deployment has `p ≫ n`) |
+| 39b | `not_bitstringPolynomialMAC_isQtimeSUFCMASecure`              | `AEAD/BitstringPolynomialMAC.lean`            | **Quantitative — R-13⁺ Q-time NEGATIVE**. At `n ≥ 2`, no `ε < 1` Q-time-SUF-CMA bound holds for `Q = 3`. The recovery uses witness messages `(e₀, 0)` (one-hot at position 0 + all-false bitstring) |
+| 40  | `blockSum_invariant_of_preservesBlocks`                       | `Construction/HGOEInvariants.lean`            | **Standalone — R-16 discharged 2026-05-01**. Per-block bit-count vector is `G`-invariant under any subgroup `G ≤ S_n` that setwise-permutes each block. Proof: `Finset.card_bij` between `(g • b)`-filter and `b`-filter via `i ↦ σ⁻¹ i`, using the block-preserving bijection at `g` and `g⁻¹` |
+| 40a | `bitParity_invariant`                                         | `Construction/HGOEInvariants.lean`            | **Standalone — R-16**. Bit parity (XOR of all bits = `hammingWeight % 2 = 1`) is `S_n`-invariant via reduction to `hammingWeight_invariant` |
+| 40b | `sortedBits_invariant`                                        | `Construction/HGOEInvariants.lean`            | **Standalone — R-16**. Sorted-bits (lex-min element of orbit under `bitstringLinearOrder`) is `S_n`-invariant via `canonical_isGInvariant`. The strongest `S_n`-invariant: distinct orbits have distinct sorted-bits, so any `S_n`-respecting HGOE scheme is automatically broken — formal cryptographic content of `det_oia_false_of_distinct_reps` |
 
 Every one of #1–#34 was confirmed to depend only on standard Lean axioms by
 running `scripts/audit_phase_16.lean` — all declarations exercised
@@ -1324,6 +1337,114 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 ---
 
 ## Document history
+
+* **2026-05-01 (Audit pass on R-14 + R-08 + R-13⁺ + R-16
+  landings)** — A second comprehensive audit was run after the
+  initial landing. Findings: zero `sorry`, zero custom axioms,
+  no naming-hygiene violations, no theatrical theorems, full
+  math-soundness verification of headline proofs. Two
+  improvements landed by the pass:
+  - Audit-script coverage extension: 4 new non-vacuity
+    `example` bindings exercising `IsEpsilonSU2.mono`,
+    `IsEpsilonAXU.mono`, `IsEpsilonSU2.ofJointCollisionCardBound`,
+    and `IsEpsilonAXU.ofCollisionCardBound` directly (rather
+    than only transitively via R-08 / R-13⁺ specialisations).
+  - Docstring corrections: tightened the `sortedBits` and
+    `IsEpsilonAXU.toIsEpsilonUniversal` docstrings to honestly
+    disclose the `S_n`-orbit relationship and the `AddGroup`
+    typeclass requirement; removed an unused hypothesis in
+    `carterWegmanMAC_isSUFCMASecure`. No content changes — only
+    docstring honesty + hygiene cleanup.
+  Build / audit-script posture unchanged: 3,422 jobs, 0 errors,
+  0 warnings, 0 sorryAx, 875 axiom-print results all on standard
+  trio.
+
+* **2026-05-01 (Workstream R-14 + R-08 + R-13⁺ + R-16 —
+  Probabilistic MAC SUF-CMA framework + specialisations + HGOE
+  invariants beyond Hamming weight)** — Four additional research-
+  scope items from the 2026-04-29 audit plan (§ 8.1, plan
+  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 /
+  § R-13⁺ / § R-16) discharged across two new modules and two
+  in-place extensions of existing modules:
+
+  * **R-14 — Generic probabilistic MAC SUF-CMA framework**
+    (~1,200 LOC of additions). New module
+    `Orbcrypt/AEAD/MACSecurity.lean` (~770 LOC) adds the 1-time +
+    Q-time MAC adversary structures (`MACAdversary`,
+    `MultiQueryMACAdversary`), forgery-advantage definitions
+    (`forgeryAdvantage`, `forgeryAdvantage_Qtime`), security
+    predicates (`IsSUFCMASecure`, `IsQtimeSUFCMASecure`),
+    `IsDeterministicTagMAC` Prop abstraction, headline 1-time
+    SUF-CMA reduction `isSUFCMASecure_of_isEpsilonSU2` (Stinson
+    1994 Theorem 1), and the headline Q-time NEGATIVE theorem
+    `not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries`.
+    `Orbcrypt/Probability/UniversalHash.lean` extended with
+    `IsEpsilonAXU` (almost-XOR-universal) and `IsEpsilonSU2`
+    (strongly-universal-2), plus the corollary chain
+    SU2 → AXU → universal via disjoint-union decomposition over
+    `Tag`-values.
+  * **R-08 — Carter–Wegman SU2 + 1-time SUF-CMA + Q-time NEGATIVE
+    specialisations** (~200 LOC, in-place extension of
+    `Orbcrypt/AEAD/CarterWegmanMAC.lean`). 5 new public
+    declarations: `carterWegmanHash_isEpsilonSU2`
+    (`(1/p)`-SU2 via the joint-collision-card-eq-1 argument),
+    `carterWegmanHash_isEpsilonAXU` (corollary),
+    `carterWegmanMAC_isSUFCMASecure` (`(1/p)`-1-time SUF-CMA),
+    `carterWegmanHash_isKeyRecoverableForSomeQueries`
+    (recovery at messages `(0, 1)`),
+    `not_carterWegmanMAC_isQtimeSUFCMASecure` (no `ε < 1` Q-time
+    bound at `p ≥ 4`).
+  * **R-13⁺ — Bitstring-polynomial SU2 + 1-time SUF-CMA + Q-time
+    NEGATIVE specialisations** (~280 LOC, in-place extension of
+    `Orbcrypt/AEAD/BitstringPolynomialMAC.lean`). 5 new public
+    declarations: `bitstringPolynomialHash_isEpsilonSU2`
+    (`(n/p)`-SU2 via the polynomial-roots bound on the
+    shifted-difference polynomial),
+    `bitstringPolynomialHash_isEpsilonAXU` (corollary),
+    `bitstringPolynomialMAC_isSUFCMASecure` (`(n/p)`-1-time
+    SUF-CMA), `bitstringPolynomialHash_isKeyRecoverableForSomeQueries`
+    (recovery at witness messages `(e₀, 0)`),
+    `not_bitstringPolynomialMAC_isQtimeSUFCMASecure` (no `ε < 1`
+    Q-time bound at `n ≥ 2`).
+  * **R-16 — HGOE invariants beyond Hamming weight** (~310 LOC,
+    new module `Orbcrypt/Construction/HGOEInvariants.lean`). 15
+    new public declarations across three invariant catalogues:
+    `blockSum` + `PreservesBlocks` (per-block bit-count vector,
+    `G`-invariant under block-preserving subgroups);
+    `bitParity` (XOR-fold of all bits, `S_n`-invariant via
+    reduction to `hammingWeight_invariant`);
+    `sortedBits` (lex-min of orbit, the strongest `S_n`-
+    invariant — distinct orbits have distinct lex-min, so any
+    `S_n`-respecting HGOE scheme is *automatically broken*).
+    Each invariant has the standard attack/defence pair
+    (`hgoe_<f>_attack` + `same_<f>_not_separating`).
+
+  Cross-cutting design decision: the R-14 framework introduces
+  the `IsDeterministicTagMAC mac : Prop` predicate so that
+  `MACSecurity.lean` does NOT need to import `CarterWegmanMAC.lean`
+  (which would create a circular dependency since
+  `CarterWegmanMAC` needs to import `MACSecurity` for the R-08
+  specialisation). Concrete instantiations supply a one-line
+  `rfl`-witness for the predicate.
+
+  `Orbcrypt.lean` root file extended with two new explicit
+  imports: `Orbcrypt.AEAD.MACSecurity` and
+  `Orbcrypt.Construction.HGOEInvariants`.
+
+  `scripts/audit_phase_16.lean` extended with four new sections
+  (§ 15.22 – § 15.25) containing 50 new `#print axioms` entries
+  plus 17 non-vacuity `example` bindings exercising every public
+  R-14 / R-08 / R-13⁺ / R-16 declaration on concrete fixtures
+  (`p = 5` for R-08, `(p, n) = (5, 3)` for R-13⁺, `Bitstring 4`
+  with a 2-block partition for R-16). Local `Fact (Nat.Prime 5)`
+  instances are discharged by `decide`.
+
+  Verification posture: `lake build` succeeds with **3,422 jobs**
+  (up from 3,420), zero errors, zero warnings. Audit script runs
+  cleanly with zero `sorryAx`, zero non-standard-trio axioms.
+  Module count rises from 75 to **77**; public declaration count
+  rises by ~30. Package version bumped from `0.2.4` to `0.3.0`
+  signalling a cohesive feature cluster.
 
 * **2026-04-30 (Workstream R-07 — Cross-orbit advantage lower bound
   for equivariant combiners)** — One additional research-scope

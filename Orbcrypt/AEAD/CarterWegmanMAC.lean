@@ -11,6 +11,7 @@ import Mathlib.Algebra.Field.ZMod
 import Mathlib.Data.Nat.Prime.Basic
 import Orbcrypt.AEAD.MAC
 import Orbcrypt.AEAD.AEAD
+import Orbcrypt.AEAD.MACSecurity
 import Orbcrypt.Probability.UniversalHash
 
 /-!
@@ -368,5 +369,246 @@ theorem carterWegmanMAC_int_ctxt {G : Type*} [Group G]
   -- the orbit-cover obligation has been absorbed into the game's
   -- per-challenge precondition on `INT_CTXT` itself.
   authEncrypt_is_int_ctxt (carterWegman_authKEM p kem)
+
+-- ============================================================================
+-- Workstream R-08 — Carter–Wegman SU2 + 1-time SUF-CMA + Q-time NEGATIVE
+-- (audit 2026-04-29 § 8.1, research-scope discharge plan
+-- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-08)
+-- ============================================================================
+--
+-- Specialise the generic R-14 SUF-CMA framework to Carter–Wegman: the
+-- joint-collision argument shows the linear system has a unique solution
+-- so Carter–Wegman is `(1/p)`-SU2; composing with R-14 gives 1-time SUF-CMA;
+-- the linear-system key-recovery shows nonce-free Carter–Wegman is broken
+-- at Q ≥ 2 queries (Q-time NEGATIVE result).
+
+/-- **Carter–Wegman joint-collision uniqueness.** For `m₁ ≠ m₂` and any
+    `(t₁, t₂)`, the unique solution `(k₁, k₂)` of the 2×2 linear system
+    `{k₁ · m_i + k₂ = t_i}` is given by the formulas below.
+
+    **Algebraic content.** Subtracting the two equations gives
+    `k₁ · (m₁ - m₂) = t₁ - t₂`, so in the field `ZMod p`,
+    `k₁ = (t₁ - t₂) / (m₁ - m₂)`. The second component follows from
+    the first equation: `k₂ = t₁ - k₁ · m₁`. -/
+private noncomputable def carterWegmanSolve (p : ℕ) [Fact (Nat.Prime p)]
+    (m₁ m₂ t₁ t₂ : ZMod p) : ZMod p × ZMod p :=
+  let k₁ := (t₁ - t₂) / (m₁ - m₂)
+  (k₁, t₁ - k₁ * m₁)
+
+/-- The joint-collision filter for Carter–Wegman has cardinality exactly
+    `1` for distinct messages: the unique key is `carterWegmanSolve`. -/
+private theorem carterWegmanHash_joint_collision_card_eq_one
+    (p : ℕ) [Fact (Nat.Prime p)]
+    {m₁ m₂ : ZMod p} (h_ne : m₁ ≠ m₂) (t₁ t₂ : ZMod p) :
+    (Finset.univ.filter
+      (fun k : ZMod p × ZMod p =>
+        carterWegmanHash p k m₁ = t₁ ∧ carterWegmanHash p k m₂ = t₂)).card = 1 := by
+  classical
+  -- The filter equals the singleton `{carterWegmanSolve p m₁ m₂ t₁ t₂}`.
+  have h_singleton :
+      Finset.univ.filter (fun k : ZMod p × ZMod p =>
+        carterWegmanHash p k m₁ = t₁ ∧ carterWegmanHash p k m₂ = t₂)
+      = {carterWegmanSolve p m₁ m₂ t₁ t₂} := by
+    ext k
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and,
+      Finset.mem_singleton, carterWegmanHash, carterWegmanSolve]
+    constructor
+    · -- Forward: any collision must equal carterWegmanSolve.
+      rintro ⟨h_eq₁, h_eq₂⟩
+      -- h_eq₁ : k.1 * m₁ + k.2 = t₁
+      -- h_eq₂ : k.1 * m₂ + k.2 = t₂
+      -- Subtract to get k.1 * (m₁ - m₂) = t₁ - t₂.
+      have h_sub_eq : k.1 * (m₁ - m₂) = t₁ - t₂ := by
+        have h1 : k.1 * m₁ - k.1 * m₂ = t₁ - t₂ := by
+          rw [show k.1 * m₁ - k.1 * m₂ = (k.1 * m₁ + k.2) - (k.1 * m₂ + k.2) from
+              by ring, h_eq₁, h_eq₂]
+        rw [mul_sub]; exact h1
+      -- (m₁ - m₂) ≠ 0 in the field, so k.1 = (t₁ - t₂) / (m₁ - m₂).
+      have h_sub_ne : m₁ - m₂ ≠ 0 := fun h => h_ne (sub_eq_zero.mp h)
+      have h_k1 : k.1 = (t₁ - t₂) / (m₁ - m₂) := by
+        rw [eq_div_iff h_sub_ne]
+        exact h_sub_eq
+      -- Then k.2 = t₁ - k.1 * m₁ (from h_eq₁).
+      have h_k2 : k.2 = t₁ - k.1 * m₁ := by
+        have : k.1 * m₁ + k.2 - k.1 * m₁ = t₁ - k.1 * m₁ := by rw [h_eq₁]
+        linear_combination this
+      -- Construct the equality with `Prod.ext`.
+      apply Prod.ext
+      · exact h_k1
+      · rw [h_k2, h_k1]
+    · -- Backward: carterWegmanSolve satisfies both equations.
+      rintro h_eq
+      subst h_eq
+      -- Goal: k.1 * m₁ + k.2 = t₁ ∧ k.1 * m₂ + k.2 = t₂.
+      simp only
+      have h_sub_ne : m₁ - m₂ ≠ 0 := fun h => h_ne (sub_eq_zero.mp h)
+      refine ⟨by ring, ?_⟩
+      -- Goal: ((t₁ - t₂) / (m₁ - m₂)) * m₂ + (t₁ - ((t₁ - t₂) / (m₁ - m₂)) * m₁) = t₂.
+      -- Algebraic identity in field: t₁ - k₁ · (m₁ - m₂) = t₂ where k₁ = (t₁-t₂)/(m₁-m₂).
+      field_simp
+      ring
+  rw [h_singleton, Finset.card_singleton]
+
+/-- **R-08 SU2 headline.** Carter–Wegman is `(1/p)`-SU2 over `ZMod p`.
+    The 2×2 linear system has a unique solution for any RHS, so the
+    joint-collision count is `1`, the keyspace has cardinality `p²`,
+    and the joint probability is `1/p² = (1/p)/|Tag|`.
+
+    This is the strengthening of the existing `carterWegmanHash_isUniversal`
+    (which only proves the δ = 0 case) to the joint-distribution form
+    needed for the one-time Wegman–Carter SUF-CMA reduction. -/
+theorem carterWegmanHash_isEpsilonSU2 (p : ℕ) [Fact (Nat.Prime p)] :
+    IsEpsilonSU2 (carterWegmanHash p) ((1 : ℝ≥0∞) / (p : ℝ≥0∞)) := by
+  -- Apply the generic ofJointCollisionCardBound with C = 1.
+  have h_prime : Nat.Prime p := Fact.out
+  have h_pos : 0 < p := h_prime.pos
+  have h_p_ne_zero : (p : ℝ≥0∞) ≠ 0 := by exact_mod_cast h_pos.ne'
+  have h_p_ne_top : (p : ℝ≥0∞) ≠ ⊤ := ENNReal.natCast_ne_top p
+  have h := IsEpsilonSU2.ofJointCollisionCardBound
+    (h := carterWegmanHash p) (C := 1)
+    (fun m₁ m₂ t₁ t₂ h_ne => by
+      rw [carterWegmanHash_joint_collision_card_eq_one p h_ne])
+  -- h : IsEpsilonSU2 (carterWegmanHash p) ((1 : ℝ≥0∞) * |Tag| / |K|).
+  -- Need: IsEpsilonSU2 _ (1 / p).
+  -- Compute: |Tag| = p, |K| = p², so 1 * p / p² = 1 / p.
+  apply IsEpsilonSU2.mono _ h
+  -- Goal: (1 * Fintype.card (ZMod p) / Fintype.card (ZMod p × ZMod p)) ≤ 1 / p.
+  rw [Fintype.card_prod, ZMod.card]
+  -- Goal: 1 * (p : ℝ≥0∞) / (p * p : ℕ) ≤ 1 / p.
+  push_cast
+  rw [one_mul]
+  -- Goal: (p : ℝ≥0∞) / (p * p) ≤ 1 / p.
+  apply le_of_eq
+  rw [one_div, ENNReal.div_eq_inv_mul,
+      ENNReal.mul_inv (Or.inl h_p_ne_zero) (Or.inl h_p_ne_top),
+      mul_assoc, ENNReal.inv_mul_cancel h_p_ne_zero h_p_ne_top, mul_one]
+
+/-- **R-08 AXU corollary.** Carter–Wegman is `(1/p)`-AXU over `ZMod p`,
+    derived directly from SU2 via `IsEpsilonSU2.toIsEpsilonAXU`. Useful
+    for callers that need the AXU output-difference bound (e.g., future
+    nonce-based MAC variants). -/
+theorem carterWegmanHash_isEpsilonAXU (p : ℕ) [Fact (Nat.Prime p)] :
+    IsEpsilonAXU (carterWegmanHash p) ((1 : ℝ≥0∞) / (p : ℝ≥0∞)) :=
+  (carterWegmanHash_isEpsilonSU2 p).toIsEpsilonAXU
+
+/-- **R-08 1-time SUF-CMA headline.** `carterWegmanMAC p` is
+    `(1/p)`-SUF-CMA-secure (1-time): every adversary's forgery
+    advantage is at most `1/p`.
+
+    **Proof.** One-line composition of `isSUFCMASecure_of_isEpsilonSU2`
+    (the generic R-14 framework reduction) with
+    `carterWegmanHash_isEpsilonSU2` (R-08's SU2 specialisation), plus
+    the trivial witness `IsDeterministicTagMAC (carterWegmanMAC p)`
+    (which holds by `rfl` per the body of `deterministicTagMAC`). -/
+theorem carterWegmanMAC_isSUFCMASecure (p : ℕ) [Fact (Nat.Prime p)] :
+    IsSUFCMASecure (carterWegmanMAC p) ((1 : ℝ) / p) := by
+  -- Discharge IsDeterministicTagMAC by `rfl` (body of deterministicTagMAC).
+  have h_det : IsDeterministicTagMAC (carterWegmanMAC p) := fun _ _ _ => rfl
+  -- Apply the framework reduction.
+  have h_su2 : IsEpsilonSU2 (carterWegmanMAC p).tag ((1 : ℝ≥0∞) / p) :=
+    carterWegmanHash_isEpsilonSU2 p
+  have h_finite : ((1 : ℝ≥0∞) / (p : ℝ≥0∞)) ≠ ⊤ := by
+    have h_prime : Nat.Prime p := Fact.out
+    have h_p_ne_zero : (p : ℝ≥0∞) ≠ 0 := by exact_mod_cast h_prime.pos.ne'
+    -- 1 / p is finite when p is finite and non-zero (gives 1/p which is finite).
+    rw [ENNReal.div_eq_inv_mul, mul_one]
+    exact ENNReal.inv_ne_top.mpr h_p_ne_zero
+  have h := isSUFCMASecure_of_isEpsilonSU2 (carterWegmanMAC p) h_det
+    ((1 : ℝ≥0∞) / p) h_finite h_su2
+  -- Convert ((1 : ℝ≥0∞) / p).toReal to (1 : ℝ) / p.
+  have h_toReal : ((1 : ℝ≥0∞) / (p : ℝ≥0∞)).toReal = (1 : ℝ) / p := by
+    rw [ENNReal.toReal_div, ENNReal.toReal_one, ENNReal.toReal_natCast]
+  rw [h_toReal] at h
+  exact h
+
+/-- **Carter–Wegman key-recovery procedure.** Given the honest tags at
+    messages `0` and `1` (i.e., the `Fin 2 → ZMod p`-tuple
+    `tags = (k₂, k₁ + k₂)`), recover the key `(k₁, k₂)`:
+    `k₂ = tags 0`, `k₁ = tags 1 - tags 0`.
+
+    This is the explicit linear-algebra inversion that breaks Q-time
+    security at Q ≥ 2: the adversary observes two tags at distinct
+    messages, recovers the key in closed form, then forges
+    deterministically.
+
+    The `Some` always returns `some` (never `none`), so the recovery is
+    total. -/
+private noncomputable def carterWegmanRecover (p : ℕ) [Fact (Nat.Prime p)] :
+    (Fin 2 → ZMod p) → Option (ZMod p × ZMod p) :=
+  fun tags => some (tags 1 - tags 0, tags 0)
+
+/-- **R-08 key-recovery witness.** Carter–Wegman is key-recoverable from
+    `Q = 2` queries — the witness messages are `0` and `1` (in `ZMod p`),
+    distinct when `p ≥ 2`. -/
+theorem carterWegmanHash_isKeyRecoverableForSomeQueries
+    (p : ℕ) [Fact (Nat.Prime p)] (h_p_ge_two : 2 ≤ p) :
+    IsKeyRecoverableForSomeQueries (carterWegmanHash p) 2 := by
+  -- Witness: msgs = ![0, 1], recover = carterWegmanRecover p.
+  refine ⟨![0, 1], carterWegmanRecover p, ?_, ?_⟩
+  · -- Injectivity of msgs (= ![0, 1]). Need 0 ≠ 1 in ZMod p (true for p ≥ 2).
+    have h_zero_ne_one : (0 : ZMod p) ≠ 1 := by
+      -- Use NeZero p (from p ≥ 2) and Mathlib's ZMod.zero_ne_one for p ≥ 2.
+      haveI : NeZero p := ⟨by omega⟩
+      haveI : Fact (1 < p) := ⟨by omega⟩
+      exact zero_ne_one
+    intro i j h_eq
+    fin_cases i <;> fin_cases j
+    · rfl
+    · -- i = 0, j = 1: ![0, 1] 0 = ![0, 1] 1 ⟹ 0 = 1, contradiction.
+      -- ![0, 1] 0 = 0 and ![0, 1] 1 = 1 are both `rfl`-level under Matrix
+      -- vector notation, so `h_eq : 0 = 1` directly.
+      exact absurd h_eq h_zero_ne_one
+    · -- i = 1, j = 0: symmetric.
+      exact absurd h_eq.symm h_zero_ne_one
+    · rfl
+  · -- For every key k, recover (honest tags) = some k.
+    intro k
+    -- Honest tags at msgs 0 and msgs 1.
+    -- tag 0: k.1 * 0 + k.2 = k.2.
+    -- tag 1: k.1 * 1 + k.2 = k.1 + k.2.
+    show carterWegmanRecover p (fun i => carterWegmanHash p k (![0, 1] i)) = some k
+    -- Unfold: carterWegmanRecover gives `some (tags 1 - tags 0, tags 0)`.
+    -- With tags i := h k (![0, 1] i):
+    --   tags 0 = k.1 * 0 + k.2 = k.2
+    --   tags 1 = k.1 * 1 + k.2 = k.1 + k.2
+    -- So: some ((k.1 + k.2) - k.2, k.2) = some (k.1, k.2) = some k.
+    simp only [carterWegmanRecover, carterWegmanHash, Matrix.cons_val_zero,
+      Matrix.cons_val_one, mul_zero, mul_one, zero_add,
+      add_sub_cancel_right]
+
+/-- **R-08 Q-time NEGATIVE result.** For `Q ≥ 3` and `p ≥ 4`,
+    `carterWegmanMAC p` is **not** `ε`-Q-time-SUF-CMA-secure for any
+    `ε < 1`. The (Q+1)-time adversary at `Q = 2` queries recovers the
+    key by linear-system inversion (`carterWegmanRecover`) and then
+    forges deterministically on a fresh message.
+
+    **Cardinality side condition.** `p ≥ 4` is needed because the
+    underlying `not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries`
+    requires `Q + 1 < |Msg|`, i.e. `3 < p` for our `Q = 2` recovery.
+    For `p < 4` either the recovery itself fails (p = 2) or the
+    fresh-message constraint is unsatisfiable (p = 3 cannot supply
+    two fresh messages outside the recovery pair).
+
+    Formalises the well-known limitation of nonce-free Wegman–Carter:
+    Q-time security requires fresh nonces per message. The Q-time
+    *positive* bound for nonce-free Carter–Wegman is mathematically
+    false, not just unproven. See research milestone R-05 for the
+    nonce-based upgrade path. -/
+theorem not_carterWegmanMAC_isQtimeSUFCMASecure
+    (p : ℕ) [Fact (Nat.Prime p)] (h_p_ge_four : 4 ≤ p)
+    (ε : ℝ) (hε : ε < 1) :
+    ¬ IsQtimeSUFCMASecure (Q := 3) (carterWegmanMAC p) ε := by
+  -- Discharge IsDeterministicTagMAC for carterWegmanMAC.
+  have h_det : IsDeterministicTagMAC (carterWegmanMAC p) := fun _ _ _ => rfl
+  -- Discharge the IsKeyRecoverableForSomeQueries hypothesis at Q = 2.
+  have h_recover : IsKeyRecoverableForSomeQueries (carterWegmanMAC p).tag 2 :=
+    carterWegmanHash_isKeyRecoverableForSomeQueries p (by omega)
+  -- Cardinality bound: |ZMod p| = p ≥ 4 = Q + 2 > Q + 1 = 3.
+  have h_card : 2 + 1 < Fintype.card (ZMod p) := by
+    rw [ZMod.card]
+    omega
+  -- Apply the framework's negative theorem.
+  exact not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
+    (carterWegmanMAC p) h_det h_card h_recover ε hε
 
 end Orbcrypt
