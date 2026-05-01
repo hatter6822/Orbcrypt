@@ -5514,3 +5514,197 @@ example (ε : ℝ) (hOIA : ConcreteOIA schemeR07 ε) :
   no_concreteOIA_below_inv_card_of_combiner schemeR07 true combR07 false hND_R07 ε hOIA
 
 end R07NonVacuity
+
+-- ============================================================================
+-- § 15.22 Workstream R-14 — Generic probabilistic MAC SUF-CMA framework
+-- (audit 2026-04-29 § 8.1, plan PLAN_R_01_07_08_14_16.md § R-14)
+-- ============================================================================
+
+#print axioms Orbcrypt.IsEpsilonAXU
+#print axioms Orbcrypt.IsEpsilonAXU.mono
+#print axioms Orbcrypt.IsEpsilonAXU.toIsEpsilonUniversal
+#print axioms Orbcrypt.IsEpsilonAXU.ofCollisionCardBound
+#print axioms Orbcrypt.IsEpsilonSU2
+#print axioms Orbcrypt.IsEpsilonSU2.mono
+#print axioms Orbcrypt.IsEpsilonSU2.ofJointCollisionCardBound
+#print axioms Orbcrypt.IsEpsilonSU2.toIsEpsilonUniversal
+#print axioms Orbcrypt.IsEpsilonSU2.toIsEpsilonAXU
+
+#print axioms Orbcrypt.MACAdversary
+#print axioms Orbcrypt.MACAdversary.forges
+#print axioms Orbcrypt.forgeryAdvantage
+#print axioms Orbcrypt.IsSUFCMASecure
+#print axioms Orbcrypt.forgeryAdvantage_nonneg
+#print axioms Orbcrypt.forgeryAdvantage_le_one
+#print axioms Orbcrypt.IsDeterministicTagMAC
+#print axioms Orbcrypt.isSUFCMASecure_of_isEpsilonSU2
+
+#print axioms Orbcrypt.MultiQueryMACAdversary
+#print axioms Orbcrypt.MultiQueryMACAdversary.forges
+#print axioms Orbcrypt.forgeryAdvantage_Qtime
+#print axioms Orbcrypt.IsQtimeSUFCMASecure
+#print axioms Orbcrypt.forgeryAdvantage_Qtime_nonneg
+#print axioms Orbcrypt.forgeryAdvantage_Qtime_le_one
+#print axioms Orbcrypt.IsKeyRecoverableForSomeQueries
+#print axioms Orbcrypt.not_isQtimeSUFCMASecure_of_keyRecoverableForSomeQueries
+
+namespace R14NonVacuity
+open Orbcrypt
+
+/-- Sentinel: `forgeryAdvantage ≤ 1` is trivially true for every MAC and
+    every adversary (sanity bound from `probTrue ≤ 1`). -/
+example {K Msg Tag : Type*} [Fintype K] [Nonempty K] [DecidableEq Msg]
+    (mac : MAC K Msg Tag) (A : MACAdversary K Msg Tag) :
+    forgeryAdvantage mac A ≤ 1 := forgeryAdvantage_le_one mac A
+
+/-- Sentinel: SU2 → AXU corollary on a generic hash family. -/
+example {K Msg : Type*} [Fintype K] [Nonempty K]
+    (hash : K → Msg → (ZMod 2)) (ε : ENNReal) (hSU2 : IsEpsilonSU2 hash ε) :
+    IsEpsilonAXU hash ε := hSU2.toIsEpsilonAXU
+
+/-- Sentinel: SU2 → Universal corollary on a generic hash family. -/
+example {K Msg : Type*} [Fintype K] [Nonempty K]
+    (hash : K → Msg → (ZMod 2)) (ε : ENNReal) (hSU2 : IsEpsilonSU2 hash ε) :
+    IsEpsilonUniversal hash ε := hSU2.toIsEpsilonUniversal
+
+end R14NonVacuity
+
+-- ============================================================================
+-- § 15.23 Workstream R-08 — Carter–Wegman SU2 + 1-time SUF-CMA + Q-time NEGATIVE
+-- (audit 2026-04-29 § 8.1, plan PLAN_R_01_07_08_14_16.md § R-08)
+-- ============================================================================
+
+#print axioms Orbcrypt.carterWegmanHash_isEpsilonSU2
+#print axioms Orbcrypt.carterWegmanHash_isEpsilonAXU
+#print axioms Orbcrypt.carterWegmanMAC_isSUFCMASecure
+#print axioms Orbcrypt.carterWegmanHash_isKeyRecoverableForSomeQueries
+#print axioms Orbcrypt.not_carterWegmanMAC_isQtimeSUFCMASecure
+
+namespace R08NonVacuity
+open Orbcrypt
+
+/-- Witness `Fact (Nat.Prime 5)` (Mathlib provides only `fact_prime_two` and
+    `fact_prime_three` as `ℕ`-Prime instances; for `p = 5` we discharge
+    primality manually via `decide` and pack into a global `instance` so
+    that subsequent witnesses involving `carterWegmanHash 5` can elaborate
+    without the goal-state requiring an out-of-band `haveI`). -/
+local instance fact_prime_five : Fact (Nat.Prime 5) := ⟨by decide⟩
+
+/-- Concrete R-08 SU2 witness at `p = 5` (prime, decides as `Nat.Prime`). -/
+example : IsEpsilonSU2 (carterWegmanHash 5) ((1 : ENNReal) / 5) :=
+  carterWegmanHash_isEpsilonSU2 5
+
+/-- Concrete R-08 AXU witness at `p = 5`. -/
+example : IsEpsilonAXU (carterWegmanHash 5) ((1 : ENNReal) / 5) :=
+  carterWegmanHash_isEpsilonAXU 5
+
+/-- Concrete R-08 1-time SUF-CMA witness at `p = 5`. -/
+example : IsSUFCMASecure (carterWegmanMAC 5) ((1 : ℝ) / 5) :=
+  carterWegmanMAC_isSUFCMASecure 5
+
+/-- Concrete R-08 key-recovery witness at `p = 5`. -/
+example : IsKeyRecoverableForSomeQueries (carterWegmanHash 5) 2 :=
+  carterWegmanHash_isKeyRecoverableForSomeQueries 5 (by omega)
+
+/-- Concrete R-08 Q-time NEGATIVE witness at `p = 5`: not `(1/5)`-Q-time-SUF-CMA. -/
+example : ¬ IsQtimeSUFCMASecure (Q := 3) (carterWegmanMAC 5) ((1 : ℝ) / 5) :=
+  not_carterWegmanMAC_isQtimeSUFCMASecure 5 (by omega) ((1 : ℝ) / 5) (by norm_num)
+
+end R08NonVacuity
+
+-- ============================================================================
+-- § 15.24 Workstream R-13⁺ — Bitstring-polynomial SU2 + SUF-CMA + Q-time NEGATIVE
+-- (audit 2026-04-29 § 8.1, plan PLAN_R_01_07_08_14_16.md § R-13⁺)
+-- ============================================================================
+
+#print axioms Orbcrypt.bitstringPolynomialHash_isEpsilonSU2
+#print axioms Orbcrypt.bitstringPolynomialHash_isEpsilonAXU
+#print axioms Orbcrypt.bitstringPolynomialMAC_isSUFCMASecure
+#print axioms Orbcrypt.bitstringPolynomialHash_isKeyRecoverableForSomeQueries
+#print axioms Orbcrypt.not_bitstringPolynomialMAC_isQtimeSUFCMASecure
+
+namespace R13PlusNonVacuity
+open Orbcrypt
+
+/-- Witness `Fact (Nat.Prime 5)` (decide-based, parallel to R08NonVacuity).
+    Local instance so subsequent `bitstringPolynomial*` calls at `p = 5`
+    elaborate the typeclass argument automatically. -/
+local instance fact_prime_five : Fact (Nat.Prime 5) := ⟨by decide⟩
+
+/-- Concrete R-13⁺ SU2 witness at `(p, n) = (5, 3)`. -/
+example : IsEpsilonSU2 (bitstringPolynomialHash 5 3) ((3 : ENNReal) / 5) :=
+  bitstringPolynomialHash_isEpsilonSU2 5 3
+
+/-- Concrete R-13⁺ AXU witness at `(p, n) = (5, 3)`. -/
+example : IsEpsilonAXU (bitstringPolynomialHash 5 3) ((3 : ENNReal) / 5) :=
+  bitstringPolynomialHash_isEpsilonAXU 5 3
+
+/-- Concrete R-13⁺ 1-time SUF-CMA witness at `(p, n) = (5, 3)`. -/
+example : IsSUFCMASecure (bitstringPolynomialMAC 5 3) ((3 : ℝ) / 5) :=
+  bitstringPolynomialMAC_isSUFCMASecure 5 3
+
+/-- Concrete R-13⁺ key-recovery witness at `(p, n) = (5, 3)`. -/
+example : IsKeyRecoverableForSomeQueries (bitstringPolynomialHash 5 3) 2 :=
+  bitstringPolynomialHash_isKeyRecoverableForSomeQueries 5 3 (by omega)
+
+/-- Concrete R-13⁺ Q-time NEGATIVE witness at `(p, n) = (5, 3)`. -/
+example :
+    ¬ IsQtimeSUFCMASecure (Q := 3) (bitstringPolynomialMAC 5 3) ((3 : ℝ) / 5) :=
+  not_bitstringPolynomialMAC_isQtimeSUFCMASecure 5 3 (by omega) ((3 : ℝ) / 5)
+    (by norm_num)
+
+end R13PlusNonVacuity
+
+-- ============================================================================
+-- § 15.25 Workstream R-16 — HGOE invariants beyond Hamming weight
+-- (audit 2026-04-29 § 8.1, plan PLAN_R_01_07_08_14_16.md § R-16)
+-- ============================================================================
+
+#print axioms Orbcrypt.blockSum
+#print axioms Orbcrypt.PreservesBlocks
+#print axioms Orbcrypt.blockSum_invariant_of_preservesBlocks
+#print axioms Orbcrypt.hgoe_blockSum_attack
+#print axioms Orbcrypt.same_blockSum_not_separating
+
+#print axioms Orbcrypt.bitParity
+#print axioms Orbcrypt.bitParity_invariant
+#print axioms Orbcrypt.bitParity_invariant_subgroup
+#print axioms Orbcrypt.hgoe_bitParity_attack
+#print axioms Orbcrypt.same_bitParity_not_separating
+
+#print axioms Orbcrypt.sortedBits
+#print axioms Orbcrypt.sortedBits_invariant
+#print axioms Orbcrypt.sortedBits_invariant_subgroup
+#print axioms Orbcrypt.hgoe_sortedBits_attack
+#print axioms Orbcrypt.same_sortedBits_not_separating
+
+namespace R16NonVacuity
+open Orbcrypt
+
+/-- Concrete blockSum at a 2-block partition on `Bitstring 4`. The
+    bitstring `![T, T, F, F]` has block-sum `(2, 0)` (positions 0, 1 in
+    block 0; positions 2, 3 in block 1). -/
+example :
+    blockSum
+      (n := 4) (ℓ := 2)
+      (fun j => if j = 0 then ({0, 1} : Finset (Fin 4)) else ({2, 3} : Finset (Fin 4)))
+      (![true, true, false, false]) =
+    ![2, 0] := by decide
+
+/-- Bit parity sentinel: `![T, F, T, F]` has weight 2, parity false. -/
+example : bitParity (![true, false, true, false] : Bitstring 4) = false := by decide
+
+/-- Bit parity sentinel: `![T, F, F, F]` has weight 1, parity true. -/
+example : bitParity (![true, false, false, false] : Bitstring 4) = true := by decide
+
+/-- Same-blockSum defence sentinel. Two bitstrings with the same
+    blockSum-vector cannot be separated by `blockSum`. -/
+example
+    (block : Fin 2 → Finset (Fin 4))
+    (h_same : blockSum block (![true, false, true, false]) =
+              blockSum block (![false, true, false, true])) :
+    ¬ IsSeparating (G := Equiv.Perm (Fin 4)) (blockSum block)
+      (![true, false, true, false]) (![false, true, false, true]) :=
+  same_blockSum_not_separating block _ _ h_same
+
+end R16NonVacuity

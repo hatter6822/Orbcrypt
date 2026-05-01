@@ -38,6 +38,7 @@ import Orbcrypt.Construction.Permutation
 import Orbcrypt.Construction.HGOE
 import Orbcrypt.Construction.HGOEKEM
 import Orbcrypt.Construction.BitstringSupport
+import Orbcrypt.Construction.HGOEInvariants
 
 import Orbcrypt.KeyMgmt.SeedKey
 import Orbcrypt.KeyMgmt.Nonce
@@ -45,6 +46,7 @@ import Orbcrypt.KeyMgmt.Nonce
 import Orbcrypt.AEAD.MAC
 import Orbcrypt.AEAD.AEAD
 import Orbcrypt.AEAD.Modes
+import Orbcrypt.AEAD.MACSecurity
 import Orbcrypt.AEAD.CarterWegmanMAC
 import Orbcrypt.AEAD.BitstringPolynomialMAC
 
