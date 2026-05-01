@@ -5899,6 +5899,21 @@ example
     IsNoncedQtimeSUFCMASecure (Q := Q) mac ε₂ :=
   h.mono hle
 
+/-- Sentinel: trivial `≤ 1` SUF-CMA bound for the bitstring-polynomial
+    nonced MAC at Q = 0 (parallel to the Carter–Wegman witness above;
+    deep-audit 2026-05-01 added this for breadth). -/
+example :
+    IsNoncedQtimeSUFCMASecure (Q := 0)
+      (nonceBitstringPolynomialMAC 5 3 (Fin 8)) 1 :=
+  nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one 5 3 (Fin 8)
+
+/-- Sentinel: trivial `≤ 1` SUF-CMA bound for the bitstring-polynomial
+    nonced MAC at Q = 4 (multi-query). -/
+example :
+    IsNoncedQtimeSUFCMASecure (Q := 4)
+      (nonceBitstringPolynomialMAC 5 3 (Fin 8)) 1 :=
+  nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one 5 3 (Fin 8)
+
 end RandomOracleNonVacuity
 
 -- ============================================================================
@@ -5963,5 +5978,36 @@ example
             (uniformPMF (Nonce → Tag))
     = uniformPMFTuple Tag 0 :=
   PMF.map_eval_uniformOfFintype_at_injective_eq nonces h_inj
+
+/-- Sentinel: stronger disclosure-pattern witness mirroring
+    `noncedMAC_research_scope_disclosure` but at Q = 1 (substantively
+    exercising the marginal-uniformity argument at non-trivial Q,
+    rather than the disclosure theorem's Q = 0 vacuous case).
+    Deep-audit 2026-05-01 added this to prove the Q-tuple PRF
+    witness fires on a genuinely non-empty query tuple. -/
+example :
+    IsPRF (nonceCarterWegmanMAC 5 (ZMod 5)).prf 0 ∧
+    IsPRFAtQueries (nonceCarterWegmanMAC 5 (ZMod 5)).prf 1 0 ∧
+    IsEpsilonAXU (nonceCarterWegmanMAC 5 (ZMod 5)).hash
+      ((1 : ENNReal) / 5) ∧
+    IsNoncedQtimeSUFCMASecure (Q := 1) (nonceCarterWegmanMAC 5 (ZMod 5)) 1 :=
+  ⟨nonceCarterWegmanMAC_isPRF 5 (ZMod 5),
+   nonceCarterWegmanMAC_isPRFAtQueries 5 (ZMod 5) 1,
+   nonceCarterWegmanMAC_isEpsilonAXU 5 (ZMod 5),
+   nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one 5 (ZMod 5)⟩
+
+/-- Sentinel: corresponding Q ≥ 1 disclosure witness for the
+    bitstring-polynomial nonced MAC at Q = 2. Deep-audit 2026-05-01. -/
+example :
+    IsPRF (nonceBitstringPolynomialMAC 5 3 (ZMod 5)).prf 0 ∧
+    IsPRFAtQueries (nonceBitstringPolynomialMAC 5 3 (ZMod 5)).prf 2 0 ∧
+    IsEpsilonAXU (nonceBitstringPolynomialMAC 5 3 (ZMod 5)).hash
+      ((3 : ENNReal) / 5) ∧
+    IsNoncedQtimeSUFCMASecure (Q := 2)
+      (nonceBitstringPolynomialMAC 5 3 (ZMod 5)) 1 :=
+  ⟨nonceBitstringPolynomialMAC_isPRF 5 3 (ZMod 5),
+   nonceBitstringPolynomialMAC_isPRFAtQueries 5 3 (ZMod 5) 2,
+   nonceBitstringPolynomialMAC_isEpsilonAXU 5 3 (ZMod 5),
+   nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one 5 3 (ZMod 5)⟩
 
 end MarginalUniformityNonVacuity

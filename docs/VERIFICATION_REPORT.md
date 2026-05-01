@@ -1338,6 +1338,29 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-05-01 (Workstream R-05 audit-pass — documentation parity
+  + Q-tuple `#print axioms` coverage)** — Closed four
+  documentation-parity gaps surfaced by deep-audit pass on the
+  R-05 framework + marginal-uniformity refinement landings: fixed
+  broken `IsPRF.toAtQueries` cross-reference in
+  `Orbcrypt/AEAD/NoncedMAC.lean`'s design-rationale block; extended
+  module docstring "Main results" with the three post-refinement
+  declarations; moved `IsPRF.toIsPRFAtQueries` and
+  `idealRandomOraclePRF_isPRFAtQueries` from "Research-scope" to
+  "Unconditional" in `noncedMAC_research_scope_disclosure`'s
+  docstring; added three missing `#print axioms` entries
+  (`IsPRFAtQueries`, `IsPRFAtQueries.mono`, `IsPRFAtQueries.le_one`)
+  to `scripts/audit_phase_16.lean`. Phase-16 audit-script entry
+  count: 1,078 → 1,081. Subsequent deep-audit pass (same day, post-
+  audit-pass commit) verified mathematical soundness across all
+  five marginal-uniformity phases and added five additional non-
+  vacuity sentinels (parallel `nonceBitstringPolynomialMAC` SUF-CMA
+  Q = 0 / Q = 4 witnesses; stronger disclosure-pattern witnesses at
+  Q = 1 / Q = 2 substantively exercising the Q ≥ 1 marginal-
+  uniformity case beyond the disclosure theorem's Q = 0 vacuous
+  form). No Lean source semantics changed; every R-05 declaration
+  continues to depend only on the standard Lean trio.
+
 * **2026-05-01 (Workstream R-05 refinement — substantive Q-tuple
   ideal-oracle witness via marginal-uniformity)** — Substantively
   closed the Q-tuple ideal-oracle PRF witness

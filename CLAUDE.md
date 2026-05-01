@@ -8580,6 +8580,67 @@ ideal-oracle witness (audit 2026-05-01 follow-up, plan
   closes the marginal-uniformity gap, making R-05 substantively
   closer to closure.
 
+Workstream R-05 audit-pass (commit `b45e308`, 2026-05-01) closed
+four documentation-parity gaps surfaced by deep-audit pass on the
+R-05 framework + marginal-uniformity refinement landings:
+
+* `Orbcrypt/AEAD/NoncedMAC.lean`:
+  - Fixed broken cross-reference `IsPRF.toAtQueries` → `IsPRF.toIsPRFAtQueries`
+    in the `IsPRFAtQueries` design-rationale block.
+  - Extended the module docstring "Main results" section to list
+    the three post-refinement declarations
+    (`PMF.map_eval_uniformOfFintype_at_injective_eq`,
+    `idealRandomOraclePRF_isPRFAtQueries`,
+    `IsPRF.toIsPRFAtQueries`) that the pre-fix docstring omitted.
+
+* `Orbcrypt/AEAD/NoncedMACSecurity.lean`:
+  - Moved `IsPRF.toIsPRFAtQueries` and
+    `idealRandomOraclePRF_isPRFAtQueries` from the "Research-scope
+    (R-05⁺)" section of the disclosure docstring to the
+    "Unconditional (machine-checked)" section. Pre-fix docstring
+    still claimed they were research-scope, but the marginal-
+    uniformity refinement landing closed both with substantive
+    proofs on the standard Lean trio. Added the marginal-uniformity
+    headline `PMF.map_eval_uniformOfFintype_at_injective_eq` and
+    the two Q-tuple specialisations
+    (`nonceCarterWegmanMAC_isPRFAtQueries`,
+    `nonceBitstringPolynomialMAC_isPRFAtQueries`) to the
+    unconditional section. Disclosure conjunction now matches its
+    docstring.
+
+* `scripts/audit_phase_16.lean`:
+  - Added three missing `#print axioms` entries for
+    `Orbcrypt.IsPRFAtQueries`, `IsPRFAtQueries.mono`, and
+    `IsPRFAtQueries.le_one` (paralleling the existing
+    `IsPRF` / `IsPRF.mono` / `IsPRF.le_one` entries). All three
+    report `[propext, Classical.choice, Quot.sound]`.
+
+A subsequent deep-audit pass (2026-05-01, post-`b45e308`)
+verified mathematical soundness across all five marginal-
+uniformity proof phases (Phase 1: Pi-type Equiv; Phase 2:
+cardinality counting; Phase 3: PMF identity; Phase 4: Q-tuple
+ideal-oracle witness; Phase 5: function-level → Q-tuple bridge)
+and added five additional non-vacuity sentinels in the audit
+script:
+* `nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one`
+  at Q = 0 and Q = 4 (parallel to the existing Carter–Wegman
+  Q = 0 / Q = 3 sentinels);
+* a stronger disclosure-pattern witness exercising
+  `IsPRFAtQueries (...) 1 0` (Q = 1, substantively non-trivial)
+  on `nonceCarterWegmanMAC` — the disclosure theorem itself uses
+  Q = 0 (vacuous Fin 0 quantifier) but the audit sentinel
+  exhibits the Q ≥ 1 case;
+* the bitstring-polynomial parallel disclosure pattern at Q = 2.
+
+No Lean source semantics change. Every R-05 declaration continues
+to depend only on the standard Lean trio. `lake build` succeeds
+across 3,424 jobs with zero warnings, zero errors. Phase-16 audit
+script runs cleanly (exit 0); 1,081 declarations exercised. All
+39 public R-05 declarations (24 in `NoncedMAC.lean`, 15 in
+`NoncedMACSecurity.lean`) have `#print axioms` entries; coverage
+gap pre-`b45e308` was the three `IsPRFAtQueries` form entries,
+now closed.
+
 ## Vulnerability reporting
 
 While executing any task in this codebase, if you discover a possible software vulnerability that could reasonably warrant a CVE (Common Vulnerabilities and Exposures) designation, you **must** immediately report it to the user before continuing. This applies to vulnerabilities found in:
