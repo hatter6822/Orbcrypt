@@ -289,6 +289,7 @@ a single underlying defect; the plan treats them as one work unit.
 | **R-01** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
 | **R-07** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
 | **R-14 / R-08 / R-13⁺ / R-16** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 / § R-13⁺ / § R-16) | **D** | discharged 2026-05-01 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-05 framework** ⚙️ | research | (audit § 8.1, plan `docs/planning/PLAN_R_05_11_15.md` § R-05) | **D** | framework landed 2026-05-01: `Orbcrypt/AEAD/NoncedMAC.lean` + `Orbcrypt/AEAD/NoncedMACSecurity.lean` deliver `NoncedMAC` structure, `IsPRF` Prop, `idealRandomOraclePRF` 0-PRF non-vacuity, concrete `nonceCarterWegmanMAC` / `nonceBitstringPolynomialMAC` specialisations, IsPRF + IsEpsilonAXU non-vacuity witnesses, trivial `_le_one` Q-time SUF-CMA bounds, and `r05_research_scope_disclosure`. Headline reduction theorem with bound `Q · ε_h + ε_p + 1/|Tag|` is **research-scope R-05⁺**. Patch bump 0.3.0 → 0.3.1. | **PARTIAL DISCHARGE PRE-1.0 (framework only)** |
 | **R-15-residual-CE-reverse / R-15-residual-TI-reverse / R-15-residual-TI-forward-matrix** | research | § N-04 | **D** | n/a (catalogue) | v1.1+ / v2.0 |
 
 Note that **B-03a, B-03b, C-03a, C-13a, F-03a** are all "no-action"

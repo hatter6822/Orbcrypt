@@ -49,6 +49,14 @@ import Orbcrypt.AEAD.Modes
 import Orbcrypt.AEAD.MACSecurity
 import Orbcrypt.AEAD.CarterWegmanMAC
 import Orbcrypt.AEAD.BitstringPolynomialMAC
+-- Workstream R-05 (audit 2026-04-29 § 8.1, plan PLAN_R_05_11_15.md
+-- § R-05): random-oracle / nonce-MAC framework. NoncedMAC + IsPRF +
+-- idealRandomOraclePRF abstractions; nonceCarterWegmanMAC and
+-- nonceBitstringPolynomialMAC concrete specialisations. Closes the
+-- Q-time SUF-CMA gap exposed by `not_carterWegmanMAC_isQtimeSUFCMASecure`
+-- by introducing fresh nonces per query (Wegman-Carter 1981 §3).
+import Orbcrypt.AEAD.NoncedMAC
+import Orbcrypt.AEAD.NoncedMACSecurity
 
 import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
@@ -243,6 +251,27 @@ AEAD.MAC ◄── Mathlib.Tactic
       (headline: CW is `(1/p)`-universal over the prime field `ZMod p`,
        L-workstream post-audit, 2026-04-22)
   ◄── carterWegman_authKEM, carterWegmanMAC_int_ctxt (Workstream C4)
+
+  AEAD.NoncedMAC ◄── Probability.Monad, Probability.Advantage
+  ◄── NoncedMAC structure (hash, prf), tag, verify, verify_tag
+  ◄── NoncedMultiQueryMACAdversary, forges, noncedForgeryAdvantage_Qtime
+  ◄── IsNoncedQtimeSUFCMASecure Prop, .le_one, .mono
+  ◄── IsPRF Prop (function-level formulation), .mono, .le_one
+  ◄── idealRandomOraclePRF, idealRandomOraclePRF_isPRF (0-PRF)
+       (Workstream R-05 Phase 1+2; audit 2026-04-29 § 8.1)
+
+  AEAD.NoncedMACSecurity ◄── AEAD.NoncedMAC, AEAD.CarterWegmanMAC,
+                          AEAD.BitstringPolynomialMAC, Probability.UniversalHash
+  ◄── nonceCarterWegmanMAC, nonceBitstringPolynomialMAC
+       (concrete specialisations: ε_h-AXU hash + 0-PRF truly-random oracle)
+  ◄── nonceCarterWegmanMAC_isPRF, nonceBitstringPolynomialMAC_isPRF
+  ◄── nonceCarterWegmanMAC_isEpsilonAXU,
+       nonceBitstringPolynomialMAC_isEpsilonAXU
+  ◄── nonceCarterWegmanMAC_isNoncedQtimeSUFCMASecure_le_one,
+       nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one
+       (trivial `≤ 1` SUF-CMA bounds; substantive `Q · ε_h + ε_p +
+        1/|Tag|` bound research-scope R-05⁺)
+  ◄── r05_research_scope_disclosure (status disclosure)
 
   Mathlib.GroupTheory.Perm.Basic
   Mathlib.LinearAlgebra.Matrix.GeneralLinearGroup.Defs
