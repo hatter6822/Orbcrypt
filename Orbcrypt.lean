@@ -108,6 +108,18 @@ import Orbcrypt.PublicKey.ObliviousSampling
 import Orbcrypt.PublicKey.KEMAgreement
 import Orbcrypt.PublicKey.CommutativeAction
 import Orbcrypt.PublicKey.CombineImpossibility
+-- Workstream R-11 (audit 2026-04-29 § 8.1, plan PLAN_R_05_11_15.md
+-- § R-11): concrete non-trivial CommGroupAction instance. CSIDHHardness
+-- introduces the `IsCommActionDDHHard` Prop predicate parametrising the
+-- standard Decisional Diffie–Hellman assumption to commutative actions,
+-- plus the IND-CPA / ROR-CPA reduction for `CommOrbitPKE` conditional on
+-- the Prop. MultGroupAction registers `(ZMod p)ˣ ↷ ZMod p` (the canonical
+-- non-trivial commutative action — pre-R-11 the only registered action
+-- was `selfAction G ↷ G`, which is trivially broken by discrete log when
+-- the action group equals the carrier) and a toy `(ZMod 7)ˣ` PKE
+-- non-vacuity instance. Closes the "only `selfAction` is registered" gap.
+import Orbcrypt.PublicKey.CSIDHHardness
+import Orbcrypt.PublicKey.MultGroupAction
 
 import Orbcrypt.Optimization.QCCanonical
 import Orbcrypt.Optimization.TwoPhaseDecrypt

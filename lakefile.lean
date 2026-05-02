@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.2"
+  version := v!"0.3.3"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -19,7 +19,8 @@ package "orbcrypt" where
 
 -- Pinned to Mathlib4 commit fa6418a8 (matches lake-manifest.json)
 -- Compatible with lean4:v4.30.0-rc1 (see lean-toolchain)
--- Last verified: 2026-05-01 (Workstream R-05 landing
+-- Last verified: 2026-05-02 (Workstream R-11 landing
+-- + Workstream R-05 landing
 -- + Workstream C of audit 2026-04-29
 -- + post-landing audit-pass fixes:
 -- explicit globs + defense-in-depth checks + GAP/Lean equivalence
@@ -82,6 +83,25 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- Workstream R-11 (audit 2026-04-29 § 8.1, plan
+-- `docs/planning/PLAN_R_05_11_15.md` § R-11, 2026-05-02): closes the
+-- "only `selfAction` is registered" gap in
+-- `Orbcrypt/PublicKey/CommutativeAction.lean`. Two new modules
+-- (`Orbcrypt/PublicKey/CSIDHHardness.lean` +
+-- `Orbcrypt/PublicKey/MultGroupAction.lean`) introduce the
+-- `IsCommActionDDHHard` Prop predicate parametrising the standard
+-- Decisional Diffie–Hellman assumption to commutative actions, the
+-- IND-CPA / ROR-CPA reduction `commPKE_indCPA_under_csidh_ddh_hardness`
+-- (exact reduction with no factor loss), the multiplicative-group
+-- commutative action `multGroupCommAction p : CommGroupAction
+-- (ZMod p)ˣ (ZMod p)` (the canonical non-trivial action — pre-R-11
+-- the only registered action `selfAction G ↷ G` is broken in
+-- polynomial time by discrete log), orbit characterisations of `0`
+-- (fixed point) and `1` (the units image), and a toy `(ZMod 7)ˣ`
+-- `CommOrbitPKE` non-vacuity instance. Discharging
+-- `IsCommActionDDHHard` for any concrete action is the standard DDH
+-- cryptographic assumption (R-11⁺ research-scope); the trivial
+-- `_le_one` bound is unconditional. Patch bump 0.3.2 → 0.3.3.
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md
