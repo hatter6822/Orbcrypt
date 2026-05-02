@@ -48,13 +48,13 @@ build warnings**.
 
 | Metric | Value |
 |--------|-------|
-| Lean source modules | 81 (+ root import file) |
-| Public declarations | 460+, all with docstrings |
-| Phase-16 audit script | 1078+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
-| Build | `lake build` runs ~3,424 jobs successfully |
+| Lean source modules | 83 (+ root import file) |
+| Public declarations | 480+, all with docstrings |
+| Phase-16 audit script | 1095+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
+| Build | `lake build` runs ~3,426 jobs successfully |
 | Toolchain | Lean 4 v4.30.0-rc1 + Mathlib pinned at commit `fa6418a8` |
 | CI | GitHub Actions on every push: build + sorry scan + axiom-decl scan + lake-manifest drift check + Phase-16 regression sentinel |
-| Package version | `0.3.2` |
+| Package version | `0.3.3` |
 
 The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
 *hypothesis*, not a Lean `axiom` — verify with
