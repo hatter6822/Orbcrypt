@@ -365,7 +365,11 @@ WriteComparisonCSV := function(hgoe128, filename)
     AppendTo(f, "pq_secure,assumption,source\n");
 
     # Literature values — see docs/PARAMETERS.md §3 for citations.
-    AppendTo(f, "AES-256-GCM,symmetric,32,n+28,0.05,0.05,no,none,NIST_SP800-38D\n");
+    # AES-256-GCM pq_secure cell is "yes_grover": AES-256's only known
+    # quantum attack is Grover's, leaving ~128-bit PQ security; NIST
+    # Level 5 is *defined* as AES-256 key search. See PARAMETERS.md §3.1
+    # footnote ‡ for the full analysis (GMAC tag bound, Q1 vs Q2 caveat).
+    AppendTo(f, "AES-256-GCM,symmetric,32,n+28,0.05,0.05,yes_grover,none,NIST_SP800-38D\n");
     AppendTo(f, "Kyber-768,lattice-KEM,2400,1088,30,25,yes,MLWE,NIST_FIPS203\n");
     AppendTo(f, "BIKE-L3,code-KEM,3114,3114,100,200,yes,QC-MDPC,NIST_Round4\n");
     AppendTo(f, "HQC-256,code-KEM,7245,14469,300,500,yes,QC-HQC,NIST_Round4\n");

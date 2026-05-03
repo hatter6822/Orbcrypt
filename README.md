@@ -91,7 +91,17 @@ Conditional / Scaffolding) is in
 | Ciphertext (KEM only) | **43 B** | n + 28 B | 1,088 B |
 | Encrypt (μs) | 314,000 | 0.05 | 30 |
 | Decrypt (μs) | 348,000 | 0.05 | 25 |
-| Post-quantum secure | conjectured (GI/CE/TI) | no | yes (MLWE) |
+| Post-quantum secure | conjectured (GI/CE/TI) | yes (Grover) ‡ | yes (MLWE) |
+
+‡ AES-256's only known quantum attack is Grover's algorithm, which
+gives a quadratic speedup on key search and reduces effective key-recovery
+security from 256 to 128 bits. NIST in fact *defines* its highest
+post-quantum security category (Level 5) as key search on AES-256. The
+128-bit GMAC tag has a tighter ~64-bit quantum forgery margin; the
+Kaplan et al. (CRYPTO 2016) Q2-oracle Simon's-algorithm attack on GMAC
+applies only in the (largely theoretical) quantum-superposition oracle
+model, not in any practical deployment. See
+[`docs/PARAMETERS.md`](docs/PARAMETERS.md) §3.1 for the full analysis.
 
 **Headline take-away.** Orbcrypt wins on key/ciphertext size by 1–2
 orders of magnitude over lattice/code-based PQ KEMs, and is competitive
