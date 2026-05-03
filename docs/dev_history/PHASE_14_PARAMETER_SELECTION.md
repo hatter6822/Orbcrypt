@@ -10,7 +10,7 @@
 
 ## Weeks 28–31 | 6 Work Units | ~20 Hours
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 ---
 

@@ -45,10 +45,10 @@ convention — the canonical-form choice used by the concrete
 
 ## References
 
-* DEVELOPMENT.md §3.2 — S_n action on bitstrings
-* DEVELOPMENT.md §7.1 — Hamming weight defense
-* COUNTEREXAMPLE.md — Hamming weight attack
-* formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md — work units 5.1–5.6
+* docs/DEVELOPMENT.md §3.2 — S_n action on bitstrings
+* docs/DEVELOPMENT.md §7.1 — Hamming weight defense
+* docs/COUNTEREXAMPLE.md — Hamming weight attack
+* docs/dev_history/formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md — work units 5.1–5.6
 * docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 9 — Workstream F
   (V1-10 / F-04): the `bitstringLinearOrder` instance below is the
   computable-`LinearOrder` side of the `CanonicalForm.ofLexMin` landing;
@@ -79,7 +79,7 @@ variable {n : ℕ}
 
 /-- S_n acts on bitstrings by permuting coordinates: `(σ • x)(i) = x(σ⁻¹(i))`.
     The use of `σ⁻¹` (rather than `σ`) ensures the standard left-action
-    convention: `(σ * τ) • x = σ • (τ • x)`. See DEVELOPMENT.md §3.2. -/
+    convention: `(σ * τ) • x = σ • (τ • x)`. See docs/DEVELOPMENT.md §3.2. -/
 instance : MulAction (Equiv.Perm (Fin n)) (Bitstring n) where
   smul σ x := fun i => x (σ⁻¹ i)
   one_smul _ := funext fun _ => rfl
@@ -135,7 +135,7 @@ theorem perm_action_faithful
 -- ============================================================================
 
 /-- Hamming weight: the number of `true` (1) bits in a bitstring.
-    This is the attack function described in COUNTEREXAMPLE.md:
+    This is the attack function described in docs/COUNTEREXAMPLE.md:
     permutations preserve Hamming weight, so it leaks orbit information
     when orbit representatives have different weights. -/
 def hammingWeight (x : Bitstring n) : ℕ :=
@@ -147,7 +147,7 @@ def hammingWeight (x : Bitstring n) : ℕ :=
 
 /-- Hamming weight is invariant under any permutation action.
     Permutations merely rearrange coordinates without changing the count of
-    1-bits. This connects to COUNTEREXAMPLE.md: Hamming weight is a
+    1-bits. This connects to docs/COUNTEREXAMPLE.md: Hamming weight is a
     G-invariant function for any G ≤ S_n, making it a potential attack vector.
 
     **Proof strategy:** The set `{i | x(σ⁻¹ i) = true}` equals the image of

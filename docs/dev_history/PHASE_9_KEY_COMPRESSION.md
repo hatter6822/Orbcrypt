@@ -10,7 +10,7 @@
 
 ## Weeks 20–22 | 7 Work Units | ~18 Hours
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 ---
 
@@ -43,7 +43,7 @@ mechanism and the PRF seed for nonce-based encryption. The result:
   correctness depends only on group-action algebra, not on how the group
   element was chosen
 
-The key expansion pipeline follows DEVELOPMENT.md section 6.2.1: a 256-bit
+The key expansion pipeline follows docs/DEVELOPMENT.md section 6.2.1: a 256-bit
 seed is stretched into a quasi-cyclic (QC) parity-check matrix H, the
 permutation automorphism group PAut(C_0) is computed, a strong generating set
 (SGS) is extracted via Schreier-Sims, and the canonical form function is built
@@ -196,7 +196,7 @@ Orbcrypt.KeyMgmt.SeedKey` succeeds with zero warnings.
 **Effort:** 3h | **File:** `KeyMgmt/SeedKey.lean` | **Deps:** 9.1
 
 Specify (but do not implement in executable Lean) the QC code key expansion
-pipeline from DEVELOPMENT.md section 6.2.1. This is a Prop-valued structure
+pipeline from docs/DEVELOPMENT.md section 6.2.1. This is a Prop-valued structure
 that captures the properties any valid key expansion must satisfy, without
 providing executable code. An implementation (e.g., in GAP or C) must satisfy
 these properties to be considered a valid instantiation.

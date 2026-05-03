@@ -40,9 +40,9 @@ correctness property (also called "completeness").
 
 ## References
 
-* DEVELOPMENT.md §8 — authenticated encryption discussion
-* docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work unit 10.1
-* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C (F-07)
+* docs/DEVELOPMENT.md §8 — authenticated encryption discussion
+* docs/dev_history/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work unit 10.1
+* docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C (F-07)
 -/
 
 set_option autoImplicit false

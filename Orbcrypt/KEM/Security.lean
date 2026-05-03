@@ -78,10 +78,10 @@ below for the full rationale.
 
 ## References
 
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work units 7.4, 7.5, 7.6
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work units 7.4, 7.5, 7.6
 * Crypto/Security.lean — original AOE security definitions
 * Crypto/OIA.lean — original OIA definition
-* docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 6 (K2) — rationale
+* docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 6 (K2) — rationale
   for omitting a `kemoia_implies_secure_distinct` corollary (audit
   finding F-AUDIT-2026-04-21-M1)
 -/

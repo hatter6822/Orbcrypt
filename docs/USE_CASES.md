@@ -17,8 +17,8 @@ Orbcrypt primitive it leans on, (b) why competing primitives are a poor
 fit, and (c) how it aligns with the existing Lean 4 formalization — in
 particular which Phase-13 limitations bite.
 
-Readers unfamiliar with the scheme should first skim `POE.md` (concept),
-`DEVELOPMENT.md` §§4–6 (specification), and `docs/PUBLIC_KEY_ANALYSIS.md`
+Readers unfamiliar with the scheme should first skim `docs/POE.md` (concept),
+`docs/DEVELOPMENT.md` §§4–6 (specification), and `docs/PUBLIC_KEY_ANALYSIS.md`
 (public-key feasibility). The Lean theorem numbers referenced here match
 `CLAUDE.md`'s theorem registry; theorem **Status** classifications
 (`Standalone` / `Quantitative` / `Conditional` / `Scaffolding`) follow
@@ -406,7 +406,7 @@ a random `G_p` with large orbits can collapse price-distinct orders
 into the same canonical class. Designers must choose the subgroup
 structure so that the equivalence relation "same (side, price, size)"
 is exactly the orbit relation. The scheme's formalization does not
-pick this `G_p` for you; `docs/planning/PHASE_14_PARAMETER_SELECTION.md`
+pick this `G_p` for you; `docs/dev_history/PHASE_14_PARAMETER_SELECTION.md`
 is the right place to expand concrete subgroup choices.
 
 ### 3.3 Unlinkable LP positions via bundled token rotation

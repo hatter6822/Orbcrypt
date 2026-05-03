@@ -122,7 +122,7 @@ This is a right action: `(x.s).t = x.(s*t)`. The canonical image under G is
 the lexicographically smallest element of the orbit, computed by the `images`
 package's `CanonicalImage(G, S, OnSets)`.
 
-### Key Generation Pipeline (DEVELOPMENT.md §6.2.1)
+### Key Generation Pipeline (docs/DEVELOPMENT.md §6.2.1)
 
 The 7-stage HGOE key generation pipeline:
 
@@ -137,7 +137,7 @@ The 7-stage HGOE key generation pipeline:
 7. **Public parameter assembly:** n, w, |M|, representative array
 
 **Note on group construction:** The full QC code + PAut(C) approach from
-DEVELOPMENT.md §6.2.1 is available via `HGOEGenerateCodeQC()` but GUAVA's
+docs/DEVELOPMENT.md §6.2.1 is available via `HGOEGenerateCodeQC()` but GUAVA's
 `AutomorphismGroup` is impractically slow for n > 20 in GAP. The default
 `HGOEGenerateCode()` uses a block-cyclic wreath-product construction that
 provides |G| >= 2^lambda instantly. This is acceptable for benchmarking

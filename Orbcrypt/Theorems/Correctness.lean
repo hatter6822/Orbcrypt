@@ -13,7 +13,7 @@ import Orbcrypt.GroupAction.Invariant
 # Orbcrypt.Theorems.Correctness
 
 Correctness theorem: `decrypt(encrypt(g, m)) = some m` for all messages `m`
-and group elements `g` used in encryption. Formalizes DEVELOPMENT.md §4.2.
+and group elements `g` used in encryption. Formalizes docs/DEVELOPMENT.md §4.2.
 
 ## Overview
 
@@ -39,8 +39,8 @@ decryption perfectly inverts encryption. The proof proceeds in four steps:
 
 ## References
 
-* DEVELOPMENT.md §4.2 — correctness proof
-* formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.1–4.5
+* docs/DEVELOPMENT.md §4.2 — correctness proof
+* docs/dev_history/formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.1–4.5
 -/
 
 namespace Orbcrypt
@@ -115,7 +115,7 @@ theorem decrypt_unique [Group G] [MulAction G X] [DecidableEq X]
 
 /--
 **Correctness Theorem.** Decryption perfectly inverts encryption.
-Formalizes DEVELOPMENT.md §4.2: `Pr[Dec(Enc(m)) = m] = 1`.
+Formalizes docs/DEVELOPMENT.md §4.2: `Pr[Dec(Enc(m)) = m] = 1`.
 
 For any message `m` and any group element `g`, decrypting the ciphertext
 `encrypt scheme g m` recovers the original message `m`.

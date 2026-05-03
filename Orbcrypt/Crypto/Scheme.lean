@@ -13,7 +13,7 @@ import Orbcrypt.GroupAction.Canonical
 # Orbcrypt.Crypto.Scheme
 
 Abstract Orbit Encryption (AOE) scheme syntax: `OrbitEncScheme` structure
-with `encrypt` and `decrypt` operations. Formalizes DEVELOPMENT.md §4.1.
+with `encrypt` and `decrypt` operations. Formalizes docs/DEVELOPMENT.md §4.1.
 
 ## Main definitions
 
@@ -36,8 +36,8 @@ added only to `decrypt`, where enumeration over all messages is required.
 
 ## References
 
-* DEVELOPMENT.md §4.1 — AOE scheme definition
-* formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.1–3.3
+* docs/DEVELOPMENT.md §4.1 — AOE scheme definition
+* docs/dev_history/formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.1–3.3
 -/
 
 namespace Orbcrypt
@@ -49,7 +49,7 @@ variable {G : Type*} {X : Type*} {M : Type*}
 -- ============================================================================
 
 /--
-An Abstract Orbit Encryption (AOE) scheme. Formalizes DEVELOPMENT.md §4.1.
+An Abstract Orbit Encryption (AOE) scheme. Formalizes docs/DEVELOPMENT.md §4.1.
 
 The scheme is parameterized by:
 - `G`: the secret group (key)

@@ -29,11 +29,11 @@ This phase has **two parallel tracks** after the scheme definition (units
 ## Objectives
 
 1. A complete `OrbitEncScheme` structure with `encrypt` and `decrypt` functions
-   that formally capture DEVELOPMENT.md §4.1.
+   that formally capture docs/DEVELOPMENT.md §4.1.
 2. A deterministic adversary model and IND-CPA advantage definition that
-   abstracts DEVELOPMENT.md §4.3.
+   abstracts docs/DEVELOPMENT.md §4.3.
 3. The OIA stated as a Lean axiom with clear documentation explaining the
-   relationship to the probabilistic definition in DEVELOPMENT.md §5.2.
+   relationship to the probabilistic definition in docs/DEVELOPMENT.md §5.2.
 
 ---
 
@@ -61,7 +61,7 @@ import Orbcrypt.GroupAction.Basic
 import Orbcrypt.GroupAction.Canonical
 
 /--
-An Abstract Orbit Encryption (AOE) scheme. Formalizes DEVELOPMENT.md §4.1.
+An Abstract Orbit Encryption (AOE) scheme. Formalizes docs/DEVELOPMENT.md §4.1.
 
 The scheme is parameterized by:
 - `G`: the secret group (key)
@@ -194,7 +194,7 @@ import Orbcrypt.Crypto.Scheme
 
 /--
 A deterministic adversary for the IND-1-CPA game. Formalizes the adversary
-model from DEVELOPMENT.md §4.3.
+model from docs/DEVELOPMENT.md §4.3.
 
 Since we work in a deterministic setting (no probability monad), the adversary
 is a pair of pure functions:
@@ -213,7 +213,7 @@ structure Adversary (X : Type*) (M : Type*) where
 
 **Design note:** The adversary sees the orbit representatives (`reps : M → X`)
 as public parameters, but does not see the secret group `G`. This matches the
-security model in DEVELOPMENT.md §4.3 where `params` (including {x_m}) is
+security model in docs/DEVELOPMENT.md §4.3 where `params` (including {x_m}) is
 public but `sk` (including G) is secret.
 
 ---
@@ -276,7 +276,7 @@ def IsSecure [Group G] [MulAction G X] [DecidableEq X]
 ```
 
 **Relationship to the full definition:** This captures IND-1-CPA (single-query,
-no oracle). The full IND-CPA with adaptive oracle queries (DEVELOPMENT.md §8.2)
+no oracle). The full IND-CPA with adaptive oracle queries (docs/DEVELOPMENT.md §8.2)
 requires modeling stateful adversaries and sequential oracle interactions,
 which is beyond the current scope.
 
@@ -303,7 +303,7 @@ any two messages `m₀ m₁`, and any group elements `g₀ g₁ ∈ G`,
 `f(g₀ • reps(m₀)) = f(g₁ • reps(m₁))`.
 
 This is the strong deterministic reformulation of the probabilistic OIA
-(DEVELOPMENT.md §5.2), which states:
+(docs/DEVELOPMENT.md §5.2), which states:
 
   |Pr[A(g • x_{m₀}) = 1] - Pr[A(g • x_{m₁}) = 1]| ≤ negl(λ)
 

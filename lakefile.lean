@@ -29,7 +29,7 @@ package "orbcrypt" where
 -- audit-plan reclassification + 11 doc-parity refs in
 -- VERIFICATION_REPORT.md / README.md;
 -- Workstream R-01 (audit 2026-04-29 § 8.1, plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01): three new public
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01): three new public
 -- declarations under `Orbcrypt/Theorems/InvariantAttack.lean`
 -- (`probTrue_orbitDist_invariant_eq_one`,
 --  `probTrue_orbitDist_invariant_eq_zero`,
@@ -38,7 +38,7 @@ package "orbcrypt" where
 -- G-invariant, the IND-1-CPA advantage of the invariant-attack
 -- adversary is exactly `1`. Patch bump 0.2.2 → 0.2.3.
 -- Workstream R-07 (audit 2026-04-29 § 8.1, plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07): six new public
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07): six new public
 -- declarations under `Orbcrypt/PublicKey/CombineImpossibility.lean`
 -- (`combinerOrbitDist_apply_true_eq_probTrue`,
 --  `CrossOrbitNonDegenerateCombiner`,

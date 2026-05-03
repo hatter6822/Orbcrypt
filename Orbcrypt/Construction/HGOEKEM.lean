@@ -26,7 +26,7 @@ correctness instantiation, and backward-compatibility bridge from scheme to KEM.
 
 ## References
 
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work unit 7.8
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work unit 7.8
 * Construction/HGOE.lean — HGOE scheme and Hamming weight defense
 -/
 

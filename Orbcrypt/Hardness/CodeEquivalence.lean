@@ -91,9 +91,9 @@ and establishes the PAut (Permutation Automorphism group) framework.
 
 ## References
 
-* DEVELOPMENT.md §5.4 — CE-OIA
-* docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md — work units 12.1–12.2
-* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 7 — Workstream D
+* docs/DEVELOPMENT.md §5.4 — CE-OIA
+* docs/dev_history/PHASE_12_HARDNESS_ALIGNMENT.md — work units 12.1–12.2
+* docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 7 — Workstream D
 * LESS (NIST PQC): Biasse, Micheli, Persichetti, Santini (2020)
 -/
 

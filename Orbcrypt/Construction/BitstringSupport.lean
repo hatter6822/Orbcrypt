@@ -105,7 +105,7 @@ canonical-image equivalence at arbitrary `n`.
 
 ## References
 
-* DEVELOPMENT.md §3.2 — canonical forms in the encryption scheme.
+* docs/DEVELOPMENT.md §3.2 — canonical forms in the encryption scheme.
 * `implementation/gap/orbcrypt_kem.g:39-41` — GAP's
   `PermuteBitstring` defined as `OnSets`, the support-image action.
 * `Orbcrypt/Construction/Permutation.lean` — `bitstringLinearOrder`
@@ -113,7 +113,7 @@ canonical-image equivalence at arbitrary `n`.
 * `Orbcrypt/Construction/HGOE.lean:88-113` — pre-C5 prose
   disclosure of the GAP/Lean correspondence; this module replaces
   the prose with a machine-checked theorem.
-* `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+* `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
   § 7.3 (Workstream C / C5) — audit-plan context for D-02a.
 -/
 

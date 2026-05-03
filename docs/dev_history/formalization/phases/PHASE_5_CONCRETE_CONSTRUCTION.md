@@ -19,8 +19,8 @@
 Phase 5 bridges theory and practice by instantiating the abstract orbit
 encryption framework with the concrete symmetric group S\_n acting on
 bitstrings {0,1}^n. It produces a working `OrbitEncScheme` instance and
-formally proves that the Hamming weight defense from DEVELOPMENT.md §7.1
-defeats the primary attack vector from COUNTEREXAMPLE.md.
+formally proves that the Hamming weight defense from docs/DEVELOPMENT.md §7.1
+defeats the primary attack vector from docs/COUNTEREXAMPLE.md.
 
 The original 8 work units have been decomposed into 12 smaller units.
 Key splits: the S\_n action (old 5.2, 4h) is separated from its law proofs
@@ -115,7 +115,7 @@ instance : MulAction (Equiv.Perm (Fin n)) (Bitstring n) where
 **Why `σ⁻¹` not `σ`:** The action uses `σ⁻¹` to match the standard
 left-action convention: `(σ • x)_i = x_{σ⁻¹(i)}`. This ensures
 `(σ * τ) • x = σ • (τ • x)` holds without reversing composition.
-See DEVELOPMENT.md §3.2.
+See docs/DEVELOPMENT.md §3.2.
 
 **Proof obligations:**
 
@@ -327,7 +327,7 @@ resolves correctly.
 - The `filter` predicate must be `Decidable`. Since `x i = true` is
   decidable (Bool has DecidableEq), this is fine.
 
-**This proof connects to COUNTEREXAMPLE.md:** Hamming weight is the exact
+**This proof connects to docs/COUNTEREXAMPLE.md:** Hamming weight is the exact
 attack function described in §§1–4. Proving it is G-invariant for all
 G ≤ S\_n is the first half of understanding why same-weight representatives
 are necessary.
@@ -565,7 +565,7 @@ This follows because the subgroup action is defined via coercion to S\_n.
 ```lean
 /-- When all representatives have the same Hamming weight, the weight function
     cannot separate any pair of messages. This is the formal defense from
-    DEVELOPMENT.md §7.1. -/
+    docs/DEVELOPMENT.md §7.1. -/
 theorem same_weight_not_separating (n : ℕ)
     (G : Subgroup (Equiv.Perm (Fin n)))
     (reps : M → Bitstring n)
@@ -586,7 +586,7 @@ theorem same_weight_not_separating (n : ℕ)
 2. The second conjunct is contradicted by `hSameWeight`:
    `hammingWeight(reps m₀) = w = hammingWeight(reps m₁)`.
 
-**This is the punchline of the defense analysis:** DEVELOPMENT.md §7.1
+**This is the punchline of the defense analysis:** docs/DEVELOPMENT.md §7.1
 states that choosing all orbit representatives with the same Hamming weight
 `w = ⌊n/2⌋` defeats the Hamming weight attack. This lemma formally proves
 that claim.

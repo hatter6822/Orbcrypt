@@ -12,7 +12,7 @@
 
 ## Weeks 21–26 | 9 Work Units | ~36 Hours
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 ---
 
@@ -52,7 +52,7 @@ reimplementation in Rust/C++ can follow if benchmarks are promising.
 ## Objectives
 
 1. Install and configure GAP 4.12+ with required packages (`images`, `GUAVA`, `IO`).
-2. Implement the complete 7-stage HGOE key generation pipeline from DEVELOPMENT.md Section 6.2.1.
+2. Implement the complete 7-stage HGOE key generation pipeline from docs/DEVELOPMENT.md Section 6.2.1.
 3. Implement KEM encapsulation and decapsulation with round-trip correctness.
 4. Build a comprehensive correctness test suite covering orbit membership, weight preservation, canonical form consistency, and distinct orbits.
 5. Build a benchmark harness producing structured CSV output with timing breakdowns.
@@ -114,7 +114,7 @@ runs correctly.
 
 **Effort:** 5h | **File:** `implementation/gap/orbcrypt_keygen.g` | **Deps:** 11.1
 
-Implement the 7-stage HGOE key generation pipeline from DEVELOPMENT.md
+Implement the 7-stage HGOE key generation pipeline from docs/DEVELOPMENT.md
 Section 6.2.1.
 
 **Sub-tasks:**

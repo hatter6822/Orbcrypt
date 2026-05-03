@@ -14,7 +14,7 @@ import Orbcrypt.Crypto.Scheme
 Orbit Indistinguishability Assumption (OIA): formal statement as a
 `Prop`-valued definition. This is the sole computational assumption in the
 formalization, analogous to "factoring is hard" in RSA.
-Formalizes DEVELOPMENT.md §5.2.
+Formalizes docs/DEVELOPMENT.md §5.2.
 
 ## Main declarations
 
@@ -34,7 +34,7 @@ actions, including trivial ones where the claim is provably false (e.g.,
 inconsistency, making every proposition provable.
 
 Instead, we define OIA as a `Prop` that theorems carry as an explicit
-hypothesis. This matches DEVELOPMENT.md §8.1 ("If the OIA holds for the
+hypothesis. This matches docs/DEVELOPMENT.md §8.1 ("If the OIA holds for the
 setup family Π") and is standard practice in formal cryptography. The
 result is STRONGER assurance: `#print axioms oia_implies_1cpa` shows only
 Lean's standard axioms, confirming zero custom axioms.
@@ -76,7 +76,7 @@ meaningful computational assumption while preserving the proof structure.
 
 ### Relationship to probabilistic OIA
 
-The probabilistic OIA (DEVELOPMENT.md §5.2) states:
+The probabilistic OIA (docs/DEVELOPMENT.md §5.2) states:
 
   `|Pr[A(g • x_{m₀}) = 1] - Pr[A(g • x_{m₁}) = 1]| ≤ negl(λ)`
 
@@ -130,22 +130,22 @@ explicit assumption that can be independently evaluated.
 
 The OIA is grounded in two well-studied hardness assumptions:
 
-1. **Graph Isomorphism (GI-OIA, DEVELOPMENT.md §5.3):** On Cai-Furer-
+1. **Graph Isomorphism (GI-OIA, docs/DEVELOPMENT.md §5.3):** On Cai-Furer-
    Immerman (CFI) graphs, the group action is constructed so that orbit
    indistinguishability reduces to GI. Best classical algorithm:
    2^O(√(n log n)) (Babai, 2015).
 
-2. **Permutation Code Equivalence (CE-OIA, DEVELOPMENT.md §5.4):** The
+2. **Permutation Code Equivalence (CE-OIA, docs/DEVELOPMENT.md §5.4):** The
    equivalence problem for permutation codes is at least as hard as GI
    (GI ≤_p CE) and believed strictly harder for specific code families.
 
 ## References
 
-* DEVELOPMENT.md §5.2 — probabilistic OIA definition
-* DEVELOPMENT.md §5.3 — GI-based OIA
-* DEVELOPMENT.md §5.4 — CE-based OIA
-* COUNTEREXAMPLE.md — invariant attack (what happens when OIA fails)
-* formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.7–3.8
+* docs/DEVELOPMENT.md §5.2 — probabilistic OIA definition
+* docs/DEVELOPMENT.md §5.3 — GI-based OIA
+* docs/DEVELOPMENT.md §5.4 — CE-based OIA
+* docs/COUNTEREXAMPLE.md — invariant attack (what happens when OIA fails)
+* docs/dev_history/formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.7–3.8
 -/
 
 namespace Orbcrypt
@@ -163,7 +163,7 @@ any two messages `m₀ m₁`, and any group elements `g₀ g₁ ∈ G`,
 `f(g₀ • reps(m₀)) = f(g₁ • reps(m₁))`.
 
 This is the strong deterministic reformulation of the probabilistic OIA
-(DEVELOPMENT.md §5.2). When assumed for a specific scheme, it directly
+(docs/DEVELOPMENT.md §5.2). When assumed for a specific scheme, it directly
 implies IND-1-CPA security (proved in `Theorems/OIAImpliesCPA.lean`).
 
 **Why a `Prop`-valued definition, not an `axiom`:** A Lean `axiom` is
@@ -175,7 +175,7 @@ making every proposition provable and defeating formal verification.
 
 Instead, OIA is defined as a `Prop` that specific theorems carry as a
 hypothesis: `theorem oia_implies_1cpa (hOIA : OIA scheme) : IsSecure scheme`.
-This matches DEVELOPMENT.md §8.1, which states *"If the OIA holds for the
+This matches docs/DEVELOPMENT.md §8.1, which states *"If the OIA holds for the
 setup family Π"* — a conditional statement about a specific scheme.
 
 The result is STRONGER assurance: `#print axioms oia_implies_1cpa` shows

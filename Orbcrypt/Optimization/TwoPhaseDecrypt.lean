@@ -43,7 +43,7 @@ witness formally is Phase 16 work.
 
 ## References
 
-* `docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md` § 15.5
+* `docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md` § 15.5
 * `implementation/gap/orbcrypt_fast_dec.g` (Work Unit 15.3)
 * `Orbcrypt.KEM.Correctness` — the full-group correctness theorem we
   specialise.

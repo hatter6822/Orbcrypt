@@ -82,7 +82,7 @@ specialisation of the probabilistic form.
 
 ## References
 
-* `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E1 — Workstream E1
+* `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E1 — Workstream E1
 * `Orbcrypt/Crypto/CompOIA.lean` — the analogue `ConcreteOIA` on
   `OrbitEncScheme`, whose API this module mirrors.
 * `Orbcrypt/KEM/Security.lean` — the deterministic `KEMOIA` this module
@@ -475,7 +475,7 @@ theorem concrete_kemoia_uniform_implies_secure
 --   `TI-hardness → KEM-uniform-OIA` pipeline parallel to Workstream G.
 --
 -- This section closes the gap in three steps (H1 / H2 / H3 per the
--- audit plan `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 4):
+-- audit plan `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 4):
 --
 -- * **H1.** `ConcreteOIAImpliesConcreteKEMOIAUniform` — the abstract
 --   reduction Prop, stated as a `Prop`-valued definition (matching
@@ -525,7 +525,7 @@ theorem concrete_kemoia_uniform_implies_secure
     (`ConcreteKEMHardnessChain.tight_one_exists`) uses.
 
     **References.**
-    * `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 4.3 (H1).
+    * `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 4.3 (H1).
     * `Orbcrypt/Hardness/Reductions.lean` for the companion per-encoding
       reduction Props (`*_viaEncoding`) this predicate mirrors at the
       KEM layer. -/

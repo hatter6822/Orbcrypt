@@ -1546,10 +1546,10 @@ it cites the old names.
 
 #### L3-WU3 — Update prose documentation
 
-**Files.** `CLAUDE.md`, `DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
+**Files.** `CLAUDE.md`, `docs/DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
 `docs/USE_CASES.md`, `docs/MORE_USE_CASES.md`,
-`formalization/FORMALIZATION_PLAN.md`,
-`docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md`.
+`docs/dev_history/formalization/FORMALIZATION_PLAN.md`,
+`docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md`.
 
 **Change.** Mechanical rename where the old identifier appears; keep
 the prose explanation of "structural independence vs. cryptographic
@@ -1916,7 +1916,7 @@ re-verification during release-messaging passes.
 
 ### 9.3 N3 — `indQCPA_bound_via_hybrid` `h_step` gap (I3)
 
-Self-disclosed in `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+Self-disclosed in `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
 § E8b. Tracked as post-release Workstream. No action this plan.
 
 ### 9.4 N4 — `scripts/setup_lean_env.sh` (I4)

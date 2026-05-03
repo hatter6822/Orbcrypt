@@ -29,7 +29,7 @@ makes decapsulation possible without knowing `g`.
 
 ## References
 
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work unit 7.2
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work unit 7.2
 -/
 
 namespace Orbcrypt

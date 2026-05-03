@@ -92,8 +92,8 @@ IND-1-CPA secure  (Theorems/OIAImpliesCPA.lean)
 
 ## References
 
-* docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md — work units 12.6–12.7
-* DEVELOPMENT.md §5.3–5.4 — GI-OIA and CE-OIA
+* docs/dev_history/PHASE_12_HARDNESS_ALIGNMENT.md — work units 12.6–12.7
+* docs/DEVELOPMENT.md §5.3–5.4 — GI-OIA and CE-OIA
 * Grochow & Qiao (2021) — TI complexity
 -/
 
@@ -888,7 +888,7 @@ def tight
     This witness **does not** assert quantitative hardness — it only
     exhibits that the chain's type is inhabitable at ε = 1,
     discharging the non-vacuity obligation from the audit plan's
-    Exit Criterion #8 (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
+    Exit Criterion #8 (`docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
     § 3.6). Concrete quantitative discharges at ε < 1 require
     research-scope encoder witnesses (audit plan § 15.1). -/
 theorem tight_one_exists

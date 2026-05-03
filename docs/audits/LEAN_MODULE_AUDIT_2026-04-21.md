@@ -288,7 +288,7 @@ one line: specialize `hOIA` to the adversary's guess function — correct.
 *multi-coordinate* hybrid distribution, not for the single-coordinate orbit
 distribution. Discharging `h_step` from a single-query `ConcreteOIA` hypothesis
 is the missing marginal-independence step. This is the E8b gap acknowledged in
-`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`.
+`docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`.
 
 **Finding L2 (LOW).** `hybrid_argument_uniform` has no `0 ≤ ε` hypothesis.
 Mathematically sound because at negative ε, `h_step` itself is unsatisfiable
@@ -1589,7 +1589,7 @@ The multi-query IND-Q-CPA bound `Q · ε` depends on a caller-supplied
 Discharging `h_step` from a single-query `ConcreteOIA` hypothesis requires
 the marginal-independence step over `uniformPMFTuple`, which is the
 Workstream E8b gap. This is acknowledged in
-`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`. No action required
+`docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`. No action required
 beyond tracking.
 
 **Priority.** Info; tracked future work.

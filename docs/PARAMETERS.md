@@ -9,7 +9,7 @@
 # Orbcrypt HGOE — Parameter Recommendations
 
 *Phase 14 deliverable — see
-[docs/planning/PHASE_14_PARAMETER_SELECTION.md](planning/PHASE_14_PARAMETER_SELECTION.md).*
+[docs/dev_history/PHASE_14_PARAMETER_SELECTION.md](planning/PHASE_14_PARAMETER_SELECTION.md).*
 
 This document turns the Phase 11 GAP benchmark data and a systematic
 parameter sweep into concrete parameter guidance for HGOE (Hidden-Group
@@ -251,7 +251,7 @@ magnitude slower than Kyber and BIKE. The entire cost is in the
 canonical-image computation; the remaining operations (group element
 sampling, bitstring permutation) are <1 ms combined. A production
 implementation is the explicit scope of Phase 15
-(`docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md`).
+(`docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md`).
 
 **Post-quantum posture.** HGOE security reduces to Code Equivalence
 (CE) and/or Graph Isomorphism (GI), both of which are hard for
@@ -265,7 +265,7 @@ candidates it is compared against.
 **Assumption class.** CE-OIA is a fresh assumption introduced by
 Orbcrypt, while MLWE / QC-MDPC / QC-HQC / Goppa have decades of
 cryptanalysis behind them. This is the single largest open security
-gap, tracked in `docs/planning/PHASE_16_FORMAL_VERIFICATION.md` as
+gap, tracked in `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md` as
 ongoing work.
 
 ---

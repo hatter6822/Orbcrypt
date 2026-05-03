@@ -11,7 +11,7 @@
 ## orbcrypt_fast_dec.g — Fast Decryption Implementation (Phase 15)
 ##
 ## Implements the Phase 15 decryption optimisation workstream from
-## docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md. Provides four
+## docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md. Provides four
 ## alternative decapsulation strategies:
 ##
 ##   1. Two-phase decryption (15.1 + 15.2 + 15.3) — exploit the known

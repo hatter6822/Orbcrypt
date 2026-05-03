@@ -85,7 +85,7 @@ jobs:
         # backtracking once a body character has been consumed, keeping
         # complexity O(n) on well-formed input.
         #
-        # See `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+        # See `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
         # § 7.3 (Workstream C / C3) for the audit context. The C3
         # recursive regex landed alongside C1, C2, C4, C5 of the same
         # plan as a defense-in-depth upgrade. The build step above

@@ -130,7 +130,7 @@ false; achieving Q-time SUF-CMA requires nonce-based key derivation
   Sci. 22: 265–279.
 * Stinson, D. R. (1994). "Universal hashing and authentication
   codes." Designs, Codes and Cryptography 4(4): 369–380. (Theorem 1.)
-* docs/planning/PLAN_R_01_07_08_14_16.md § R-14 — generic
+* docs/dev_history/PLAN_R_01_07_08_14_16.md § R-14 — generic
   probabilistic MAC SUF-CMA framework.
 -/
 

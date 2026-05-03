@@ -94,7 +94,7 @@ shape, not Carter–Wegman's single-block primitive. This obeys the
   Numerantium 114: 7–27.
 * Carter, J. L. & Wegman, M. N. (1977). "Universal classes of hash
   functions."
-* `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+* `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
   § 8.1 — research-scope catalogue, R-13.
 -/
 
@@ -494,7 +494,7 @@ def bitstringPolynomial_authKEM {G : Type*} [Group G] (p n : ℕ)
 
     **Significance.** Closes audit finding V1-7 / D4 / I-08 / R-13
     (`docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 18,
-    `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+    `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
     § 8.1). Pre-R-13, the only ciphertext-integrity result in-tree
     was `carterWegmanMAC_int_ctxt`, typed at `X = ZMod p` and
     incompatible with HGOE's `Bitstring n` ciphertext space. R-13
@@ -510,7 +510,7 @@ theorem bitstringPolynomialMAC_int_ctxt {G : Type*} [Group G]
 -- ============================================================================
 -- Workstream R-13⁺ — Bitstring-polynomial SU2 + SUF-CMA + Q-time NEGATIVE
 -- (audit 2026-04-29 § 8.1, research-scope discharge plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-13⁺)
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-13⁺)
 -- ============================================================================
 
 /-- **Shifted-difference polynomial.** `bitstringDiffPolynomial p n b₁ b₂ -
