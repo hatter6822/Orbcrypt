@@ -196,8 +196,7 @@ thresholds, often strictly above `lam`. Release claims about HGOE's
 security level should cite this λ-parameterised form together with
 the corresponding row above.
 
-### 2.3 Caveat — Phase 11 baseline is a performance proxy, not a
-secure parameter set
+### 2.3 Caveat — Phase 11 baseline is a performance proxy, not secure param set
 
 The Phase 11 fallback group is a block-cyclic wreath product whose
 order `b^ell · 2 ≥ 2^λ` is guaranteed, but whose cryptographic
