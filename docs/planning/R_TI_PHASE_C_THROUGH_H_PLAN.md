@@ -244,7 +244,7 @@ on `pathAlgebra_one_mul` / `pathAlgebra_mul_one`.
     (C1') for path-multiplication-chain indicator collapse.
   * **`pathAlgebraMul_assoc` proven** via the canonical-form
     decomposition C2 + C3 + top-level (Plan A from
-    `docs/planning/PATH_ALGEBRA_MUL_ASSOC_PLAN.md`).
+    `docs/dev_history/PATH_ALGEBRA_MUL_ASSOC_PLAN.md`).
   * `pathAlgebraOne := ∑_v vertexIdempotent v` + `One` instance.
   * `pathAlgebraOne_apply_id` / `pathAlgebraOne_apply_edge`.
   * `sum_pathAlg_apply` helper bridging `Finset.sum_apply` through

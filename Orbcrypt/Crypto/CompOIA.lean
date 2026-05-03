@@ -41,8 +41,8 @@ cryptographic assumption.
 
 ## References
 
-* DEVELOPMENT.md §5.2 — probabilistic OIA definition
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work units 8.4, 8.5, 8.8
+* docs/DEVELOPMENT.md §5.2 — probabilistic OIA definition
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work units 8.4, 8.5, 8.8
 -/
 
 namespace Orbcrypt

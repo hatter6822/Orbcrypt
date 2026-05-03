@@ -92,9 +92,9 @@ Prop and is out of scope for this module — when it lands, the
 * Wegman, M. N. & Carter, J. L. (1981). "New hash functions and their
   use in authentication and set equality." J. Comput. Syst. Sci. 22:
   265–279.
-* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C4
+* docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C4
   (original witness-only landing).
-* docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 7.2 — Workstream
+* docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 7.2 — Workstream
   L2 (primality hygiene via `[NeZero p]`, 2026-04-22; superseded by
   `[Fact (Nat.Prime p)]` + universal-hash theorem in the L-workstream
   post-audit pass).
@@ -373,7 +373,7 @@ theorem carterWegmanMAC_int_ctxt {G : Type*} [Group G]
 -- ============================================================================
 -- Workstream R-08 — Carter–Wegman SU2 + 1-time SUF-CMA + Q-time NEGATIVE
 -- (audit 2026-04-29 § 8.1, research-scope discharge plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-08)
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-08)
 -- ============================================================================
 --
 -- Specialise the generic R-14 SUF-CMA framework to Carter–Wegman: the

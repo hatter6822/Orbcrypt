@@ -76,9 +76,9 @@ deterministic to probabilistic.
 
 ## References
 
-* DEVELOPMENT.md §4.3 — IND-CPA game
-* DEVELOPMENT.md §8.2 — multi-query extension via hybrid argument
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work units 8.6, 8.7, 8.10
+* docs/DEVELOPMENT.md §4.3 — IND-CPA game
+* docs/DEVELOPMENT.md §8.2 — multi-query extension via hybrid argument
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work units 8.6, 8.7, 8.10
 -/
 
 namespace Orbcrypt
@@ -152,7 +152,7 @@ directly. External summaries may still cite
 bound because the collision case adds no additional advantage.
 
 See the module docstring for the full rationale and the
-audit plan `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 6
+audit plan `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 6
 (Workstream K4).
 -/
 theorem indCPAAdvantage_collision_zero {G : Type*} {X : Type*} {M : Type*}

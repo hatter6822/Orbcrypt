@@ -69,8 +69,8 @@ hypothesis remains at the theorem level.
 
 ## References
 
-* docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work units 10.2–10.4
-* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C (F-07)
+* docs/dev_history/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work units 10.2–10.4
+* docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 6 — Workstream C (F-07)
 * docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 5 — Workstream B
   (`INT_CTXT` orbit-cover refactor, V1-1 / I-03)
 * KEM/Syntax.lean, KEM/Encapsulate.lean — base KEM infrastructure

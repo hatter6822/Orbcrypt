@@ -695,7 +695,7 @@ theorem combinerOrbitDist_mass_bounds
 -- ============================================================================
 -- Workstream R-07 — Cross-orbit advantage lower bound for equivariant combiners
 -- (audit 2026-04-29 § 8.1, research-scope discharge plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07)
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07)
 -- ============================================================================
 --
 -- The Workstream-E6 results above (`concrete_combiner_advantage_bounded_by_oia`,

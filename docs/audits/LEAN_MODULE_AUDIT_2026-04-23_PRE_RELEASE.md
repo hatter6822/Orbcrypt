@@ -475,7 +475,7 @@ exact-match* correctness — it shows the decryption output is `some m`.
 A probabilistic correctness theorem (e.g. `Pr[decrypt(encrypt g m) = some m] = 1`)
 is trivially equivalent *in this formalization* (because encrypt and
 decrypt are both deterministic), but a release-quality formalization
-should document that the "1-probability correctness" matches DEVELOPMENT.md's
+should document that the "1-probability correctness" matches docs/DEVELOPMENT.md's
 §4.2 claim exactly. Currently this is only implied by the lack of
 probabilistic decryption. Not blocking.
 
@@ -782,8 +782,8 @@ security theorem** — it only shows Hamming weight specifically
 cannot distinguish. *Other* G-invariants (e.g. block-sums, parity,
 higher-moment invariants) may still separate same-weight
 representatives. This is a major security gap: the weight-based
-defense is *necessary* but not *sufficient*. The COUNTEREXAMPLE.md
-document and DEVELOPMENT.md §7.1 both acknowledge this, but the
+defense is *necessary* but not *sufficient*. The docs/COUNTEREXAMPLE.md
+document and docs/DEVELOPMENT.md §7.1 both acknowledge this, but the
 formal Lean surface only exhibits the "same-weight defeats Hamming"
 statement without surfacing the gap. A v1.0 release note must make
 clear that HGOE's security depends on a **negligible set of
@@ -954,7 +954,7 @@ elsewhere. Not blocking; refactor opportunity.
 **Finding H-03 (MEDIUM, research).** `HGOEKeyExpansion` is a
 *specification* (Prop-valued fields), not an algorithm. `group_large_enough :
 group_order_log ≥ 128` hard-codes λ = 128 bits. For λ ∈ {80, 192, 256}
-(the other security levels documented in DEVELOPMENT.md), this field
+(the other security levels documented in docs/DEVELOPMENT.md), this field
 would fail. Should be parameterized by λ. **This is a blocker for
 matching the documented multi-level parameter story** — you cannot
 instantiate `HGOEKeyExpansion` for λ = 256 because the hypothesis
@@ -1734,12 +1734,12 @@ from (or stronger than) the code delivers.
 | D2 | "Two-phase correctness" (CLAUDE.md rows #24, #25 Standalone) | Conditional on `TwoPhaseDecomposition`, empirically false for default fallback group | HIGH |
 | D3 | "KEM-layer ε-smooth hardness chain" (CLAUDE.md row #29) | Chain structure present, but only ε = 1 inhabitant; H1 reduction Prop has no ε' < 1 discharge | HIGH |
 | D4 | "Carter–Wegman INT-CTXT witness" (CLAUDE.md row #20) | Requires `X = ZMod p`; HGOE's `Bitstring n` not compatible — the witness is formal-only | HIGH |
-| D5 | "Seed-key compression ratio 256-bit → 1.8 MB" (DEVELOPMENT.md §6.2.1) | `compression` field only certifies `Nat.log 2 |Seed| < Nat.log 2 |G|` — minimum 1-bit | MEDIUM |
+| D5 | "Seed-key compression ratio 256-bit → 1.8 MB" (docs/DEVELOPMENT.md §6.2.1) | `compression` field only certifies `Nat.log 2 |Seed| < Nat.log 2 |G|` — minimum 1-bit | MEDIUM |
 | D6 | "Oblivious sampling preserves sender privacy" | Requires `ObliviousSamplingHiding` hypothesis self-disclosed as pathological | HIGH |
 | D7 | "CSIDH-style commutative PKE" (Phase 13.5) | `CommGroupAction` has no non-trivial instance on HGOE; Phase 13.5 is framework-only | HIGH |
-| D8 | "GI ≤ CE reduction" (CLAUDE.md, DEVELOPMENT.md §5.4) | `GIReducesToCE` Prop admits degenerate encoders | HIGH |
+| D8 | "GI ≤ CE reduction" (CLAUDE.md, docs/DEVELOPMENT.md §5.4) | `GIReducesToCE` Prop admits degenerate encoders | HIGH |
 | D9 | "Hardness chain implies IND-1-CPA at ε" (CLAUDE.md row #27) | Only inhabited at ε = 1 via trivial encoders | HIGH |
-| D10 | "Multi-query IND-Q-CPA" (DEVELOPMENT.md §8.2) | `indQCPA_bound_via_hybrid` carries `h_step` as unproved hypothesis | HIGH |
+| D10 | "Multi-query IND-Q-CPA" (docs/DEVELOPMENT.md §8.2) | `indQCPA_bound_via_hybrid` carries `h_step` as unproved hypothesis | HIGH |
 | D11 | `kemoia_implies_secure` Scaffolding status (row #5) | Consistent | INFO |
 | D12 | CLAUDE.md row #19 `authEncrypt_is_int_ctxt` Standalone | Should be Conditional | MEDIUM |
 | D13 | "Invariant attack = complete break / advantage 1/2" (row #2) | Theorem exhibits `∃ A, hasAdvantage` — one pair, not universal | MEDIUM |
@@ -1778,7 +1778,7 @@ theorem's actual statement (existence of one distinguishing
 `(g₀, g₁)` pair), not "complete break" or "advantage = 1/2".
 
 **V1-5 (from D5, H-01).** Reword `SeedKey.compression` disclosure
-in CLAUDE.md and DEVELOPMENT.md §6.2.1 to note the field certifies
+in CLAUDE.md and docs/DEVELOPMENT.md §6.2.1 to note the field certifies
 bit-length strict inequality (minimum 1 bit), not the quantitative
 256-bit ↔ 1.8 MB compression ratio. The ratio is a deployment
 choice, not a Lean-verified property.
@@ -1956,7 +1956,7 @@ black box. Production deployment uses AES-GCM.
 **Z-06.** The λ = 80, 192, 256 parameter sweeps (Phase 14) are in
 GAP benchmarks, but `HGOEKeyExpansion` hard-codes λ = 128 in its
 `group_large_enough` field. The formalization does not cover the
-other security levels documented in DEVELOPMENT.md.
+other security levels documented in docs/DEVELOPMENT.md.
 
 **Z-07.** No formal-verified *concrete* `CanonicalForm` for
 subgroups of S_n on bitstrings. The GAP implementation uses

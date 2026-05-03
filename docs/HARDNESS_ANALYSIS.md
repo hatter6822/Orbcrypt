@@ -28,7 +28,7 @@ GI/CE reductions.
 **Best quantum complexity:** Open. No known quantum speedup beyond classical.
 
 **Orbcrypt relation:** GI-OIA reduces to GI. Orbcrypt's security on CFI graph instances
-is grounded in GI hardness. See DEVELOPMENT.md §5.3.
+is grounded in GI hardness. See docs/DEVELOPMENT.md §5.3.
 
 ### 1.2 Permutation Code Equivalence (CE)
 

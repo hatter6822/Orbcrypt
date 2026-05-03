@@ -84,10 +84,10 @@ proving such a claim.
 
 ## References
 
-* `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 3 — Workstream G
+* `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 3 — Workstream G
   Fix B + Fix C landing; § 15.1 — research-scope concrete encoder
   discharges (CFI gadget, Grochow–Qiao structure tensor).
-* `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3-prep —
+* `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E3-prep —
   original Workstream E3-prep rationale for the interface.
 * `docs/audits/AUDIT_2026-04-20_WORKSTREAM_E_REVIEW.md` — the
   post-Workstream-E review that clarified the scope of this module.

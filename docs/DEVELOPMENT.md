@@ -27,7 +27,7 @@
     - 7.1 Hamming Weight | 7.2 Graph Statistics | 7.3 Partial Invariants | 7.4 True Collapse
 8. [Security Analysis](#8-security-analysis)
     - 8.1 OIA ⟹ IND-1-CPA | 8.2 Multi-Query (hybrid) | 8.3 Noisy Variant | 8.4 Attack Sub-Analyses
-9. [Lean 4 Formalization Plan](#9-lean-4-formalization-plan) *(see [formalization/](formalization/FORMALIZATION_PLAN.md))*
+9. [Lean 4 Formalization Plan](#9-lean-4-formalization-plan) *(see [formalization/](docs/dev_history/formalization/FORMALIZATION_PLAN.md))*
 10. [Open Problems and Future Directions](#10-open-problems-and-future-directions)
 - [Appendix A: Notation Reference](#appendix-a-notation-reference)
 - [Appendix B: Document Lineage](#appendix-b-document-lineage)
@@ -53,7 +53,7 @@ Assumption (OIA)** — and show that it reduces to the **Graph Isomorphism (GI)
 problem** on provably hard instance families (Cai–Fürer–Immerman graphs). We
 further present an alternative reduction to the **Permutation Code Equivalence
 problem**. We prove that OIA implies IND-CPA security, and we formalize the
-critical vulnerability exposed by invariant attacks (from COUNTEREXAMPLE.md)
+critical vulnerability exposed by invariant attacks (from docs/COUNTEREXAMPLE.md)
 as a theorem that precisely characterizes when the scheme fails.
 
 The entire algebraic framework — correctness, the invariant attack theorem, and
@@ -64,7 +64,7 @@ the conditional security reduction (OIA ⟹ IND-CPA) — will be formalized in
 
 ## 2. Background and Design Principles
 
-### 2.1 The Core Idea (from POE.md)
+### 2.1 The Core Idea (from docs/POE.md)
 
 The Permutation-Orbit Encryption concept rests on three pillars:
 
@@ -83,7 +83,7 @@ The fundamental insight is that the *partition of X into orbits* is the
 information-bearing structure. The group G defines this partition. Without G,
 the partition is invisible.
 
-### 2.2 The Invariant Attack: A Critical Lesson (from COUNTEREXAMPLE.md)
+### 2.2 The Invariant Attack: A Critical Lesson (from docs/COUNTEREXAMPLE.md)
 
 The counterexample demonstrates that large orbits and perfect mixing are
 **necessary but not sufficient** for security. The failure mode is precise:
@@ -257,7 +257,7 @@ parameters) but does not know G.
 
 ### 4.4 The Invariant Attack Theorem
 
-This theorem formalizes the exact failure mode identified in COUNTEREXAMPLE.md.
+This theorem formalizes the exact failure mode identified in docs/COUNTEREXAMPLE.md.
 
 **Theorem (Invariant Attack).** Let (Setup, Enc, Dec) be an AOE scheme. If
 there exists a deterministic polynomial-time function f : {0,1}^n → Y such
@@ -412,7 +412,7 @@ CFI graphs from 3-regular base graphs resist k-WL for all k ≤ 3. By using
 d-regular base graphs with d > k for any desired k, resistance can be pushed
 to arbitrary depth. This **provably eliminates all polynomial-time invariant
 attacks known in the literature**, directly defeating every attack vector from
-COUNTEREXAMPLE.md.
+docs/COUNTEREXAMPLE.md.
 
 #### 5.3.2 GI-OIA Construction
 
@@ -479,7 +479,7 @@ GI. Contradiction. ∎
 
 **Why CFI defeats the counterexample attacks:**
 
-| Attack from COUNTEREXAMPLE.md | Why it fails on CFI |
+| Attack from docs/COUNTEREXAMPLE.md | Why it fails on CFI |
 |-------------------------------|---------------------|
 | Hamming weight of adjacency vector | Γ₀, Γ₁ have the same number of edges (CFI preserves edge count for 3-regular H) |
 | Degree sequence | Both CFI graphs are regular with the same degree |
@@ -799,7 +799,7 @@ permutation group.
 
 ## 7. Addressing the Counterexample
 
-The counterexample from COUNTEREXAMPLE.md identified a precise failure
+The counterexample from docs/COUNTEREXAMPLE.md identified a precise failure
 condition: the existence of an efficiently computable separating G-invariant.
 This section explains how the Orbcrypt construction systematically defeats
 every attack vector identified in that document.
@@ -1080,7 +1080,7 @@ hypothesis
 `h_step : ∀ i < Q, advantage _ (hybridDist … i) (hybridDist … (i+1)) ≤ ε`.
 Discharging `h_step` from `ConcreteOIA scheme ε` alone requires a
 per-coordinate marginal-independence proof over `uniformPMFTuple`; the
-audit plan `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b
+audit plan `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b
 tracks that as follow-up work (catalogued as research milestone R-09 in
 the 2026-04-23 plan's § 18), and callers can supply the per-step
 bound from custom analysis in the interim.
@@ -1346,13 +1346,13 @@ theorem, and the conditional security reduction (OIA ⟹ IND-1-CPA) — across
 
 | Document | Contents |
 |----------|----------|
-| **[Master Plan](formalization/FORMALIZATION_PLAN.md)** | Vision, goals, scope, project architecture, module overview, Mathlib integration, roadmap summary, critical path analysis, coding conventions |
-| [Phase 1 — Project Scaffolding](formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md) | Lean 4 project initialization, Mathlib dependency, directory structure, build verification (Week 1, 4 units, ~4.5h) |
-| [Phase 2 — Group Action Foundations](formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) | Orbit API, canonical forms, G-invariant functions, orbit partition theorem (Weeks 2–4, 11 units, ~28h) |
-| [Phase 3 — Cryptographic Definitions](formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) | `OrbitEncScheme`, adversary model, IND-CPA game, OIA axiom (Weeks 5–6, 8 units, ~18h) |
-| [Phase 4 — Core Theorems](formalization/phases/PHASE_4_CORE_THEOREMS.md) | Correctness proof, invariant attack theorem, OIA ⟹ IND-1-CPA reduction (Weeks 7–10, 16 units, ~33h) |
-| [Phase 5 — Concrete Construction](formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md) | S\_n action on bitstrings, HGOE instance, Hamming weight defense proof (Weeks 11–14, 12 units, ~26h) |
-| [Phase 6 — Polish & Documentation](formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) | `sorry` audit, docstrings, CI configuration, final verification (Weeks 15–16, 13 units, ~22.5h) |
+| **[Master Plan](docs/dev_history/formalization/FORMALIZATION_PLAN.md)** | Vision, goals, scope, project architecture, module overview, Mathlib integration, roadmap summary, critical path analysis, coding conventions |
+| [Phase 1 — Project Scaffolding](docs/dev_history/formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md) | Lean 4 project initialization, Mathlib dependency, directory structure, build verification (Week 1, 4 units, ~4.5h) |
+| [Phase 2 — Group Action Foundations](docs/dev_history/formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md) | Orbit API, canonical forms, G-invariant functions, orbit partition theorem (Weeks 2–4, 11 units, ~28h) |
+| [Phase 3 — Cryptographic Definitions](docs/dev_history/formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md) | `OrbitEncScheme`, adversary model, IND-CPA game, OIA axiom (Weeks 5–6, 8 units, ~18h) |
+| [Phase 4 — Core Theorems](docs/dev_history/formalization/phases/PHASE_4_CORE_THEOREMS.md) | Correctness proof, invariant attack theorem, OIA ⟹ IND-1-CPA reduction (Weeks 7–10, 16 units, ~33h) |
+| [Phase 5 — Concrete Construction](docs/dev_history/formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md) | S\_n action on bitstrings, HGOE instance, Hamming weight defense proof (Weeks 11–14, 12 units, ~26h) |
+| [Phase 6 — Polish & Documentation](docs/dev_history/formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md) | `sorry` audit, docstrings, CI configuration, final verification (Weeks 15–16, 13 units, ~22.5h) |
 
 ### Summary
 
@@ -1512,11 +1512,11 @@ security proofs for Orbcrypt.
 
 This document synthesizes and extends two prior documents in this repository:
 
-- **POE.md** — Introduced the Permutation-Orbit Encryption and Isogeny-Orbit
+- **docs/POE.md** — Introduced the Permutation-Orbit Encryption and Isogeny-Orbit
   Encryption concepts, the unifying view of orbit-based encryption, and the
   insight that security comes from hiding equivalence relations.
 
-- **COUNTEREXAMPLE.md** — Identified the invariant attack vulnerability,
+- **docs/COUNTEREXAMPLE.md** — Identified the invariant attack vulnerability,
   demonstrated it on bitstring and graph instances, and established the
   precise condition for "true collapse" (no efficiently computable separating
   invariants).

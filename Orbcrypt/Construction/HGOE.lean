@@ -33,9 +33,9 @@ weight defense (same-weight representatives defeat weight-based attacks).
 
 ## References
 
-* DEVELOPMENT.md §7.1 — Hamming weight defense
-* COUNTEREXAMPLE.md — Hamming weight attack
-* formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md — work units 5.7–5.11
+* docs/DEVELOPMENT.md §7.1 — Hamming weight defense
+* docs/COUNTEREXAMPLE.md — Hamming weight attack
+* docs/dev_history/formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md — work units 5.7–5.11
 * docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 9 — Workstream F
   (V1-10 / F-04): `hgoeScheme.ofLexMin` closes the concrete-canonical-form
   gap by wiring `CanonicalForm.ofLexMin` into the HGOE constructor.
@@ -173,7 +173,7 @@ theorem hammingWeight_invariant_subgroup
   exact hammingWeight_invariant (↑g : Equiv.Perm (Fin n)) x
 
 /-- Hamming weight IS a valid attack when representatives have different weights.
-    Formalizes the counterexample from COUNTEREXAMPLE.md: if
+    Formalizes the counterexample from docs/COUNTEREXAMPLE.md: if
     `wt(x_{m₀}) ≠ wt(x_{m₁})`, the scheme is completely broken.
     Applies the abstract invariant attack theorem (Phase 4, unit 4.9)
     with `f := hammingWeight`. -/
@@ -193,7 +193,7 @@ theorem hgoe_weight_attack {M : Type*}
 
 /-- When all representatives have the same Hamming weight, the weight function
     cannot separate any pair of messages. This is the formal defense from
-    DEVELOPMENT.md §7.1: choosing all orbit representatives with the same
+    docs/DEVELOPMENT.md §7.1: choosing all orbit representatives with the same
     Hamming weight `w = ⌊n/2⌋` defeats the Hamming weight attack.
 
     **Proof strategy:** `IsSeparating` requires `f(reps m₀) ≠ f(reps m₁)`,

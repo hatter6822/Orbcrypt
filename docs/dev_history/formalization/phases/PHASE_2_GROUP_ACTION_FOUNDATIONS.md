@@ -228,7 +228,7 @@ A canonical form for a group action is a function `canon : X → X` that:
    (`orbit_iff`).
 
 This abstracts the concept of "lexicographically minimal element of the orbit"
-used in the concrete Orbcrypt construction (DEVELOPMENT.md §3.2).
+used in the concrete Orbcrypt construction (docs/DEVELOPMENT.md §3.2).
 -/
 structure CanonicalForm (G : Type*) (X : Type*)
     [Group G] [MulAction G X] where
@@ -343,7 +343,7 @@ A function `f : X → Y` is G-invariant if it is unchanged by the group action:
 
 Equivalently, `f` is constant on each orbit of `G`.
 This is the central concept in the invariant attack theorem
-(DEVELOPMENT.md §4.4).
+(docs/DEVELOPMENT.md §4.4).
 -/
 def IsGInvariant [Group G] [MulAction G X] (f : X → Y) : Prop :=
   ∀ (g : G) (x : X), f (g • x) = f x

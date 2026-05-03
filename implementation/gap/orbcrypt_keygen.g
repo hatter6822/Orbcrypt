@@ -10,7 +10,7 @@
 ##
 ## orbcrypt_keygen.g — HGOE Key Generation (7-stage pipeline)
 ##
-## Implements the full HGOE.Setup(1^lambda) pipeline from DEVELOPMENT.md §6.2.1:
+## Implements the full HGOE.Setup(1^lambda) pipeline from docs/DEVELOPMENT.md §6.2.1:
 ##   Stage 1: Parameter derivation
 ##   Stage 2: Quasi-cyclic code generation
 ##   Stage 3: Automorphism group computation (PAut via GUAVA)
@@ -123,7 +123,7 @@ end;;
 #' construction by default, which provides |G| = b^ell >= 2^lambda with
 #' instant computation.
 #'
-#' The full QC code + PAut approach (DEVELOPMENT.md §6.2.1) is available
+#' The full QC code + PAut approach (docs/DEVELOPMENT.md §6.2.1) is available
 #' via HGOEGenerateCodeQC() but is impractically slow in GAP's GUAVA
 #' package for n > 20. A production implementation would use optimized
 #' C/C++ code for PAut computation (Leon's algorithm or partition

@@ -222,7 +222,7 @@ layer (6 files) is documented first since it's the most stable.
 # Orbcrypt.GroupAction.Basic
 
 Core orbit and stabilizer API built on Mathlib's `MulAction` framework.
-Formalizes the group action fundamentals from DEVELOPMENT.md §3.1.
+Formalizes the group action fundamentals from docs/DEVELOPMENT.md §3.1.
 
 ## Key Definitions
 - `orbit G x` — the orbit of `x` under `G` (re-export from Mathlib)
@@ -236,17 +236,17 @@ Formalizes the group action fundamentals from DEVELOPMENT.md §3.1.
 ```
 
 **Files to document (6):**
-1. `GroupAction/Basic.lean` — references DEVELOPMENT.md §3.1
-2. `GroupAction/Canonical.lean` — references DEVELOPMENT.md §3.2
-3. `GroupAction/Invariant.lean` — references DEVELOPMENT.md §4.4
-4. `Crypto/Scheme.lean` — references DEVELOPMENT.md §4.1
-5. `Crypto/Security.lean` — references DEVELOPMENT.md §4.3
-6. `Crypto/OIA.lean` — references DEVELOPMENT.md §5.2
+1. `GroupAction/Basic.lean` — references docs/DEVELOPMENT.md §3.1
+2. `GroupAction/Canonical.lean` — references docs/DEVELOPMENT.md §3.2
+3. `GroupAction/Invariant.lean` — references docs/DEVELOPMENT.md §4.4
+4. `Crypto/Scheme.lean` — references docs/DEVELOPMENT.md §4.1
+5. `Crypto/Security.lean` — references docs/DEVELOPMENT.md §4.3
+6. `Crypto/OIA.lean` — references docs/DEVELOPMENT.md §5.2
 
 **Definition of Done:**
 - All 6 files begin with a `/-- ... -/` module docstring.
 - Each docstring lists key definitions and key results.
-- Each docstring references the relevant DEVELOPMENT.md section.
+- Each docstring references the relevant docs/DEVELOPMENT.md section.
 
 ---
 
@@ -255,15 +255,15 @@ Formalizes the group action fundamentals from DEVELOPMENT.md §3.1.
 **Effort:** 2h | **Module:** `Theorems/*.lean`, `Construction/*.lean` | **Deps:** Track A
 
 **Files to document (5):**
-1. `Theorems/Correctness.lean` — references DEVELOPMENT.md §4.2
-2. `Theorems/InvariantAttack.lean` — references DEVELOPMENT.md §4.4 and COUNTEREXAMPLE.md
-3. `Theorems/OIAImpliesCPA.lean` — references DEVELOPMENT.md §8.1
-4. `Construction/Permutation.lean` — references DEVELOPMENT.md §3.2, §7.1
-5. `Construction/HGOE.lean` — references DEVELOPMENT.md §7.1
+1. `Theorems/Correctness.lean` — references docs/DEVELOPMENT.md §4.2
+2. `Theorems/InvariantAttack.lean` — references docs/DEVELOPMENT.md §4.4 and docs/COUNTEREXAMPLE.md
+3. `Theorems/OIAImpliesCPA.lean` — references docs/DEVELOPMENT.md §8.1
+4. `Construction/Permutation.lean` — references docs/DEVELOPMENT.md §3.2, §7.1
+5. `Construction/HGOE.lean` — references docs/DEVELOPMENT.md §7.1
 
 **Special attention:**
 - `Theorems/OIAImpliesCPA.lean` should note which theorems depend on OIA.
-- `Construction/HGOE.lean` should note the connection to COUNTEREXAMPLE.md.
+- `Construction/HGOE.lean` should note the connection to docs/COUNTEREXAMPLE.md.
 
 **Definition of Done:**
 - All 5 files begin with a `/-- ... -/` module docstring.
@@ -674,7 +674,7 @@ These are the **final exit criteria for the entire formalization**:
 
 ## What Comes After
 
-With the formalization complete, the natural next steps (from DEVELOPMENT.md
+With the formalization complete, the natural next steps (from docs/DEVELOPMENT.md
 §10) include:
 
 1. **Probabilistic extension** — Port CryptHOL or build a probability monad

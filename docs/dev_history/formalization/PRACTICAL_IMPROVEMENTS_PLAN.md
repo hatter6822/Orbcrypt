@@ -1176,7 +1176,7 @@ affect the correctness argument (which depends only on group-action algebra).
 **Effort:** 3h | **File:** `KeyMgmt/SeedKey.lean` | **Deps:** 9.1
 
 Specify (but do not implement in executable Lean) the QC code key expansion
-pipeline from DEVELOPMENT.md §6.2.1:
+pipeline from docs/DEVELOPMENT.md §6.2.1:
 
 ```lean
 /-- Specification of the 7-stage HGOE key expansion pipeline.
@@ -1632,7 +1632,7 @@ runs correctly.
 
 **Effort:** 5h | **File:** `implementation/gap/orbcrypt_keygen.g` | **Deps:** 11.1
 
-Implement the 7-stage HGOE key generation pipeline from DEVELOPMENT.md
+Implement the 7-stage HGOE key generation pipeline from docs/DEVELOPMENT.md
 Section 6.2.1.
 
 **Sub-tasks:**
@@ -3261,10 +3261,10 @@ All commits must pass `lake build` for affected modules.
 ### Documentation Rule
 
 When changing behavior or adding modules, update (in the same PR):
-1. `DEVELOPMENT.md` — if scheme design changes
+1. `docs/DEVELOPMENT.md` — if scheme design changes
 2. `CLAUDE.md` — if module structure or development guidance changes
 3. `Orbcrypt.lean` — if new modules are added (dependency graph, imports)
-4. `formalization/FORMALIZATION_PLAN.md` — if architecture changes
+4. `docs/dev_history/formalization/FORMALIZATION_PLAN.md` — if architecture changes
 5. This document — if work unit status changes
 
 ---
@@ -3391,8 +3391,8 @@ When a phase is completed, update the following:
 | Document | What to Update |
 |----------|---------------|
 | `CLAUDE.md` | Active development status, module layout, source layout, key conventions |
-| `DEVELOPMENT.md` | Sections 6 (construction), 8 (security), 10 (future work) if applicable |
-| `formalization/FORMALIZATION_PLAN.md` | Module overview, project architecture if new modules added |
+| `docs/DEVELOPMENT.md` | Sections 6 (construction), 8 (security), 10 (future work) if applicable |
+| `docs/dev_history/formalization/FORMALIZATION_PLAN.md` | Module overview, project architecture if new modules added |
 | `Orbcrypt.lean` | Import list, dependency graph, axiom transparency report |
 | `README.md` | Project status, feature list |
 | This document | Mark work units as complete, update effort actuals |

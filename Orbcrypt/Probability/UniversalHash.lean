@@ -82,7 +82,7 @@ hypothesis and slot into the SUF-CMA reduction directly.
 * Stinson, D. R. (1994). "Universal hashing and authentication codes."
   Designs, Codes and Cryptography 4(4): 369–380. (Theorem 1: the
   one-time SUF-CMA reduction from ε-SU2.)
-* docs/planning/PLAN_R_01_07_08_14_16.md § R-14 — generic
+* docs/dev_history/PLAN_R_01_07_08_14_16.md § R-14 — generic
   probabilistic MAC SUF-CMA framework (R-14 introduces the SU2 and
   AXU predicates here; R-08 + R-13⁺ instantiate them at concrete
   hash families).
@@ -226,7 +226,7 @@ probability without requiring the joint-distribution control of SU2.
 output-difference distribution but not the joint marginal. For nonce-
 free MACs (the in-tree `carterWegmanMAC` / `bitstringPolynomialMAC`),
 AXU does **not** imply Q-time SUF-CMA — see
-`docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 for the linear-system
+`docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-14 for the linear-system
 key-recovery counterexample at Q ≥ 2 queries.
 -/
 def IsEpsilonAXU [Fintype K] [Nonempty K] [DecidableEq Tag]

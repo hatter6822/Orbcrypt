@@ -30,7 +30,7 @@ This is simpler than the original `correctness` theorem in
 
 ## References
 
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work unit 7.3
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — work unit 7.3
 * Theorems/Correctness.lean — original AOE correctness theorem
 -/
 

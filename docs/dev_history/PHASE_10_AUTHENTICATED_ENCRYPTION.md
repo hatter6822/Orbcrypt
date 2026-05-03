@@ -10,7 +10,7 @@
 
 ## Weeks 22–24 | 6 Work Units | ~16 Hours
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 ---
 
@@ -703,5 +703,5 @@ All of the following must be satisfied before Phase 10 is considered complete:
 ---
 
 *Document generated for Phase 10 of the Orbcrypt Practical Improvements Plan.
-See [PRACTICAL_IMPROVEMENTS_PLAN.md](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)
+See [PRACTICAL_IMPROVEMENTS_PLAN.md](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)
 lines 1241–1427 for the master plan source.*

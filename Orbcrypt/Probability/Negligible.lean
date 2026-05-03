@@ -28,8 +28,8 @@ Negligible functions in the standard cryptographic sense: a function
 ## References
 
 * Katz & Lindell, "Introduction to Modern Cryptography", Definition 3.5
-* DEVELOPMENT.md §5.2 — negligible advantage
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work unit 8.2
+* docs/DEVELOPMENT.md §5.2 — negligible advantage
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work unit 8.2
 -/
 
 namespace Orbcrypt

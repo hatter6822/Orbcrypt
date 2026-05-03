@@ -33,7 +33,7 @@ one proof obligation, reducing the risk of multi-hour debugging sessions.
 
 ## Objectives
 
-1. Machine-checked proof that decryption inverts encryption (DEVELOPMENT.md §4.2).
+1. Machine-checked proof that decryption inverts encryption (docs/DEVELOPMENT.md §4.2).
 2. Machine-checked proof that a separating invariant yields a complete break (§4.4).
 3. Machine-checked proof that OIA implies IND-1-CPA security (§8.1).
 4. (Optional) Machine-checked proof of the contrapositive: insecurity implies a
@@ -305,7 +305,7 @@ theorem decryptPred_unique [Group G] [MulAction G X] [DecidableEq X]
 ```lean
 /--
 **Correctness Theorem.** Decryption perfectly inverts encryption.
-Formalizes DEVELOPMENT.md §4.2: Pr[Dec(Enc(m)) = m] = 1.
+Formalizes docs/DEVELOPMENT.md §4.2: Pr[Dec(Enc(m)) = m] = 1.
 -/
 theorem correctness [Group G] [MulAction G X] [DecidableEq X]
     [Fintype M] [DecidableEq M]
@@ -563,7 +563,7 @@ Then the proof uses `if_pos` and `if_neg` instead of `decide_eq_true` and
 /--
 **Invariant Attack Theorem.** If a G-invariant function separates two message
 orbits, an adversary achieves a complete break.
-Formalizes DEVELOPMENT.md §4.4 and the lesson of COUNTEREXAMPLE.md.
+Formalizes docs/DEVELOPMENT.md §4.4 and the lesson of docs/COUNTEREXAMPLE.md.
 -/
 theorem invariant_attack [Group G] [MulAction G X] [DecidableEq X]
     [DecidableEq Y]
@@ -783,7 +783,7 @@ this cleanly.
 ```lean
 /--
 **Security Theorem.** The OIA implies IND-1-CPA security.
-Formalizes DEVELOPMENT.md §8.1.
+Formalizes docs/DEVELOPMENT.md §8.1.
 -/
 theorem oia_implies_1cpa [Group G] [MulAction G X] [DecidableEq X]
     (scheme : OrbitEncScheme G X M) :

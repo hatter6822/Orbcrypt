@@ -5,11 +5,11 @@
 the build configuration `lakefile.lean`, the GAP reference implementation
 under `implementation/gap/`, every audit / scaffolding script under
 `scripts/`, and every authoritative documentation surface
-(`CLAUDE.md`, `DEVELOPMENT.md`, `POE.md`, `COUNTEREXAMPLE.md`,
+(`CLAUDE.md`, `docs/DEVELOPMENT.md`, `docs/POE.md`, `docs/COUNTEREXAMPLE.md`,
 `README.md`, `docs/PARAMETERS.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
 `docs/HARDNESS_ANALYSIS.md`, `docs/VERIFICATION_REPORT.md`,
-`formalization/FORMALIZATION_PLAN.md`, every phase document under
-`formalization/phases/`, and the planning catalogue under
+`docs/dev_history/formalization/FORMALIZATION_PLAN.md`, every phase document under
+`docs/dev_history/formalization/phases/`, and the planning catalogue under
 `docs/planning/`).
 **Methodology:** Module-by-module read against Lean source code;
 docstring-vs-code parity checks; cross-reference verification of
@@ -17,7 +17,7 @@ every documentation claim against the actual `.lean` content; build
 verification via `lake build`; axiom audit via Phase-16 audit script;
 risk classification per CVSS-style severity.
 **Key principle:** *Documentation is not trusted to describe code.*
-Every claim in `CLAUDE.md`, `DEVELOPMENT.md`, and other prose surfaces
+Every claim in `CLAUDE.md`, `docs/DEVELOPMENT.md`, and other prose surfaces
 is verified against the Lean source it describes.
 
 ---
@@ -1835,12 +1835,12 @@ flagged.
 ## § L — Documentation audit
 
 This section covers the project's authoritative
-documentation surfaces: `README.md`, `DEVELOPMENT.md`,
-`POE.md`, `COUNTEREXAMPLE.md`, `CLAUDE.md`,
+documentation surfaces: `README.md`, `docs/DEVELOPMENT.md`,
+`docs/POE.md`, `docs/COUNTEREXAMPLE.md`, `CLAUDE.md`,
 `docs/VERIFICATION_REPORT.md`, `docs/PARAMETERS.md`,
 `docs/HARDNESS_ANALYSIS.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
-`formalization/FORMALIZATION_PLAN.md`, the per-phase
-documents under `formalization/phases/`, and the planning
+`docs/dev_history/formalization/FORMALIZATION_PLAN.md`, the per-phase
+documents under `docs/dev_history/formalization/phases/`, and the planning
 catalogue under `docs/planning/`.
 
 ### L-01 — `README.md` (196 LOC) — clean, with one stale metric
@@ -1865,7 +1865,7 @@ catalogue under `docs/planning/`.
 * No issues found beyond the audit-script-count staleness
   (L-04).
 
-### L-02 — `DEVELOPMENT.md` (1530 LOC) — clean
+### L-02 — `docs/DEVELOPMENT.md` (1530 LOC) — clean
 
 * Master scheme specification. 1530 lines covering 10 main
   sections + 2 appendices.
@@ -1955,7 +1955,7 @@ catalogue under `docs/planning/`.
   CLAUDE.md as the canonical source for running counts and
   carry only invariants here.
 
-### L-05 — `POE.md`, `COUNTEREXAMPLE.md` (~6 KB each) — clean
+### L-05 — `docs/POE.md`, `docs/COUNTEREXAMPLE.md` (~6 KB each) — clean
 
 * High-level concept exposition (POE) and counterexample
   analysis (COUNTEREXAMPLE) are concise reference documents.
@@ -1975,7 +1975,7 @@ catalogue under `docs/planning/`.
   witnesses — verified accurate.
 * No issues found.
 
-### L-07 — `formalization/FORMALIZATION_PLAN.md` and per-phase documents — clean
+### L-07 — `docs/dev_history/formalization/FORMALIZATION_PLAN.md` and per-phase documents — clean
 
 * The master Lean-4 roadmap and the 6 phase documents
   (PHASE_1 through PHASE_6) are stable historical
@@ -2010,7 +2010,7 @@ findings**:
 
 The remaining documentation surfaces (README, DEVELOPMENT,
 CLAUDE, POE, COUNTEREXAMPLE, the docs/-level analysis
-documents, the formalization/-level phase documents, and
+documents, the docs/dev_history/formalization/-level phase documents, and
 the docs/planning/ catalogue) are clean and audit-ready.
 
 ---
@@ -2122,9 +2122,9 @@ claims.
 **Lean code is honest.** The CLAUDE.md changelog is
 **accurate** (the canonical running-state reference).
 `README.md` is mostly accurate (one stale audit-script
-count). `DEVELOPMENT.md`, `POE.md`, `COUNTEREXAMPLE.md`,
+count). `docs/DEVELOPMENT.md`, `docs/POE.md`, `docs/COUNTEREXAMPLE.md`,
 the `docs/`-level analysis documents, the
-`formalization/` phase plans, and the `docs/planning/`
+`docs/dev_history/formalization/` phase plans, and the `docs/planning/`
 catalogue are all accurate.
 
 **Two documentation surfaces are stale:**

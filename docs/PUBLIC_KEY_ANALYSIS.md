@@ -528,8 +528,8 @@ There are **no Lean `axiom` declarations** in the Phase 13 surface.
 
 ## 7. References
 
-* `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` — phase document.
-* `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` — overall roadmap.
+* `docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md` — phase document.
+* `docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` — overall roadmap.
 * `Orbcrypt/PublicKey/ObliviousSampling.lean`,
   `Orbcrypt/PublicKey/KEMAgreement.lean`,
   `Orbcrypt/PublicKey/CommutativeAction.lean`,

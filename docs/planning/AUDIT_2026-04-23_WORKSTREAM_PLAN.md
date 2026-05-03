@@ -356,7 +356,7 @@ pass**:
 4. Update `Orbcrypt.lean`'s "Vacuity map" table to mark
    probabilistic-chain counterparts as **ε = 1 only** (V1-3 /
    M-04).
-5. Update `DEVELOPMENT.md` where its prose claims exceed the Lean
+5. Update `docs/DEVELOPMENT.md` where its prose claims exceed the Lean
    content (`§6.2.1` compression ratio claim / D5; `§8.2`
    multi-query claim / D10; any other hits found in the cleanup
    pass).
@@ -532,9 +532,9 @@ standalone sibling.
   module-header docstring.
 - No build-graph impact (comments do not affect kernel output).
 
-#### A5 — Update `DEVELOPMENT.md` where prose exceeds code
+#### A5 — Update `docs/DEVELOPMENT.md` where prose exceeds code
 
-**File.** `DEVELOPMENT.md`, sections §6.2.1 (seed-key compression),
+**File.** `docs/DEVELOPMENT.md`, sections §6.2.1 (seed-key compression),
 §8.2 (multi-query IND-Q-CPA), §8.5 (INT-CTXT framing), and any
 other section whose prose exceeds the Lean content.
 
@@ -613,7 +613,7 @@ populated as workstreams close).
 |---|------|-----------|----------|------------|----------|
 | A-R1 | A reclassification (row #19/#20/#24/#25 Status column update) is later reverted in Workstream **B**; external consumers who pinned to the interim text see churn | Medium | Low | Workstream **A**'s reclassifications are framed as "pre-Workstream-**B** interim" with explicit forward-reference: "post-Workstream-**B**, row #19 upgrades to **Standalone**". The interim text and the post-B text are both pre-committed to this plan. | No code rollback. A single post-B documentation update tightens the Status column; no interim text is ever "wrong", only "superseded". |
 | A-R2 | The "Release messaging policy" forbids citations external reviewers expect (e.g., a marketing page cites `authEncrypt_is_int_ctxt` as "INT-CTXT verified") | Medium | Medium | The policy's wording emphasizes what *can* be cited (Standalone, Quantitative-with-ε) with explicit examples; Conditional / Scaffolding theorems are listed as "cite with caveat" (not "never cite"). The policy is tested against a hypothetical marketing sentence before being finalized. | Amend the policy with an exception table; the correct response is to tighten the policy, not weaken it. |
-| A-R3 | A prose update in `DEVELOPMENT.md` subtly alters the cryptographic specification (as distinct from aligning language) | Low | High | Every Workstream-A edit to `DEVELOPMENT.md` is limited to *removing overclaim* or *adding caveats*; the change set is reviewed against a pre-A snapshot to verify no new specification content is introduced. | `git revert` the offending edit; re-land with narrower scope. |
+| A-R3 | A prose update in `docs/DEVELOPMENT.md` subtly alters the cryptographic specification (as distinct from aligning language) | Low | High | Every Workstream-A edit to `docs/DEVELOPMENT.md` is limited to *removing overclaim* or *adding caveats*; the change set is reviewed against a pre-A snapshot to verify no new specification content is introduced. | `git revert` the offending edit; re-land with narrower scope. |
 | A-R4 | The interim status "Conditional" is incorrectly read as "deprecated / abandoned" by downstream consumers | Low | Low | Every "Conditional" reclassification in `CLAUDE.md`'s headline table includes a one-sentence explanation of the condition (e.g., "requires orbit-cover precondition, Workstream B will absorb into game well-formedness"). | Doc-level remediation via a clarifying pull request; no structural change. |
 
 **Full-workstream rollback.** Workstream A is documentation-only.
@@ -628,7 +628,7 @@ Rollback is always `git revert <commit>`; no code breakage risk.
    Workstream-A reclassifications reflected.
 3. `Orbcrypt.lean`'s vacuity map distinguishes ε = 1 witnesses
    from ε < 1 research-scope.
-4. `DEVELOPMENT.md` prose at §6.2.1, §7.1, §8.2, §8.5 no longer
+4. `docs/DEVELOPMENT.md` prose at §6.2.1, §7.1, §8.2, §8.5 no longer
    overstates the Lean content.
 5. The "Release messaging policy" section of `CLAUDE.md` is the
    canonical authority for release citations.
@@ -908,7 +908,7 @@ track) or ≈ 16 h (discharge track — then falls into research scope R-09).
 `indQCPA_bound_via_hybrid` carries the per-step bound `h_step` as
 an **explicit hypothesis** rather than discharging it from
 `ConcreteOIA scheme ε`. External documentation
-(`docs/VERIFICATION_REPORT.md`, various `DEVELOPMENT.md` prose
+(`docs/VERIFICATION_REPORT.md`, various `docs/DEVELOPMENT.md` prose
 discussing multi-query security) describes the theorem as
 "multi-query IND-Q-CPA from `ConcreteOIA`", which overstates
 what the code delivers. The marginal-independence argument
@@ -981,11 +981,11 @@ the same commit. The old name is **not retained as an alias**
 (per `CLAUDE.md`'s no-backwards-compat-shim rule).
 
 #### C2 — Update `CLAUDE.md`, `VERIFICATION_REPORT.md`,
-`DEVELOPMENT.md` references
+`docs/DEVELOPMENT.md` references
 
 **Files.** `CLAUDE.md` (if the theorem appears in the codebase
 status section), `docs/VERIFICATION_REPORT.md` (headline table /
-release-readiness), `DEVELOPMENT.md §8.2` (multi-query IND-Q-CPA
+release-readiness), `docs/DEVELOPMENT.md §8.2` (multi-query IND-Q-CPA
 discussion).
 
 **Change.** Substitute the new name everywhere the old name
@@ -1031,7 +1031,7 @@ content.
 1. `indQCPA_bound_via_hybrid` no longer exists in any `.lean`
    source file; its content is at `indQCPA_from_perStepBound`.
 2. Every external document references the new name.
-3. `DEVELOPMENT.md §8.2` exposes the `h_step` user-hypothesis
+3. `docs/DEVELOPMENT.md §8.2` exposes the `h_step` user-hypothesis
    obligation.
 4. `#print axioms indQCPA_from_perStepBound` emits only standard-
    trio axioms; the research follow-up (R-09) is tracked in this
@@ -1874,7 +1874,7 @@ Parameterise `HGOEKeyExpansion` by a security parameter `λ : ℕ`;
 the field `group_large_enough` becomes
 `group_order_log ≥ λ` for caller-supplied `λ`. Production
 callers at each security level instantiate the structure with
-their λ; the Workstream-**A** `DEVELOPMENT.md` update (A5) now
+their λ; the Workstream-**A** `docs/DEVELOPMENT.md` update (A5) now
 matches the Lean content.
 
 ### 10.3 Target API shape
@@ -1927,9 +1927,9 @@ security level.
 **Acceptance.** Four `example`s type-check; `#print axioms`
 emits only standard-trio axioms on each.
 
-#### G3 — Update `DEVELOPMENT.md` and `docs/PARAMETERS.md`
+#### G3 — Update `docs/DEVELOPMENT.md` and `docs/PARAMETERS.md`
 
-**Files.** `DEVELOPMENT.md §6.2.1`, `docs/PARAMETERS.md §2`.
+**Files.** `docs/DEVELOPMENT.md §6.2.1`, `docs/PARAMETERS.md §2`.
 
 **Change.** Cross-link the λ-parameterised `HGOEKeyExpansion` to
 the parameter table; disclose that the Lean-verified `≥ λ`
@@ -2300,7 +2300,7 @@ level theorem additions plus minimal renames across six modules
 coverage in `scripts/audit_phase_16.lean`; transparency-report
 sweep across `Orbcrypt.lean`, `CLAUDE.md`,
 `docs/VERIFICATION_REPORT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
-`DEVELOPMENT.md`. New public declarations land at standard-trio
+`docs/DEVELOPMENT.md`. New public declarations land at standard-trio
 axioms only; no `sorry`; no custom axiom.
 
 ### 12.1 Problem statement
@@ -2458,7 +2458,7 @@ parallel-implementer assignment):
 | I4 | `Orbcrypt/Hardness/CodeEquivalence.lean` | `GIReducesToCE` strengthened with non-degeneracy fields (`codeSize`, `codeSize_pos`, `encode_card_eq`); name retained. |
 | I5 | `Orbcrypt/Hardness/TensorAction.lean` | `GIReducesToTI` strengthened with non-zero-tensor field (`encode_nonzero_of_pos_dim`); name retained. |
 | I6 | `Orbcrypt/PublicKey/ObliviousSampling.lean` (Mathlib `Probability/ProbabilityMassFunction/Constructions` already in scope via `Probability/Monad.lean`) | + `ObliviousSamplingConcreteHiding`; + `oblivious_sampling_view_advantage_bound`; + `ObliviousSamplingPerfectHiding` (renamed from `ObliviousSamplingHiding`); + `oblivious_sampling_view_constant_under_perfect_hiding` (renamed from `oblivious_sampling_view_constant`). |
-| I7 | `scripts/audit_phase_16.lean`, `Orbcrypt.lean`, `CLAUDE.md`, `docs/VERIFICATION_REPORT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`, `DEVELOPMENT.md`, `lakefile.lean` | Audit-script `#print axioms` entries + non-vacuity `example` blocks for every new theorem. Transparency-report sweep. `lakefile.lean` version bump (`0.1.12 → 0.1.13`). |
+| I7 | `scripts/audit_phase_16.lean`, `Orbcrypt.lean`, `CLAUDE.md`, `docs/VERIFICATION_REPORT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`, `docs/DEVELOPMENT.md`, `lakefile.lean` | Audit-script `#print axioms` entries + non-vacuity `example` blocks for every new theorem. Transparency-report sweep. `lakefile.lean` version bump (`0.1.12 → 0.1.13`). |
 
 **No within-Lean cyclic dependency.** I1 ↔ I2 are
 sibling-file-only (CompSecurity ↔ CompSecurity); I3 imports
@@ -3557,7 +3557,7 @@ PR otherwise.
   theorems (Standalone classification).
 * `docs/PUBLIC_KEY_ANALYSIS.md` — § "Phase 13 theorem registry"
   table updates (covered also under I6 above).
-* `DEVELOPMENT.md` — § references to `ObliviousSamplingHiding`
+* `docs/DEVELOPMENT.md` — § references to `ObliviousSamplingHiding`
   / `insecure_implies_separating` updated to the new names.
 * `lakefile.lean` — version bump `0.1.12 → 0.1.13` per the
   CLAUDE.md version-bump discipline (six new public
@@ -3731,7 +3731,7 @@ checkbox in this list ticks green.
    their pre-I names. Verified by:
    ```
    grep -rn "concreteOIA_one_meaningful\\|concreteKEMOIA_one_meaningful\\|insecure_implies_separating\\|ObliviousSamplingHiding\\b\\|oblivious_sampling_view_constant\\b" \
-     Orbcrypt/ scripts/ docs/ CLAUDE.md DEVELOPMENT.md \
+     Orbcrypt/ scripts/ docs/ CLAUDE.md docs/DEVELOPMENT.md \
      Orbcrypt.lean
    ```
    returns zero matches (`\b` boundaries on `ObliviousSamplingHiding`
@@ -3804,7 +3804,7 @@ checkbox in this list ticks green.
 11. `docs/PUBLIC_KEY_ANALYSIS.md`'s § "Phase 13 theorem
     registry" table updates the
     `ObliviousSamplingHiding`-pinned rows.
-12. `DEVELOPMENT.md`'s § references to the renamed identifiers
+12. `docs/DEVELOPMENT.md`'s § references to the renamed identifiers
     are updated.
 13. `lakefile.lean` version bumped from `0.1.12` to `0.1.13`.
 
@@ -4414,13 +4414,13 @@ is a one-file, one-to-three-commit edit.
 | C-12 | `Crypto/CompOIA.lean` | Docstring addition: IT vs computational distinction for `IsNegligible`. |
 | C-14 | `Crypto/CompSecurity.lean` | Fix `hybridDist` left/right convention in docstring. |
 | C-16 | `Crypto/CompSecurity.lean` | Release-note addition covering collision adversary branch. |
-| D-02 | `Theorems/Correctness.lean` | Docstring addition cross-referencing DEVELOPMENT.md §4.2. |
+| D-02 | `Theorems/Correctness.lean` | Docstring addition cross-referencing docs/DEVELOPMENT.md §4.2. |
 | E-01 | `KEM/Syntax.lean` | Docstring addition: `keyDerive` cryptographic-suitability disclosure. |
 | E-02 | `KEM/Syntax.lean` | Docstring addition: `toKEM` permissive-keyDerive note. |
 | E-05 | `KEM/Correctness.lean` | Docstring addition: honest-ciphertext-only caveat. |
 | E-12 | `KEM/CompSecurity.lean` | Docstring addition: `ConcreteKEMOIA_uniform` vs literature IND-CCA-KEM distinction. |
 | F-02 | `Construction/Permutation.lean` | Docstring: "faithful" vs "free" distinction. |
-| F-05 | `Construction/HGOE.lean` | Docstring addition: Hamming-weight-is-necessary-but-not-sufficient disclosure (Workstream-**A** A5 mirrors in `DEVELOPMENT.md §7.1`). |
+| F-05 | `Construction/HGOE.lean` | Docstring addition: Hamming-weight-is-necessary-but-not-sufficient disclosure (Workstream-**A** A5 mirrors in `docs/DEVELOPMENT.md §7.1`). |
 | F-08 | `Construction/HGOEKEM.lean` | Docstring addition: `keyDerive` abstractness disclosure. |
 | G-01 | `Probability/Monad.lean` | Decision: consolidate `probEvent` / `probTrue` or keep both. **Recommendation: keep both; add cross-reference docstring.** |
 | G-02 | `Probability/Monad.lean` | Docstring addition for `probTrue_eq_tsum` noting consumer use cases. |
@@ -4822,7 +4822,7 @@ acceptance criteria.
       CompSecurity.lean docstrings extended with Game-shape +
       User-supplied-hypothesis-obligation blocks; three non-vacuity
       witnesses added to `scripts/audit_phase_16.lean`;
-      `DEVELOPMENT.md §8.2` prose updated to expose the `h_step`
+      `docs/DEVELOPMENT.md §8.2` prose updated to expose the `h_step`
       obligation and the R-09 research pointer).
 - [ ] **V1-9** (Workstream **A**): "Release messaging policy"
       section present in `CLAUDE.md`.
@@ -4872,7 +4872,7 @@ acceptance criteria.
       gains two new `#print axioms` entries and two concrete
       non-vacuity `example` bindings over `trivialSchemeBool` and
       `trivialKEM_PermZMod2`. `CLAUDE.md`, `docs/VERIFICATION_REPORT.md`,
-      `formalization/FORMALIZATION_PLAN.md`, and `DEVELOPMENT.md §8.1`
+      `docs/dev_history/formalization/FORMALIZATION_PLAN.md`, and `docs/DEVELOPMENT.md §8.1`
       all updated. `lakefile.lean` bumped from `0.1.9` to `0.1.10`.
 
 ### 20.2 Technical posture gates
@@ -4897,7 +4897,7 @@ acceptance criteria.
       policy (no claim exceeds what the Lean content delivers).
 - [ ] `docs/VERIFICATION_REPORT.md` headline table aligned with
       `CLAUDE.md`'s Status column.
-- [ ] `DEVELOPMENT.md` prose at §6.2.1, §7.1, §8.2, §8.5 does
+- [ ] `docs/DEVELOPMENT.md` prose at §6.2.1, §7.1, §8.2, §8.5 does
       not overstate Lean content.
 - [ ] `Orbcrypt.lean` (or its post-K successor
       `docs/AXIOM_TRANSPARENCY.md` + `docs/CHANGELOG.md`) reflects
@@ -4956,7 +4956,7 @@ identifiers are carried verbatim from the source audit.
 | D-07 / V1-15 | HIGH | 3.11 | `Theorems/OIAImpliesCPA.lean` `insecure_implies_separating` return-type is `∃ f m₀ m₁ g₀ g₁, f (g₀ • reps m₀) ≠ f (g₁ • reps m₁)`; no G-invariance in conclusion despite the name. | **VALID** |
 | C-15 / E-11 | MEDIUM | 3.8, 3.16 | `concreteOIA_one_meaningful` proves `indCPAAdvantage ≤ 1` (trivial); `concreteKEMOIA_one_meaningful` proves `kemAdvantage ≤ 1` (trivial). Name suggests satisfiability-witness, actually proves advantage-bound. | **VALID** |
 | E-04 | HIGH | 3.13 | `KEM/Encapsulate.lean:62–64` `decaps kem c := kem.keyDerive (kem.canonForm.canon c)` — no orbit check. No `decapsSafe` variant in-tree. | **VALID** |
-| H-01 / D5 | HIGH | 3.24, 9 | `KeyMgmt/SeedKey.lean:38–48` docstring confirms `compression` is bit-length comparison via `Nat.log 2` (round-down), not element-count ratio; the "1.8 MB compression" claim in `DEVELOPMENT.md §6.2.1` exceeds the Lean content. | **VALID** |
+| H-01 / D5 | HIGH | 3.24, 9 | `KeyMgmt/SeedKey.lean:38–48` docstring confirms `compression` is bit-length comparison via `Nat.log 2` (round-down), not element-count ratio; the "1.8 MB compression" claim in `docs/DEVELOPMENT.md §6.2.1` exceeds the Lean content. | **VALID** |
 | I-08 / D4 | HIGH | 3.29 | `AEAD/CarterWegmanMAC.lean` MAC is typed `MAC (ZMod p × ZMod p) (ZMod p) (ZMod p)`; HGOE uses `Bitstring n`; no composition adapter exists. | **VALID** |
 | J-03 | HIGH | 3.31 | `Hardness/CodeEquivalence.lean:339–344` — `GIReducesToCE` is `∃ dim encode, ∀ adj₁ adj₂, …`; degenerate encoder like `encode _ _ := ∅` satisfies the existential trivially. | **VALID** |
 | J-08 | HIGH | 3.32 | Same pattern for `GIReducesToTI`. | **VALID** |
@@ -5072,7 +5072,7 @@ ID to this plan's workstream + work-unit assignment.
 | D2 | Two-phase #24 #25 Standalone vs TwoPhaseDecomposition | **A** | A2 |
 | D3 | KEM ε-smooth chain vs only ε = 1 inhabited | **A** | A3 |
 | D4 | Carter–Wegman witness advertised as composable with HGOE | **A** | A3, A4 |
-| D5 | Compression ratio in DEVELOPMENT.md §6.2.1 | **A** | A5 |
+| D5 | Compression ratio in docs/DEVELOPMENT.md §6.2.1 | **A** | A5 |
 | D6 | Oblivious sampling preserves sender privacy | **A** + **I** (rename) | A3, I4 |
 | D7 | CSIDH-style commutative PKE | **A** (disclosure) + R-11 | A3 |
 | D8 | GI ≤ CE reduction | **A** + **I** (rename) | A3, I3 |
