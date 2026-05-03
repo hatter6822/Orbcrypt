@@ -113,8 +113,15 @@ Produce recommended parameter set for each level:
 | CT (bytes) | 16+tag | 1088 | 3114 | 14469 | **n/8** |
 | Enc (ops) | ~100 | ~30K | ~100K | ~300K | **?** |
 | Dec (ops) | ~100 | ~25K | ~200K | ~500K | **?** |
-| PQ secure? | No | Yes | Yes | Yes | **Conjectured** |
+| PQ secure? | Yes (Grover) | Yes | Yes | Yes | **Conjectured** |
 | Assumption | None | MLWE | QC-MDPC | QC-HQC | **CE-OIA** |
+
+> **Note (corrected 2026-05-03):** the AES-256 "PQ secure?" cell read
+> `No` in the original Phase 14 plan, which mis-stated the cryptographic
+> consensus (AES-256's only known quantum attack is Grover's, leaving
+> ~128-bit PQ security; NIST Level 5 is *defined* as AES-256 key search).
+> The cell is corrected here to match the live `docs/PARAMETERS.md`
+> §3 table; see that file's `‡` footnote for the full analysis.
 
 **Exit criteria:** All cells filled. Honest assessment paragraph per metric.
 
