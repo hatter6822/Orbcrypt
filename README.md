@@ -50,7 +50,7 @@ build warnings**.
 |--------|-------|
 | Lean source modules | 81 (+ root import file) |
 | Public declarations | 460+, all with docstrings |
-| Phase-16 audit script | 1078+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
+| Phase-16 audit script | 1150+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
 | Build | `lake build` runs ~3,424 jobs successfully |
 | Toolchain | Lean 4 v4.30.0-rc1 + Mathlib pinned at commit `fa6418a8` |
 | CI | GitHub Actions on every push: build + sorry scan + axiom-decl scan + lake-manifest drift check + Phase-16 regression sentinel |
@@ -120,7 +120,7 @@ under [`docs/benchmarks/`](docs/benchmarks/).
 ```
 Orbcrypt/
 ├── Orbcrypt.lean                 Root import file (axiom-transparency report)
-├── Orbcrypt/                     Lean 4 source tree (77 modules)
+├── Orbcrypt/                     Lean 4 source tree (81 modules)
 │   ├── GroupAction/              Orbits, stabilizers, canonical forms (incl. `ofLexMin`)
 │   ├── Crypto/                   AOE scheme, IND-CPA game, OIA, ConcreteOIA
 │   ├── Theorems/                 Correctness, invariant attack, OIA → IND-1-CPA

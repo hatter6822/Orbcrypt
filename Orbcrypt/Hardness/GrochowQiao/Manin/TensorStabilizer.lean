@@ -85,7 +85,6 @@ variable {I : Type u} {F : Type v} {A : Type w} {B : Type w}
 variable [Field F]
 variable [Fintype I] [DecidableEq I]
 
-set_option linter.unusedSectionVars false
 
 -- ============================================================================
 -- Sub-task A.5.3 — Algebra hom from tensor iso.
@@ -124,6 +123,7 @@ noncomputable def linearMapOfBasisChange
     A →ₗ[F] B :=
   b_A.constr F (fun i => ∑ p, P i p • b_B p)
 
+omit [DecidableEq I] in
 /-- **Apply lemma:** `linearMapOfBasisChange` evaluated at a basis
 element equals the prescribed image. -/
 @[simp] theorem linearMapOfBasisChange_basis
@@ -324,6 +324,7 @@ theorem linearMapOfBasisChange_mul_basis
 -- Sub-task A.5.3.2 — Multiplicativity on all elements (extension).
 -- ============================================================================
 
+omit [DecidableEq I] in
 /-- **Helper:** `linearMapOfBasisChange` applied to any element of `A`
 expands as a sum over the basis, with coefficients given by the
 `b_A`-representation. -/
@@ -398,6 +399,7 @@ theorem linearMapOfBasisChange_mul
 -- Sub-task A.5.3.3 — Unit preservation.
 -- ============================================================================
 
+omit [DecidableEq I] in
 /-- **Sub-task A.5.3.3 — Unit preservation.**
 
 Under the unit-compatibility hypothesis, the linear map

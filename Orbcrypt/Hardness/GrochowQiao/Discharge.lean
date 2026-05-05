@@ -60,7 +60,6 @@ namespace Discharge
 open Orbcrypt
 open scoped BigOperators
 
-set_option linter.unusedSectionVars false
 
 -- ============================================================================
 -- Bridge 1 — `presentArrowsSubspace` membership preservation under

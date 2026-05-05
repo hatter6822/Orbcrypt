@@ -96,7 +96,6 @@ open Orbcrypt
 open Module
 open scoped BigOperators
 
-set_option linter.unusedSectionVars false
 
 -- ============================================================================
 -- A.5.5.1 — Helper: pathMul preserves `presentArrows` membership.

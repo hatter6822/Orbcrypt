@@ -69,6 +69,7 @@ echo 'Read("implementation/gap/orbcrypt_keygen.g");; Read("implementation/gap/or
 | `gap/orbcrypt_test.g` | Correctness test suite (13 tests) |
 | `gap/orbcrypt_bench.g` | Benchmark harness with CSV output |
 | `gap/orbcrypt_sweep.g` | **Phase 14 parameter sweep + tier-pinned rows** |
+| `gap/orbcrypt_fast_dec.g` | **Phase 15 fast-decryption pipeline** (`QCCyclicReduce`, `FastDecaps`, `ComputeResidualGroup`, `SyndromeDecaps`, `OrbitHash`, `RunPhase15Comparison`) |
 | `gap/orbcrypt_benchmarks.csv` | Benchmark results (generated) |
 
 ### Phase 14 parameter sweep

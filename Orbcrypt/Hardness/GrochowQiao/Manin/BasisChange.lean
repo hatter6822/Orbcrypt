@@ -97,7 +97,6 @@ variable {I : Type u} {F : Type v}
 variable [Field F]
 variable [Fintype I] [DecidableEq I]
 
-set_option linter.unusedSectionVars false
 
 -- ============================================================================
 -- Sub-task A.5.2 — Basis-change relation predicate.

@@ -4407,7 +4407,7 @@ end AlgEquivFromGL3NonVacuity
 #print axioms Orbcrypt.GrochowQiao.Discharge.restrictedGL3OnPathOnlyTensor_of_rigidity
 
 -- Top-level unified discharge under GrochowQiaoRigidity.
-#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_pathSubspace_obligations_under_rigidity
 #print axioms Orbcrypt.GrochowQiao.grochowQiao_unified_discharge_under_rigidity
 
 namespace Phase3DischargeNonVacuity
@@ -4434,10 +4434,10 @@ example :
   paddingRankInvariant_eq_paddingSlotIndices_card 2 (fun _ _ => false)
 
 /-- **Phase 3 discharge non-vacuity: from `GrochowQiaoRigidity`, both
-Phase 3 Props discharge.** -/
+path-subspace obligations discharge.** -/
 example (h_rigidity : GrochowQiaoRigidity) (m : ℕ) :
     GL3InducesAlgEquivOnPathSubspace m ∧ RestrictedGL3OnPathOnlyTensor m :=
-  grochowQiao_phase3_discharge_under_rigidity h_rigidity m
+  grochowQiao_pathSubspace_obligations_under_rigidity h_rigidity m
 
 /-- **Phase 3 discharge non-vacuity: unified discharge (Karp + both
 Phase 3 Props) under `GrochowQiaoRigidity`.** -/
@@ -6011,3 +6011,116 @@ example :
    nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one 5 3 (ZMod 5)⟩
 
 end MarginalUniformityNonVacuity
+
+-- ============================================================================
+-- § 15.28 Audit-pass coverage closure (deep audit 2026-05-05)
+--
+-- Adds `#print axioms` checks for 73 public declarations that were
+-- previously only exercised transitively through downstream theorems.
+-- Closes the 4.9% audit-script coverage gap surfaced by the
+-- 2026-05-05 deep-audit pass:
+--
+-- * `Optimization/QCCanonical.lean` (3 declarations including the
+--   `QCCyclicCanonical` abbrev that headline theorems #24-#26
+--   indirectly consume).
+-- * `Optimization/TwoPhaseDecrypt.lean` (11 declarations including
+--   the headline theorems #24 `two_phase_correct`, #25
+--   `two_phase_kem_correctness`, and #26 `fast_kem_round_trip`).
+-- * `Probability/Monad.lean` (2 declarations: `probTrue_map`,
+--   `probTrue_uniformPMF_card`).
+-- * `Hardness/GrochowQiao/AlgebraWrapper.lean` (37 declarations
+--   covering the path-algebra Layer 1-5 multiplication / distrib /
+--   Ring / Algebra material).
+-- * `Hardness/GrochowQiao/WedderburnMalcev.lean` (20 declarations
+--   covering the radical / sandwich / coi-helpers infrastructure).
+--
+-- Every entry below is a structural `#print axioms` check; the
+-- non-vacuity content for these declarations is supplied by their
+-- downstream consumers (`hardness_chain_implies_security`,
+-- `wedderburn_malcev_conjugacy`, `algEquiv_extractVertexPerm`,
+-- the Phase-15 fast-decryption pipeline, etc.) which already have
+-- non-vacuity examples elsewhere in this script.
+-- ============================================================================
+
+-- Optimization/QCCanonical.lean
+#print axioms Orbcrypt.QCCyclicCanonical
+#print axioms Orbcrypt.qc_invariant_under_cyclic
+#print axioms Orbcrypt.qc_canon_idem
+
+-- Optimization/TwoPhaseDecrypt.lean (headline theorems #24, #25, #26)
+#print axioms Orbcrypt.TwoPhaseDecomposition
+#print axioms Orbcrypt.two_phase_decompose
+#print axioms Orbcrypt.two_phase_correct
+#print axioms Orbcrypt.full_canon_invariant
+#print axioms Orbcrypt.two_phase_invariant_under_G
+#print axioms Orbcrypt.two_phase_kem_decaps
+#print axioms Orbcrypt.two_phase_kem_correctness
+#print axioms Orbcrypt.IsOrbitConstant
+#print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint
+#print axioms Orbcrypt.fast_kem_round_trip
+#print axioms Orbcrypt.fast_canon_composition_orbit_constant
+
+-- Probability/Monad.lean
+#print axioms Orbcrypt.probTrue_map
+#print axioms Orbcrypt.probTrue_uniformPMF_card
+
+-- Hardness/GrochowQiao/AlgebraWrapper.lean (Layer 1-5 path-algebra)
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraMul_assoc
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraOne
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraOne_apply_id
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraOne_apply_edge
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_mul_apply_id
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_mul_apply_edge
+#print axioms Orbcrypt.GrochowQiao.mul_vertexIdempotent_apply_id
+#print axioms Orbcrypt.GrochowQiao.mul_vertexIdempotent_apply_edge
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_mul_vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_mul_arrowElement
+#print axioms Orbcrypt.GrochowQiao.arrowElement_mul_vertexIdempotent
+#print axioms Orbcrypt.GrochowQiao.arrowElement_mul_arrowElement_eq_zero
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_left_distrib
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_right_distrib
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_zero_mul
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_mul_zero
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_one_mul
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_mul_one
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_smul_mul
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_mul_smul
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_decompose
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraMul_apply_id
+#print axioms Orbcrypt.GrochowQiao.pathAlgebraMul_apply_edge
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_self_mul_apply_id
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_self_mul_apply_edge
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_isIdempotentElem_iff
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_idempotent_lambda_squared
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_idempotent_mu_constraint
+#print axioms Orbcrypt.GrochowQiao.IsPrimitiveIdempotent
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_isIdempotentElem
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_ne_zero
+#print axioms Orbcrypt.GrochowQiao.AlgEquiv_preserves_isIdempotentElem
+#print axioms Orbcrypt.GrochowQiao.AlgEquiv_preserves_isPrimitiveIdempotent
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_isPrimitive
+#print axioms Orbcrypt.GrochowQiao.vertex_implies_isPrimitive
+#print axioms Orbcrypt.GrochowQiao.exists_nonVertex_idempotent
+#print axioms Orbcrypt.GrochowQiao.vertexIdempotent_completeOrthogonalIdempotents_card
+
+-- Hardness/GrochowQiao/WedderburnMalcev.lean (radical + coi infrastructure)
+#print axioms Orbcrypt.GrochowQiao.arrow_mul_arrow_eq_zero
+#print axioms Orbcrypt.GrochowQiao.arrowElement_mul_member_radical
+#print axioms Orbcrypt.GrochowQiao.member_radical_mul_arrowElement
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_arrow_part_mem_radical
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_vertexPart
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_arrowPart
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_arrowPart_mem_radical
+#print axioms Orbcrypt.GrochowQiao.arrowElement_mul_anything_mem_radical
+#print axioms Orbcrypt.GrochowQiao.member_radical_mul_anything_mem_radical
+#print axioms Orbcrypt.GrochowQiao.radical_sandwich_eq_zero
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_idempotent_zero_of_id_coef_zero
+#print axioms Orbcrypt.GrochowQiao.coi_nonzero_has_active_vertex
+#print axioms Orbcrypt.GrochowQiao.coi_chooseActive
+#print axioms Orbcrypt.GrochowQiao.coi_chooseActive_spec
+#print axioms Orbcrypt.GrochowQiao.coi_chooseActive_unique
+#print axioms Orbcrypt.GrochowQiao.coi_chooseActive_surjective
+#print axioms Orbcrypt.GrochowQiao.coi_vertexPerm_iff
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_idempotent_self_loop_zero
+#print axioms Orbcrypt.GrochowQiao.pathAlgebra_idempotent_offdiag_arrow_zero
+#print axioms Orbcrypt.GrochowQiao.coi_cross_arrow_compat
