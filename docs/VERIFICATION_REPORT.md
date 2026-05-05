@@ -1338,6 +1338,43 @@ The exit criteria from `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md`
 
 ## Document history
 
+* **2026-05-02 (Workstream R-11 — Concrete non-trivial
+  `CommGroupAction` instance + DDH-conditional IND-CPA reduction)**
+  — Two new modules (`Orbcrypt/PublicKey/CSIDHHardness.lean` +
+  `Orbcrypt/PublicKey/MultGroupAction.lean`) close the "only
+  `selfAction`" gap in `Orbcrypt/PublicKey/CommutativeAction.lean`.
+  Headline content: `IsCommActionDDHHard` Prop predicate
+  parametrising the standard Decisional Diffie–Hellman assumption
+  to commutative actions; the `CommPKEAdversary` structure +
+  `commPKEIndCPAAdvantage` (averaged over uniform secret-key
+  sampling per the standard cryptographic IND-CPA experiment); the
+  algebraic equality `commPKEIndCPAAdvantage_eq_ddh_advantage`
+  (definitional equality of the IND-CPA and DDH game shapes);
+  **headline reduction** `commPKE_indCPA_under_csidh_ddh_hardness`
+  delivering IND-CPA / ROR-CPA advantage ≤ ε under DDH-hardness ε
+  (exact reduction with no factor loss); the canonical non-trivial
+  `multGroupCommAction p : CommGroupAction (ZMod p)ˣ (ZMod p)`
+  instance for prime `p`; orbit characterisations
+  `multGroupAction_orbit_zero` (the singleton `{0}`) and
+  `multGroupAction_orbit_one` (the units image, equivalently the
+  non-zero residues); and a toy `(ZMod 7)ˣ` `CommOrbitPKE`
+  non-vacuity instance (`toyZMod7CommPKE`) with its correctness
+  inheritance theorems. Discharging `IsCommActionDDHHard` for
+  any concrete action is the standard DDH cryptographic assumption
+  (research-scope R-11⁺); the trivial `_le_one` bound is
+  unconditional. Counts: 81 → 83 modules; ~1,081 → 1,099 audit-
+  script `#print axioms` entries (+18 R-11 after the deep-audit
+  pass removed 4 redundant alias declarations); 3,424 → 3,426 build
+  jobs. Patch bump 0.3.2 → 0.3.3. Every new declaration depends
+  only on the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`); zero `sorry`; zero custom axioms. Deep-audit pass
+  same day removed `commPKEIndCPADist_real`/`_random` aliases +
+  bridge theorems (pure `:= ddhRealDist bp` aliases adding no
+  content), made `G` implicit in `IsCommActionDDHHard.mono`/
+  `.le_one` matching the `IsPRF.mono`/`.le_one` pattern, dropped
+  `[Nonempty G]` (implied by `[Group G]`), and replaced bare `simp`
+  with `simp only` in the audit script's smul-apply witness.
+
 * **2026-05-01 (Workstream R-05 audit-pass — documentation parity
   + Q-tuple `#print axioms` coverage)** — Closed four
   documentation-parity gaps surfaced by deep-audit pass on the

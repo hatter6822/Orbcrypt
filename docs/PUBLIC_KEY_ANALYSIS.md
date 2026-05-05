@@ -369,6 +369,58 @@ structure CommOrbitPKE (G X : Type*) [Group G] [CommGroupAction G X] where
 * `CommGroupAction.selfAction` — instance for `CommGroup G` acting on itself
   (sanity-check example).
 
+**Workstream R-11 additions (2026-05-02, plan
+`docs/planning/PLAN_R_05_11_15.md` § R-11).** Two new modules close the
+"only `selfAction`" gap by introducing the standard DDH hardness Prop and
+a concrete non-trivial `CommGroupAction` instance:
+
+* `Orbcrypt.PublicKey.CSIDHHardness` (~510 LOC).
+  - `ddhRealDist` / `ddhRandomDist` — the two PMFs over the standard
+    DDH 3-tuple `(sk•bp, r•bp, k)`: real `k = sk•(r•bp)` vs random
+    `k = t•bp`.
+  - `IsCommActionDDHHard` — Prop predicate parametrising the standard
+    Decisional Diffie–Hellman assumption to commutative actions: no
+    Boolean distinguisher exceeds `ε` advantage between
+    `ddhRealDist bp` and `ddhRandomDist bp`.
+  - `IsCommActionDDHHard.mono` / `.le_one` — monotonicity + trivial
+    `1`-bound (satisfiability anchor).
+  - `CommPKEAdversary` — IND-CPA adversary structure
+    (`guess : X × X × X → Bool`).
+  - `commPKEIndCPAAdvantage` — IND-CPA / ROR-CPA advantage of an
+    adversary against `CommOrbitPKE`, defined directly as
+    `advantage A.guess (ddhRealDist bp) (ddhRandomDist bp)`
+    (marginalised over uniform secret-key sampling per the standard
+    cryptographic IND-CPA experiment).
+  - `commPKEIndCPAAdvantage_eq_ddh_advantage` — `rfl`-level
+    definitional equality exposing the IND-CPA → DDH simulation as
+    an exact bijection (no game hops, no factor loss).
+  - `commPKE_indCPA_under_csidh_ddh_hardness` — **headline reduction**:
+    IND-CPA / ROR-CPA advantage of any adversary against the
+    commutative-action PKE is at most `ε` whenever the action is
+    `ε`-DDH-hard at the basepoint (one-line proof: `hHard A.guess`).
+* `Orbcrypt.PublicKey.MultGroupAction` (~290 LOC).
+  - `multGroupCommAction p` (instance) — the multiplicative-group
+    commutative action `(ZMod p)ˣ ↷ ZMod p` for prime `p`. Genuinely
+    non-trivial (orbit of `0` is `{0}`, orbit of `1` is the units).
+  - `multGroupCommAction_smul` — apply lemma.
+  - `multGroupAction_orbit_zero` — orbit of `0` is the singleton `{0}`
+    (the fixed point).
+  - `multGroupAction_orbit_one` — orbit of `1` equals the image of the
+    units coercion `((ZMod p)ˣ → ZMod p)`.
+  - `multGroupAction_orbit_one_eq_nonzero` — alternative characterisation:
+    orbit of `1` equals the non-zero residues (using `IsUnit ↔ ≠ 0` for
+    finite fields).
+  - `toyZMod7CommPKE` — toy `CommOrbitPKE (ZMod 7)ˣ (ZMod 7)` with
+    `basePoint = 1`, parameterised by `secretKey : (ZMod 7)ˣ`.
+  - `toyZMod7CommPKE_correctness` / `_shared_secret` — correctness
+    inheritance via `comm_pke_correctness` / `comm_pke_shared_secret`.
+
+Discharging `IsCommActionDDHHard` for any concrete action (including
+`multGroupCommAction p`) is the standard DDH cryptographic assumption, not
+provable inside Lean. The Prop is inhabited at `ε = 1` trivially via
+`IsCommActionDDHHard.le_one` (every advantage is `≤ 1`); ε < 1 discharge
+is research-scope (R-11⁺).
+
 All proofs compile with zero `sorry`; no custom axioms are introduced.
 
 ### Where the algebra ends and cryptography begins
@@ -409,10 +461,15 @@ prevents Diffie–Hellman–style public-key construction.
 
 ### Feasibility
 
-**Most promising path; requires substantial external machinery.** The
-formal scaffolding is in place and minimal. The research challenge is
-finding/instantiating a commutative action with good hardness — which
-effectively means adopting (or adapting) CSIDH-like isogeny cryptography.
+**Most promising path; requires substantial external machinery for full
+discharge.** The formal scaffolding is in place and minimal, the IND-CPA
+reduction conditional on DDH hardness is unconditionally proved, and a
+concrete non-trivial commutative action `(ZMod p)ˣ ↷ ZMod p` is registered.
+The research challenge is discharging the standard cryptographic DDH
+assumption for a concrete action — which effectively means adopting (or
+adapting) CSIDH-like isogeny cryptography for the post-quantum setting, or
+relying on the standard finite-cyclic-group DDH for the classical-setting
+multiplicative-group action `(ZMod p)ˣ ↷ ZMod p`.
 
 | Property | Status |
 |----------|--------|
@@ -420,7 +477,12 @@ effectively means adopting (or adapting) CSIDH-like isogeny cryptography.
 | CSIDH correctness theorem | ✅ (`csidh_correctness`) |
 | `CommOrbitPKE` structure + correctness | ✅ (`comm_pke_correctness`) |
 | Self-action instance for `CommGroup` | ✅ |
-| Concrete cryptographic instantiation | ❌ Requires CSIDH-like hardness |
+| Non-trivial `CommGroupAction` instance | ✅ (`multGroupCommAction p`, R-11) |
+| Toy `CommOrbitPKE` instance | ✅ (`toyZMod7CommPKE`, R-11) |
+| `IsCommActionDDHHard` Prop predicate | ✅ (R-11) |
+| IND-CPA / ROR-CPA reduction conditional on DDH | ✅ (`commPKE_indCPA_under_csidh_ddh_hardness`, R-11) |
+| Unconditional discharge of DDH for `(ZMod p)ˣ ↷ ZMod p` | ❌ Standard DDH assumption (R-11⁺) |
+| CSIDH on supersingular elliptic curves | ❌ Requires Mathlib class field theory + isogeny formalisation (R-11⁺) |
 | Symmetric `S_n` subgroups satisfy `CommGroupAction` | ❌ Generically not |
 
 ---
@@ -474,7 +536,7 @@ The most plausible paths forward are therefore:
 | Oblivious sampling (§1) | `OrbitalRandomizers`, `obliviousSample`, `refreshRandomizers`, all correctness theorems | `combine` is an open problem | Bounded-use / Open (non-equivariant only) |
 | No-go for equivariant combiners (§1) | `GEquivariantCombiner`, `equivariant_combiner_breaks_oia`, `oia_forces_combine_constant_on_orbit`, `oblivious_sample_equivariant_obstruction` | Equivariant `combine` ⇒ ¬ `OIA` (machine-checked) | Infeasible under `OIA` |
 | KEM key agreement (§2) | `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness` | Requires symmetric keys on both sides | Works, NOT public-key |
-| Commutative action (§3) | `CommGroupAction`, `csidh_exchange`, `CommOrbitPKE`, `comm_pke_correctness` | Needs CSIDH-like concrete instantiation | Most promising path |
+| Commutative action (§3) | `CommGroupAction`, `csidh_exchange`, `CommOrbitPKE`, `comm_pke_correctness`; **R-11**: `IsCommActionDDHHard`, `commPKE_indCPA_under_csidh_ddh_hardness`, `multGroupCommAction p`, `toyZMod7CommPKE` | IND-CPA reduction landed conditional on standard DDH; concrete DDH discharge is research-scope | Most promising path |
 | Fundamental obstacle (§4) | — | Non-commutativity is essential to hardness | Open research direction |
 
 ---

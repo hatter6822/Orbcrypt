@@ -6011,3 +6011,171 @@ example :
    nonceBitstringPolynomialMAC_isNoncedQtimeSUFCMASecure_le_one 5 3 (ZMod 5)⟩
 
 end MarginalUniformityNonVacuity
+
+-- ============================================================================
+-- § 15.28 Workstream R-11 — Concrete non-trivial CommGroupAction instance
+-- (audit 2026-04-29 § 8.1, plan PLAN_R_05_11_15.md § R-11)
+-- ============================================================================
+--
+-- Pre-R-11, `Orbcrypt/PublicKey/CommutativeAction.lean` registered only the
+-- `selfAction G ↷ G` of a commutative group on itself, which is broken in
+-- polynomial time by discrete log. R-11 closes the gap by introducing:
+-- (1) `IsCommActionDDHHard` — the standard Decisional Diffie–Hellman
+--     hardness Prop adapted to commutative actions.
+-- (2) The IND-CPA / ROR-CPA reduction for `CommOrbitPKE` conditional on
+--     the DDH Prop (`commPKE_indCPA_under_csidh_ddh_hardness`) — exact
+--     reduction with no factor loss.
+-- (3) The `multGroupCommAction p` instance for prime `p`: the canonical
+--     non-trivial commutative action `(ZMod p)ˣ ↷ ZMod p`, with orbits
+--     `{0}` (fixed point) and `(ZMod p)ˣ` (the unique non-zero orbit).
+-- (4) A toy `(ZMod 7)ˣ` `CommOrbitPKE` non-vacuity instance.
+--
+-- Discharging `IsCommActionDDHHard` for any concrete action (including
+-- `multGroupCommAction p`) is the standard DDH cryptographic assumption,
+-- not provable inside Lean. The Prop is inhabited at ε = 1 trivially via
+-- `IsCommActionDDHHard.le_one`; ε < 1 discharge is research-scope (R-11⁺).
+
+-- CSIDHHardness module:
+#print axioms Orbcrypt.ddhRealDist
+#print axioms Orbcrypt.ddhRandomDist
+#print axioms Orbcrypt.IsCommActionDDHHard
+#print axioms Orbcrypt.IsCommActionDDHHard.mono
+#print axioms Orbcrypt.IsCommActionDDHHard.le_one
+#print axioms Orbcrypt.CommPKEAdversary
+#print axioms Orbcrypt.commPKEIndCPAAdvantage
+#print axioms Orbcrypt.commPKEIndCPAAdvantage_eq_ddh_advantage
+#print axioms Orbcrypt.commPKE_indCPA_under_csidh_ddh_hardness
+#print axioms Orbcrypt.commActionDDH_research_scope_disclosure
+
+-- MultGroupAction module:
+#print axioms Orbcrypt.multGroupCommAction
+#print axioms Orbcrypt.multGroupCommAction_smul
+#print axioms Orbcrypt.multGroupAction_orbit_zero
+#print axioms Orbcrypt.multGroupAction_orbit_one
+#print axioms Orbcrypt.multGroupAction_orbit_one_eq_nonzero
+#print axioms Orbcrypt.toyZMod7CommPKE
+#print axioms Orbcrypt.toyZMod7CommPKE_correctness
+#print axioms Orbcrypt.toyZMod7CommPKE_shared_secret
+
+namespace MultGroupActionNonVacuity
+open Orbcrypt
+
+/-- Witness `Fact (Nat.Prime 7)` (Mathlib provides only `fact_prime_two` and
+    `fact_prime_three` natively; for `p = 7` we use the established
+    `decide`-based pattern from R08NonVacuity / R13PlusNonVacuity / R-05). -/
+local instance fact_prime_seven : Fact (Nat.Prime 7) := ⟨by decide⟩
+
+/-- The multiplicative-group action is genuinely commutative on `ZMod 7`:
+    for any two units `a b : (ZMod 7)ˣ` and any `x : ZMod 7`,
+    `a • (b • x) = b • (a • x)`. Direct application of
+    `CommGroupAction.comm`. -/
+example (a b : (ZMod 7)ˣ) (x : ZMod 7) :
+    a • (b • x) = b • (a • x) :=
+  CommGroupAction.comm a b x
+
+/-- Smul-apply lemma fires on a concrete multiplication: `2 • 3 = 6` in
+    `ZMod 7`. -/
+example :
+    let two : (ZMod 7)ˣ := Units.mkOfMulEqOne (2 : ZMod 7) 4 (by decide)
+    two • (3 : ZMod 7) = (6 : ZMod 7) := by
+  simp only [multGroupCommAction_smul]
+  decide
+
+/-- The orbit of `0 : ZMod 7` is the singleton `{0}`. -/
+example :
+    MulAction.orbit (ZMod 7)ˣ (0 : ZMod 7) = {0} :=
+  multGroupAction_orbit_zero 7
+
+/-- The orbit of `1 : ZMod 7` equals the units image: every non-zero
+    residue is reachable by some unit acting on `1`. -/
+example :
+    MulAction.orbit (ZMod 7)ˣ (1 : ZMod 7) =
+      {x : ZMod 7 | ∃ u : (ZMod 7)ˣ, (u : ZMod 7) = x} :=
+  multGroupAction_orbit_one 7
+
+/-- The orbit of `1` equals the non-zero residues (alternative
+    characterisation via `IsUnit ↔ ≠ 0` in a finite field). -/
+example :
+    MulAction.orbit (ZMod 7)ˣ (1 : ZMod 7) =
+      {x : ZMod 7 | x ≠ 0} :=
+  multGroupAction_orbit_one_eq_nonzero 7
+
+/-- The orbit of `0` and the orbit of `1` are disjoint: `0` is the
+    fixed point and `1`'s orbit consists of non-zero residues. -/
+example :
+    Disjoint (MulAction.orbit (ZMod 7)ˣ (0 : ZMod 7))
+             (MulAction.orbit (ZMod 7)ˣ (1 : ZMod 7)) := by
+  rw [multGroupAction_orbit_zero, multGroupAction_orbit_one_eq_nonzero]
+  rw [Set.disjoint_iff]
+  intro x ⟨h0, h1⟩
+  rw [Set.mem_singleton_iff] at h0
+  exact (h1 h0).elim
+
+/-- `toyZMod7CommPKE` correctness witness: decryption recovers the
+    encrypted shared secret. Composes with the existing
+    `comm_pke_correctness`. -/
+example (sk r : (ZMod 7)ˣ) :
+    let pke := toyZMod7CommPKE sk
+    pke.decrypt (pke.encrypt r).1 = (pke.encrypt r).2 :=
+  toyZMod7CommPKE_correctness sk r
+
+/-- `toyZMod7CommPKE` shared-secret witness: sender's `r • publicKey`
+    equals recipient's `secretKey • (r • basePoint)`. -/
+example (sk r : (ZMod 7)ˣ) :
+    let pke := toyZMod7CommPKE sk
+    r • pke.publicKey = pke.secretKey • (r • pke.basePoint) :=
+  toyZMod7CommPKE_shared_secret sk r
+
+/-- `IsCommActionDDHHard.le_one` is satisfiable for the multiplicative
+    action at `bp = 1 : ZMod 7`. The `1`-bound is trivially attainable
+    via `advantage_le_one`. -/
+example : IsCommActionDDHHard (G := (ZMod 7)ˣ) (1 : ZMod 7) 1 :=
+  IsCommActionDDHHard.le_one (1 : ZMod 7)
+
+/-- `IsCommActionDDHHard.le_one` also satisfies the multiplicative action
+    at `bp = 0 : ZMod 7` (the fixed point). The bound holds vacuously
+    because every advantage is ≤ 1. -/
+example : IsCommActionDDHHard (G := (ZMod 7)ˣ) (0 : ZMod 7) 1 :=
+  IsCommActionDDHHard.le_one (0 : ZMod 7)
+
+/-- `IsCommActionDDHHard.mono` widens the bound: `1`-DDH-hard implies
+    `2`-DDH-hard (trivially). -/
+example
+    (h : IsCommActionDDHHard (G := (ZMod 7)ˣ) (1 : ZMod 7) 1) :
+    IsCommActionDDHHard (G := (ZMod 7)ˣ) (1 : ZMod 7) 2 :=
+  h.mono (by norm_num)
+
+/-- IND-CPA bound at the `ε = 1` upper-bound discharge of the DDH Prop.
+    The IND-CPA / ROR-CPA advantage of any adversary against the
+    multiplicative-group PKE at `bp = 1` is ≤ 1 (trivially). This
+    sentinel exercises the headline reduction theorem on a concrete
+    non-trivial commutative action. -/
+example (A : CommPKEAdversary (ZMod 7)ˣ (ZMod 7)) :
+    commPKEIndCPAAdvantage (G := (ZMod 7)ˣ) (1 : ZMod 7) A ≤ 1 :=
+  commPKE_indCPA_under_csidh_ddh_hardness (1 : ZMod 7) 1
+    (IsCommActionDDHHard.le_one _) A
+
+/-- The IND-CPA advantage equals the DDH advantage at the adversary's
+    guess function (algebraic core of the reduction). Definitional `rfl`
+    after the post-audit cleanup that removed the `commPKEIndCPADist_*`
+    aliases — `commPKEIndCPAAdvantage` is now defined directly in terms
+    of `ddhRealDist`/`ddhRandomDist`. -/
+example (A : CommPKEAdversary (ZMod 7)ˣ (ZMod 7)) :
+    commPKEIndCPAAdvantage (G := (ZMod 7)ˣ) (1 : ZMod 7) A =
+      advantage A.guess (ddhRealDist (G := (ZMod 7)ˣ) (1 : ZMod 7))
+                        (ddhRandomDist (G := (ZMod 7)ˣ) (1 : ZMod 7)) :=
+  commPKEIndCPAAdvantage_eq_ddh_advantage (G := (ZMod 7)ˣ) (1 : ZMod 7) A
+
+/-- The substantive disclosure theorem fires on the toy fixture: at
+    `bp = 1 : ZMod 7` and any adversary, all three conjuncts (DDH-
+    hardness at ε = 1, advantage equality, IND-CPA reduction at ε = 1)
+    are inhabited unconditionally. -/
+example (A : CommPKEAdversary (ZMod 7)ˣ (ZMod 7)) :
+    IsCommActionDDHHard (G := (ZMod 7)ˣ) (1 : ZMod 7) 1 ∧
+    commPKEIndCPAAdvantage (G := (ZMod 7)ˣ) (1 : ZMod 7) A =
+      advantage A.guess (ddhRealDist (G := (ZMod 7)ˣ) (1 : ZMod 7))
+                        (ddhRandomDist (G := (ZMod 7)ˣ) (1 : ZMod 7)) ∧
+    commPKEIndCPAAdvantage (G := (ZMod 7)ˣ) (1 : ZMod 7) A ≤ 1 :=
+  commActionDDH_research_scope_disclosure (1 : ZMod 7) A
+
+end MultGroupActionNonVacuity

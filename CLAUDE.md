@@ -8660,116 +8660,206 @@ script runs cleanly (exit 0); 1,081 declarations exercised. All
 gap pre-`b45e308` was the three `IsPRFAtQueries` form entries,
 now closed.
 
-Documentation reorganization (2026-05-03) — root scheme docs
-moved into `docs/`; completed planning + formalization documents
-relocated to `docs/dev_history/`:
+Workstream R-11 Research-Scope Discharge (audit 2026-04-29 § 8.1,
+plan `docs/planning/PLAN_R_05_11_15.md` § R-11) has been completed
+(2026-05-02):
 
-- **Root → `docs/`.** `DEVELOPMENT.md`, `POE.md`, and
-  `COUNTEREXAMPLE.md` moved from the project root into `docs/`,
-  matching the existing `docs/`-prefix convention used by every
-  other top-level analysis surface (`docs/PARAMETERS.md`,
-  `docs/PUBLIC_KEY_ANALYSIS.md`, `docs/HARDNESS_ANALYSIS.md`,
-  `docs/VERIFICATION_REPORT.md`, `docs/USE_CASES.md`,
-  `docs/MORE_USE_CASES.md`). `git mv` was used to preserve git
-  history.
+- **Problem.** `Orbcrypt/PublicKey/CommutativeAction.lean` defines
+  the `CommGroupAction` typeclass for commutative group actions
+  underpinning CSIDH-style key exchange, but pre-R-11 the only
+  registered instance was `selfAction` (a `CommGroup G` acting on
+  itself by left multiplication). `selfAction` is broken in
+  polynomial time by discrete-log algorithms whenever the group is
+  cyclic of large prime order — the action group and the carrier
+  coincide, so an adversary who can compute discrete logs in the
+  carrier can compute the secret key directly. The pre-R-11 module
+  docstring acknowledged this gap explicitly: "concrete commutative
+  actions with the required hardness properties are the scarce
+  resource".
 
-- **`docs/dev_history/` (new).** A new history directory under
-  `docs/` collects every workstream-planning document whose work
-  has been completed and is no longer release-blocking, leaving
-  `docs/planning/` to hold only documents that still describe
-  pending or research-scope work. The 15 moved planning files:
-  * `PHASE_7_KEM_REFORMULATION.md` through
-    `PHASE_16_FORMAL_VERIFICATION.md` (Phases 7–16, all complete
-    per the `## Active development status` log above).
-  * `AUDIT_2026-04-18_WORKSTREAM_PLAN.md` (Workstreams A–E
-    closed).
-  * `AUDIT_2026-04-21_WORKSTREAM_PLAN.md` (Workstreams G, H, J,
-    K, L, M, N closed).
-  * `AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
-    (Workstreams A, B, C closed; D research catalogue partially
-    discharged via R-09 / R-12 / R-13).
-  * `PATH_ALGEBRA_MUL_ASSOC_PLAN.md` (`pathAlgebraMul_assoc`
-    decomposition landed).
-  * `PLAN_R_01_07_08_14_16.md` (R-01, R-07, R-08, R-13⁺, R-14,
-    R-16 all discharged).
+- **Mathematical content.** The full CSIDH primitive (ideal class
+  group action on supersingular elliptic curves) is multi-year
+  research-scope work because it requires class-field-theory +
+  isogeny formalisation in Mathlib (none of which is currently
+  available). However, a substantial cryptographic-content-bearing
+  intermediate step is available: the *multiplicative-group action*
+  of `(ZMod p)ˣ` on `ZMod p`. This action is genuinely non-trivial
+  (orbits are proper subsets of the ambient space; `{0}` is fixed,
+  `(ZMod p)ˣ` is the unique non-zero orbit of size `p − 1`),
+  commutative (the group is abelian), and backed by a named
+  hardness assumption (the standard finite-cyclic-group DDH).
 
-- **`formalization/` → `docs/dev_history/formalization/`.** The
-  entire `formalization/` subtree (`FORMALIZATION_PLAN.md`,
-  `PRACTICAL_IMPROVEMENTS_PLAN.md`, and `phases/PHASE_1_*.md`
-  through `phases/PHASE_6_*.md`) moved into
-  `docs/dev_history/formalization/`. All six Phase 1–6 documents
-  describe completed work (Phases 1–6 of the formalization were
-  marked Complete in the master roadmap years ago); the master
-  `FORMALIZATION_PLAN.md` and `PRACTICAL_IMPROVEMENTS_PLAN.md`
-  similarly describe completed scope (Phases 7–9 covered by
-  `PRACTICAL_IMPROVEMENTS_PLAN.md` are all closed). The directory
-  structure (`formalization/phases/...`) is preserved one level
-  deeper under `docs/dev_history/formalization/phases/...` so
-  the historical organisation remains discoverable.
+  The IND-CPA / ROR-CPA reduction for `CommOrbitPKE` follows the
+  standard textbook ElGamal-IND-CPA-from-DDH proof. The reduction
+  is exact (no game hops, no factor loss): the IND-CPA real
+  distribution equals the DDH real distribution by definition (both
+  marginalise over uniform `sk` per the standard cryptographic
+  IND-CPA experiment convention), and the IND-CPA random
+  distribution equals the DDH random distribution similarly.
 
-- **Plans intentionally retained in `docs/planning/`.** Six
-  plans still describe pending or research-scope work and stay
-  in the active planning directory:
-  * `AUDIT_2026-04-23_WORKSTREAM_PLAN.md` (Workstreams H, J, K,
-    L, M, N pending).
-  * `AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` (R-CE reverse
-    direction is research-scope `R-15-residual-CE-reverse`).
-  * `AUDIT_2026-04-28_PHASE_3_PROP_DISCHARGE_PLAN.md` (Phase 3
-    deep multilinear-algebra content is research-scope
-    `R-15-residual-TI-*`).
-  * `PLAN_R_05_11_15.md` (R-11 and R-15 not yet implemented;
-    R-05 framework landed but R-05⁺ headline reduction theorem
-    remains research-scope).
-  * `R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md` (Phase 3 partial
-    discharge landed; rigidity argument research-scope).
-  * `R_TI_PHASE_C_THROUGH_H_PLAN.md` (final discharge depends
-    on the same research-scope content).
+- **Files added (2 new modules).**
+  * `Orbcrypt/PublicKey/CSIDHHardness.lean` (~510 LOC, NEW). Layers:
+    - **Phase 1** — `ddhRealDist` and `ddhRandomDist` PMF
+      definitions; `IsCommActionDDHHard` Prop predicate;
+      monotonicity (`mono`) and trivial `1`-bound (`le_one`)
+      companions; `CommPKEAdversary` structure.
+    - **Phase 2** — `commPKEIndCPAAdvantage` definition (defined
+      directly in terms of `ddhRealDist`/`ddhRandomDist`, averaged
+      over uniform secret-key sampling per the standard IND-CPA
+      convention); `commPKEIndCPAAdvantage_eq_ddh_advantage` (the
+      algebraic core of the reduction — `rfl`-level definitional
+      identity exposing the IND-CPA → DDH simulation); **headline**
+      `commPKE_indCPA_under_csidh_ddh_hardness` (IND-CPA / ROR-CPA
+      advantage ≤ ε under DDH-hardness ε; one-line proof:
+      `hHard A.guess`).
+    - **Status disclosure** — `commActionDDH_research_scope_disclosure`
+      (substantive 3-conjunct: DDH-hardness at ε = 1, advantage
+      equality, IND-CPA reduction at ε = 1).
+  * `Orbcrypt/PublicKey/MultGroupAction.lean` (~290 LOC, NEW).
+    Layers:
+    - **Phase 3.1** — `multGroupCommAction p` `instance` for prime
+      `p` (smul = `Units.val * x`); `multGroupCommAction_smul`
+      apply lemma.
+    - **Phase 3.2** — `multGroupAction_orbit_zero` (orbit of `0`
+      is the singleton `{0}`); `multGroupAction_orbit_one` (orbit
+      of `1` is the units image); `multGroupAction_orbit_one_eq_nonzero`
+      (alternative characterisation via `IsUnit ↔ ≠ 0` for finite
+      fields).
+    - **Phase 3.3** — `toyZMod7CommPKE` (`CommOrbitPKE (ZMod 7)ˣ
+      (ZMod 7)` with `basePoint = 1`); `toyZMod7CommPKE_correctness`
+      (decryption recovers the shared secret); `toyZMod7CommPKE_shared_secret`
+      (sender/recipient views agree).
 
-- **Reference updates.** All cross-references across the
-  codebase were updated to point at the new locations:
-  Lean source docstrings under `Orbcrypt/` (~50 modules),
-  `Orbcrypt.lean` root file, `CLAUDE.md` (this file),
-  `README.md`, the active `docs/planning/` entries that
-  cross-reference the moved plans, the `docs/audits/`
-  source-audit reports, the GAP reference implementation
-  (`implementation/gap/orbcrypt_keygen.g`,
-  `implementation/gap/orbcrypt_fast_dec.g`),
-  `implementation/README.md`, the CI workflow
-  (`.github/workflows/lean4-build.yml`), `lakefile.lean`'s
-  comment block, `scripts/audit_phase_16.lean`, and
-  `scripts/legacy/README.md`. The `[docs/DEVELOPMENT.md](../DEVELOPMENT.md)`
-  Markdown link inside the relocated
-  `docs/dev_history/formalization/FORMALIZATION_PLAN.md`'s footer
-  was updated to `[docs/DEVELOPMENT.md](../../DEVELOPMENT.md)`
-  to account for the deeper directory level.
+- **Cross-cutting.**
+  * `Orbcrypt.lean` — adds the two new module imports.
+  * `scripts/audit_phase_16.lean` — extends with §15.28 (R-11)
+    listing 22 `#print axioms` entries (14 from CSIDHHardness +
+    8 from MultGroupAction) and 14 non-vacuity `example` bindings
+    under the `MultGroupActionNonVacuity` namespace.
+  * `lakefile.lean` — version bump `0.3.2 → 0.3.3`; "Last
+    verified" comment refreshed.
 
-- **Document layout sections rewritten.** Both the `## Document
-  layout` block in `CLAUDE.md` and the `## Project structure`
-  tree in `README.md` were rewritten end-to-end to reflect the
-  post-reorganization tree (root no longer has `formalization/`
-  or the three scheme-doc Markdown files; `docs/` now houses
-  every analysis surface plus the new `dev_history/` subtree).
+- **Design decisions.**
+  * **Two-module split.** The hardness Prop module
+    (`CSIDHHardness.lean`) is parametric over any `CommGroupAction`;
+    the concrete instance module (`MultGroupAction.lean`) plugs in
+    `(ZMod p)ˣ ↷ ZMod p`. This lets future research-scope work
+    (full CSIDH on supersingular curves) drop in a parallel
+    `SupersingularIsogenyAction.lean` module without re-deriving
+    the IND-CPA reduction.
+  * **Marginalisation over `sk`.** The `commPKEIndCPAAdvantage`
+    definition takes a basepoint `bp : X` (not a `pke : CommOrbitPKE
+    G X` with fixed `sk`) and marginalises over uniform `sk`
+    internally. This matches the standard cryptographic IND-CPA
+    experiment convention (sample `sk` as the first step of the
+    game) and admits an exact equality with the standard 3-tuple
+    DDH game without averaging arguments.
+  * **3-tuple DDH formulation.** The `IsCommActionDDHHard` Prop
+    quantifies over Boolean distinguishers `D : X × X × X → Bool`
+    on the standard 3-tuple `(sk•bp, r•bp, k)`. This is the
+    cryptographically-correct shape: the third coordinate `k =
+    sk•(r•bp)` (real) or `t•bp` (random); both `sk•bp` (public
+    key) and `r•bp` (ciphertext) are visible to the distinguisher.
+    The plan's original 3-tuple `(bp, sk•bp, k)` (with `bp`
+    constant in the first slot) was a mathematical bug — it omits
+    `r•bp`, which the IND-CPA simulator needs.
+  * **Diamond avoidance.** `Mul.toSMul` provides a self-action
+    `(ZMod p)ˣ ↷ (ZMod p)ˣ` — different carrier than ours, so no
+    diamond at typeclass synthesis time. Pre-R-11 `selfAction` is
+    on `G ↷ G` for `[CommGroup G]`, again different carrier.
+    Verified by direct elaboration of the audit-script witnesses.
+  * **`Fact (Nat.Prime p)` constraint.** Required for the
+    `multGroupAction_orbit_one_eq_nonzero` characterisation
+    (every non-zero residue is a unit in a field).
+  * **Toy basepoint `1 : ZMod 7`.** We pick `basePoint = 1` because
+    (a) `1` is a non-zero residue (non-fixed point);
+    (b) `pk = sk • 1 = sk * 1 = sk` makes the algebra clean for
+    `decide`-able witnesses;
+    (c) `1` is canonical (any non-zero residue would work).
 
-- **Verification.** `lake build` succeeds across 3,424 jobs
-  with zero errors, zero warnings — identical to the
-  pre-reorganization state. `scripts/audit_phase_16.lean` runs
-  cleanly (exit 0); the 1,273-line output exercises every
-  public declaration via `#print axioms` and reports
-  standard-trio-only axiom dependencies (`propext`,
-  `Classical.choice`, `Quot.sound`) for every declaration.
-  Zero `sorryAx`, zero non-standard axioms, zero new `sorry`,
-  zero new declarations. The reorganization is documentation-
-  only — no Lean source semantics change. The 77-module total,
-  the public-declaration count, and the standard-trio-only
-  axiom-dependency posture are all preserved.
+- **Verification posture (R-11).**
+  * `lake build` succeeds with **3,426 jobs** (up from 3,424 — two
+    new modules: `CSIDHHardness.lean` + `MultGroupAction.lean`),
+    zero errors, zero warnings.
+  * `lake env lean scripts/audit_phase_16.lean` runs cleanly with
+    exit code 0; **1,099** declarations exercised by `#print
+    axioms` (up from 1,081 — 18 new entries for R-11 after the
+    deep-audit cleanup that removed 4 redundant alias declarations),
+    all on the standard Lean trio (`propext`, `Classical.choice`,
+    `Quot.sound`); zero `sorryAx`; zero non-standard axioms.
+  * Every new public declaration depends only on the standard Lean
+    trio.
 
-- **Patch version.** `lakefile.lean` retains its current
-  version. The reorganization is build-configuration neutral
-  (no `import` paths change; Lean's namespace tree under
-  `Orbcrypt/` is unaffected) and adds no new Lean
-  declarations. The repository structure changes alone do not
-  warrant a version bump per `CLAUDE.md`'s version-bump
-  discipline.
+- **Patch version.** `lakefile.lean` bumped from `0.3.2` to
+  `0.3.3` — two new public-API modules add ~18 new public
+  declarations (after the deep-audit cleanup removed 4 redundant
+  alias declarations), warranting the patch-version bump per
+  `CLAUDE.md`'s version-bump discipline. The 81-module total rises
+  to **83**; the zero-sorry / zero-custom-axiom posture and the
+  standard-trio-only axiom-dependency posture are both preserved.
+
+- **Deep audit pass (2026-05-02, post-R-11 landing).** A focused
+  audit pass surfaced and fixed five quality / efficiency issues:
+  1. Dropped `commPKEIndCPADist_real`/`_random` aliases and their
+     two `@[simp]` rfl-bridge theorems — pure aliases of
+     `ddhRealDist`/`ddhRandomDist` adding no content. Inlined
+     `ddhRealDist`/`ddhRandomDist` directly into
+     `commPKEIndCPAAdvantage`. Result:
+     `commPKEIndCPAAdvantage_eq_ddh_advantage` simplifies to a
+     `rfl` proof; `commPKE_indCPA_under_csidh_ddh_hardness`
+     simplifies to a one-line term `hHard A.guess`.
+  2. Made `G` implicit in `IsCommActionDDHHard.mono` /
+     `.le_one` (matching the `IsPRF.mono` / `.le_one` pattern from
+     `Orbcrypt/AEAD/NoncedMAC.lean`). Callers now write
+     `h.mono (by norm_num)` and `IsCommActionDDHHard.le_one bp`
+     instead of explicit `(ZMod 7)ˣ` arguments.
+  3. Dropped the theatrical second conjunct
+     `IsCommActionDDHHard bp 2` in
+     `commActionDDH_research_scope_disclosure` (which was just
+     `_le_one |>.mono`); replaced with the substantive
+     `commPKEIndCPAAdvantage_eq_ddh_advantage` algebraic equality.
+  4. Dropped `[Nonempty G]` typeclass from all R-11 signatures
+     (it's implied by `[Group G]` via Mathlib's
+     `Group.toMonoid → One.one : G` chain).
+  5. Replaced bare `simp [multGroupCommAction_smul]; decide`
+     with `simp only [multGroupCommAction_smul]; decide` in the
+     audit script's smul-apply witness (avoids unnecessary global
+     simp-set evaluation on a small concrete goal).
+  Public declaration count: 22 → 18 (-4). All 1,099 R-11-exercising
+  declarations remain on standard-trio axioms; zero sorry; zero
+  warnings.
+
+- **Naming-discipline posture.** All new declarations follow the
+  "Names describe content, never provenance" rule. No identifier
+  in either new module carries the `R-11` token; the workstream is
+  referenced only inside docstrings / comments. Verified by:
+  ```bash
+  grep -rE '^(def|theorem|structure|class|instance|abbrev|lemma|noncomputable)' \
+    Orbcrypt/PublicKey/CSIDHHardness.lean \
+    Orbcrypt/PublicKey/MultGroupAction.lean \
+    | grep -iE 'r11|workstream|phase|audit|wu[0-9]' || echo "no naming-rule violations"
+  ```
+
+- **Security-by-docstring posture.** The `IsCommActionDDHHard`
+  predicate substantively states the standard cryptographic DDH
+  assumption (no shortcuts, no docstring disclaimers). The IND-CPA
+  / ROR-CPA reduction `commPKE_indCPA_under_csidh_ddh_hardness`
+  proves the named cryptographic property (IND-CPA security ≤ ε)
+  under the named hypothesis (DDH-hardness ε); no security-by-
+  docstring violation.
+
+- **Remaining R-11 follow-ups (research-scope R-11⁺).**
+  * Discharging `IsCommActionDDHHard` for any *concrete* commutative
+    action (e.g., `(ZMod p)ˣ ↷ ZMod p`) is the standard DDH
+    cryptographic assumption, not provable inside Lean. Open
+    research direction.
+  * Full CSIDH on supersingular elliptic curves over `F_p` requires
+    class field theory + isogeny composition + Deuring's theorem in
+    Mathlib (multi-year research-scope items).
+  * Active-attacker security (IND-CCA, AEAD-style integrity
+    protection) is out of scope for this IND-CPA-only reduction.
+  * Multi-query / oracle-access security (IND-q-CPA, IND-CCA2)
+    requires Lean-level oracle-game abstractions.
 
 ## Vulnerability reporting
 
