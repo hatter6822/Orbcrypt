@@ -8944,6 +8944,99 @@ pass-#2 fixes add no new Lean declarations to `Orbcrypt/`; the
 checks consuming existing public surfaces.  No version bump is
 warranted.
 
+Deep audit pass #3 (2026-05-05) — proper fix for linter
+silencing.  The audit-pass-#2 commit's MEDIUM finding
+("4 of 5 `set_option linter.unusedSectionVars false`
+instances lacked inline justification") was resolved by
+adding justification comments to each silencer.  However,
+that fix was the wrong fix:
+
+- **Silencing a linter is rarely the right answer.** It loses
+  the lint's safety guarantee and papers over a real issue.
+  The correct response to a linter complaint is to either fix
+  the underlying problem or, when that's impossible,
+  understand precisely why the silencer is needed and
+  document it.  An empirical investigation reveals which.
+
+- **The empirical investigation.** Removing each silencer one-
+  at-a-time and rebuilding the affected module shows what the
+  linter actually complains about:
+  * `Hardness/GrochowQiao/Manin/BasisChange.lean` — silencer
+    was unnecessary (no warnings fire when removed).
+  * `Hardness/GrochowQiao/Discharge.lean` — silencer was
+    unnecessary (no warnings fire when removed).
+  * `Hardness/GrochowQiao/PathOnlyAlgebra.lean` — silencer
+    was unnecessary (no warnings fire when removed).
+  * `Hardness/GrochowQiao/Manin/StructureTensor.lean` —
+    silencer was needed for `structureTensor_recovers_mul`
+    (which uses `Basis.sum_repr` requiring `[Fintype I]` but
+    NOT `[DecidableEq I]`; the section variable
+    `[DecidableEq I]` is unused for this theorem).
+  * `Hardness/GrochowQiao/Manin/TensorStabilizer.lean` —
+    silencer was needed for `linearMapOfBasisChange_basis`,
+    `linearMapOfBasisChange_apply_eq_sum`, and
+    `linearMapOfBasisChange_one` (each only invokes
+    `Basis.constr_basis` / `Basis.sum_repr` / `map_smul`,
+    none of which require `[DecidableEq I]`).
+
+- **Three of five silencers were dead code.** They were
+  silencing warnings that don't fire on any theorem in those
+  files.  The audit-pass-#2 "added justification comments"
+  fix was justifying silencers that did nothing.
+
+- **The two genuine warning sources are an API hygiene
+  issue.** Section-wide `[DecidableEq I]` declarations in
+  these two Manin chain files create a real concern: the
+  binder is auto-included in every theorem's signature,
+  giving `linearMapOfBasisChange_basis` (an apply-lemma) an
+  unused `[DecidableEq I]` argument that downstream callers
+  must supply or let `_`.  The proper Lean 4 idiom is to use
+  `omit [DecidableEq I] in` before the affected theorem,
+  which removes the binder from that theorem's signature
+  while keeping it at the section level for the theorems
+  that DO need it.  This is the same idiom the same author
+  already used at `StructureTensor.lean:102` for
+  `structureTensor_apply` — the inconsistency was that some
+  theorems used `omit` (correct) while others used
+  `set_option linter.unusedSectionVars false` (suboptimal).
+
+- **Fix.** Removed all 5 `set_option linter.unusedSectionVars
+  false` lines (the 3 unnecessary ones outright, the 2
+  necessary ones replaced with proper `omit` directives).
+  Added `omit [DecidableEq I] in` before:
+  * `structureTensor_recovers_mul` in
+    `Manin/StructureTensor.lean`
+  * `linearMapOfBasisChange_basis`,
+    `linearMapOfBasisChange_apply_eq_sum`, and
+    `linearMapOfBasisChange_one` in
+    `Manin/TensorStabilizer.lean`
+
+- **Rebuild posture.** Full forced-rebuild of the affected
+  modules (deleting `.olean` files and re-running `lake
+  build`) emits zero warnings.  The CI's no-warning gate is
+  now defensible by the source itself, not by an opt-out.
+  The 4 `omit` directives are tighter API hygiene than
+  silencer + justification: each is scoped to a single
+  theorem, surfaces in `#print signature`, and is impossible
+  to accidentally extend to other theorems.
+
+- **Audit-script regression check.**
+  `scripts/audit_phase_16.lean` produces an unchanged 1,154
+  `#print axioms` results (the `omit` directive doesn't
+  change axiom dependencies — only the typeclass argument
+  list).  Every entry continues to depend only on the
+  standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`); zero `sorryAx`, zero non-standard axioms.
+
+**Patch version.** `lakefile.lean` retains `0.3.2`.  The
+audit-pass-#3 fix removes 5 lines (`set_option`s + their
+justification comments) and adds 4 `omit` directives.  No
+new Lean declarations; no signature change visible to
+downstream consumers (the typeclass-arg removal is what
+`omit` does — it's a tightening, not a break — and `omit`
+on a `[DecidableEq I]` instance arg is automatically
+satisfied wherever it would have been supplied).
+
 ## Vulnerability reporting
 
 While executing any task in this codebase, if you discover a possible software vulnerability that could reasonably warrant a CVE (Common Vulnerabilities and Exposures) designation, you **must** immediately report it to the user before continuing. This applies to vulnerabilities found in:

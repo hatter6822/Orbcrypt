@@ -96,16 +96,6 @@ open Orbcrypt
 open Module
 open scoped BigOperators
 
--- The `linter.unusedSectionVars` linter fires on theorems whose
--- section-level typeclass binders (e.g. `[Fintype (Fin m)]`-derived
--- instances) aren't strictly needed by every Subalgebra-construction
--- lemma.  Section-wide binding is preferred over per-theorem
--- `letI` declarations because the Subalgebra constructor pipelines
--- (`pathOnlyAlgebraSubalgebra`, `pathOnlyAlgebraEquivFun`,
--- `pathOnlyAlgebraBasis`) need consistent typeclass inference across
--- the entire chain.  Suppressing the cosmetic warning preserves the
--- proof clarity.
-set_option linter.unusedSectionVars false
 
 -- ============================================================================
 -- A.5.5.1 — Helper: pathMul preserves `presentArrows` membership.

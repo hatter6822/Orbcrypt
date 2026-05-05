@@ -69,13 +69,6 @@ reusability — could be upstreamed to Mathlib as `Algebra.structureTensor`
 when the `(P, P, P⁻ᵀ)`-form Manin theorem is upstreamed).
 -/
 
--- The `linter.unusedSectionVars` linter fires on theorems whose
--- generic-context typeclass arguments (e.g. `[Fintype I] [DecidableEq I]`)
--- aren't strictly needed for the specific theorem's proof.  In this
--- module we declare both at the section level for ergonomics — every
--- consumer of `Manin.structureTensor` works with `[Fintype I]`-indexed
--- bases — and accept the cosmetic warnings on the apply lemma.
-set_option linter.unusedSectionVars false
 
 namespace Orbcrypt
 namespace GrochowQiao
@@ -117,6 +110,7 @@ underlying `Basis.repr` definition. -/
 -- Sub-task A.5.1 — Multiplication recovery from the structure tensor.
 -- ============================================================================
 
+omit [DecidableEq I] in
 /-- **Multiplication-recovery identity.**
 
 The structure tensor `T = Manin.structureTensor b` together with the
