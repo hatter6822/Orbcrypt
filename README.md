@@ -91,7 +91,17 @@ Conditional / Scaffolding) is in
 | Ciphertext (KEM only) | **43 B** | n + 28 B | 1,088 B |
 | Encrypt (μs) | 314,000 | 0.05 | 30 |
 | Decrypt (μs) | 348,000 | 0.05 | 25 |
-| Post-quantum secure | conjectured (GI/CE/TI) | no | yes (MLWE) |
+| Post-quantum secure | conjectured (GI/CE/TI) | yes (Grover) ‡ | yes (MLWE) |
+
+‡ AES-256's only known quantum attack is Grover's algorithm, which
+gives a quadratic speedup on key search and reduces effective key-recovery
+security from 256 to 128 bits. NIST in fact *defines* its highest
+post-quantum security category (Level 5) as key search on AES-256. The
+128-bit GMAC tag has a tighter ~64-bit quantum forgery margin; the
+Kaplan et al. (CRYPTO 2016) Q2-oracle Simon's-algorithm attack on GMAC
+applies only in the (largely theoretical) quantum-superposition oracle
+model, not in any practical deployment. See
+[`docs/PARAMETERS.md`](docs/PARAMETERS.md) §3.1 for the full analysis.
 
 **Headline take-away.** Orbcrypt wins on key/ciphertext size by 1–2
 orders of magnitude over lattice/code-based PQ KEMs, and is competitive
@@ -126,6 +136,9 @@ Orbcrypt/
 │   └── Optimization/             Two-phase decryption + orbit-constancy
 ├── implementation/gap/           GAP reference: keygen, KEM, params, tests, sweep
 ├── docs/
+│   ├── DEVELOPMENT.md            Master scheme specification (~56 KB)
+│   ├── POE.md                    High-level concept exposition
+│   ├── COUNTEREXAMPLE.md         Invariant-attack vulnerability analysis
 │   ├── HARDNESS_ANALYSIS.md      LESS / MEDS / TI alignment
 │   ├── PUBLIC_KEY_ANALYSIS.md    Public-key feasibility (Phase 13)
 │   ├── PARAMETERS.md             Three-tier parameter recommendations (Phase 14)
@@ -134,16 +147,14 @@ Orbcrypt/
 │   ├── MORE_USE_CASES.md         Anonymous dev-platform architecture
 │   ├── benchmarks/               Phase-14 sweep CSVs + cross-scheme comparison
 │   ├── audits/                   Per-cycle Lean module audit reports
-│   ├── planning/                 Workstream + phase planning documents
-│   └── research/                 Mathematical-research reading notes
-├── formalization/                Master Lean 4 roadmap + per-phase plans
+│   ├── planning/                 Active workstream planning documents (pending or research-scope work)
+│   ├── research/                 Mathematical-research reading notes
+│   └── dev_history/              Completed workstream planning documents (historical record),
+│                                 incl. formalization/ (master Lean 4 roadmap + Phase 1-6 plans)
 ├── scripts/                      Setup + audit scripts (incl. `audit_phase_16.lean`)
 ├── lakefile.lean                 Lake build config (Mathlib pin, linter pins)
 ├── lean-toolchain                Lean version pin (v4.30.0-rc1)
-├── DEVELOPMENT.md                Master scheme specification (~56 KB)
 ├── CLAUDE.md                     Development guidance + per-workstream change log
-├── COUNTEREXAMPLE.md             Invariant-attack vulnerability analysis
-├── POE.md                        High-level concept exposition
 └── LICENSE                       MIT
 ```
 
@@ -176,12 +187,12 @@ strip, an `^axiom` declaration scan, and the consolidated
 
 | Audience | Start here |
 |----------|-----------|
-| **First-time reader** | [`POE.md`](POE.md) — high-level concept exposition (≈ 6 KB) |
-| **Cryptographer** | [`DEVELOPMENT.md`](DEVELOPMENT.md) — full scheme specification + security analysis |
-| **Vulnerability researcher** | [`COUNTEREXAMPLE.md`](COUNTEREXAMPLE.md) — invariant attack analysis |
+| **First-time reader** | [`docs/POE.md`](docs/POE.md) — high-level concept exposition (≈ 6 KB) |
+| **Cryptographer** | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) — full scheme specification + security analysis |
+| **Vulnerability researcher** | [`docs/COUNTEREXAMPLE.md`](docs/COUNTEREXAMPLE.md) — invariant attack analysis |
 | **Application designer** | [`docs/USE_CASES.md`](docs/USE_CASES.md), [`docs/MORE_USE_CASES.md`](docs/MORE_USE_CASES.md) |
 | **Implementor** | [`implementation/README.md`](implementation/README.md), [`docs/PARAMETERS.md`](docs/PARAMETERS.md) |
-| **Lean developer** | [`formalization/FORMALIZATION_PLAN.md`](formalization/FORMALIZATION_PLAN.md), [`CLAUDE.md`](CLAUDE.md) |
+| **Lean developer** | [`docs/dev_history/formalization/FORMALIZATION_PLAN.md`](docs/dev_history/formalization/FORMALIZATION_PLAN.md), [`CLAUDE.md`](CLAUDE.md) |
 | **Auditor** | [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) — sorry/axiom audit, headline-results table, exit-criteria checklist |
 | **Hardness reviewer** | [`docs/HARDNESS_ANALYSIS.md`](docs/HARDNESS_ANALYSIS.md), [`docs/PUBLIC_KEY_ANALYSIS.md`](docs/PUBLIC_KEY_ANALYSIS.md) |
 

@@ -44,8 +44,8 @@ cryptographic convention while leveraging Mathlib's PMF infrastructure.
 ## References
 
 * Katz & Lindell §3.2 — distinguishing advantage
-* DEVELOPMENT.md §5.2 — OIA advantage
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work units 8.3, 8.9
+* docs/DEVELOPMENT.md §5.2 — OIA advantage
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work units 8.3, 8.9
 -/
 
 namespace Orbcrypt

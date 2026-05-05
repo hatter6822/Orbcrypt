@@ -217,7 +217,7 @@ single 30–40 h monoliths.
    workstream. F3 / F4 (concrete reductions) land *as improvements* on
    Workstream E's `ConcreteHardnessChain`, not as prerequisites.
 5. **Workstream G (docs)** closes out each other workstream: a workstream
-   is not "done" until `CLAUDE.md`, `DEVELOPMENT.md`, and the root
+   is not "done" until `CLAUDE.md`, `docs/DEVELOPMENT.md`, and the root
    `Orbcrypt.lean` axiom transparency report reflect the new state.
 
 ### 3.3 Per-unit acceptance gate (applies to every WU)
@@ -627,7 +627,7 @@ theorem isSecure_implies_isSecureDistinct [...] (scheme : ...) :
 
 #### B1c — Update `IsSecure` docstring noting the asymmetry · XS · 30 min · **LANDED**
 
-**Files:** `Orbcrypt/Crypto/Security.lean`, `DEVELOPMENT.md` (Security §).
+**Files:** `Orbcrypt/Crypto/Security.lean`, `docs/DEVELOPMENT.md` (Security §).
 
 **Approach:** add a paragraph to `IsSecure`'s docstring:
 > *Note on game asymmetry (F-02):* `Adversary.choose` is unconstrained,
@@ -638,7 +638,7 @@ theorem isSecure_implies_isSecureDistinct [...] (scheme : ...) :
 
 **Acceptance:**
 - Module still builds.
-- DEVELOPMENT.md references the three definitions.
+- docs/DEVELOPMENT.md references the three definitions.
 
 **Dependency:** none; B1a → B1b → B1c is strictly sequential.
 
@@ -755,7 +755,7 @@ C4) have landed. Headline deliverables:
   `carterWegmanHash`, `carterWegmanMAC`, `carterWegman_authKEM`,
   `carterWegmanMAC_int_ctxt` (C4). Concrete witness showing `verify_inj`
   is satisfiable.
-- `Orbcrypt.lean`, `CLAUDE.md`, `DEVELOPMENT.md` — new headline theorems
+- `Orbcrypt.lean`, `CLAUDE.md`, `docs/DEVELOPMENT.md` — new headline theorems
   (#19, #20), axiom-transparency report entries, §8.5 AEAD + INT-CTXT
   section (C3).
 
@@ -825,7 +825,7 @@ which uses a different structure) must be updated — verify via
 - `lake build Orbcrypt.AEAD.AEAD` exits 0 (downstream check).
 - `lake build Orbcrypt.AEAD.Modes` exits 0.
 - New field has a docstring explaining the SUF-CMA-like semantics.
-- `DEVELOPMENT.md` (AEAD section) references `verify_inj` as a MAC
+- `docs/DEVELOPMENT.md` (AEAD section) references `verify_inj` as a MAC
   assumption.
 
 **Risk:** downstream `authEncaps` / `authDecaps` should not change; they
@@ -2395,7 +2395,7 @@ Total: 4 + 4 + 4 = 12 h.
 
 ## 10. Workstream G — Documentation & Transparency
 
-**Goal:** keep `CLAUDE.md`, `DEVELOPMENT.md`, `COUNTEREXAMPLE.md`, and
+**Goal:** keep `CLAUDE.md`, `docs/DEVELOPMENT.md`, `docs/COUNTEREXAMPLE.md`, and
 `Orbcrypt.lean` in sync as Workstreams A–F land. This is a standing
 workstream — each other WU has a doc obligation (see §3.3.5), and
 Workstream G collects the cross-cutting doc changes.
@@ -2418,9 +2418,9 @@ theorems in that file: `combine_section_form`,
 **Acceptance:** `CLAUDE.md` diff applies cleanly; on-disk module count
 matches table.
 
-### G2 — DEVELOPMENT.md: "Vacuity Map" section · S · 2 h
+### G2 — docs/DEVELOPMENT.md: "Vacuity Map" section · S · 2 h
 
-**Files:** `DEVELOPMENT.md`
+**Files:** `docs/DEVELOPMENT.md`
 
 **Approach:** add a new section (suggested: §9 "Formalization Vacuity
 Map") summarizing audit §5.1 and Workstream E's resolution. Include:
@@ -2429,19 +2429,19 @@ Map") summarizing audit §5.1 and Workstream E's resolution. Include:
 - Cross-reference to `Crypto/OIA.lean` module docstring.
 - Note that this audit and its workstream plan exist at
   `docs/audits/LEAN_MODULE_AUDIT_2026-04-18.md` and
-  `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`.
+  `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`.
 
-**Acceptance:** DEVELOPMENT.md builds (no markdown errors); the new
+**Acceptance:** docs/DEVELOPMENT.md builds (no markdown errors); the new
 section is discoverable from the TOC.
 
 ### G3 — Phase doc: `PHASE_14_AUDIT_RESOLUTION.md` · S · 2 h
 
 **Files:** new `docs/planning/PHASE_14_AUDIT_RESOLUTION.md` (if chosen),
-or extend `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md`.
+or extend `docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md`.
 
 **Approach:** record the meta-phase: "Phase 14 = resolve
 `LEAN_MODULE_AUDIT_2026-04-18` via the workstream plan at
-`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`." Keep this file tight
+`docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`." Keep this file tight
 (~50 lines): status board (which WUs have landed), commit hashes, build
 verification results.
 
@@ -2527,8 +2527,8 @@ Each workstream must leave the five ownership docs consistent:
 | Doc | Owns | Must match |
 |-----|------|------------|
 | `CLAUDE.md` | Dev guidance, project status, module list | On-disk tree, headline theorem list |
-| `DEVELOPMENT.md` | Scheme design, security proofs | Lean theorem statements |
-| `formalization/FORMALIZATION_PLAN.md` | Lean architecture | Module dependency graph in `Orbcrypt.lean` |
+| `docs/DEVELOPMENT.md` | Scheme design, security proofs | Lean theorem statements |
+| `docs/dev_history/formalization/FORMALIZATION_PLAN.md` | Lean architecture | Module dependency graph in `Orbcrypt.lean` |
 | `docs/HARDNESS_ANALYSIS.md` | Literature basis | Prop parameters in `Hardness/` |
 | `Orbcrypt.lean` module docstring | Axiom report | `#print axioms` of every headline theorem |
 
@@ -2689,7 +2689,7 @@ Total: ~55 h sequential, ~30 h with Tracks 1/2/3 parallelised across
 
 ### 14.5 After Workstream E — close out G2, G3
 
-Land the DEVELOPMENT.md vacuity-map (G2) and the PHASE_14_AUDIT_RESOLUTION
+Land the docs/DEVELOPMENT.md vacuity-map (G2) and the PHASE_14_AUDIT_RESOLUTION
 doc (G3). This is the formal plan closure point.
 
 ### 14.6 Workstream F — open-ended
@@ -2855,7 +2855,7 @@ No finding is orphaned; no WU addresses a non-existent finding.
 | F6c | 4 h | F-21 | Automorphism-group order screening |
 | **G — Documentation (4 atomic)** | | | |
 | G1 | 10 m | meta | `CLAUDE.md`: add `CombineImpossibility.lean` |
-| G2 | 2 h | meta | `DEVELOPMENT.md` Vacuity Map section |
+| G2 | 2 h | meta | `docs/DEVELOPMENT.md` Vacuity Map section |
 | G3 | 2 h | meta | `PHASE_14_AUDIT_RESOLUTION.md` status file |
 | G4 | 1 h | meta | Axiom-transparency hardness-Props section |
 
@@ -2875,8 +2875,8 @@ once for either landing.
   this plan addresses.
 - `docs/audits/LEAN_MODULE_AUDIT_2026-04-14.md` — predecessor audit
   (F-22 carried over).
-- `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` — this document.
-- `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` — broader improvement
+- `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` — this document.
+- `docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` — broader improvement
   roadmap; Workstream F items may promote into this doc as their own
   phases.
 
@@ -2886,10 +2886,10 @@ Per `CLAUDE.md`:
 
 | Doc | Canonical owner of |
 |-----|---------------------|
-| `DEVELOPMENT.md` | Scheme specification, security proofs, hardness reductions |
-| `formalization/FORMALIZATION_PLAN.md` | Lean 4 architecture and conventions |
-| `COUNTEREXAMPLE.md` | Invariant attack analysis |
-| `POE.md` | High-level concept exposition |
+| `docs/DEVELOPMENT.md` | Scheme specification, security proofs, hardness reductions |
+| `docs/dev_history/formalization/FORMALIZATION_PLAN.md` | Lean 4 architecture and conventions |
+| `docs/COUNTEREXAMPLE.md` | Invariant attack analysis |
+| `docs/POE.md` | High-level concept exposition |
 | `README.md` | Project status/description |
 | `CLAUDE.md` | Development guidance for agents |
 
@@ -2943,7 +2943,7 @@ against the current tree (§2). The plan is structured to:
 4. **Defer research-grade items** (Workstream F) into properly scoped
    future phases, never onto the critical path.
 5. **Sync documentation continuously** (Workstream G) so that
-   `CLAUDE.md`, `Orbcrypt.lean`, and `DEVELOPMENT.md` never diverge
+   `CLAUDE.md`, `Orbcrypt.lean`, and `docs/DEVELOPMENT.md` never diverge
    from the Lean surface.
 
 The plan preserves the project's zero-`sorry`, zero-custom-axiom

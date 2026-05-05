@@ -61,7 +61,7 @@ orbit among all orbits. This discharges all three `CanonicalForm` fields.
 
 ## References
 
-* DEVELOPMENT.md §3.2 — canonical forms in the encryption scheme
+* docs/DEVELOPMENT.md §3.2 — canonical forms in the encryption scheme
 * docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 9 — Workstream F
   (V1-10 / F-04): concrete `CanonicalForm.ofLexMin` constructor; this
   module is the F1 + F2 + F3a + F3b + F3c landing.

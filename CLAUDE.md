@@ -248,45 +248,64 @@ scripts/
 README.md                             Project title and tagline
 LICENSE                               MIT license
 CLAUDE.md                             This file — development guidance for Claude
-DEVELOPMENT.md                        Master specification (~56KB): scheme design, security proofs, hardness reductions
-POE.md                                Permutation-Orbit Encryption high-level concept exposition
-COUNTEREXAMPLE.md                     Critical vulnerability analysis: invariant attack theorem
 lakefile.lean                         Lake build configuration (Mathlib dependency, autoImplicit := false)
 lean-toolchain                        Lean 4 version pin (v4.30.0-rc1, matching Mathlib)
 lake-manifest.json                    Dependency lock file (Mathlib + 8 transitive deps)
 .gitignore                            Build artifact exclusions
-scripts/
-  setup_lean_env.sh                   Lean environment setup (elan, toolchain, CRT verification)
 .claude/
   settings.json                       Claude Code session hook (auto-runs setup on start)
-formalization/
-  FORMALIZATION_PLAN.md               Master Lean 4 formalization roadmap (architecture, timeline, conventions)
-  phases/
-    PHASE_1_PROJECT_SCAFFOLDING.md    Week 1: lakefile.lean, directory structure, root import, clean build
-    PHASE_2_GROUP_ACTION_FOUNDATIONS.md  Weeks 2-4: orbit/stabilizer API, canonical forms, invariants
-    PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md  Weeks 5-6: AOE scheme, IND-CPA game, OIA assumption
-    PHASE_4_CORE_THEOREMS.md          Weeks 7-10: correctness, invariant attack, OIA implies CPA
-    PHASE_5_CONCRETE_CONSTRUCTION.md  Weeks 11-14: S_n on bitstrings, HGOE instance, Hamming defense
-    PHASE_6_POLISH_AND_DOCUMENTATION.md  Weeks 15-16: sorry audit, docstrings, Mathlib update, README
 docs/
-  planning/
-    PHASE_11_GAP_PROTOTYPE.md         Weeks 21-26: GAP reference implementation (9 work units)
-    PHASE_12_HARDNESS_ALIGNMENT.md    Hardness reduction alignment
-    PHASE_13_PUBLIC_KEY_EXTENSION.md  Public-key extension
-    PHASE_14_PARAMETER_SELECTION.md   Parameter selection optimization
-    PHASE_15_DECRYPTION_OPTIMIZATION.md  Decryption optimization (C/C++)
-    PHASE_16_FORMAL_VERIFICATION.md   Extended formal verification
-docs/
+  DEVELOPMENT.md                      Master specification (~56KB): scheme design, security proofs, hardness reductions
+  POE.md                              Permutation-Orbit Encryption high-level concept exposition
+  COUNTEREXAMPLE.md                   Critical vulnerability analysis: invariant attack theorem
   HARDNESS_ANALYSIS.md                LESS/MEDS alignment, reduction chain, hardness comparison table
   PUBLIC_KEY_ANALYSIS.md              Phase 13 public-key feasibility analysis (oblivious sampling, KEM agreement, CSIDH-style)
   PARAMETERS.md                       Phase 14 parameter recommendations (3 tiers × 4 security levels)
   VERIFICATION_REPORT.md              Phase 16 end-to-end verification report (sorry audit, axiom audit, headline-results table, exit-criteria checklist)
+  USE_CASES.md                        Cryptographic use-case catalogue
+  MORE_USE_CASES.md                   Extended cryptographic use-case catalogue
   benchmarks/
     results_80.csv                    Phase 14 sweep + tier rows, λ = 80
     results_128.csv                   Phase 14 sweep + tier rows, λ = 128
     results_192.csv                   Phase 14 sweep + tier rows, λ = 192
     results_256.csv                   Phase 14 sweep + tier rows, λ = 256
     comparison.csv                    Cross-scheme comparison (AES / Kyber / BIKE / HQC / McEliece / LESS / HGOE)
+    phase15_decryption_quick.csv      Phase 15 fast-decryption benchmark output
+  planning/                           Active workstream planning documents (pending or research-scope work)
+    AUDIT_2026-04-23_WORKSTREAM_PLAN.md      Pre-release audit plan (workstreams H, J, K, L, M, N pending)
+    AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md  R-15 Karp reductions (CE reverse direction research-scope)
+    AUDIT_2026-04-28_PHASE_3_PROP_DISCHARGE_PLAN.md  Phase 3 prop discharge (deep content research-scope)
+    PLAN_R_05_11_15.md                       R-05 + R-11 + R-15 research-scope plan (R-11/R-15 not yet implemented)
+    R_TI_RESEARCH_SCOPE_DISCHARGE_PLAN.md    R-TI research-scope discharge (Phase 3 partial)
+    R_TI_PHASE_C_THROUGH_H_PLAN.md           R-TI Karp reduction plan through Phase H (research-scope)
+  audits/                             Source audit reports (LEAN_MODULE_AUDIT_2026-04-{14,18,21,23_PRE_RELEASE,29_COMPREHENSIVE}.md)
+  research/                           Grochow–Qiao paper synthesis notes (path algebra, padding rigidity, Mathlib API audit, reading log)
+  dev_history/                        Completed workstream planning documents (historical record)
+    PHASE_7_KEM_REFORMULATION.md             Phase 7: KEM reformulation (complete)
+    PHASE_8_PROBABILISTIC_FOUNDATIONS.md     Phase 8: probabilistic IND-CPA (complete)
+    PHASE_9_KEY_COMPRESSION.md               Phase 9: key compression + nonce-based encryption (complete)
+    PHASE_10_AUTHENTICATED_ENCRYPTION.md     Phase 10: authenticated encryption + modes (complete)
+    PHASE_11_GAP_PROTOTYPE.md                Weeks 21-26: GAP reference implementation (9 work units, complete)
+    PHASE_12_HARDNESS_ALIGNMENT.md           Hardness reduction alignment (complete)
+    PHASE_13_PUBLIC_KEY_EXTENSION.md         Public-key extension (complete)
+    PHASE_14_PARAMETER_SELECTION.md          Parameter selection optimization (complete)
+    PHASE_15_DECRYPTION_OPTIMIZATION.md      Decryption optimization formalisation (complete)
+    PHASE_16_FORMAL_VERIFICATION.md          Extended formal verification (complete)
+    AUDIT_2026-04-18_WORKSTREAM_PLAN.md      Workstreams A-E (all closed)
+    AUDIT_2026-04-21_WORKSTREAM_PLAN.md      Workstreams G, H, J, K, L, M, N (all closed)
+    AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md  Workstreams A, B, C closed; D research catalogue partially landed
+    PATH_ALGEBRA_MUL_ASSOC_PLAN.md           pathAlgebraMul_assoc decomposition plan (complete)
+    PLAN_R_01_07_08_14_16.md                 R-01, R-07, R-14, R-08, R-13⁺, R-16 research-scope discharges (complete)
+    formalization/                           Original formalization roadmap and Phase 1-6 plans (all complete)
+      FORMALIZATION_PLAN.md                  Master Lean 4 formalization roadmap (architecture, timeline, conventions)
+      PRACTICAL_IMPROVEMENTS_PLAN.md         Practical improvements workstream plan (covering Phases 7-9, complete)
+      phases/
+        PHASE_1_PROJECT_SCAFFOLDING.md       Week 1: lakefile.lean, directory structure, root import, clean build
+        PHASE_2_GROUP_ACTION_FOUNDATIONS.md  Weeks 2-4: orbit/stabilizer API, canonical forms, invariants
+        PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md Weeks 5-6: AOE scheme, IND-CPA game, OIA assumption
+        PHASE_4_CORE_THEOREMS.md             Weeks 7-10: correctness, invariant attack, OIA implies CPA
+        PHASE_5_CONCRETE_CONSTRUCTION.md     Weeks 11-14: S_n on bitstrings, HGOE instance, Hamming defense
+        PHASE_6_POLISH_AND_DOCUMENTATION.md  Weeks 15-16: sorry audit, docstrings, Mathlib update, README
 implementation/
   README.md                           GAP prototype installation, usage, reproducibility guide
   gap/                                GAP source files for HGOE reference implementation
@@ -306,7 +325,7 @@ scripts/
 
 ## Reading large files
 
-Several files in this repo are large (DEVELOPMENT.md is ~56KB). When reading any file, always use `offset` and `limit` parameters to read in chunks rather than attempting the entire file at once:
+Several files in this repo are large (docs/DEVELOPMENT.md is ~56KB). When reading any file, always use `offset` and `limit` parameters to read in chunks rather than attempting the entire file at once:
 
 ```
 Read(file_path, offset=1,   limit=500)   # lines 1-500
@@ -314,13 +333,13 @@ Read(file_path, offset=501, limit=500)   # lines 501-1000
 ```
 
 **Known large files** (read in <=500-line chunks):
-- `DEVELOPMENT.md` (~1200 lines, ~56KB) — master specification
-- `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` (~500 lines)
-- `formalization/FORMALIZATION_PLAN.md` (~400 lines)
-- `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` (~400 lines)
-- `formalization/phases/PHASE_4_CORE_THEOREMS.md` (~1140 lines)
-- `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` (~750 lines)
-- `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` (~680 lines)
+- `docs/DEVELOPMENT.md` (~1200 lines, ~56KB) — master specification
+- `docs/dev_history/formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` (~500 lines)
+- `docs/dev_history/formalization/FORMALIZATION_PLAN.md` (~400 lines)
+- `docs/dev_history/formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` (~400 lines)
+- `docs/dev_history/formalization/phases/PHASE_4_CORE_THEOREMS.md` (~1140 lines)
+- `docs/dev_history/formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` (~750 lines)
+- `docs/dev_history/formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` (~680 lines)
 
 When editing large files, read the specific region around the target lines first (e.g., `offset=380, limit=40`) rather than the whole file. This avoids context-window pressure and "file too large" errors.
 
@@ -469,7 +488,7 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
     run the "Documentation-vs-code parity gates" checklist in
     `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 20.3 to
     confirm that `CLAUDE.md`, `docs/VERIFICATION_REPORT.md`, and
-    `DEVELOPMENT.md` do not carry prose claims that exceed what the
+    `docs/DEVELOPMENT.md` do not carry prose claims that exceed what the
     Lean content delivers.
 
   *Rationale.* The release-messaging gap flagged as CRITICAL finding
@@ -507,7 +526,7 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
 
     **Rationale.** Process markers rot: workstreams close, audits are superseded, phases get renumbered, but the declarations persist. Downstream users reading `perQueryAdvantage_bound_of_concreteOIA` learn what the theorem proves; reading `b3_e8_bound_f02` they learn nothing useful and must chase a changelog to decode it. Mathlib enforces the same discipline — there is no `phaseXYZ_foo` in Mathlib's name space, even though Mathlib is developed in coordinated pull-request batches.
 
-    **Where process references *are* allowed.** Process markers may appear in prose that lives *outside* the declaration identifier: (a) in `/-- … -/` docstrings as traceability notes ("`audit F-02 / Workstream B1`" is fine in a docstring); (b) in `-- ============================================================================` section banners that group a block of related declarations; (c) in commit messages, branch names, PR titles, and planning documents under `docs/planning/`; (d) in `CLAUDE.md` / `formalization/FORMALIZATION_PLAN.md` / `docs/audits/` change logs. The boundary is sharp: the docstring may say "added in Workstream B3," the identifier may not.
+    **Where process references *are* allowed.** Process markers may appear in prose that lives *outside* the declaration identifier: (a) in `/-- … -/` docstrings as traceability notes ("`audit F-02 / Workstream B1`" is fine in a docstring); (b) in `-- ============================================================================` section banners that group a block of related declarations; (c) in commit messages, branch names, PR titles, and planning documents under `docs/planning/`; (d) in `CLAUDE.md` / `docs/dev_history/formalization/FORMALIZATION_PLAN.md` / `docs/audits/` change logs. The boundary is sharp: the docstring may say "added in Workstream B3," the identifier may not.
 
     **Enforcement at review time.** Before landing any new `def` / `theorem` / `structure`, grep the diff for the forbidden tokens above against the set of added declarations:
 
@@ -556,7 +575,7 @@ rationale):
 | # | Name | Statement | File | Status | Significance |
 |---|------|-----------|------|--------|--------------|
 | 1 | **Correctness** | `decrypt(encrypt(g, m)) = some m` for all messages m and group elements g | `Theorems/Correctness.lean` | Standalone | The scheme faithfully recovers encrypted messages |
-| 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (i.e. a specific `(g₀, g₁)` pair on which the adversary's two guesses disagree) | `Theorems/InvariantAttack.lean` | Standalone | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md. The theorem's **formal conclusion** is `∃ A : Adversary X M, hasAdvantage scheme A` — existence of one distinguishing adversary — **not** a quantitative "advantage = 1/2" claim in either the two-distribution or centred conventions (see `Probability/Advantage.lean` and the `invariant_attack` docstring for the three-convention catalogue: under a separating G-invariant, deterministic advantage = 1, two-distribution advantage = 1, centred advantage = 1/2). Informal shorthand: "complete break under a separating G-invariant". The quantitative probabilistic strengthening — IND-1-CPA advantage *exactly* `1` for the invariant-attack adversary — is delivered by `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream R-01, discharged 2026-04-30; see `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) |
+| 2 | **Invariant Attack** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (i.e. a specific `(g₀, g₁)` pair on which the adversary's two guesses disagree) | `Theorems/InvariantAttack.lean` | Standalone | Machine-checked proof of the vulnerability from docs/COUNTEREXAMPLE.md. The theorem's **formal conclusion** is `∃ A : Adversary X M, hasAdvantage scheme A` — existence of one distinguishing adversary — **not** a quantitative "advantage = 1/2" claim in either the two-distribution or centred conventions (see `Probability/Advantage.lean` and the `invariant_attack` docstring for the three-convention catalogue: under a separating G-invariant, deterministic advantage = 1, two-distribution advantage = 1, centred advantage = 1/2). Informal shorthand: "complete break under a separating G-invariant". The quantitative probabilistic strengthening — IND-1-CPA advantage *exactly* `1` for the invariant-attack adversary — is delivered by `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream R-01, discharged 2026-04-30; see `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01) |
 | 3 | **Conditional Security** | OIA implies IND-1-CPA | `Theorems/OIAImpliesCPA.lean` | Scaffolding | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks. Deterministic OIA is `False` on every non-trivial scheme, so this theorem is vacuously true on production instances — cite the probabilistic counterpart (#6) as the real security statement |
 | 4 | **KEM Correctness** | `decaps(encaps(g).1) = encaps(g).2` for all group elements g | `KEM/Correctness.lean` | Standalone | The KEM correctly recovers the shared secret (proof by `rfl`) |
 | 5 | **KEM Security** | KEMOIA implies KEM security | `KEM/Security.lean` | Scaffolding | If the KEM-OIA holds, no adversary can distinguish two encapsulations. Deterministic KEMOIA is vacuous on every non-trivial KEM; cite the probabilistic counterpart (the `concrete_kemoia_*_implies_secure` family) for quantitative KEM security |
@@ -624,22 +643,22 @@ The Lean 4 formalization proceeds in nine completed phases plus planned extensio
 
 | Phase | Title | Weeks | Units | Effort | Document | Status |
 |-------|-------|-------|-------|--------|----------|--------|
-| 1 | Project Scaffolding | 1 | 4 | 4.5h | `formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md` | Complete |
-| 2 | Group Action Foundations | 2-4 | 11 | 28h | `formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` | Complete |
-| 3 | Cryptographic Definitions | 5-6 | 8 | 18h | `formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` | Complete |
-| 4 | Core Theorems | 7-10 | 16 | 33h | `formalization/phases/PHASE_4_CORE_THEOREMS.md` | Complete |
-| 5 | Concrete Construction | 11-14 | 12 | 26h | `formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` | Complete |
-| 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` | Complete |
-| 7 | KEM Reformulation | 17-19 | 8 | ~24h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
-| 8 | Probabilistic Foundations | 18-22 | 10 | ~40h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
-| 9 | Key Compression & Nonce-Based Enc | 20-22 | 7 | ~18h | `formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
-| 10 | Authenticated Encryption & Modes | 22-24 | 6 | ~16h | `docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md` | Complete |
-| 11 | Reference Implementation (GAP) | 24-26 | 9 | ~36h | `docs/planning/PHASE_11_GAP_PROTOTYPE.md` | Complete |
-| 12 | Hardness Alignment (LESS/MEDS/TI) | 26-28 | 8 | ~32h | `docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md` | Complete |
-| 13 | Public-Key Extension | 26-30 | 7 | ~28h | `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` | Complete |
-| 14 | Parameter Selection & Benchmarks | 28-31 | 6 | ~20h | `docs/planning/PHASE_14_PARAMETER_SELECTION.md` | Complete |
-| 15 | Decryption Optimisation (C/C++) | 30+ | TBD | ~20h | `docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md` | Planned |
-| 16 | Formal Verification of New Components | 30-36 | 10 | ~36h | `docs/planning/PHASE_16_FORMAL_VERIFICATION.md` | Complete |
+| 1 | Project Scaffolding | 1 | 4 | 4.5h | `docs/dev_history/formalization/phases/PHASE_1_PROJECT_SCAFFOLDING.md` | Complete |
+| 2 | Group Action Foundations | 2-4 | 11 | 28h | `docs/dev_history/formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md` | Complete |
+| 3 | Cryptographic Definitions | 5-6 | 8 | 18h | `docs/dev_history/formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md` | Complete |
+| 4 | Core Theorems | 7-10 | 16 | 33h | `docs/dev_history/formalization/phases/PHASE_4_CORE_THEOREMS.md` | Complete |
+| 5 | Concrete Construction | 11-14 | 12 | 26h | `docs/dev_history/formalization/phases/PHASE_5_CONCRETE_CONSTRUCTION.md` | Complete |
+| 6 | Polish & Documentation | 15-16 | 13 | 22.5h | `docs/dev_history/formalization/phases/PHASE_6_POLISH_AND_DOCUMENTATION.md` | Complete |
+| 7 | KEM Reformulation | 17-19 | 8 | ~24h | `docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
+| 8 | Probabilistic Foundations | 18-22 | 10 | ~40h | `docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
+| 9 | Key Compression & Nonce-Based Enc | 20-22 | 7 | ~18h | `docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md` | Complete |
+| 10 | Authenticated Encryption & Modes | 22-24 | 6 | ~16h | `docs/dev_history/PHASE_10_AUTHENTICATED_ENCRYPTION.md` | Complete |
+| 11 | Reference Implementation (GAP) | 24-26 | 9 | ~36h | `docs/dev_history/PHASE_11_GAP_PROTOTYPE.md` | Complete |
+| 12 | Hardness Alignment (LESS/MEDS/TI) | 26-28 | 8 | ~32h | `docs/dev_history/PHASE_12_HARDNESS_ALIGNMENT.md` | Complete |
+| 13 | Public-Key Extension | 26-30 | 7 | ~28h | `docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md` | Complete |
+| 14 | Parameter Selection & Benchmarks | 28-31 | 6 | ~20h | `docs/dev_history/PHASE_14_PARAMETER_SELECTION.md` | Complete |
+| 15 | Decryption Optimisation (C/C++) | 30+ | TBD | ~20h | `docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md` | Planned |
+| 16 | Formal Verification of New Components | 30-36 | 10 | ~36h | `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md` | Complete |
 | | **Total (1–14, 16)** | **37** | **135** | **~382h** | | |
 
 **Critical path:** Chain A (Correctness) at ~32 hours of sequential work is the longest path:
@@ -655,15 +674,15 @@ Read the individual phase documents for detailed implementation guidance, work u
 ## Documentation rules
 
 When changing behavior, theorems, or formalization status, update in the same PR:
-1. `DEVELOPMENT.md` — if the change affects scheme design, security analysis, or mathematical content
-2. `formalization/FORMALIZATION_PLAN.md` — if the change affects module architecture, timeline, or conventions
-3. The relevant phase document under `formalization/phases/` — if work unit status or guidance changes
-4. `COUNTEREXAMPLE.md` — if invariant attack analysis is refined
-5. `POE.md` — if the high-level concept exposition needs updating
+1. `docs/DEVELOPMENT.md` — if the change affects scheme design, security analysis, or mathematical content
+2. `docs/dev_history/formalization/FORMALIZATION_PLAN.md` — if the change affects module architecture, timeline, or conventions
+3. The relevant phase document under `docs/dev_history/formalization/phases/` — if work unit status or guidance changes (note: phase docs are now historical record; updates are rare)
+4. `docs/COUNTEREXAMPLE.md` — if invariant attack analysis is refined
+5. `docs/POE.md` — if the high-level concept exposition needs updating
 6. `README.md` — if project status or description changes
 7. `CLAUDE.md` — if development guidance, conventions, or project status changes
 
-Canonical ownership: `DEVELOPMENT.md` owns the full scheme specification. `formalization/FORMALIZATION_PLAN.md` owns the Lean 4 architecture and conventions. Phase documents own implementation-level guidance for their respective phases. `POE.md` and `COUNTEREXAMPLE.md` own the high-level concept exposition and vulnerability analysis respectively.
+Canonical ownership: `docs/DEVELOPMENT.md` owns the full scheme specification. `docs/dev_history/formalization/FORMALIZATION_PLAN.md` owns the Lean 4 architecture and conventions. Phase documents own implementation-level guidance for their respective phases. `docs/POE.md` and `docs/COUNTEREXAMPLE.md` own the high-level concept exposition and vulnerability analysis respectively.
 
 ## Pull request authoring policy (ABSOLUTE)
 
@@ -706,7 +725,7 @@ agent-harness session permalink). Examples of the forbidden form:
 **Allowed alternatives — what to cite instead.**
 
 * The audit / planning document under `docs/planning/` (e.g.
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07).
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07).
 * The headline theorem name + file path (e.g.
   `combinerDistinguisherAdvantage_ge_inv_card`
   `Orbcrypt/PublicKey/CombineImpossibility.lean`).
@@ -761,16 +780,16 @@ session URL as part of the same change.
 
 | File | Size | Purpose | Read This To Understand |
 |------|------|---------|------------------------|
-| `DEVELOPMENT.md` | ~56KB | Master specification | Full scheme design, security proofs, hardness reductions, 7-stage pipeline |
-| `POE.md` | ~6KB | Concept exposition | Core intuition behind orbit encryption, isogeny variant, unifying view |
-| `COUNTEREXAMPLE.md` | ~5KB | Vulnerability analysis | Why naive constructions fail, invariant attack principle, Hamming weight break |
-| `formalization/FORMALIZATION_PLAN.md` | ~17KB | Master Lean 4 roadmap | Architecture, module dependencies, Mathlib integration, timeline, conventions |
-| `formalization/phases/PHASE_1_*.md` | ~8KB | Scaffolding guide | lakefile.lean setup, directory structure, .gitignore, clean build verification |
-| `formalization/phases/PHASE_2_*.md` | ~20KB | Group action guide | Orbit API wrappers, canonical forms, invariant functions (11 work units) |
-| `formalization/phases/PHASE_3_*.md` | ~16KB | Crypto definitions guide | AOE scheme, IND-CPA game, OIA assumption (8 work units) |
-| `formalization/phases/PHASE_4_*.md` | ~40KB | Core theorems guide | Correctness proof, invariant attack proof, OIA->CPA reduction (16 work units, 4 tracks) |
-| `formalization/phases/PHASE_5_*.md` | ~26KB | Construction guide | S_n bitstring action, HGOE instance, Hamming defense (12 work units) |
-| `formalization/phases/PHASE_6_*.md` | ~24KB | Polish guide | sorry audit by module, docstrings, CI, Mathlib pin, final audit (13 work units) |
+| `docs/DEVELOPMENT.md` | ~56KB | Master specification | Full scheme design, security proofs, hardness reductions, 7-stage pipeline |
+| `docs/POE.md` | ~6KB | Concept exposition | Core intuition behind orbit encryption, isogeny variant, unifying view |
+| `docs/COUNTEREXAMPLE.md` | ~5KB | Vulnerability analysis | Why naive constructions fail, invariant attack principle, Hamming weight break |
+| `docs/dev_history/formalization/FORMALIZATION_PLAN.md` | ~17KB | Master Lean 4 roadmap | Architecture, module dependencies, Mathlib integration, timeline, conventions |
+| `docs/dev_history/formalization/phases/PHASE_1_*.md` | ~8KB | Scaffolding guide | lakefile.lean setup, directory structure, .gitignore, clean build verification |
+| `docs/dev_history/formalization/phases/PHASE_2_*.md` | ~20KB | Group action guide | Orbit API wrappers, canonical forms, invariant functions (11 work units) |
+| `docs/dev_history/formalization/phases/PHASE_3_*.md` | ~16KB | Crypto definitions guide | AOE scheme, IND-CPA game, OIA assumption (8 work units) |
+| `docs/dev_history/formalization/phases/PHASE_4_*.md` | ~40KB | Core theorems guide | Correctness proof, invariant attack proof, OIA->CPA reduction (16 work units, 4 tracks) |
+| `docs/dev_history/formalization/phases/PHASE_5_*.md` | ~26KB | Construction guide | S_n bitstring action, HGOE instance, Hamming defense (12 work units) |
+| `docs/dev_history/formalization/phases/PHASE_6_*.md` | ~24KB | Polish guide | sorry audit by module, docstrings, CI, Mathlib pin, final audit (13 work units) |
 
 ## Mathematical context
 
@@ -790,7 +809,7 @@ Understanding the cryptographic concepts is essential before modifying any forma
 | **Separating Invariant** | An invariant where f(x_m0) != f(x_m1) for distinct message representatives |
 | **OIA** | Orbit samples from different message orbits are computationally indistinguishable |
 
-**Security Model:** IND-CPA (Indistinguishability under Chosen Plaintext Attack). The scheme targets IND-1-CPA (single query) as the primary formalized result, with multi-query extension via standard hybrid argument discussed in DEVELOPMENT.md section 8.2.
+**Security Model:** IND-CPA (Indistinguishability under Chosen Plaintext Attack). The scheme targets IND-1-CPA (single query) as the primary formalized result, with multi-query extension via standard hybrid argument discussed in docs/DEVELOPMENT.md section 8.2.
 
 **Hardness Assumptions:**
 - **Graph Isomorphism (GI):** Best classical algorithm: 2^O(sqrt(n log n)) (Babai, 2015). CFI graphs provide provably hard instances for Weisfeiler-Leman hierarchy.
@@ -1175,7 +1194,7 @@ Workstream A (Audit 2026-04-18 — Immediate CI & Style Fixes) has been complete
   usage.
 
 Traceability: every Workstream A finding is resolved by the edit above;
-see `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 4 for the
+see `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 4 for the
 specification and Appendix A for the finding-to-WU mapping.
 
 Workstream B (Audit 2026-04-18 — Adversary & Family Type Refinements) has
@@ -1212,7 +1231,7 @@ been completed:
 Traceability: findings F-02 and F-15 are now resolved; Workstream E8
 (multi-query security) inherits `DistinctMultiQueryAdversary`,
 `perQueryAdvantage`, and the `ConcreteOIA` per-query bound as ready
-building blocks. See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+building blocks. See `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
 § 5 for the specification and Appendix A for the finding-to-WU mapping.
 
 Verification: `scripts/audit_b_workstream.lean` exercises every
@@ -1268,18 +1287,18 @@ been completed:
   `authEncrypt_is_int_ctxt` to that composition. Documented as the
   simplest-possible witness (deterministic, tag space = `ZMod p`);
   not production-grade.
-- `Orbcrypt.lean` + `CLAUDE.md` + `DEVELOPMENT.md §8.5` — (C3) new
+- `Orbcrypt.lean` + `CLAUDE.md` + `docs/DEVELOPMENT.md §8.5` — (C3) new
   headline theorems #19 (`authEncrypt_is_int_ctxt`) and #20
   (`carterWegmanMAC_int_ctxt`); axiom-transparency entries listing
   their dependencies as `[propext, Quot.sound]`; §8.5 in
-  `DEVELOPMENT.md` describing the MAC obligations, proof pipeline, and
+  `docs/DEVELOPMENT.md` describing the MAC obligations, proof pipeline, and
   orbit-cover rationale.
 
 Traceability: finding F-07 is now resolved. The composition gap that
 previously made `INT_CTXT` unprovable (only `MAC.correct` was
 available) is closed at the abstraction level; any new concrete MAC
 must discharge `verify_inj` to inhabit the structure. See
-`docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 6 for the
+`docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 6 for the
 specification and Appendix A for the finding-to-WU mapping.
 
 Verification: `scripts/audit_c_workstream.lean` exercises every
@@ -1374,7 +1393,7 @@ F-08 + F-16 extended) has been completed:
 Traceability: findings F-08 and the optional strengthening of F-16 are
 now resolved. The composition gap that previously blocked using
 `ArePermEquivalent` and `PAut` as Mathlib primitives is closed at the
-abstraction level. See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+abstraction level. See `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
 § 7 for the specification and Appendix A for the finding-to-WU mapping.
 
 Verification: `scripts/audit_d_workstream.lean` exercises every
@@ -1490,7 +1509,7 @@ F-01 + F-10 + F-11 + F-17 + F-20) has been completed:
   `h_step` follows from `ConcreteOIA`) is carried as an explicit
   hypothesis: the marginal-independence proof over `uniformPMFTuple`
   is the single remaining non-trivial step and is tracked as a
-  follow-up in `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+  follow-up in `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
   § E8b. Users can discharge `h_step` from custom analysis or by
   reformulating `hybridDist` via an explicit per-coordinate bind
   chain.
@@ -1510,7 +1529,7 @@ form at `ε = 0` (via the bridge lemmas). For the scheme-level
 `ConcreteOIA` and the uniform-form `ConcreteKEMOIA_uniform`,
 intermediate ε values genuinely parameterise concrete security; the
 point-mass `ConcreteKEMOIA` collapses on `[0, 1)` (documented
-caveat). See `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 8
+caveat). See `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § 8
 for the specification and
 `docs/audits/LEAN_MODULE_AUDIT_2026-04-20_WORKSTREAM_E.md` for the
 post-landing audit that flagged and fixed the initial decoupling of
@@ -1675,7 +1694,7 @@ Fix C, finding H1, HIGH) has been completed:
   encoders remain a satisfiability witness at ε = 1. Research
   follow-ups (concrete CFI / Grochow–Qiao encoder witnesses) are
   tracked at § 15.1 of the audit plan.
-- `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` — updated
+- `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` — updated
   to land Fix C (per-encoding refactor) as part of Workstream G
   rather than deferring to future F3/F4. Renamed "Out-of-scope
   future work" to "Research-scope follow-ups" to emphasise the
@@ -1945,7 +1964,7 @@ corollaries, M1, MEDIUM) has been completed:
   updated to reflect the 38-module posture, 347 public
   declarations, and 346 `#print axioms` checks in the audit
   script.
-- `formalization/FORMALIZATION_PLAN.md` — `OIAImpliesCPA.lean` row
+- `docs/dev_history/formalization/FORMALIZATION_PLAN.md` — `OIAImpliesCPA.lean` row
   in the Layer-3 Theorems table extended with the
   `oia_implies_1cpa_distinct` entry (Workstream K1).
 
@@ -2017,7 +2036,7 @@ MEDIUM) has been completed:
   `Nat.log 2 (Fintype.card Seed) < Nat.log 2 (Fintype.card G)` —
   a scale-invariant compression claim that matches the docstring's
   prose framing and corrects the typo. See
-  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 for
+  `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 for
   the detailed rationale.
 
 - **L2 (M3) — Carter–Wegman universal-hash MAC
@@ -2075,11 +2094,11 @@ MEDIUM) has been completed:
   "Naming corrective" note. Downstream references updated in
   `Orbcrypt.lean`, `scripts/audit_phase_16.lean`,
   `scripts/audit_print_axioms.lean`, `CLAUDE.md`,
-  `DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
+  `docs/DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
   `docs/USE_CASES.md`, `docs/MORE_USE_CASES.md`,
   `docs/VERIFICATION_REPORT.md`,
-  `formalization/FORMALIZATION_PLAN.md`, and
-  `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md`.
+  `docs/dev_history/formalization/FORMALIZATION_PLAN.md`, and
+  `docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md`.
 
 - **L4 (M5) — `SymmetricKeyAgreementLimitation` rename.**
   `Orbcrypt/PublicKey/KEMAgreement.lean`: the `Prop`
@@ -2117,7 +2136,7 @@ MEDIUM) has been completed:
 
 Traceability: findings M2 (L1), M3 (L2), M4 (L3), M5 (L4), and
 M6 (L5) are resolved. See
-`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7 for the
+`docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7 for the
 specification; Appendix A for the finding-to-work-unit mapping.
 External release claims about "compressed seed-based KEM key" now
 track a machine-checked structural witness rather than untracked
@@ -2241,7 +2260,7 @@ eight sub-items are documentation-only docstring refinements; the
 eighth (M1) is a source-level universe polymorphism generalisation
 of `SurrogateTensor F`. No headline theorems are added, removed, or
 restated; no public API surface changes; no new modules. See
-`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 8 for the
+`docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 8 for the
 specification; Appendix A for the finding-to-work-unit mapping.
 
 Verification: the Phase 16 audit script
@@ -2310,7 +2329,7 @@ been completed (2026-04-23):
   * **N3 (I3):** the `indQCPA_from_perStepBound`'s `h_step`
     hypothesis gap (renamed from `indQCPA_bound_via_hybrid` in
     Workstream C of the 2026-04-23 audit) is already tracked in
-    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b and
+    `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b and
     in the 2026-04-23 plan's research catalogue as R-09;
   * **N4 (I4):** `scripts/setup_lean_env.sh` passed its audit
     with no findings.
@@ -2319,7 +2338,7 @@ been completed (2026-04-23):
   misread as the full Workstream-N deliverable.
 
 Traceability: findings I1 and I5 are resolved. See
-`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 9 for the
+`docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 9 for the
 specification; Appendix A for the finding-to-work-unit mapping.
 
 Verification: Workstream N makes no Lean-source or audit-script
@@ -2382,7 +2401,7 @@ of the audit plan):**
       invariant-attack narrative aligned with the theorem's
       `∃ A, hasAdvantage` conclusion; `docs/VERIFICATION_REPORT.md`
       "Release readiness" + "Known limitations" rewritten;
-      `Orbcrypt.lean` Vacuity-map ε = 1 disclosure; `DEVELOPMENT.md`
+      `Orbcrypt.lean` Vacuity-map ε = 1 disclosure; `docs/DEVELOPMENT.md`
       §6.2.1 / §7.1 / §8.2 / §8.5 prose tightened where it exceeded
       the Lean content.
 - [x] **Workstream B** — `INT_CTXT` orbit-cover refactor (closed by
@@ -2418,7 +2437,7 @@ of the audit plan):**
       `NonVacuityWitnesses` in `audit_phase_16.lean` (the C.2
       template at Q = 2 / ε = 1 plus a general-signature and a
       Q = 1 regression variant). `Orbcrypt.lean`,
-      `docs/VERIFICATION_REPORT.md`, and `DEVELOPMENT.md §8.2`
+      `docs/VERIFICATION_REPORT.md`, and `docs/DEVELOPMENT.md §8.2`
       updated. `lakefile.lean` bumped from `0.1.7` to `0.1.8`.
 - [x] **Workstream D** — Toolchain decision + `lakefile.lean` hygiene
       (closed by this landing). `lean-toolchain` retains
@@ -2540,7 +2559,7 @@ of the audit plan):**
       (`exp.group_large_enough : exp.group_order_log ≥ lam`), and a
       λ-monotonicity negative example confirming `¬ (80 ≥ 192)`
       (documenting the four obligations are *distinct*, not a single
-      sloppy bound). `DEVELOPMENT.md §6.2.1` (G3) gains a paragraph
+      sloppy bound). `docs/DEVELOPMENT.md §6.2.1` (G3) gains a paragraph
       cross-linking the Lean structure to the prose pipeline; the
       Lean / prose spelling correspondence (`lam` ↔ `λ`) is disclosed
       explicitly. `docs/PARAMETERS.md §2.2.1` (G3) is a new
@@ -2732,7 +2751,7 @@ been completed:
   plan)" (V1-3 / audit finding M-04). Four new rows added pairing
   the Conditional rows #19, #20, #24, #25 with their hypotheses and
   their standalone siblings.
-- `DEVELOPMENT.md` — §7.1 (Hamming weight attack): explicit
+- `docs/DEVELOPMENT.md` — §7.1 (Hamming weight attack): explicit
   statement that Hamming-weight defense is **necessary but not
   sufficient** and that other G-invariants (block sums, parity
   over QC substructures) may still separate same-weight
@@ -2762,7 +2781,7 @@ explicit "Scope of the Lean-verified compression claim" disclosure
 block clarifying that the numerical compression ratio is a
 **deployment parameter choice** witnessed by a `decide`-able
 `Fintype.card` bound at instantiation time, not a Lean-field
-certification. DEVELOPMENT.md §6.2.1 requires no rewrite because
+certification. docs/DEVELOPMENT.md §6.2.1 requires no rewrite because
 it does not mention seed-key compression — the 2026-04-23 audit's
 §6.2.1 pointer in V1-5's location field was a misattribution;
 the overclaim prose lives in `Orbcrypt/KeyMgmt/SeedKey.lean`'s
@@ -2956,7 +2975,7 @@ V1-8 / C-13 / D10, HIGH) has been completed:
   without qualification" list renamed; "Known limitations" bullet
   #3 renamed; "Document history" entry dated 2026-04-24 records the
   Workstream-C landing.
-- `DEVELOPMENT.md` — (C2) §8.2 (multi-query IND-Q-CPA discussion)
+- `docs/DEVELOPMENT.md` — (C2) §8.2 (multi-query IND-Q-CPA discussion)
   renamed throughout including the release-messaging policy
   paragraph; the Workstream-C cross-reference in that paragraph is
   updated to point at the new name as the landed rename.
@@ -3433,7 +3452,7 @@ been completed (2026-04-25):
   (`¬ (80 ≥ 192)`) documenting that the four tier-witnesses
   are *distinct* obligations.
 
-- **G3 — Documentation cross-links.** `DEVELOPMENT.md §6.2.1`
+- **G3 — Documentation cross-links.** `docs/DEVELOPMENT.md §6.2.1`
   gains a paragraph at the top of the "HGOE.Setup(1^λ) — Detailed
   Pipeline" section cross-linking the prose specification to the
   λ-parameterised Lean structure and disclosing the spelling
@@ -3446,7 +3465,7 @@ been completed (2026-04-25):
 
 Files touched: `Orbcrypt/KeyMgmt/SeedKey.lean` (structure +
 docstrings), `scripts/audit_phase_16.lean` (Workstream-G
-non-vacuity witnesses), `DEVELOPMENT.md`, `docs/PARAMETERS.md`,
+non-vacuity witnesses), `docs/DEVELOPMENT.md`, `docs/PARAMETERS.md`,
 `Orbcrypt.lean` (Workstream-G snapshot at the end of the
 transparency report), `CLAUDE.md` (this snapshot, the module-
 line note for `KeyMgmt/SeedKey.lean`, the Workstream-G status-
@@ -6834,7 +6853,7 @@ from `Discharge.lean`:
 
 This dual-bump entry closes audit finding A-02 / L-03a (MEDIUM) of
 the 2026-04-29 comprehensive audit
-(`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+(`docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
 Workstream **A4**), which flagged the absence of CLAUDE.md
 changelog entries for the two intermediate version bumps that
 landed between the post-Path-B-Sub-task-A.6.4 entry (`0.1.28 →
@@ -7025,7 +7044,7 @@ Files touched:
 - `CLAUDE.md` (A4, dual-bump version changelog entry; this
   Workstream-A snapshot block; Workstream-A status-tracker
   checkboxes).
-- `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+- `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
   (Workstream-A status-tracker checkboxes ticked under § 10.1
   and Appendix B).
 
@@ -7189,7 +7208,7 @@ Files touched:
   `scripts/legacy/audit_phase15.lean` (B2, `git mv`).
 - `scripts/audit_print_axioms.lean` →
   `scripts/legacy/audit_print_axioms.lean` (B2, `git mv`).
-- `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+- `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
   (Workstream-B status-tracker checkboxes ticked under § 10.1
   and Appendix B).
 
@@ -7649,7 +7668,7 @@ audit-2 commit.
    shared toolchains can `chmod 0644` post-snapshot.
 
 3. **Audit-plan reclassification consistency.** Four areas of
-   `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+   `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
    still described Workstream C as "deferred to v1.1+":
    - § 0 executive summary opening paragraph.
    - § 0 release-gate commitment.
@@ -7804,7 +7823,7 @@ public-API module + ~36 new public declarations warrants the
 patch bump per `CLAUDE.md`'s version-bump discipline.
 
 Workstream R-01 Research-Scope Discharge (audit 2026-04-29 § 8.1,
-plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) has been
+plan `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01) has been
 completed (2026-04-30):
 
 - **R-01 — Quantitative cross-orbit advantage lower bound for
@@ -7860,7 +7879,7 @@ completed (2026-04-30):
 
   **KEM-layer companion: dropped.** The KEM-layer companion of R-01
   was found mathematically vacuous during plan review (see
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § "KEM-layer companion:
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § "KEM-layer companion:
   dropped"). The KEM uniform-form game's two distributions live in
   the basepoint's single orbit, so any G-invariant distinguisher
   gives advantage `0`, not `1`. The KEM-layer parallel of R-01's
@@ -7932,7 +7951,7 @@ completed (2026-04-30):
   planned for follow-up work units.
 
 Workstream R-07 Research-Scope Discharge (audit 2026-04-29 § 8.1,
-plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) has been
+plan `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07) has been
 completed (2026-04-30):
 
 - **R-07 — Cross-orbit advantage lower bound for equivariant
@@ -8103,7 +8122,7 @@ completed (2026-04-30):
 
 Workstream R-14 + R-08 + R-13⁺ + R-16 Research-Scope Discharge
 (audit 2026-04-29 § 8.1, plan
-`docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 / §
+`docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 / §
 R-13⁺ / § R-16) has been completed (2026-05-01):
 
 - **R-14 — Generic probabilistic MAC SUF-CMA framework.** New module
@@ -8847,7 +8866,7 @@ plan `docs/planning/PLAN_R_05_11_15.md` § R-11) has been completed
 While executing any task in this codebase, if you discover a possible software vulnerability that could reasonably warrant a CVE (Common Vulnerabilities and Exposures) designation, you **must** immediately report it to the user before continuing. This applies to vulnerabilities found in:
 
 - **This project's cryptographic design** — logic errors in the AOE scheme definition, invariant attacks not covered by the counterexample analysis, flaws in the OIA reduction to GI or CE, or any other issue that could lead to a complete or partial break of the encryption scheme.
-- **Formalization gaps** — cases where the Lean 4 formalization fails to capture a security-relevant property of the scheme, creating a false assurance gap. For example: an axiom that is too strong (making the security proof vacuously true) or a definition that does not match the mathematical intent in DEVELOPMENT.md.
+- **Formalization gaps** — cases where the Lean 4 formalization fails to capture a security-relevant property of the scheme, creating a false assurance gap. For example: an axiom that is too strong (making the security proof vacuously true) or a definition that does not match the mathematical intent in docs/DEVELOPMENT.md.
 - **Dependencies and toolchain** — known or suspected vulnerabilities in Lean, Lake, elan, Mathlib, or any library encountered during builds, updates, or code review.
 - **Build and CI infrastructure** — insecure script patterns (e.g., command injection in shell scripts, unsafe file permissions) that could be exploited in a development or CI environment.
 

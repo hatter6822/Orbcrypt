@@ -47,8 +47,8 @@ orbit membership. The `nonce_reuse_leaks_orbit` theorem formalizes this warning.
 
 ## References
 
-* DEVELOPMENT.md §6.2.2 — nonce-based encryption
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 9, work units 9.4–9.5
+* docs/DEVELOPMENT.md §6.2.2 — nonce-based encryption
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 9, work units 9.4–9.5
 -/
 
 namespace Orbcrypt

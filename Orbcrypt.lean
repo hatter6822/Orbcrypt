@@ -573,7 +573,7 @@ These theorems depend only on Lean's standard axioms (`propext`,
   (`probTrue_orbitDist_invariant_eq_one`,
   `probTrue_orbitDist_invariant_eq_zero`) that compute the
   orbit-distribution mass of the constant-true / constant-false
-  predicate under G-invariance. See `docs/planning/PLAN_R_01_07_08_14_16.md`
+  predicate under G-invariance. See `docs/dev_history/PLAN_R_01_07_08_14_16.md`
   § R-01 for the discharge plan and the KEM-layer-companion-vacuity
   finding (`det_kemoia_false_of_nontrivial_orbit` already provides
   the KEM-layer parallel of the existential content)
@@ -593,7 +593,7 @@ These theorems depend only on Lean's standard axioms (`propext`,
   and the two probTrue mass lemmas
   (`probTrue_combinerDistinguisher_basePoint_ge_inv_card`,
   `probTrue_combinerDistinguisher_target_eq_zero`). See
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07 for the discharge
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07 for the discharge
   plan
 - `kem_correctness` (`KEM/Correctness.lean`) — decaps recovers encapsulated key
 - `kem_key_constant_direct` (`KEM/Security.lean`) — key constancy from
@@ -813,7 +813,7 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
 The following `Prop`-valued definitions state many-one (Karp) reductions
 between hardness problems. They are carried as *hypotheses* by downstream
 theorems (currently only by the Workstream E hardness-chain theorems, to
-be populated per `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
+be populated per `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md`
 § E3–E5). They are NOT proven within this formalization — a concrete
 witness would require formalising the CFI graph gadget (for `GIReducesToCE`)
 or the triangle-indicator tensor encoding (for `GIReducesToTI`). See
@@ -1507,7 +1507,7 @@ See `CLAUDE.md`'s per-workstream changelog and
 snapshot of metrics; this in-source block is refreshed only at
 audit boundaries (the 2026-04-21 → 2026-04-29 refresh closed audit
 finding A-07 / J-02 HIGH per
-`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+`docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
 Workstream **A3**).
 
 ## Workstream G Snapshot (audit 2026-04-21, finding H1)
@@ -1541,7 +1541,7 @@ per-encoding reduction Props via (a) the Cai–Fürer–Immerman graph
 gadget (1992), (b) the Grochow–Qiao structure-tensor encoding
 (2021), and (c) CFI-indexed scheme instantiations are genuine
 research-scope items tracked in
-`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1. They
+`docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1. They
 plug directly into the `*_viaEncoding` Props landed here without
 further structural refactor.
 
@@ -2121,7 +2121,7 @@ reference — the theorem body, docstrings, the
 module-docstring "Main results" list, `Orbcrypt.lean`'s
 axiom-transparency report, `scripts/audit_phase_16.lean`,
 `scripts/audit_e_workstream.lean`, `CLAUDE.md`,
-`DEVELOPMENT.md §8.2`, `docs/VERIFICATION_REPORT.md` — is
+`docs/DEVELOPMENT.md §8.2`, `docs/VERIFICATION_REPORT.md` — is
 updated in this landing.
 
 ### Files touched
@@ -2159,7 +2159,7 @@ updated in this landing.
 * **`docs/VERIFICATION_REPORT.md`** — headline-results table
   rows #23 renamed; "Release readiness" section's "What NOT to
   cite" list renamed; "Known limitations" bullet renamed.
-* **`DEVELOPMENT.md`** — §8.2 (multi-query IND-Q-CPA
+* **`docs/DEVELOPMENT.md`** — §8.2 (multi-query IND-Q-CPA
   discussion) renamed; the renaming cross-reference in the
   release-messaging policy paragraph is preserved.
 
@@ -2634,7 +2634,7 @@ sugar. No existing code needs migration.
 External release claims about HGOE's canonical form — e.g.,
 "the scheme uses the lex-minimum orbit element as its canonical
 form" — now track a machine-checked constructor rather than
-untracked prose. The `DEVELOPMENT.md §3.2` convention matches
+untracked prose. The `docs/DEVELOPMENT.md §3.2` convention matches
 the `bitstringLinearOrder` + `ofLexMin` pairing exactly.
 
 ### Research-scope follow-ups
@@ -2736,7 +2736,7 @@ above `lam` (e.g., L3 in `docs/benchmarks/results_128.csv` has
   λ-monotonicity negative example confirming `¬ (80 ≥ 192)` —
   documenting that the four tier-witnesses are **distinct**
   obligations, not one obligation with a sloppy bound.
-* `DEVELOPMENT.md §6.2.1` — gains a paragraph cross-linking the
+* `docs/DEVELOPMENT.md §6.2.1` — gains a paragraph cross-linking the
   λ-parameterised `HGOEKeyExpansion` to the prose specification,
   noting the Lean / prose spelling correspondence (`lam` ↔ `λ`).
 * `docs/PARAMETERS.md §2` — gains a new §2.2.1 "Lean cross-link"
@@ -3441,7 +3441,7 @@ work. The post-extension landing delivers:
 ## Workstream D Research-Scope Discharge Snapshot (2026-04-30)
 
 Closes three research-scope items from
-`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+`docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
 § 8.1. All three discharges land entirely on standard-trio axioms
 (`propext`, `Classical.choice`, `Quot.sound`); zero `sorry`; zero
 custom axioms.

@@ -9,7 +9,7 @@
 # Orbcrypt HGOE — Parameter Recommendations
 
 *Phase 14 deliverable — see
-[docs/planning/PHASE_14_PARAMETER_SELECTION.md](planning/PHASE_14_PARAMETER_SELECTION.md).*
+[docs/dev_history/PHASE_14_PARAMETER_SELECTION.md](planning/PHASE_14_PARAMETER_SELECTION.md).*
 
 This document turns the Phase 11 GAP benchmark data and a systematic
 parameter sweep into concrete parameter guidance for HGOE (Hidden-Group
@@ -196,8 +196,7 @@ thresholds, often strictly above `lam`. Release claims about HGOE's
 security level should cite this λ-parameterised form together with
 the corresponding row above.
 
-### 2.3 Caveat — Phase 11 baseline is a performance proxy, not a
-secure parameter set
+### 2.3 Caveat — Phase 11 baseline is a performance proxy, not secure param set
 
 The Phase 11 fallback group is a block-cyclic wreath product whose
 order `b^ell · 2 ≥ 2^λ` is guaranteed, but whose cryptographic
@@ -223,13 +222,50 @@ are in `docs/benchmarks/comparison.csv`.
 | CT (bytes)     | \|m\|+28    | 1 088       | 3 114       | 14 469      | 96               | 5 000       | **43**       |
 | Enc (µs)       | 0.05        | 30          | 100         | 300         | 100              | N/A         | **314 000 †** |
 | Dec (µs)       | 0.05        | 25          | 200         | 500         | 150              | N/A         | **348 000 †** |
-| PQ secure?     | no          | yes         | yes         | yes         | yes              | yes         | **conjectured** |
+| PQ secure?     | yes (Grover) ‡ | yes      | yes         | yes         | yes              | yes         | **conjectured** |
 | Assumption     | none        | MLWE        | QC-MDPC     | QC-HQC      | Goppa decoding   | Perm-CE     | **CE-OIA**   |
 | Source         | SP800-38D   | FIPS 203    | NIST R4     | NIST R4     | NIST R4          | NIST On-Ramp | Phase 11    |
 
 † GAP prototype timings. A production C/C++ implementation with
 partition backtracking via `nauty` / `bliss` is expected to deliver
 two to three orders of magnitude of speedup (see Phase 15 plan).
+
+‡ **AES-256-GCM post-quantum analysis (corrected 2026-05-03).** Earlier
+revisions of this table marked the AES-256-GCM cell `no`, which
+mis-stated the standard cryptographic consensus. The correct posture
+is:
+
+* **Confidentiality.** AES-256 has no known quantum attack better than
+  Grover's algorithm, which is a generic unstructured-search routine
+  giving only a quadratic speedup (`O(2^n) → O(2^(n/2))` on a brute-force
+  key search). For AES-256 this leaves an effective post-quantum security
+  margin of ~128 bits — comfortably above the threshold the field uses
+  for "long-term secure." NIST in fact *defines* its highest post-quantum
+  security category, **Level 5**, as key search on AES-256 (NIST IR 8413
+  / "Submission Requirements …" §4.A.5). Realistic-cost analyses of
+  Grover-on-AES (Grassl–Langenberg–Roetteler–Steinwandt, PQCrypto 2016)
+  put the gate count at roughly `2^151` Toffoli gates with error
+  correction, well above any currently-credible quantum-computing
+  budget. Grover is also inherently sequential — `k`-fold parallelism
+  only buys a `√k` factor — so even planet-scale quantum clusters do
+  not break AES-256 in any human timescale.
+* **Authentication (GMAC).** The 128-bit GMAC tag has a tighter
+  ~64-bit quantum forgery margin under Grover. This is acceptable for
+  typical message volumes; applications wanting larger margins should
+  use longer tags or a wide-block AEAD.
+* **Q1 vs. Q2 oracle model.** The Kaplan–Leurent–Leverrier–Naya-
+  Plasencia attack (CRYPTO 2016) breaks GMAC, CBC-MAC, OCB, and
+  similar polynomial-evaluation MACs in *polynomial time* via Simon's
+  algorithm — but only in the **Q2 model**, where the adversary is
+  given quantum-superposition oracle access to the encryption
+  primitive. Real-world TLS endpoints, file-encryption daemons, and
+  every other deployed AES-GCM consumer expose only a *classical*
+  oracle interface (the **Q1 model**), in which AES-256-GCM remains
+  secure.
+* **The `assumption` column reads `none`** because, unlike the
+  lattice/code-based KEMs in this table, AES-256's PQ posture is
+  grounded in the *absence* of a better-than-Grover quantum attack
+  rather than in a reduction to a specific PQ-hard problem.
 
 ### 3.1 Honest per-metric assessment
 
@@ -251,7 +287,7 @@ magnitude slower than Kyber and BIKE. The entire cost is in the
 canonical-image computation; the remaining operations (group element
 sampling, bitstring permutation) are <1 ms combined. A production
 implementation is the explicit scope of Phase 15
-(`docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md`).
+(`docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md`).
 
 **Post-quantum posture.** HGOE security reduces to Code Equivalence
 (CE) and/or Graph Isomorphism (GI), both of which are hard for
@@ -265,7 +301,7 @@ candidates it is compared against.
 **Assumption class.** CE-OIA is a fresh assumption introduced by
 Orbcrypt, while MLWE / QC-MDPC / QC-HQC / Goppa have decades of
 cryptanalysis behind them. This is the single largest open security
-gap, tracked in `docs/planning/PHASE_16_FORMAL_VERIFICATION.md` as
+gap, tracked in `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md` as
 ongoing work.
 
 ---

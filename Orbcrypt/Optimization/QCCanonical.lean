@@ -41,7 +41,7 @@ over the choice of `canon`.
 
 ## References
 
-* `docs/planning/PHASE_15_DECRYPTION_OPTIMIZATION.md` § 15.1 / § 15.5
+* `docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md` § 15.1 / § 15.5
 * `implementation/gap/orbcrypt_fast_dec.g` (Work Units 15.1a–15.1c)
 -/
 

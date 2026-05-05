@@ -146,7 +146,7 @@ open Orbcrypt
 -- delivers existence of one distinguishing `(g₀, g₁)` pair; R-01
 -- strengthens this to the tight probabilistic equality
 -- `indCPAAdvantage = 1` whenever a separating G-invariant is supplied.
--- See `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01 for the
+-- See `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01 for the
 -- discharge plan and the KEM-layer-companion-vacuity finding.
 #print axioms probTrue_orbitDist_invariant_eq_one
 #print axioms probTrue_orbitDist_invariant_eq_zero
@@ -726,7 +726,7 @@ open Orbcrypt
 #print axioms combinerDistinguisherAdvantage_eq
 #print axioms concrete_combiner_advantage_bounded_by_oia
 -- Workstream R-07 (audit 2026-04-29 § 8.1, plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07): cross-orbit
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07): cross-orbit
 -- advantage lower bound for equivariant combiners. The intra-orbit
 -- mass bound `combinerOrbitDist_mass_bounds` (E6b) is *not* by itself
 -- a cross-orbit advantage lower bound; R-07 supplies the missing

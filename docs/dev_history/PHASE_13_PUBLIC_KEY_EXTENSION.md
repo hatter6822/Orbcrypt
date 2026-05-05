@@ -10,7 +10,7 @@
 
 ## Weeks 26–30 | 7 Work Units | ~28 Hours | **Status: Complete**
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 All seven work units have been implemented across three Lean modules
 (`Orbcrypt/PublicKey/{ObliviousSampling, KEMAgreement, CommutativeAction}.lean`)

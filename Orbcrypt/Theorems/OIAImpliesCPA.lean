@@ -19,7 +19,7 @@ import Orbcrypt.GroupAction.Invariant
 
 Conditional security reduction: OIA implies IND-1-CPA security. If the Orbit
 Indistinguishability Assumption holds, the scheme is secure against single-query
-chosen-plaintext attacks. Formalizes DEVELOPMENT.md §8.1.
+chosen-plaintext attacks. Formalizes docs/DEVELOPMENT.md §8.1.
 
 ## Overview
 
@@ -65,9 +65,9 @@ Additionally, Track D (optional) proves the contrapositive direction:
 
 ## References
 
-* DEVELOPMENT.md §8.1 — OIA implies IND-1-CPA security
-* formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.10–4.15
-* docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 6 — Workstream K
+* docs/DEVELOPMENT.md §8.1 — OIA implies IND-1-CPA security
+* docs/dev_history/formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.10–4.15
+* docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md § 6 — Workstream K
   (distinct-challenge IND-1-CPA corollary, audit finding
   F-AUDIT-2026-04-21-M1)
 -/
@@ -139,7 +139,7 @@ theorem no_advantage_from_oia [Group G] [MulAction G X] [DecidableEq X]
 
 /--
 **Security Theorem.** The OIA implies IND-1-CPA security.
-Formalizes DEVELOPMENT.md §8.1.
+Formalizes docs/DEVELOPMENT.md §8.1.
 
 If the Orbit Indistinguishability Assumption holds for a scheme, then no
 adversary can achieve non-zero advantage in the IND-1-CPA game. This is the

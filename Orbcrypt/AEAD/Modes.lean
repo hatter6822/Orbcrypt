@@ -42,7 +42,7 @@ real-world message encryption.
 
 ## References
 
-* docs/planning/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work units 10.5–10.6
+* docs/dev_history/PHASE_10_AUTHENTICATED_ENCRYPTION.md — work units 10.5–10.6
 * KEM/Encapsulate.lean — `encaps` and `decaps`
 * KEM/Correctness.lean — `kem_correctness`
 -/

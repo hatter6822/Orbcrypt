@@ -16,7 +16,7 @@ G-invariant functions and their properties: `IsGInvariant`, `IsSeparating`,
 the orbit constancy lemma, and proof that canonical forms are G-invariant.
 
 A function is G-invariant if it is unchanged by the group action. This is the
-central concept in the invariant attack theorem (DEVELOPMENT.md §4.4): if an
+central concept in the invariant attack theorem (docs/DEVELOPMENT.md §4.4): if an
 attacker finds a G-invariant function that distinguishes two message orbits,
 the encryption scheme is completely broken.
 
@@ -37,9 +37,9 @@ the encryption scheme is completely broken.
 
 ## References
 
-* DEVELOPMENT.md §4.4 — invariant attack analysis
-* COUNTEREXAMPLE.md — concrete invariant attack via Hamming weight
-* formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md — work units 2.8–2.11
+* docs/DEVELOPMENT.md §4.4 — invariant attack analysis
+* docs/COUNTEREXAMPLE.md — concrete invariant attack via Hamming weight
+* docs/dev_history/formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md — work units 2.8–2.11
 -/
 
 namespace Orbcrypt
@@ -59,7 +59,7 @@ A function `f : X → Y` is G-invariant if it is unchanged by the group action:
 `f(g • x) = f(x)` for all `g ∈ G` and `x ∈ X`.
 
 Equivalently, `f` is constant on each orbit of `G`. This is the central
-concept in the invariant attack theorem (DEVELOPMENT.md §4.4).
+concept in the invariant attack theorem (docs/DEVELOPMENT.md §4.4).
 -/
 def IsGInvariant (f : X → Y) : Prop :=
   ∀ (g : G) (x : X), f (g • x) = f x

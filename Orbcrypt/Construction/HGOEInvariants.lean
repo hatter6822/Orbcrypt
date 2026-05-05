@@ -78,9 +78,9 @@ probabilistic upgrade — `indCPAAdvantage = 1` — compose with R-01's
 
 ## References
 
-* DEVELOPMENT.md §7 — invariant attack discussion.
-* COUNTEREXAMPLE.md — Hamming weight invariant.
-* docs/planning/PLAN_R_01_07_08_14_16.md § R-16 — beyond-Hamming
+* docs/DEVELOPMENT.md §7 — invariant attack discussion.
+* docs/COUNTEREXAMPLE.md — Hamming weight invariant.
+* docs/dev_history/PLAN_R_01_07_08_14_16.md § R-16 — beyond-Hamming
   invariant catalogue.
 -/
 

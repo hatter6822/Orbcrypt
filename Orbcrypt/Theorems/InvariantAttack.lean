@@ -19,10 +19,10 @@ Invariant attack theorem: if a G-invariant function separates two message
 orbits, there **exists** an adversary with `hasAdvantage` — i.e., a specific
 `(g₀, g₁)` pair on which the adversary's two guesses disagree. Informal
 shorthand: "complete break". Machine-checked proof of the critical
-vulnerability from COUNTEREXAMPLE.md. Formalizes DEVELOPMENT.md §4.4
+vulnerability from docs/COUNTEREXAMPLE.md. Formalizes docs/DEVELOPMENT.md §4.4
 (**existential** form — the Lean content is one level weaker than the
 paper-style "Adv = 1/2" claim; see the `invariant_attack` docstring
-below for the three-convention catalogue and `DEVELOPMENT.md` §4.4's
+below for the three-convention catalogue and `docs/DEVELOPMENT.md` §4.4's
 "Lean-formalised content" note; audit 2026-04-23 / V1-4 / D13).
 
 ## Overview
@@ -66,7 +66,7 @@ The probabilistic upgrade is delivered in three lemmas:
    the headline equality `indCPAAdvantage = 1`.
 
 The KEM-layer companion of R-01 was found mathematically vacuous
-during plan review (`docs/planning/PLAN_R_01_07_08_14_16.md`
+during plan review (`docs/dev_history/PLAN_R_01_07_08_14_16.md`
 § "KEM-layer companion: dropped"): the KEM uniform-form game's two
 distributions live in the basepoint's single orbit, so any G-invariant
 distinguisher gives advantage `0`, not `1`. The KEM-layer parallel of
@@ -95,10 +95,10 @@ carries no signal there).
 
 ## References
 
-* DEVELOPMENT.md §4.4 — invariant attack analysis
-* COUNTEREXAMPLE.md — concrete invariant attack via Hamming weight
-* formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.6–4.9
-* docs/planning/PLAN_R_01_07_08_14_16.md § R-01 — quantitative
+* docs/DEVELOPMENT.md §4.4 — invariant attack analysis
+* docs/COUNTEREXAMPLE.md — concrete invariant attack via Hamming weight
+* docs/dev_history/formalization/phases/PHASE_4_CORE_THEOREMS.md — work units 4.6–4.9
+* docs/dev_history/PLAN_R_01_07_08_14_16.md § R-01 — quantitative
   cross-orbit advantage lower bound
 -/
 
@@ -184,7 +184,7 @@ theorem invariantAttackAdversary_correct [Group G] [MulAction G X]
 /--
 **Invariant Attack Theorem.** If a G-invariant function separates two message
 orbits, an adversary achieves a complete break.
-Formalizes DEVELOPMENT.md §4.4 and the lesson of COUNTEREXAMPLE.md.
+Formalizes docs/DEVELOPMENT.md §4.4 and the lesson of docs/COUNTEREXAMPLE.md.
 
 **Proof strategy:**
 1. Exhibit the `invariantAttackAdversary`.
@@ -237,7 +237,7 @@ theorem invariant_attack [Group G] [MulAction G X] [DecidableEq X]
 -- ============================================================================
 -- Workstream R-01: Quantitative cross-orbit advantage lower bound
 -- (audit 2026-04-29 § 8.1, research-scope discharge plan
--- `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01)
+-- `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01)
 -- ============================================================================
 --
 -- The deterministic `invariant_attack` theorem above delivers existence of

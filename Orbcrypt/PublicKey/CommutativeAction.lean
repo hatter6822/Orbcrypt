@@ -47,7 +47,7 @@ scaffolding itself. Hardness is deferred.
 
 ## References
 
-* `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` — phase document.
+* `docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md` — phase document.
 * `docs/PUBLIC_KEY_ANALYSIS.md` — feasibility analysis.
 * Castryck, Lange, Martindale, Panny, Renes — *CSIDH: An Efficient
   Post-Quantum Commutative Group Action* (2018).

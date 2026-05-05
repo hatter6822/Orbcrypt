@@ -10,7 +10,7 @@
 
 ## Weeks 30–36 | 10 Work Units | ~36 Hours
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 **Status: COMPLETE (2026-04-21).** All 10 work units delivered. See
 `docs/VERIFICATION_REPORT.md` for the consolidated Phase 16 verification

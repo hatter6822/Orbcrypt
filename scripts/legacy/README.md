@@ -45,7 +45,7 @@ These scripts preserve the per-workstream audit trail. Each was
 the canonical regression sentinel for its workstream at the time
 it landed; deleting them would lose that historical
 cross-reference. The post-2026-04-29 plan (Workstream **B2** of
-`docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`)
+`docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`)
 moved them to this archive directory rather than deleting them, on
 the principle that archive material is cheap to retain and
 expensive to reconstruct.

@@ -15,7 +15,7 @@ Canonical forms under group actions: definition of the `CanonicalForm`
 structure, uniqueness (orbit equality from canon equality), and idempotence.
 
 A canonical form abstracts the concept of "lexicographically minimal element
-of the orbit" (DEVELOPMENT.md §3.2). It maps each element to a unique
+of the orbit" (docs/DEVELOPMENT.md §3.2). It maps each element to a unique
 representative of its orbit, enabling decryption: given a ciphertext
 `c = g • x_m`, computing `canon(c) = canon(x_m)` recovers the message identity.
 
@@ -30,8 +30,8 @@ representative of its orbit, enabling decryption: given a ciphertext
 
 ## References
 
-* DEVELOPMENT.md §3.2 — canonical forms in the encryption scheme
-* formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md — work units 2.5–2.7
+* docs/DEVELOPMENT.md §3.2 — canonical forms in the encryption scheme
+* docs/dev_history/formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md — work units 2.5–2.7
 -/
 
 namespace Orbcrypt
@@ -49,7 +49,7 @@ A canonical form for a group action is a function `canon : X → X` that:
    (`orbit_iff`).
 
 This abstracts the concept of "lexicographically minimal element of the orbit"
-used in the concrete Orbcrypt construction (DEVELOPMENT.md §3.2). It is defined
+used in the concrete Orbcrypt construction (docs/DEVELOPMENT.md §3.2). It is defined
 as a structure rather than a type class because a given group action may admit
 multiple canonical forms (e.g., lex-min, lex-max). The encryption scheme
 explicitly carries its canonical form as data.

@@ -27,8 +27,8 @@ API used throughout the Orbcrypt formalization.
 
 ## References
 
-* DEVELOPMENT.md §3 — orbit encryption scheme foundations
-* formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md — work units 2.1–2.4
+* docs/DEVELOPMENT.md §3 — orbit encryption scheme foundations
+* docs/dev_history/formalization/phases/PHASE_2_GROUP_ACTION_FOUNDATIONS.md — work units 2.1–2.4
 -/
 
 namespace Orbcrypt

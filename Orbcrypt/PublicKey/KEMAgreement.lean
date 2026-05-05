@@ -41,7 +41,7 @@ CSIDH-style Diffie–Hellman requires the group action to commute
 
 ## References
 
-* `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md` — phase document.
+* `docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md` — phase document.
 * `docs/PUBLIC_KEY_ANALYSIS.md` — full feasibility analysis.
 -/
 

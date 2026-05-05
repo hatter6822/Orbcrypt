@@ -12,7 +12,7 @@ import Orbcrypt.Crypto.Scheme
 # Orbcrypt.Crypto.Security
 
 IND-CPA security game and advantage definition: `Adversary` structure,
-`hasAdvantage`, and `IsSecure` predicate. Formalizes DEVELOPMENT.md §4.3.
+`hasAdvantage`, and `IsSecure` predicate. Formalizes docs/DEVELOPMENT.md §4.3.
 
 ## Main definitions
 
@@ -48,7 +48,7 @@ orbit representatives `reps : M → X` as public parameters but does NOT see
 the secret group `G`.
 
 This captures IND-1-CPA (single-query, no oracle). The full IND-CPA with
-adaptive oracle queries (DEVELOPMENT.md §8.2) is beyond the current scope.
+adaptive oracle queries (docs/DEVELOPMENT.md §8.2) is beyond the current scope.
 
 ### Game asymmetry (audit F-02)
 
@@ -65,9 +65,9 @@ detect collisions that `IsSecureDistinct` rules out.
 
 ## References
 
-* DEVELOPMENT.md §4.3 — adversary model and IND-CPA game
-* formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.4–3.6
-* docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 5 (Workstream B1) — F-02 resolution
+* docs/DEVELOPMENT.md §4.3 — adversary model and IND-CPA game
+* docs/dev_history/formalization/phases/PHASE_3_CRYPTOGRAPHIC_DEFINITIONS.md — work units 3.4–3.6
+* docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md § 5 (Workstream B1) — F-02 resolution
 -/
 
 namespace Orbcrypt
@@ -80,7 +80,7 @@ variable {G : Type*} {X : Type*} {M : Type*}
 
 /--
 A deterministic adversary for the IND-1-CPA game. Formalizes the adversary
-model from DEVELOPMENT.md §4.3.
+model from docs/DEVELOPMENT.md §4.3.
 
 Since we work in a deterministic setting (no probability monad), the adversary
 is a pair of pure functions:

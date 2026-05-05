@@ -121,11 +121,11 @@ even though the elementwise comparison permits much more.
 
 ## References
 
-* DEVELOPMENT.md §6.2.1 — QC code key expansion pipeline
+* docs/DEVELOPMENT.md §6.2.1 — QC code key expansion pipeline
 * `docs/PARAMETERS.md` §2 — λ ∈ {80, 128, 192, 256} parameter recommendations
   (cross-referenced from `HGOEKeyExpansion`'s `lam` parameter)
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 9, work units 9.1–9.3, 9.6–9.7
-* `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 — Workstream L1
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 9, work units 9.1–9.3, 9.6–9.7
+* `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7.1 — Workstream L1
   (witnessed-compression refactor, 2026-04-22)
 * `docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md` § 10 — Workstream G
   (λ-parameterised `HGOEKeyExpansion`, 2026-04-25)
@@ -236,7 +236,7 @@ theorem seed_kem_correctness
 -- ============================================================================
 
 /--
-Specification of the 7-stage HGOE key expansion pipeline (DEVELOPMENT.md §6.2.1).
+Specification of the 7-stage HGOE key expansion pipeline (docs/DEVELOPMENT.md §6.2.1).
 
 This is a **specification** (Prop-valued fields), not an executable function.
 An implementation must satisfy these properties. The pipeline is:
@@ -248,7 +248,7 @@ An implementation must satisfy these properties. The pipeline is:
 3. **Automorphism computation:** Compute `PAut(C₀)` with sufficient order
    for λ-bit security.
 4. **Weight uniformity:** Ensure all orbit representatives have the same
-   Hamming weight (defense against the attack in COUNTEREXAMPLE.md).
+   Hamming weight (defense against the attack in docs/COUNTEREXAMPLE.md).
 
 **Parameters:**
 - `lam`: security parameter λ (in bits). Production deployments use
@@ -262,7 +262,7 @@ An implementation must satisfy these properties. The pipeline is:
 - `M`: message type (orbit indices)
 
 **Note:** Fields 1–3 specify structural properties of the code construction.
-Field 4 specifies the Hamming weight defense from COUNTEREXAMPLE.md.
+Field 4 specifies the Hamming weight defense from docs/COUNTEREXAMPLE.md.
 
 **Pre-Workstream-G note (audit 2026-04-23, finding V1-13 / H-03 / Z-06 /
 D16).** Until Workstream G of the 2026-04-23 pre-release audit landed,
@@ -307,7 +307,7 @@ structure HGOEKeyExpansion (lam : ℕ) (n : ℕ) (M : Type*) where
   /-- Stage 4: orbit representative function. -/
   reps : M → Bitstring n
   /-- Stage 4: all representatives have the same Hamming weight
-      (defense against the invariant attack from COUNTEREXAMPLE.md). -/
+      (defense against the invariant attack from docs/COUNTEREXAMPLE.md). -/
   reps_same_weight : ∀ m, hammingWeight (reps m) = weight
 
 -- ============================================================================

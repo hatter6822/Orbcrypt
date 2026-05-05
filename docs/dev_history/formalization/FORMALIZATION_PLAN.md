@@ -35,13 +35,13 @@ foundation:
 | # | Result | Statement | Significance |
 |---|--------|-----------|--------------|
 | 1 | **Correctness** | Dec(Enc(m)) = m for all messages m and all group elements g used in encryption | The scheme faithfully recovers encrypted messages |
-| 2 | **Invariant Attack Theorem** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (existence of one distinguishing `(g₀, g₁)` pair; informal shorthand "complete break" — see `CLAUDE.md` row #2 for the three-convention advantage catalogue) | Machine-checked proof of the vulnerability from COUNTEREXAMPLE.md |
+| 2 | **Invariant Attack Theorem** | If a G-invariant function separates two message orbits, there exists an adversary `A` with `hasAdvantage scheme A` (existence of one distinguishing `(g₀, g₁)` pair; informal shorthand "complete break" — see `CLAUDE.md` row #2 for the three-convention advantage catalogue) | Machine-checked proof of the vulnerability from docs/COUNTEREXAMPLE.md |
 | 3 | **Conditional Security Reduction** | OIA ⟹ IND-1-CPA | If the Orbit Indistinguishability Assumption holds, the scheme is secure against single-query chosen-plaintext attacks |
 
 These three results together establish: the scheme is correct, its failure mode
 is precisely characterized, and under a stated assumption it is secure. The
 formalization provides the highest possible assurance that the mathematical
-arguments in the development document (DEVELOPMENT.md §§4–8) are sound.
+arguments in the development document (docs/DEVELOPMENT.md §§4–8) are sound.
 
 ### What We Do Not Formalize
 
@@ -76,7 +76,7 @@ is hard" in RSA. We state it as an axiom and prove that security follows from it
 
 | Item | Reason |
 |------|--------|
-| Probabilistic reasoning | Requires a probability monad or CryptHOL port; deferred to future work (see DEVELOPMENT.md §10.7) |
+| Probabilistic reasoning | Requires a probability monad or CryptHOL port; deferred to future work (see docs/DEVELOPMENT.md §10.7) |
 | PPT adversary modeling | Computational complexity classes are not natively expressible in Lean 4's type theory |
 | CFI graph construction | Complex combinatorial construction with limited formalization value relative to effort |
 | Code equivalence reduction | Requires algebraic coding theory beyond current Mathlib coverage |
@@ -184,7 +184,7 @@ These modules define the abstract encryption scheme and security notions.
 
 | Module | Key Definitions | Purpose |
 |--------|----------------|---------|
-| `Scheme.lean` | `OrbitEncScheme`, `encrypt`, `decrypt` | Formalizes AOE syntax from DEVELOPMENT.md §4.1 |
+| `Scheme.lean` | `OrbitEncScheme`, `encrypt`, `decrypt` | Formalizes AOE syntax from docs/DEVELOPMENT.md §4.1 |
 | `Security.lean` | `Adversary`, `hasAdvantage`, `IsSecure`, `hasAdvantageDistinct`, `IsSecureDistinct`, `isSecure_implies_isSecureDistinct` (B1) | Deterministic abstraction of IND-CPA from §4.3; distinct-challenge variant formalises the classical game (audit F-02) |
 | `OIA.lean` | `OIA` (`Prop` definition); `det_oia_false_of_distinct_reps` machine-checked vacuity witness (Workstream E of 2026-04-23 audit, finding C-07) | Formalizes §5.2 as a `Prop`-valued definition (not `axiom`); the vacuity witness refutes `OIA scheme` whenever `scheme.reps m₀ ≠ scheme.reps m₁`, replacing the prose-only disclosure in the module docstring |
 
@@ -194,9 +194,9 @@ The three headline results of the formalization.
 
 | Module | Theorem | Formalizes |
 |--------|---------|------------|
-| `Correctness.lean` | `decrypt(encrypt(g, m)) = some m` | DEVELOPMENT.md §4.2 |
-| `InvariantAttack.lean` | Separating invariant implies adversary with Adv = 1/2 | DEVELOPMENT.md §4.4 |
-| `OIAImpliesCPA.lean` | OIA implies IND-1-CPA security (`oia_implies_1cpa`); distinct-challenge corollary `oia_implies_1cpa_distinct` for the classical game (Workstream K1, F-AUDIT-2026-04-21-M1) | DEVELOPMENT.md §8.1 |
+| `Correctness.lean` | `decrypt(encrypt(g, m)) = some m` | docs/DEVELOPMENT.md §4.2 |
+| `InvariantAttack.lean` | Separating invariant implies adversary with Adv = 1/2 | docs/DEVELOPMENT.md §4.4 |
+| `OIAImpliesCPA.lean` | OIA implies IND-1-CPA security (`oia_implies_1cpa`); distinct-challenge corollary `oia_implies_1cpa_distinct` for the classical game (Workstream K1, F-AUDIT-2026-04-21-M1) | docs/DEVELOPMENT.md §8.1 |
 
 ### Layer 4: Concrete Construction (`Construction/`)
 
@@ -448,4 +448,4 @@ For detailed implementation guidance, dependency analysis, and risk assessment
 for each phase, see the individual phase documents linked in
 [§6](#6-development-roadmap).*
 
-*Parent document: [DEVELOPMENT.md](../DEVELOPMENT.md)*
+*Parent document: [docs/DEVELOPMENT.md](../../DEVELOPMENT.md)*

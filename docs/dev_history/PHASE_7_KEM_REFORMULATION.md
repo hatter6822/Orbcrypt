@@ -10,7 +10,7 @@
 
 ## Weeks 17–19 | 8 Work Units | ~24 Hours
 
-*Part of the [Orbcrypt Practical Improvements Plan](../../formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
+*Part of the [Orbcrypt Practical Improvements Plan](../../docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md)*
 
 > **Note (2026-04-22, Workstream L5):** Work Unit 7.6a's original
 > `kem_key_constant` theorem (which extracted the second conjunct of

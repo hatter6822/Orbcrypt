@@ -39,7 +39,7 @@ downstream cryptographic definitions.
 
 * Mathlib `PMF` — `Mathlib.Probability.ProbabilityMassFunction.Basic`
 * Mathlib `PMF.uniformOfFintype` — `Mathlib.Probability.Distributions.Uniform`
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work unit 8.1
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 8, work unit 8.1
 -/
 
 namespace Orbcrypt

@@ -52,7 +52,7 @@ the strongest in the Orbcrypt reduction chain.
 
 ## References
 
-* docs/planning/PHASE_12_HARDNESS_ALIGNMENT.md — work units 12.4–12.5
+* docs/dev_history/PHASE_12_HARDNESS_ALIGNMENT.md — work units 12.4–12.5
 * Grochow & Qiao (2021) — Tensor Isomorphism complexity
 * MEDS signature scheme — NIST PQC submission using MCE/ATFE
 -/
@@ -435,7 +435,7 @@ section ConcreteTensor
     `SurrogateTensor F` (Fix B). Discharging the surrogate with the
     concrete `tensorAction` once `Fintype (GL (Fin n) F)` lands is a
     research-scope follow-up
-    (`docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). -/
+    (`docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1). -/
 noncomputable def tensorOrbitDist
     {G_TI : Type*} [Group G_TI] [Fintype G_TI] [Nonempty G_TI]
     [MulAction G_TI (Tensor3 n F)]

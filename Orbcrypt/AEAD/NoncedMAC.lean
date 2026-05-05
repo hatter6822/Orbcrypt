@@ -143,7 +143,7 @@ reduction itself lives in `Orbcrypt/AEAD/NoncedMACSecurity.lean`.
   model.)
 * docs/planning/PLAN_R_05_11_15.md § R-05 — research-scope discharge
   plan for this workstream.
-* docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md
+* docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md
   § 8.1 — research-scope catalogue.
 -/
 

@@ -1126,7 +1126,7 @@ sanity check that the algebraic arguments are coherent.
    `aead_correctness`, `hybrid_correctness`, `comm_pke_correctness`. No
    OIA dependency.
 3. **Invariant-attack theorem** is non-vacuous and directly formalizes
-   COUNTEREXAMPLE.md. It is perhaps the highest-value theorem in the
+   docs/COUNTEREXAMPLE.md. It is perhaps the highest-value theorem in the
    project — it gives a *falsifiable* design rule (reps must have equal
    Hamming weight, or more generally, must not be separated by any
    G-invariant).
@@ -1166,11 +1166,11 @@ sanity check that the algebraic arguments are coherent.
 
 ### 6.3 Threat model coverage
 
-Against the stated threats from DEVELOPMENT.md and COUNTEREXAMPLE.md:
+Against the stated threats from docs/DEVELOPMENT.md and docs/COUNTEREXAMPLE.md:
 
 | Threat | Formalization status |
 |--------|---------------------|
-| Invariant attack (COUNTEREXAMPLE.md) | Fully formalized (`invariant_attack`, `hgoe_weight_attack`). |
+| Invariant attack (docs/COUNTEREXAMPLE.md) | Fully formalized (`invariant_attack`, `hgoe_weight_attack`). |
 | Hamming weight leak | Fully formalized (`hammingWeight_invariant_subgroup` + `hgoe_weight_attack`). |
 | Hamming weight defense | Formalized at the design level (`same_weight_not_separating`). |
 | Nonce misuse (cross-KEM) | Formalized as a warning theorem (`nonce_reuse_leaks_orbit`). |
@@ -1207,7 +1207,7 @@ for:
 
 **Conclusion:** No new CVE-worthy vulnerability discovered. The
 formalization-gap concerns (F-01, F-09, F-20) are already publicly
-documented in the project (DEVELOPMENT.md §8, CLAUDE.md, the module
+documented in the project (docs/DEVELOPMENT.md §8, CLAUDE.md, the module
 docstrings of `Crypto/OIA.lean` and `Crypto/CompOIA.lean`). They are
 **research limitations**, not hidden flaws.
 
@@ -1317,10 +1317,10 @@ Ordered by impact × tractability.
 
 ### 8.5 Documentation
 
-22. **Add a §"Vacuity map" to DEVELOPMENT.md** summarizing §5.1 of this
+22. **Add a §"Vacuity map" to docs/DEVELOPMENT.md** summarizing §5.1 of this
     audit so readers of the main spec understand which theorems are
     content-bearing vs. vacuously true.
-23. **Add a "Phase 13 limitations" section to DEVELOPMENT.md** citing
+23. **Add a "Phase 13 limitations" section to docs/DEVELOPMENT.md** citing
     `CombineImpossibility.lean` and `symmetric_key_agreement_limitation`.
 
 ---

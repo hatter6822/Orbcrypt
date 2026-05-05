@@ -286,9 +286,9 @@ a single underlying defect; the plan treats them as one work unit.
 | **C-13a** | INFO | § C | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **F-03a** | INFO | § F | **C** | C6 (docstring polish) | no-action (verified disclosed) |
 | **R-09 / R-12 / R-13** ✅ | research | § N-04 | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
-| **R-01** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
-| **R-07** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
-| **R-14 / R-08 / R-13⁺ / R-16** ✅ | research | (audit § 8.1, plan `docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 / § R-13⁺ / § R-16) | **D** | discharged 2026-05-01 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-01** ✅ | research | (audit § 8.1, plan `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-07** ✅ | research | (audit § 8.1, plan `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07) | **D** | discharged 2026-04-30 (see § 8.3) | **DISCHARGED PRE-1.0** |
+| **R-14 / R-08 / R-13⁺ / R-16** ✅ | research | (audit § 8.1, plan `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 / § R-13⁺ / § R-16) | **D** | discharged 2026-05-01 (see § 8.3) | **DISCHARGED PRE-1.0** |
 | **R-05 framework** ⚙️ | research | (audit § 8.1, plan `docs/planning/PLAN_R_05_11_15.md` § R-05) | **D** | framework landed 2026-05-01: `Orbcrypt/AEAD/NoncedMAC.lean` + `Orbcrypt/AEAD/NoncedMACSecurity.lean` deliver `NoncedMAC` structure, `IsPRF` Prop, `idealRandomOraclePRF` 0-PRF non-vacuity, concrete `nonceCarterWegmanMAC` / `nonceBitstringPolynomialMAC` specialisations, IsPRF + IsEpsilonAXU non-vacuity witnesses, trivial `_le_one` Q-time SUF-CMA bounds, and `r05_research_scope_disclosure`. Headline reduction theorem with bound `Q · ε_h + ε_p + 1/|Tag|` is **research-scope R-05⁺**. Patch bump 0.3.0 → 0.3.1. | **PARTIAL DISCHARGE PRE-1.0 (framework only)** |
 | **R-15-residual-CE-reverse / R-15-residual-TI-reverse / R-15-residual-TI-forward-matrix** | research | § N-04 | **D** | n/a (catalogue) | v1.1+ / v2.0 |
 
@@ -1208,7 +1208,7 @@ snapshot's `version retains 0.1.5` or the Workstream-N1 `0.1.4 →
   the 2026-04-29 comprehensive audit, which flagged the
   absence of CLAUDE.md changelog entries for these
   intermediate bumps. Workstream-A4 of
-  `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+  `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
   is the implementation vehicle.
   ```
 
@@ -2095,10 +2095,10 @@ current status.
 | **R-09** ✅ | Discharge of `h_step` in `indQCPA_from_perStepBound` from `ConcreteOIA scheme ε` alone — per-coordinate marginal-independence over `uniformPMFTuple` | CLAUDE.md (Workstream C of audit 2026-04-23, finding V1-8 / C-13 / D10) | ~40-60 hours | **DISCHARGED 2026-04-30** by `indQCPA_from_concreteOIA` (`Crypto/CompSecurity.lean`); see § 8.3 below |
 | **R-12** ✅ | Tight `1/4` ε-bound on `ObliviousSamplingConcreteHiding` for the `concreteHidingBundle` + `concreteHidingCombine` fixture (post-Workstream-I non-degenerate fixture) | CLAUDE.md (Workstream I, audit 2026-04-23 / 2026-04-25 honest-delivery refactor) | ~20-30 hours | **DISCHARGED 2026-04-30** by `concreteHiding_tight` + `concreteHiding_tight_attained` (`PublicKey/ObliviousSampling.lean`); see § 8.3 below |
 | **R-13** ✅ | `Bitstring n`-typed Carter–Wegman analogue making INT-CTXT compose with HGOE (originally framed as "`Bitstring n → ZMod p` adapter"; the discharge takes the cleaner approach of generalising Carter–Wegman to a polynomial-evaluation hash typed at `Bitstring n` directly) | CLAUDE.md (Workstream A finding V1-7 / D4 / I-08 of 2026-04-23 audit) | ~80-120 hours | **DISCHARGED 2026-04-30** by `bitstringPolynomialMAC_int_ctxt` (`AEAD/BitstringPolynomialMAC.lean`); see § 8.3 below |
-| **R-14** ✅ | Generic probabilistic MAC SUF-CMA framework: `MACAdversary`, `forgeryAdvantage`, `IsSUFCMASecure`, plus the headline 1-time SUF-CMA reduction `isSUFCMASecure_of_isEpsilonSU2` (Stinson 1994 Theorem 1) and Q-time NEGATIVE theorem | `docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 | ~50-80 hours | **DISCHARGED 2026-05-01** by `Orbcrypt/AEAD/MACSecurity.lean` (NEW module) + extensions to `Orbcrypt/Probability/UniversalHash.lean` (`IsEpsilonSU2`, `IsEpsilonAXU`, corollary chain) |
-| **R-08** ✅ | Carter–Wegman SUF-CMA specialisation: `(1/p)`-SU2, 1-time SUF-CMA, Q-time NEGATIVE | `docs/planning/PLAN_R_01_07_08_14_16.md` § R-08 | ~20-30 hours | **DISCHARGED 2026-05-01** by 5 new declarations in `AEAD/CarterWegmanMAC.lean` (`carterWegmanHash_isEpsilonSU2`, `_isEpsilonAXU`, `carterWegmanMAC_isSUFCMASecure`, `carterWegmanHash_isKeyRecoverableForSomeQueries`, `not_carterWegmanMAC_isQtimeSUFCMASecure`) |
-| **R-13⁺** ✅ | Bitstring-polynomial SUF-CMA specialisation: `(n/p)`-SU2, 1-time SUF-CMA, Q-time NEGATIVE | `docs/planning/PLAN_R_01_07_08_14_16.md` § R-13⁺ | ~30-40 hours | **DISCHARGED 2026-05-01** by 5 new declarations in `AEAD/BitstringPolynomialMAC.lean` (`bitstringPolynomialHash_isEpsilonSU2`, etc.) |
-| **R-16** ✅ | HGOE invariants beyond Hamming weight: blockSum, bitParity, sortedBits | `docs/planning/PLAN_R_01_07_08_14_16.md` § R-16 | ~30-40 hours | **DISCHARGED 2026-05-01** by `Orbcrypt/Construction/HGOEInvariants.lean` (NEW module, 15 declarations: 5 for blockSum + 5 for bitParity + 5 for sortedBits) |
+| **R-14** ✅ | Generic probabilistic MAC SUF-CMA framework: `MACAdversary`, `forgeryAdvantage`, `IsSUFCMASecure`, plus the headline 1-time SUF-CMA reduction `isSUFCMASecure_of_isEpsilonSU2` (Stinson 1994 Theorem 1) and Q-time NEGATIVE theorem | `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-14 | ~50-80 hours | **DISCHARGED 2026-05-01** by `Orbcrypt/AEAD/MACSecurity.lean` (NEW module) + extensions to `Orbcrypt/Probability/UniversalHash.lean` (`IsEpsilonSU2`, `IsEpsilonAXU`, corollary chain) |
+| **R-08** ✅ | Carter–Wegman SUF-CMA specialisation: `(1/p)`-SU2, 1-time SUF-CMA, Q-time NEGATIVE | `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-08 | ~20-30 hours | **DISCHARGED 2026-05-01** by 5 new declarations in `AEAD/CarterWegmanMAC.lean` (`carterWegmanHash_isEpsilonSU2`, `_isEpsilonAXU`, `carterWegmanMAC_isSUFCMASecure`, `carterWegmanHash_isKeyRecoverableForSomeQueries`, `not_carterWegmanMAC_isQtimeSUFCMASecure`) |
+| **R-13⁺** ✅ | Bitstring-polynomial SUF-CMA specialisation: `(n/p)`-SU2, 1-time SUF-CMA, Q-time NEGATIVE | `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-13⁺ | ~30-40 hours | **DISCHARGED 2026-05-01** by 5 new declarations in `AEAD/BitstringPolynomialMAC.lean` (`bitstringPolynomialHash_isEpsilonSU2`, etc.) |
+| **R-16** ✅ | HGOE invariants beyond Hamming weight: blockSum, bitParity, sortedBits | `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-16 | ~30-40 hours | **DISCHARGED 2026-05-01** by `Orbcrypt/Construction/HGOEInvariants.lean` (NEW module, 15 declarations: 5 for blockSum + 5 for bitParity + 5 for sortedBits) |
 | **R-15-residual-CE-reverse** | PetrankRoth Layers 4.1–4.10 (full marker-forcing reverse direction), Layer 5 (`prEncode_iff` assembly), Layer 6 (non-degeneracy bridge), Layer 7 (`petrankRoth_isInhabitedKarpReduction`) | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` § 4–§ 7 | ~800-1500 LOC, 7-14 days dedicated work | tracked since 2026-04-25 |
 | **R-15-residual-TI-reverse** | Grochow–Qiao Layer T5 rigidity argument | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` Layer T5 | ~80 pages on paper, ~1,800 LOC of Lean | tracked since 2026-04-25 |
 | **R-15-residual-TI-forward-matrix** | Grochow–Qiao Layer T3.6 full matrix-action upgrade | `docs/planning/AUDIT_2026-04-25_R15_KARP_REDUCTIONS_PLAN.md` Layer T3.6 | ~400 LOC | tracked since 2026-04-25 |
@@ -2194,7 +2194,7 @@ catalogue convention, not a permanent freeze:
   18 declarations, NEW module, all on standard-trio axioms.
 
 * **R-01 — discharged 2026-04-30** (per
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01). Closed by
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01). Closed by
   `indCPAAdvantage_invariantAttackAdversary_eq_one`
   (`Theorems/InvariantAttack.lean`). Strengthens the existential
   `invariant_attack` headline (existence of one distinguishing
@@ -2241,7 +2241,7 @@ R-13; zero `sorryAx`; all on standard-trio axioms. Module count
 unchanged at 77. `lakefile.lean`: 0.2.2 → 0.2.3.
 
 * **R-07 — discharged 2026-04-30** (per
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07). Closed by
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07). Closed by
   `combinerDistinguisherAdvantage_ge_inv_card` (and its corollary
   `no_concreteOIA_below_inv_card_of_combiner`) in
   `Orbcrypt/PublicKey/CombineImpossibility.lean`. Closes the

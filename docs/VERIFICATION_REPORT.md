@@ -389,7 +389,7 @@ freshness condition.
 **Build status.** All six modules compile cleanly.
 
 **Sorry classification (Phase 16 work unit 16.3c).** Phase 8's planning
-document (`docs/planning/PHASE_8_PROBABILISTIC_FOUNDATIONS.md` work unit
+document (`docs/dev_history/PHASE_8_PROBABILISTIC_FOUNDATIONS.md` work unit
 8.10) originally allowed a "multi-query skeleton" `sorry` as an
 intentional placeholder for the Hidden Subgroup Problem step. **That
 `sorry` no longer exists in the source.** The Workstream E8 work unit
@@ -470,7 +470,7 @@ of GL³, Tensor Isomorphism reduction.
 plus the Workstream E ε-bounded ConcreteHardnessChain.
 `Hardness/Encoding.lean` — orbit-preserving encoding interface
 (reference target for concrete discharges of Workstream G's per-encoding
-reduction Props; see `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
+reduction Props; see `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md`
 § 15.1 for the CFI / Grochow–Qiao research-scope discharges).
 
 ### Phase 13 — Public-key extension scaffolding
@@ -673,7 +673,7 @@ Orbcrypt.Construction.HGOE        Build completed successfully
 ```
 
 The Phase 4 axiom expectations (from
-`docs/planning/PHASE_16_FORMAL_VERIFICATION.md` work unit 16.9) are
+`docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md` work unit 16.9) are
 preserved exactly:
 
 ```
@@ -774,7 +774,7 @@ limitations, each documented in source and tracked as future work:
    `ConcreteGIOIAImpliesConcreteOIA_viaEncoding`) via the CFI graph
    gadget or the structure-tensor encoding is a research-scope
    follow-up tracked in
-   `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1. This
+   `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.1. This
    is documented in `Orbcrypt.lean`'s axiom transparency report under
    "Hardness parameter Props".
 
@@ -1317,7 +1317,7 @@ The formalization's public release posture (detailed):
 
 ## Phase 16 exit criteria checklist
 
-The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
+The exit criteria from `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md`
 §"Phase Exit Criteria":
 
 - [x] (1) All Phase 7 theorems compile with zero sorry and zero
@@ -1484,7 +1484,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   Probabilistic MAC SUF-CMA framework + specialisations + HGOE
   invariants beyond Hamming weight)** — Four additional research-
   scope items from the 2026-04-29 audit plan (§ 8.1, plan
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 /
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-14 / § R-08 /
   § R-13⁺ / § R-16) discharged across two new modules and two
   in-place extensions of existing modules:
 
@@ -1570,7 +1570,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 * **2026-04-30 (Workstream R-07 — Cross-orbit advantage lower bound
   for equivariant combiners)** — One additional research-scope
   item from the 2026-04-29 audit plan (§ 8.1, plan
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-07) discharged
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-07) discharged
   within the existing
   `Orbcrypt/PublicKey/CombineImpossibility.lean` module:
 
@@ -1622,7 +1622,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 * **2026-04-30 (Workstream R-01 — Quantitative cross-orbit advantage
   lower bound)** — One additional research-scope item from the
   2026-04-29 audit plan (§ 8.1, plan
-  `docs/planning/PLAN_R_01_07_08_14_16.md` § R-01) discharged within
+  `docs/dev_history/PLAN_R_01_07_08_14_16.md` § R-01) discharged within
   the existing `Orbcrypt/Theorems/InvariantAttack.lean` module:
 
   * **R-01 — `indCPAAdvantage = 1` under separating G-invariant** (3
@@ -1943,7 +1943,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
 * **2026-04-29 (Audit 2026-04-29 — Workstream A2 documentation
   parity refresh)** — `docs/VERIFICATION_REPORT.md` headline
   numbers refreshed to 2026-04-29 reality per the
-  `docs/planning/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
+  `docs/dev_history/AUDIT_2026-04-29_COMPREHENSIVE_WORKSTREAM_PLAN.md`
   Strategy a + b hybrid.  This landing closes audit finding L-04
   (HIGH).
 
@@ -2713,13 +2713,13 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     application.
 
   **Traceability.** Findings M2–M6 resolved. See
-  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7 for the
+  `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 7 for the
   specification; Appendix A for the finding-to-work-unit mapping.
   Every renamed declaration propagated through `Orbcrypt.lean`,
-  `CLAUDE.md`, `DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
+  `CLAUDE.md`, `docs/DEVELOPMENT.md`, `docs/PUBLIC_KEY_ANALYSIS.md`,
   `docs/USE_CASES.md`, `docs/MORE_USE_CASES.md`, this report,
-  `formalization/FORMALIZATION_PLAN.md`,
-  `docs/planning/PHASE_13_PUBLIC_KEY_EXTENSION.md`, and the two
+  `docs/dev_history/formalization/FORMALIZATION_PLAN.md`,
+  `docs/dev_history/PHASE_13_PUBLIC_KEY_EXTENSION.md`, and the two
   audit scripts (`scripts/audit_phase_16.lean`,
   `scripts/audit_print_axioms.lean`).
 
@@ -2806,7 +2806,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     scheme level.
 
   **Traceability.** Findings L1–L8 resolved. See
-  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 8 for the
+  `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 8 for the
   specification; Appendix A for the finding-to-work-unit mapping.
 
   **Verification.** All 38 modules build clean post-Workstream-M
@@ -2856,7 +2856,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     `.lean` source requires nested block comments. The optional
     engineering upgrade to a Perl recursive pattern is
     cross-referenced to
-    `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.3.
+    `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 15.3.
 
   * **N2 (I2), N3 (I3), N4 (I4) — no-action items.** The audit
     plan identifies three other INFO-class findings as
@@ -2866,13 +2866,13 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     Phase 15 section; `indQCPA_from_perStepBound`'s `h_step`
     hypothesis gap (renamed from `indQCPA_bound_via_hybrid` in
     Workstream C of the 2026-04-23 audit) is already tracked in
-    `docs/planning/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b and
+    `docs/dev_history/AUDIT_2026-04-18_WORKSTREAM_PLAN.md` § E8b and
     as research milestone R-09 of the 2026-04-23 plan;
     `scripts/setup_lean_env.sh` passed its audit with no
     findings.
 
   **Traceability.** Findings I1 and I5 resolved. See
-  `docs/planning/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 9 for
+  `docs/dev_history/AUDIT_2026-04-21_WORKSTREAM_PLAN.md` § 9 for
   the specification; Appendix A for the finding-to-work-unit
   mapping.
 
@@ -2949,7 +2949,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     added pairing the four reclassified `CLAUDE.md` Conditional
     rows with their hypotheses and their standalone siblings
     (V1-3 / audit finding M-04).
-  * **`DEVELOPMENT.md`.** §7.1 (Hamming weight attack) gains an
+  * **`docs/DEVELOPMENT.md`.** §7.1 (Hamming weight attack) gains an
     explicit necessary-but-not-sufficient statement (audit
     finding F-05); §8.2 (multi-query) gains a "Scope of the Lean
     bound" paragraph on the `h_step` user-hypothesis obligation
@@ -3112,7 +3112,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
     snapshot, Workstream-A §8.2 cross-reference, Workstream-N
     N3 (I3) callout, and the axiom-transparency exit-criteria
     block all renamed with historical pre-rename names preserved
-    in the migration comments. `DEVELOPMENT.md`: §8.2 prose
+    in the migration comments. `docs/DEVELOPMENT.md`: §8.2 prose
     renamed throughout. `Orbcrypt.lean`: dependency listing,
     Vacuity map, axiom-transparency `#print axioms` block
     renamed; a new "Workstream C Snapshot" section at the end of
@@ -3480,7 +3480,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   that the four tier-witnesses are **distinct** obligations,
   not one obligation with a sloppy bound.
 
-  **G3.** `DEVELOPMENT.md §6.2.1` gains a paragraph at the top
+  **G3.** `docs/DEVELOPMENT.md §6.2.1` gains a paragraph at the top
   of the "HGOE.Setup(1^λ) — Detailed Pipeline" section cross-
   linking the prose specification to the λ-parameterised Lean
   structure and disclosing the spelling correspondence (`lam`
@@ -3492,7 +3492,7 @@ The exit criteria from `docs/planning/PHASE_16_FORMAL_VERIFICATION.md`
   Workstream-G fix to the pre-G λ-coverage gap.
 
   **Files touched.** `Orbcrypt/KeyMgmt/SeedKey.lean`,
-  `scripts/audit_phase_16.lean`, `DEVELOPMENT.md`,
+  `scripts/audit_phase_16.lean`, `docs/DEVELOPMENT.md`,
   `docs/PARAMETERS.md`, `Orbcrypt.lean` (Workstream-G snapshot
   appended at the end of the transparency report), `CLAUDE.md`
   (status-tracker checkbox, module-line note, change-log

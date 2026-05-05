@@ -32,8 +32,8 @@ a hash. Actual message encryption is delegated to a standard DEM (e.g., AES-GCM)
 
 ## References
 
-* DEVELOPMENT.md §4.1 — AOE scheme definition (original architecture)
-* formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 7 (KEM Reformulation)
+* docs/DEVELOPMENT.md §4.1 — AOE scheme definition (original architecture)
+* docs/dev_history/formalization/PRACTICAL_IMPROVEMENTS_PLAN.md — Phase 7 (KEM Reformulation)
 -/
 
 namespace Orbcrypt
