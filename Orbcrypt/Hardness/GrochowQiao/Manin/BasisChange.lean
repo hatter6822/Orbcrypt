@@ -97,6 +97,16 @@ variable {I : Type u} {F : Type v}
 variable [Field F]
 variable [Fintype I] [DecidableEq I]
 
+-- The `linter.unusedSectionVars` linter fires on the
+-- `IsBasisChangeRelated.id` constructor whose proof doesn't need
+-- the section-level `[Fintype I] [DecidableEq I]` binders directly
+-- (the structural argument is purely matrix-algebraic).  We keep
+-- both binders at the section level for ergonomic consumption — the
+-- predicate `Manin.IsBasisChangeRelated` is downstream-consumed
+-- through `Manin.linearMapOfBasisChange` and
+-- `Manin.algEquivOfTensorIso` (TensorStabilizer.lean) which DO
+-- require both.  Section-wide binding keeps the typeclass inference
+-- consistent across the Manin chain modules.
 set_option linter.unusedSectionVars false
 
 -- ============================================================================

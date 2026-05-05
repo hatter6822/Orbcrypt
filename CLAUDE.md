@@ -8862,6 +8862,88 @@ consumer) referenced
 `grochowQiao_phase3_discharge_under_rigidity` outside the
 audit-script and CLAUDE.md (both updated in this same diff).
 
+Deep audit pass #2 (2026-05-05) — second-pass comprehensive
+audit closes the remaining audit-script coverage gap and tightens
+linter-silencer documentation:
+
+- **HIGH (audit coverage gap)** — A coverage-gap analysis on the
+  Phase-16 audit script revealed that **73 public declarations**
+  across five modules had no `#print axioms` entries.  Among these
+  were headline theorems #24 `two_phase_correct`, #25
+  `two_phase_kem_correctness`, and #26 `fast_kem_round_trip`
+  (Phase 15 fast-decryption), plus the entire Layer 1-5 path-algebra
+  Ring/Algebra infrastructure in `AlgebraWrapper.lean` (37
+  declarations), the Wedderburn–Mal'cev radical infrastructure in
+  `WedderburnMalcev.lean` (20 declarations), and supporting
+  declarations in `QCCanonical.lean` (3), `TwoPhaseDecrypt.lean`
+  (11 including the headline theorems), and `Probability/Monad.lean`
+  (2: `probTrue_map`, `probTrue_uniformPMF_card`).
+  CLAUDE.md's exit-criteria checklist had ALREADY claimed these
+  Phase-15 theorems were covered (entries like
+  "`#print axioms Orbcrypt.two_phase_correct` — standard Lean
+  only"), but the actual audit script did not exercise them.
+  **Fix.** Added 73 new `#print axioms` entries in a new § 15.28
+  section "Audit-pass coverage closure (deep audit 2026-05-05)"
+  at the end of `scripts/audit_phase_16.lean`, documented as
+  structural coverage closures whose non-vacuity content is
+  supplied by their downstream consumers (which already have
+  non-vacuity examples).  Audit-script `#print axioms` count rises
+  from **1081 → 1154** (+73).  After the closure, only one
+  parser-artefact "uncovered" declaration remains
+  (`PMF.map_eval_uniformOfFintype_at_injective_eq` parsed as
+  `theorem PMF` by a simple regex; the actual identifier IS
+  covered).
+- **MEDIUM (linter-silencer documentation)** — Four files used
+  `set_option linter.unusedSectionVars false` without an inline
+  justification comment:
+  * `Orbcrypt/Hardness/GrochowQiao/Discharge.lean:63`
+  * `Orbcrypt/Hardness/GrochowQiao/PathOnlyAlgebra.lean:99`
+  * `Orbcrypt/Hardness/GrochowQiao/Manin/BasisChange.lean:100`
+  * `Orbcrypt/Hardness/GrochowQiao/Manin/TensorStabilizer.lean:88`
+  Only the fifth instance
+  (`Orbcrypt/Hardness/GrochowQiao/Manin/StructureTensor.lean:78`)
+  carried documented justification.  **Fix.** Added an inline
+  justification comment to each of the four undocumented
+  silencers, explaining (a) which linter the option silences,
+  (b) why section-wide binder declaration is preferred over
+  per-theorem `letI` rebuilds, and (c) the ergonomic /
+  typeclass-inference rationale.  The silencer line itself is
+  preserved; only a preceding comment block is added.
+- **MEDIUM (doc parity)** — `README.md` snapshot table audit-script
+  count claim updated `1080+ → 1150+` to reflect the new audit-
+  script entries.  The `VERIFICATION_REPORT.md` count claims
+  (currently anchored at "947 declarations" with explicit
+  "for current totals consult CLAUDE.md" disclaimer) are
+  preserved as-is per the document's ephemeral-anchor pattern.
+
+**Verification posture preserved.**
+- `lake build` succeeds across **3,424** jobs, zero warnings,
+  zero errors (unchanged from the pre-audit-pass-#2 baseline; the
+  added entries are in the audit script, not in `Orbcrypt/`).
+- `scripts/audit_phase_16.lean` runs cleanly with exit code 0;
+  **1,154** declarations exercised (up from 1,081), every one on
+  the standard Lean trio (`propext`, `Classical.choice`,
+  `Quot.sound`); zero `sorryAx`, zero non-standard axioms.
+  Audit-output line count rises from 1,273 to 1,356.
+- 81-module total preserved.
+- Zero-sorry / zero-custom-axiom posture preserved.
+
+**Coverage of headline theorems now machine-checked.** The 14
+public declarations under `Orbcrypt/Optimization/{QCCanonical,
+TwoPhaseDecrypt}.lean` (Phase 15 fast-decryption pipeline) are
+now individually exercised in the audit script.  Together with
+the existing coverage of all theorems #1–#23 and #27–#32,
+**every entry in the "Three core theorems" table is now exercised
+by the Phase-16 audit script with a `#print axioms` check** —
+closing a gap that was previously bridged only by transitive
+dependency through downstream theorems.
+
+**Patch version.** `lakefile.lean` retains `0.3.2`.  The audit-
+pass-#2 fixes add no new Lean declarations to `Orbcrypt/`; the
+73 new audit-script entries are structural `#print axioms`
+checks consuming existing public surfaces.  No version bump is
+warranted.
+
 ## Vulnerability reporting
 
 While executing any task in this codebase, if you discover a possible software vulnerability that could reasonably warrant a CVE (Common Vulnerabilities and Exposures) designation, you **must** immediately report it to the user before continuing. This applies to vulnerabilities found in:

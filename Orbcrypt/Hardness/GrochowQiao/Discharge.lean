@@ -60,6 +60,15 @@ namespace Discharge
 open Orbcrypt
 open scoped BigOperators
 
+-- The `linter.unusedSectionVars` linter fires on theorems whose
+-- section-level binders (the `[CommRing F] [DecidableEq F]` etc.
+-- declared by upstream `variable` blocks) aren't strictly needed by
+-- every theorem in the module.  We carry these binders project-wide
+-- because the discharge bridges below threadthrough multiple paths
+-- (`quiverPermAlgEquiv`, `liftedSigma`, `pathBlockSubspace`) that
+-- collectively need every binder.  Suppressing the cosmetic warning
+-- is preferred over per-theorem `attribute [-instance]` /
+-- `letI`-rebuilds that would obscure the proof bodies.
 set_option linter.unusedSectionVars false
 
 -- ============================================================================
