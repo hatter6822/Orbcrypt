@@ -4407,7 +4407,7 @@ end AlgEquivFromGL3NonVacuity
 #print axioms Orbcrypt.GrochowQiao.Discharge.restrictedGL3OnPathOnlyTensor_of_rigidity
 
 -- Top-level unified discharge under GrochowQiaoRigidity.
-#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity
+#print axioms Orbcrypt.GrochowQiao.grochowQiao_pathSubspace_obligations_under_rigidity
 #print axioms Orbcrypt.GrochowQiao.grochowQiao_unified_discharge_under_rigidity
 
 namespace Phase3DischargeNonVacuity
@@ -4434,10 +4434,10 @@ example :
   paddingRankInvariant_eq_paddingSlotIndices_card 2 (fun _ _ => false)
 
 /-- **Phase 3 discharge non-vacuity: from `GrochowQiaoRigidity`, both
-Phase 3 Props discharge.** -/
+path-subspace obligations discharge.** -/
 example (h_rigidity : GrochowQiaoRigidity) (m : ℕ) :
     GL3InducesAlgEquivOnPathSubspace m ∧ RestrictedGL3OnPathOnlyTensor m :=
-  grochowQiao_phase3_discharge_under_rigidity h_rigidity m
+  grochowQiao_pathSubspace_obligations_under_rigidity h_rigidity m
 
 /-- **Phase 3 discharge non-vacuity: unified discharge (Karp + both
 Phase 3 Props) under `GrochowQiaoRigidity`.** -/

@@ -367,18 +367,18 @@ theorem grochowQiao_isInhabitedKarpReduction_full_chain
 -- R-TI Phase 3 (2026-04-28) — Discharge of Phase-3 Props from rigidity.
 -- ============================================================================
 
-/-- **Phase 3 partial-discharge under `GrochowQiaoRigidity`.**
+/-- **Path-subspace obligations discharge under `GrochowQiaoRigidity`.**
 
 Under the existing research-scope Prop `GrochowQiaoRigidity`, BOTH
-research-scope Props introduced by R-TI Phase 3
+research-scope Props naming GL³ obligations on the path subspace
 (`GL3InducesAlgEquivOnPathSubspace` and `RestrictedGL3OnPathOnlyTensor`)
 are discharged.
 
 This theorem packages the two discharge directions into a single
-conjunction, demonstrating that R-TI Phase 3's partial-discharge
+conjunction, demonstrating that the path-subspace partial-discharge
 framework reduces cleanly to the existing Stages 0–5 chain — no new
-research-scope obligation is introduced; the Phase 3 Props are
-immediate consequences of `GrochowQiaoRigidity`.
+research-scope obligation is introduced; the path-subspace
+obligations are immediate consequences of `GrochowQiaoRigidity`.
 
 See `Orbcrypt/Hardness/GrochowQiao/Discharge.lean` for the bridge
 proofs:
@@ -387,13 +387,13 @@ proofs:
 
 Combined with `grochowQiao_isInhabitedKarpReduction_under_rigidity`,
 this gives a unified package: under `GrochowQiaoRigidity`, ALL three
-end-states (Karp reduction inhabitant + both Phase 3 Props) discharge
-unconditionally.
+end-states (Karp reduction inhabitant + both path-subspace
+obligations) discharge unconditionally.
 
 When `GrochowQiaoRigidity` is discharged (research-scope
 **R-15-residual-TI-reverse**), all three end-states become
 unconditional theorems. -/
-theorem grochowQiao_phase3_discharge_under_rigidity
+theorem grochowQiao_pathSubspace_obligations_under_rigidity
     (h_rigidity : GrochowQiaoRigidity) (m : ℕ) :
     GL3InducesAlgEquivOnPathSubspace m ∧ RestrictedGL3OnPathOnlyTensor m :=
   ⟨Discharge.gl3InducesAlgEquivOnPathSubspace_of_rigidity h_rigidity m,

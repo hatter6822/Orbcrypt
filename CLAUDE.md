@@ -6603,12 +6603,19 @@ from the existing Stages 0–5 research-scope Prop `GrochowQiaoRigidity`:
   discharge).
 - **Top-level wiring** —
   `Orbcrypt/Hardness/GrochowQiao.lean`:
-  `grochowQiao_phase3_discharge_under_rigidity` packages both Phase 3
-  discharges into a conjunction under a single `GrochowQiaoRigidity`
-  hypothesis; `grochowQiao_unified_discharge_under_rigidity` is the
-  unified package showing all three end-states (Karp reduction
-  inhabitant + both Phase 3 Props) discharge from the same single
-  research-scope hypothesis.
+  `grochowQiao_pathSubspace_obligations_under_rigidity` packages both
+  Phase 3 discharges into a conjunction under a single
+  `GrochowQiaoRigidity` hypothesis;
+  `grochowQiao_unified_discharge_under_rigidity` is the unified
+  package showing all three end-states (Karp reduction inhabitant +
+  both Phase 3 Props) discharge from the same single research-scope
+  hypothesis.  (Audit 2026-05-05 deep-audit pass renamed the former
+  `grochowQiao_phase3_discharge_under_rigidity` identifier to comply
+  with CLAUDE.md's naming rule "Names describe content, never
+  provenance" — the `phase3` token is a forbidden process marker.
+  The `Phase 3` prose framing inside docstrings remains, since prose
+  is allowed to carry process markers per the rule's "Where process
+  references *are* allowed" carve-out.)
 
 **Architecture note (partial-discharge form).** The R-TI Phase 3
 plan budgeted ~3,200 LOC for Approach A. The PR delivers ~2,150 LOC
@@ -6716,7 +6723,7 @@ through `0.1.26` over the Phase 3 + audit-pass-v2 commits.
 - `#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange` / `_basis` / `_mul_basis` / `_mul` / `_one` / `coefficient_match_of_basisChange` / `IsUnitCompatible` / `algHomOfTensorIso` / `_basis` — standard Lean only (A.5.3)
 - `#print axioms Orbcrypt.GrochowQiao.Manin.linearMapOfBasisChange_left_inv` / `_right_inv` / `linearEquivOfBasisChange` / `algEquivOfTensorIso` / `_basis` — standard Lean only (A.5.4)
 - `#print axioms Orbcrypt.GrochowQiao.Discharge.quiverPermFun_mem_presentArrowsSubspace` / `_image_subset_…` / `_image_…` / `gl3InducesAlgEquivOnPathSubspace_of_rigidity` / `isPresentArrowSlot_liftedSigma` / `presentArrowSlotIndices_card_eq_of_graphIso` / `restrictedGL3OnPathOnlyTensor_of_rigidity` — standard Lean only (A.6.3)
-- `#print axioms Orbcrypt.GrochowQiao.grochowQiao_phase3_discharge_under_rigidity` / `_unified_discharge_under_rigidity` — standard Lean only (top-level packaging)
+- `#print axioms Orbcrypt.GrochowQiao.grochowQiao_pathSubspace_obligations_under_rigidity` / `_unified_discharge_under_rigidity` — standard Lean only (top-level packaging; renamed from the pre-audit `_phase3_discharge_under_rigidity` form by the 2026-05-05 deep-audit pass)
 
 R-TI Phase 3 — Path B Sub-task A.6.4 (audit 2026-04-29 — Subalgebra
 σ-extraction + conditional AlgEquiv discharge): Lands
@@ -8327,8 +8334,8 @@ R-13⁺ / § R-16) has been completed (2026-05-01):
 - **Patch version.** `lakefile.lean` bumped from `0.2.4` to
   `0.3.0` — minor-version bump signalling the cohesive feature
   cluster of four new workstream discharges (R-14 + R-08 +
-  R-13⁺ + R-16) plus two new modules. The 75-module total rises
-  to **77** (`MACSecurity.lean` + `HGOEInvariants.lean`); public
+  R-13⁺ + R-16) plus two new modules. The 77-module total rises
+  to **79** (`MACSecurity.lean` + `HGOEInvariants.lean`); public
   declaration count rises by approximately 30 (R-14: ~15, R-08:
   5, R-13⁺: 5, R-16: 15 — minus some private helpers). The
   zero-sorry / zero-custom-axiom posture and the standard-trio-
@@ -8759,7 +8766,7 @@ relocated to `docs/dev_history/`:
   `Classical.choice`, `Quot.sound`) for every declaration.
   Zero `sorryAx`, zero non-standard axioms, zero new `sorry`,
   zero new declarations. The reorganization is documentation-
-  only — no Lean source semantics change. The 77-module total,
+  only — no Lean source semantics change. The 81-module total,
   the public-declaration count, and the standard-trio-only
   axiom-dependency posture are all preserved.
 
@@ -8770,6 +8777,90 @@ relocated to `docs/dev_history/`:
   declarations. The repository structure changes alone do not
   warrant a version bump per `CLAUDE.md`'s version-bump
   discipline.
+
+Deep audit pass (2026-05-05) — comprehensive codebase audit
+discovered and fixed four documentation-and-naming-hygiene
+findings:
+
+- **HIGH (naming-rule violation)** —
+  `Orbcrypt/Hardness/GrochowQiao.lean:396` declared
+  `theorem grochowQiao_phase3_discharge_under_rigidity`. The
+  `phase3` token is a forbidden process marker per
+  `CLAUDE.md`'s Key Conventions rule "Names describe content,
+  never provenance" (the rule explicitly forbids "phase
+  labels: `phase`, `phase1`, `phase_12`, `stretch`" inside
+  declaration identifiers).  The "Phase 3" framing is a
+  process descriptor (R-TI Phase 3), not a content
+  descriptor — the theorem's actual content is the discharge
+  of the two GL³ obligations
+  `GL3InducesAlgEquivOnPathSubspace` and
+  `RestrictedGL3OnPathOnlyTensor` from a `GrochowQiaoRigidity`
+  hypothesis.  **Fix.** Renamed to
+  `grochowQiao_pathSubspace_obligations_under_rigidity` —
+  the new identifier names what is discharged ("path-subspace
+  obligations") and the input hypothesis ("under rigidity"),
+  parallel to the sibling
+  `grochowQiao_unified_discharge_under_rigidity` (which
+  discharges three obligations including the Karp reduction
+  inhabitant).  The "Phase 3" prose framing remains in the
+  docstring under the rule's "Where process references *are*
+  allowed" carve-out.  Updated all references:
+  `Orbcrypt/Hardness/GrochowQiao.lean:396`,
+  `scripts/audit_phase_16.lean` (two references), and two
+  references inside historical CLAUDE.md changelog entries.
+- **MEDIUM (doc drift)** — `CLAUDE.md`'s 2026-05-03
+  documentation reorganization entry's "Verification" bullet
+  claimed "The 77-module total ... preserved" but the actual
+  module count at the time was 81 (verified by `find
+  Orbcrypt -name '*.lean' | wc -l`).  The entry was written
+  with stale module-count framing; the rest of the
+  reorganization claims (3,424 jobs, 1,273-line audit
+  output) verify cleanly against current state.  Fixed in
+  place: 77 → 81.
+- **MEDIUM (doc drift)** — `README.md` "Snapshot metrics"
+  table at line 53 claimed "1078+ #print axioms checks"; the
+  actual count is 1081.  The current value rises monotonically
+  with each landing, and the table is intended to track the
+  current state, so updating to "1080+" (a deliberately
+  imprecise rounded value to resist per-PR staleness) is the
+  correct fix.  The Project-structure tree at line 123
+  claimed "Lean 4 source tree (77 modules)"; updated to "81
+  modules" matching actual count.
+- **MEDIUM (doc parity)** — `implementation/README.md`'s
+  Files table omitted the Phase 15 fast-decryption pipeline
+  source `gap/orbcrypt_fast_dec.g`.  The file is documented
+  in `CLAUDE.md`'s Phase 15 changelog and in
+  `docs/dev_history/PHASE_15_DECRYPTION_OPTIMIZATION.md` but
+  was never added to the GAP-implementation README's table of
+  files.  Added a row with summary description (cross-
+  references to `QCCyclicReduce`, `FastDecaps`,
+  `ComputeResidualGroup`, `SyndromeDecaps`, `OrbitHash`,
+  `RunPhase15Comparison`).
+
+**Verification posture preserved.** Every fix is either a
+content-neutral identifier rename, a documentation-only edit,
+or a doc table addition.  `lake build` succeeds across **3,424
+jobs** with zero warnings, zero errors (unchanged from the
+pre-audit baseline; the rename touches one declaration
+identifier, which preserves all build edges).
+`scripts/audit_phase_16.lean` runs cleanly with exit code 0;
+**1,081 declarations exercised**, every one on the standard
+Lean trio (`propext`, `Classical.choice`, `Quot.sound`); zero
+`sorryAx`; zero non-standard axioms.  The 81-module total,
+the zero-sorry / zero-custom-axiom posture, and the
+standard-trio-only axiom-dependency posture are all
+preserved.
+
+**Patch version.** `lakefile.lean` retains `0.3.2`. The
+audit-pass fixes are content-neutral (one identifier rename
++ four documentation edits) and add no new Lean
+declarations, so a version bump is not warranted per
+`CLAUDE.md`'s version-bump discipline.  The renamed identifier
+is a public-API change in the strict sense, but no downstream
+code (in this repository or in any documented external
+consumer) referenced
+`grochowQiao_phase3_discharge_under_rigidity` outside the
+audit-script and CLAUDE.md (both updated in this same diff).
 
 ## Vulnerability reporting
 
