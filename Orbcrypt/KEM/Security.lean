@@ -58,23 +58,14 @@ with real-vs-random key distinguishing.
   proved directly from `canonical_isGInvariant` without any `KEMOIA` hypothesis.
   (The pre-L5 `kem_key_constant`, which extracted the second conjunct of
   `KEMOIA`, has been removed as an unnecessary shim; the direct form is the
-  authoritative statement.)
-* `Orbcrypt.kem_ciphertext_indistinguishable` — ciphertexts indistinguishable
-* `Orbcrypt.kemoia_implies_secure` — **KEMOIA implies KEM security**
-* `Orbcrypt.kemIsSecure_iff` — unfolding lemma for `KEMIsSecure`
+  authoritative statement.)* `Orbcrypt.kemIsSecure_iff` — unfolding lemma for `KEMIsSecure`
 
-## Design note — no distinct-challenge KEM variant (Workstream K)
-
-Unlike the scheme-level security game (which carries both `IsSecure` and
-`IsSecureDistinct` — the latter filtering out the degenerate
-collision-choice `(m, m)` the classical IND-1-CPA challenger would
-reject), the KEM game does not admit a parallel `_distinct` refinement.
-`kemHasAdvantage` quantifies over two *group elements* `g₀, g₁ : G`
-rather than two messages; encapsulation operates on the single
-base point `kem.basePoint`, so every ciphertext lives in the same
-orbit `orbit G kem.basePoint`. There is no per-message collision risk
-at the KEM layer — see the extended note on `kemoia_implies_secure`
-below for the full rationale.
+W6.4 of structural review 2026-05-06 deleted the deterministic KEM
+security reduction `kemoia_implies_secure` and the supporting lemma
+`kem_ciphertext_indistinguishable`. The non-vacuous probabilistic
+counterpart (`concrete_kemoia_uniform_implies_secure` in
+`KEM/CompSecurity.lean`) carries the substantive ε-smooth KEM
+security content.
 
 ## References
 
@@ -227,93 +218,14 @@ theorem kem_key_constant_direct [Group G] [MulAction G X] [DecidableEq X]
   congr_arg kem.keyDerive (canonical_isGInvariant kem.canonForm g kem.basePoint)
 
 -- ============================================================================
--- Work Unit 7.6b: Ciphertext Indistinguishability Lemma
--- ============================================================================
-
-/--
-Under KEMOIA, no Boolean function can distinguish orbit elements.
-
-Post Workstream L5, `KEMOIA` is precisely the orbit-indistinguishability
-predicate, so this theorem is a direct forwarding of the hypothesis (no
-conjunct extraction).
--/
-theorem kem_ciphertext_indistinguishable [Group G] [MulAction G X] [DecidableEq X]
-    (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) (f : X → Bool) (g₀ g₁ : G) :
-    f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint) :=
-  hOIA f g₀ g₁
-
--- ============================================================================
--- Work Unit 7.6c: Main Security Theorem
--- ============================================================================
-
-/--
-**KEM Security Theorem.** KEMOIA implies KEM security.
-
-If the KEM-OIA holds, no adversary can distinguish two different
-encapsulations. This is the KEM analogue of `oia_implies_1cpa`.
-
-**Proof strategy (post-Workstream-L5 simplification):**
-1. Introduce adversary `A` and assume `kemHasAdvantage kem A`.
-2. Destructure to get `g₀`, `g₁`, and the inequality `hNeq`.
-3. Apply `kem_key_constant_direct`: both derived keys equal
-   `keyDerive(canon(basePoint))`. Rewrite `hNeq` to use this constant
-   key. (Pre-L5 this step invoked `hOIA.2`, the now-removed second
-   conjunct of `KEMOIA`; post-L5 the fact is proved unconditionally
-   from `canonical_isGInvariant`.)
-4. Apply `hOIA` (which post-L5 is precisely the
-   orbit-indistinguishability predicate): the adversary's guess
-   function (partially applied to `basePoint` and the constant key)
-   is a Boolean function on `X`, so it must give the same value on
-   `g₀ • basePoint` and `g₁ • basePoint`.
-5. This equality contradicts `hNeq`.
-
-**Axioms:** Zero custom axioms. `#print axioms kemoia_implies_secure` shows
-only standard Lean axioms. KEMOIA appears as a hypothesis.
-
-## No distinct-challenge KEM corollary required
-
-At the scheme level, `Crypto/Security.lean` carries a second
-`IsSecureDistinct` predicate because the underlying `Adversary.choose`
-function may return a collision `(m, m)` on its two *message*
-challenges — the classical IND-1-CPA game rejects such collisions
-before sampling, so `IsSecure` and `IsSecureDistinct` differ (with
-`IsSecure → IsSecureDistinct`, proved by
-`isSecure_implies_isSecureDistinct`).
-
-The KEM security game (`kemHasAdvantage` / `KEMIsSecure` above) does
-**not** admit the analogous collision-choice gap. A `KEMAdversary`'s
-two encapsulations are parameterised by *group elements* `g₀, g₁ : G`,
-which are drawn by the challenger from `G` uniformly rather than
-chosen by the adversary; there is only one base point (`kem.basePoint`),
-so every ciphertext lies in the single orbit `orbit G kem.basePoint`.
-No per-message distinctness filter applies. Therefore no
-`kemoia_implies_secure_distinct` corollary is introduced — the
-`Adversary`-level game asymmetry documented at `IsSecure` does not
-surface at the KEM layer.
-
-The probabilistic KEM advantage (`kemAdvantage_uniform` in
-`KEM/CompSecurity.lean`) likewise uses a fixed reference group element
-and measures distinguishing advantage between a uniform orbit
-distribution and a point mass on that reference; it has no
-challenge-distinctness obligation either. The bound
-`concrete_kemoia_uniform_implies_secure` applies unconditionally to
-every KEM adversary without distinctness filtering.
--/
-theorem kemoia_implies_secure [Group G] [MulAction G X] [DecidableEq X]
-    (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) : KEMIsSecure kem := by
-  -- Introduce adversary and assume advantage for contradiction
-  intro A ⟨g₀, g₁, hNeq⟩
-  -- Step 1: Apply key constancy — both keys equal keyDerive(canon(basePoint)).
-  -- Post-Workstream-L5 we use `kem_key_constant_direct`, which proves the
-  -- constancy unconditionally from `canonical_isGInvariant`; no `hOIA`
-  -- extraction is needed for this step.
-  apply hNeq
-  rw [kem_key_constant_direct kem g₀, kem_key_constant_direct kem g₁]
-  -- Step 2: Apply orbit indistinguishability — guess is constant across orbit.
-  -- `hOIA` is now the single-conjunct form (orbit indistinguishability),
-  -- applied directly without a `.1` extraction.
-  exact hOIA (fun c => A.guess kem.basePoint c
-    (kem.keyDerive (kem.canonForm.canon kem.basePoint))) g₀ g₁
+-- W6.4 of structural review 2026-05-06: the deterministic KEM
+-- security reduction `kemoia_implies_secure` (Headline #5,
+-- Work Unit 7.6c) and its supporting lemma
+-- `kem_ciphertext_indistinguishable` (Work Unit 7.6b) were
+-- deleted as part of the deterministic-chain removal scheduled
+-- for v0.4.0. The non-vacuous probabilistic counterpart
+-- (`concrete_kemoia_uniform_implies_secure`) carries the
+-- substantive ε-smooth KEM security content.
 
 -- W6.1 of structural review 2026-05-06: the deterministic-KEMOIA
 -- vacuity witness `det_kemoia_false_of_nontrivial_orbit` (formerly

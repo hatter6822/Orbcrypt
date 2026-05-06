@@ -271,8 +271,10 @@ open Orbcrypt
 -- 2026-04-23 finding E-06) was deleted as part of the
 -- deterministic-chain removal scheduled for v0.4.0.
 #print axioms kem_key_constant_direct
-#print axioms kem_ciphertext_indistinguishable
-#print axioms kemoia_implies_secure
+-- W6.4 of structural review 2026-05-06: `kem_ciphertext_indistinguishable`
+-- and `kemoia_implies_secure` (Headline #5, Work Unit 7.6c) were
+-- deleted as part of the deterministic-chain removal scheduled
+-- for v0.4.0.
 
 -- ============================================================================
 -- §6  Probability layer (Phase 8)
