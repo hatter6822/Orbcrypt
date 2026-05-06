@@ -13,11 +13,11 @@ import Orbcrypt.GroupAction.Invariant
 
 import Orbcrypt.Crypto.Scheme
 import Orbcrypt.Crypto.Security
-import Orbcrypt.Crypto.OIA
+
 
 import Orbcrypt.Theorems.Correctness
 import Orbcrypt.Theorems.InvariantAttack
-import Orbcrypt.Theorems.OIAImpliesCPA
+import Orbcrypt.Theorems.AdversaryStructural
 
 import Orbcrypt.KEM.Syntax
 import Orbcrypt.KEM.Encapsulate

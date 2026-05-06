@@ -9,9 +9,9 @@
 import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
-import Orbcrypt.Crypto.OIA
+
 import Orbcrypt.Crypto.Security
-import Orbcrypt.Theorems.OIAImpliesCPA
+import Orbcrypt.Theorems.AdversaryStructural
 import Orbcrypt.Crypto.CompOIA
 import Orbcrypt.Crypto.CompSecurity
 import Mathlib.Data.Fintype.Perm

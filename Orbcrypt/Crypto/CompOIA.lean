@@ -6,10 +6,11 @@
   under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
 -/
 
+import Orbcrypt.Crypto.Scheme
 import Orbcrypt.Probability.Monad
 import Orbcrypt.Probability.Negligible
 import Orbcrypt.Probability.Advantage
-import Orbcrypt.Crypto.OIA
+
 
 /-!
 # Orbcrypt.Crypto.CompOIA

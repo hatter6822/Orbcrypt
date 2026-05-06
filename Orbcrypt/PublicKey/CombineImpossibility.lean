@@ -9,7 +9,7 @@
 import Orbcrypt.GroupAction.Basic
 import Orbcrypt.GroupAction.Invariant
 import Orbcrypt.Crypto.Scheme
-import Orbcrypt.Crypto.OIA
+
 import Orbcrypt.Crypto.CompOIA
 import Orbcrypt.Probability.Advantage
 import Orbcrypt.PublicKey.ObliviousSampling
