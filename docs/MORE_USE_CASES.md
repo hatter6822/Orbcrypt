@@ -20,14 +20,12 @@ re-derive the Orbcrypt primitives; readers should first skim `docs/POE.md`
 no-go are familiar. Theorem numbers below match the canonical numbering
 in `docs/API_SURFACE.md` § "Three core theorems, by cluster" (mirrored
 in `CLAUDE.md`'s registry); status classifications (`Standalone` /
-`Quantitative` / `Conditional` / `Structural` / `Scaffolding`) follow
-the release-messaging policy introduced by Workstream A of the
-2026-04-23 audit (see `CLAUDE.md`'s Key Conventions § "Release messaging
-policy"). The **Scaffolding** class — pre-W6 deterministic-chain
-theorems whose `OIA` / `KEMOIA` / `HardnessChain` hypotheses were
-`False` on every non-trivial scheme — was retired by Workstream W6 of
-the 2026-05-06 structural review; surviving security citations all live
-in the probabilistic chain (Standalone / Quantitative / Conditional).
+`Quantitative` / `Conditional` / `Structural`) follow the
+release-messaging policy introduced by Workstream A of the 2026-04-23
+audit (see `CLAUDE.md`'s Key Conventions § "Release messaging policy").
+Security citations all live in the probabilistic chain (Standalone /
+Quantitative / Conditional); Mathlib-grade equivalence-relation /
+subgroup identities carry the Structural label.
 
 The focus is the three-way intersection:
 
@@ -98,7 +96,7 @@ that certify correctness or hiding for each.
 | Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 `seed_kem_correctness` (Standalone) |
 | Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 (Standalone) + nonce caveat below |
 | Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 `aead_correctness` (Standalone) |
-| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — game-shape refactor (Workstream B of audit 2026-04-23, landed 2026-04-24) absorbed the orbit-cover condition into a per-challenge well-formedness precondition `hOrbit`; `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | Theorem 19 `authEncrypt_is_int_ctxt` (**Standalone** post-Workstream-B); `bitstringPolynomialMAC_int_ctxt` HGOE-compatible witness (**Standalone**, R-13 discharged 2026-04-30, `AEAD/BitstringPolynomialMAC.lean`); Theorem 20 `carterWegmanMAC_int_ctxt` `ZMod p`-typed witness (**Conditional** — requires `X = ZMod p`, retained as the single-block prime-field witness). Workstream C (audit F-07), Workstream B (audit 2026-04-23), R-13 (audit 2026-04-29). |
+| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` (the orbit-cover condition lives on the game itself as a per-challenge well-formedness precondition `hOrbit`) | Theorem 19 `authEncrypt_is_int_ctxt` (**Standalone**); `bitstringPolynomialMAC_int_ctxt` HGOE-compatible witness (**Standalone**, `AEAD/BitstringPolynomialMAC.lean`); Theorem 20 `carterWegmanMAC_int_ctxt` `ZMod p`-typed single-block witness (**Conditional** — requires `X = ZMod p`). |
 
 Two caveats recur and must be stated once:
 
@@ -112,16 +110,17 @@ Two caveats recur and must be stated once:
   default for contributor-side operations.** A contributor holding
   only one orbit element cannot mint fresh representatives under the
   symmetric scheme; `CombineImpossibility` is the Lean-proved no-go.
-  The probabilistic refinement
-  `combinerDistinguisherAdvantage_ge_inv_card` (Workstream R-07,
-  **Standalone**) lower-bounds the cross-orbit advantage of any
-  cross-orbit non-degenerate combiner-induced distinguisher at
-  `1/|G|`, and `no_concreteOIA_below_inv_card_of_combiner` rules out
-  any `ConcreteOIA(ε)` bound for `ε < 1/|G|` whenever such a combiner
-  exists. The project server (which holds `G_P`) must issue bundles
-  and refresh them on schedule. CSIDH-style key agreement (§1.3 of
-  `PUBLIC_KEY_ANALYSIS.md`) is the only known bypass and depends on a
-  concrete `CommGroupAction` instantiation that is still open.
+  The quantitative form is
+  `combinerDistinguisherAdvantage_ge_inv_card` (**Standalone**),
+  which lower-bounds the cross-orbit advantage of any cross-orbit
+  non-degenerate combiner-induced distinguisher at `1/|G|`;
+  composing with `concrete_combiner_advantage_bounded_by_oia` yields
+  `no_concreteOIA_below_inv_card_of_combiner`, ruling out any
+  `ConcreteOIA(ε)` bound for `ε < 1/|G|`. The project server (which
+  holds `G_P`) must issue bundles and refresh them on schedule.
+  CSIDH-style key agreement (§1.3 of `PUBLIC_KEY_ANALYSIS.md`) is the
+  only known bypass and depends on a concrete `CommGroupAction`
+  instantiation that is still open.
 
 ---
 
@@ -278,38 +277,35 @@ that went into the build; a verifier holding `G_P` can recompute the
 canonical forms of the commits and cross-check. An attacker who
 substitutes a binary without access to `G_P` cannot forge a
 canonicalization match; a substitution that breaks the AEAD tag is
-rejected by `authDecaps`, and this rejection is now a *theorem*:
-`authEncrypt_is_int_ctxt` (Theorem 19, **Standalone** post-Workstream-B
-of audit 2026-04-23) discharges `INT_CTXT` unconditionally on every
-`AuthOrbitKEM`. The orbit-cover condition lives on the `INT_CTXT`
-game as a per-challenge well-formedness precondition `hOrbit`, not as
-a theorem-level assumption — out-of-orbit ciphertexts are rejected as
-ill-formed at game level, matching the real-world KEM model.
+rejected by `authDecaps`, and this rejection is a *theorem*:
+`authEncrypt_is_int_ctxt` (Theorem 19, **Standalone**) discharges
+`INT_CTXT` unconditionally on every `AuthOrbitKEM`. The orbit-cover
+condition lives on the `INT_CTXT` game as a per-challenge
+well-formedness precondition `hOrbit`, not as a theorem-level
+assumption — out-of-orbit ciphertexts are rejected as ill-formed at
+game level, matching the real-world KEM model.
 
-* **HGOE-compatible witness (R-13 discharged 2026-04-30).**
-  `bitstringPolynomialMAC_int_ctxt` (`AEAD/BitstringPolynomialMAC.lean`,
-  **Standalone**) discharges `INT_CTXT` for `bitstringPolynomial_authKEM
-  p n kem` on every `OrbitKEM G (Bitstring n) (ZMod p × ZMod p)`. This is
-  the direct R-13 composition: the polynomial-evaluation hash family
-  `bitstringPolynomialHash` is typed at `Bitstring n → ZMod p`, so
-  composition with HGOE's natural ciphertext space requires *no*
-  `Bitstring n → ZMod p` adapter. Cite
-  `bitstringPolynomialHash_isEpsilonSU2` (**Quantitative**, ε = n/p) for
-  a standalone strongly-universal-2 statement and
-  `bitstringPolynomialMAC_isSUFCMASecure` (**Quantitative**, ε = n/p)
-  for the 1-time SUF-CMA bound; both are informative when `n ≪ p`.
-* **Original `ZMod p`-typed witness.** `carterWegmanMAC_int_ctxt`
-  (Theorem 20, **Conditional** — requires `X = ZMod p`)
-  demonstrates the composition was inhabitable on the original Carter–
-  Wegman composition before R-13 landed; it remains in-tree as the
-  single-block prime-field witness. Cite `carterWegmanHash_isUniversal`
-  when a standalone universal-hash statement is wanted (proven
-  `(1/p)`-universal at `[Fact (Nat.Prime p)]`, Workstream L2 of
-  audit 2026-04-21) and `carterWegmanMAC_isSUFCMASecure`
-  (**Quantitative**, ε = 1/p, R-08 1-time SUF-CMA reduction) for the
-  Stinson-1994-style bound. Q-time SUF-CMA does *not* hold for
-  Carter–Wegman without a fresh nonce per query (key-recovery attack
-  per `not_carterWegmanMAC_isQtimeSUFCMASecure`).
+* **HGOE-compatible witness.** `bitstringPolynomialMAC_int_ctxt`
+  (`AEAD/BitstringPolynomialMAC.lean`, **Standalone**) discharges
+  `INT_CTXT` for `bitstringPolynomial_authKEM p n kem` on every
+  `OrbitKEM G (Bitstring n) (ZMod p × ZMod p)`. The polynomial-
+  evaluation hash family `bitstringPolynomialHash` is typed at
+  `Bitstring n → ZMod p`, so composition with HGOE's natural
+  ciphertext space requires *no* `Bitstring n → ZMod p` adapter.
+  Cite `bitstringPolynomialHash_isEpsilonSU2` (**Quantitative**,
+  ε = n/p) for a standalone strongly-universal-2 statement and
+  `bitstringPolynomialMAC_isSUFCMASecure` (**Quantitative**,
+  ε = n/p) for the 1-time SUF-CMA bound; both are informative when
+  `n ≪ p`.
+* **`ZMod p`-typed single-block witness.** `carterWegmanMAC_int_ctxt`
+  (Theorem 20, **Conditional** — requires `X = ZMod p`) is the
+  prime-field analogue. Cite `carterWegmanHash_isUniversal` when a
+  standalone universal-hash statement is wanted (proven
+  `(1/p)`-universal at `[Fact (Nat.Prime p)]`) and
+  `carterWegmanMAC_isSUFCMASecure` (**Quantitative**, ε = 1/p) for
+  the 1-time SUF-CMA bound. Q-time SUF-CMA does *not* hold for
+  Carter–Wegman without a fresh nonce per query (key-recovery
+  attack per `not_carterWegmanMAC_isQtimeSUFCMASecure`).
 * **Round-trip complement.** `aead_correctness` (Theorem 12,
   **Standalone**) is unconditional.
 
@@ -748,18 +744,15 @@ correctness theorems (Theorem 1 `correctness`, Theorem 4
 The orbit-layer security guarantees reduce to TI / GI / CE hardness
 through the **Quantitative** probabilistic chain
 `concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27,
-ε-bounded; KEM-layer parallel `concrete_kem_hardness_chain_implies_kem_advantage_bound`,
+ε-bounded; KEM-layer parallel
+`concrete_kem_hardness_chain_implies_kem_advantage_bound`,
 Theorem 29) composed with `concrete_oia_implies_1cpa` (Theorem 6) at
-the scheme layer. Both #27 and #29 are inhabited unconditionally only
-at ε = 1 via the `tight_one_exists` family in the current
+the scheme layer. Both #27 and #29 are inhabited unconditionally
+only at ε = 1 via the `tight_one_exists` family in the current
 formalisation; ε < 1 requires a caller-supplied surrogate + encoder
 profile (research-scope per `docs/planning/`'s R-02 / R-03 / R-04 /
-R-05 milestones). The pre-W6 deterministic chain
-(`hardness_chain_implies_security`, formerly Theorem 14) was
-**Scaffolding** — vacuously true on every non-trivial scheme — and
-was deleted in Workstream W6 of structural review 2026-05-06; only
-the probabilistic chain remains. The PQ signature and DEM choices
-are assumed also PQ-hard.
+R-05 milestones). The PQ signature and DEM choices are assumed also
+PQ-hard.
 
 ---
 
@@ -965,28 +958,24 @@ introduced by Workstream A of the 2026-04-23 pre-release audit
 This is a classification + naming alignment pass; no design-level
 claims were weakened.
 
-* **Header.** Cross-references the four-class Status taxonomy
-  (Standalone / Quantitative / Conditional / Scaffolding) and points
-  to the policy in `CLAUDE.md`'s Key Conventions § "Release messaging
+* **Header.** Cross-references the Status taxonomy and points to the
+  policy in `CLAUDE.md`'s Key Conventions § "Release messaging
   policy".
 * **§1 (primitive map).** Each row now carries its Lean handle's
   Status label inline: `concrete_oia_implies_1cpa` is **Quantitative**
   (cite with explicit ε); `kem_correctness`, `aead_correctness`,
   `hybrid_correctness`, `seed_kem_correctness`, `csidh_correctness`,
   and the `canon_*` helpers are **Standalone**;
-  `authEncrypt_is_int_ctxt` is **Standalone** post-Workstream-B;
-  `carterWegmanMAC_int_ctxt` is **Conditional** with the `X = ZMod p
-  × ZMod p` incompatibility noted (research milestone R-13).
-* **§3.4 (build binding).** Trimmed the Workstream-B
-  framing into a more compact form. The mathematical content is
-  unchanged: `authEncrypt_is_int_ctxt` discharges `INT_CTXT`
-  unconditionally on every `AuthOrbitKEM`; the orbit-cover condition
-  lives on the `INT_CTXT` game itself as `hOrbit`. The Carter–Wegman
-  witness's `X = ZMod p × ZMod p` incompatibility with HGOE
-  `Bitstring n` is documented (research R-13). The post-Workstream-L2
-  upgrade of `carterWegmanHash_isUniversal` to a proven `(1/p)`-
-  universal hash at `[Fact (Nat.Prime p)]` is referenced where a
-  standalone universal-hash claim is wanted.
+  `authEncrypt_is_int_ctxt` is **Standalone**;
+  `carterWegmanMAC_int_ctxt` is **Conditional** with the `X = ZMod p`
+  typing constraint disclosed.
+* **§3.4 (build binding).** Trimmed to a more compact form. The
+  mathematical content: `authEncrypt_is_int_ctxt` discharges
+  `INT_CTXT` unconditionally on every `AuthOrbitKEM`; the orbit-cover
+  condition lives on the `INT_CTXT` game itself as `hOrbit`.
+  `carterWegmanHash_isUniversal` is the proven `(1/p)`-universal hash
+  at `[Fact (Nat.Prime p)]`, referenced where a standalone
+  universal-hash claim is wanted.
 * **§7 (architectures), §8 (anonymity stack), §9 (threat model),
   §10 (open problems), §11 (incremental path), §12 (summary).** No
   classification updates needed — these sections do not cite
@@ -1000,7 +989,7 @@ claims were weakened.
 
 The Status taxonomy is the canonical machine-readable
 release-messaging tag; readers wanting the full table of which
-theorems are Standalone vs Quantitative vs Conditional vs Scaffolding
+theorems are Standalone vs Quantitative vs Conditional vs Structural
 should consult `docs/API_SURFACE.md` § "Three core theorems, by
 cluster" (regenerable from `lake build` +
 `scripts/audit_phase_16.lean`).
@@ -1015,88 +1004,69 @@ workstreams of 2026-05-06 (plan
 the research-scope discharges R-01, R-07, R-09, R-13, and R-14
 (audit 2026-04-29 / 2026-04-30 / 2026-05-01 landings).
 
-* **Header.** The canonical theorem-numbering reference is now
-  `docs/API_SURFACE.md` § "Three core theorems, by cluster" rather
-  than `CLAUDE.md` directly (the `CLAUDE.md` table mirrors API_SURFACE
-  but the latter is the regenerable source of truth). The Status
-  taxonomy now surfaces **Structural** as a separately-labelled
-  class for Mathlib-grade equivalence-relation / subgroup identities
-  (rows #21–#23). The W6 deletion of the deterministic chain is
-  flagged so readers do not search for **Scaffolding** theorems that
-  no longer exist in source.
+* **Header.** Theorem-numbering source promoted to
+  `docs/API_SURFACE.md` § "Three core theorems, by cluster" —
+  the regenerable canonical reference. Status taxonomy now
+  surfaces **Structural** as a separately-labelled class for
+  Mathlib-grade equivalence-relation / subgroup identities
+  (rows #21–#23).
 * **§1 (primitive map).** The "Integrity of published artefact" row
   now lists three Lean handles: `authEncrypt_is_int_ctxt`
   (**Standalone**), `bitstringPolynomialMAC_int_ctxt` (**Standalone**,
-  R-13 discharged 2026-04-30) for HGOE-compatible composition, and
-  the original `carterWegmanMAC_int_ctxt` (**Conditional** —
-  `X = ZMod p`) as the prime-field witness.
+  HGOE-compatible composition), and `carterWegmanMAC_int_ctxt`
+  (**Conditional** — `X = ZMod p`) as the prime-field single-block
+  witness.
 * **§1 caveats.** The "bundle-mediated rotation pattern" caveat now
-  cites the R-07 quantitative refinement
+  cites the quantitative `combine` refinement
   (`combinerDistinguisherAdvantage_ge_inv_card`,
   `no_concreteOIA_below_inv_card_of_combiner`): any cross-orbit
   non-degenerate combiner forces `ConcreteOIA(ε)` for some
-  `ε ≥ 1/|G|`. The pre-W6 deterministic combiner-impossibility
-  theorem was vacuously true on every non-trivial scheme and was
-  deleted in W6; the R-07 result is the surviving substantive
-  content.
-* **§3.4 (build and CI artefact binding).** The R-13 discharge is
-  the headline change: `bitstringPolynomialMAC_int_ctxt` is the
-  new HGOE-compatible **Standalone** witness for INT-CTXT typed
-  at `Bitstring n` with no `Bitstring n → ZMod p` adapter required.
-  The polynomial-evaluation hash family `bitstringPolynomialHash`
-  is `(n / p)`-strongly-universal-2 (`bitstringPolynomialHash_isEpsilonSU2`,
-  **Quantitative**) and `(n / p)`-SUF-CMA-secure 1-time
-  (`bitstringPolynomialMAC_isSUFCMASecure`, **Quantitative** R-13⁺).
-  The original `carterWegmanMAC_int_ctxt` is retained as the
-  single-block `ZMod p`-typed witness; its 1-time SUF-CMA bound
-  `(1/p)` is now machine-checked via `carterWegmanMAC_isSUFCMASecure`
-  (R-08 discharge). For both witnesses, Q-time SUF-CMA does not
-  hold without a fresh nonce per query (key-recovery attack
-  formally proven via `not_carterWegmanMAC_isQtimeSUFCMASecure`
-  and `not_bitstringPolynomialMAC_isQtimeSUFCMASecure`).
-* **§9 (threat model class 5 — CRQC adversary).** The "Theorems 1,
-  6, 14" framing is replaced with the post-W6 reality: orbit-layer
-  correctness is **Standalone** (#1, #4); orbit-layer security
-  reduces to TI / GI / CE hardness through the **Quantitative**
-  probabilistic chain (#27 at the scheme layer, #29 at the KEM
-  layer) composed with `concrete_oia_implies_1cpa` (#6). Both #27
-  and #29 are inhabited unconditionally only at ε = 1 via the
-  trivial `tight_one_exists` family; ε < 1 requires a caller-
-  supplied surrogate + encoder profile (research-scope per the
-  R-02 / R-03 / R-04 / R-05 milestones in `docs/planning/`). The
-  pre-W6 deterministic Theorem 14 (`hardness_chain_implies_security`)
-  was **Scaffolding** — vacuously true on every non-trivial scheme
-  — and was deleted in W6.
+  `ε ≥ 1/|G|`.
+* **§3.4 (build and CI artefact binding).** Headline change:
+  `bitstringPolynomialMAC_int_ctxt` is the HGOE-compatible
+  **Standalone** witness for INT-CTXT typed at `Bitstring n` with
+  no `Bitstring n → ZMod p` adapter required. The polynomial-
+  evaluation hash family `bitstringPolynomialHash` is
+  `(n / p)`-strongly-universal-2
+  (`bitstringPolynomialHash_isEpsilonSU2`, **Quantitative**) and
+  `(n / p)`-SUF-CMA-secure 1-time
+  (`bitstringPolynomialMAC_isSUFCMASecure`, **Quantitative**).
+  `carterWegmanMAC_int_ctxt` is retained as the single-block
+  `ZMod p`-typed witness; its 1-time SUF-CMA bound `(1/p)` is
+  machine-checked via `carterWegmanMAC_isSUFCMASecure`. For both
+  witnesses, Q-time SUF-CMA does not hold without a fresh nonce
+  per query (key-recovery attack formally proven via
+  `not_carterWegmanMAC_isQtimeSUFCMASecure` and
+  `not_bitstringPolynomialMAC_isQtimeSUFCMASecure`).
+* **§9 (threat model class 5 — CRQC adversary).** The CRQC framing
+  now states the post-correctness security posture explicitly:
+  orbit-layer correctness is **Standalone** (#1, #4); orbit-layer
+  security reduces to TI / GI / CE hardness through the
+  **Quantitative** probabilistic chain (#27 at the scheme layer,
+  #29 at the KEM layer) composed with `concrete_oia_implies_1cpa`
+  (#6). Both #27 and #29 are inhabited unconditionally only at
+  ε = 1 via the trivial `tight_one_exists` family; ε < 1 requires
+  a caller-supplied surrogate + encoder profile (research-scope
+  per the R-02 / R-03 / R-04 / R-05 milestones in
+  `docs/planning/`).
 * **§11 (incremental path).** Each step's theorem citations now
   carry their Status labels inline. Step 1 (hybrid at-rest storage)
   picks up `bitstringPolynomialMAC_int_ctxt` for HGOE-typed
   integrity. Step 3 (category-sealed routing) cross-references the
-  R-09 multi-query bound `indQCPA_from_concreteOIA`
-  (**Quantitative**) for designs that issue many ciphertext queries
-  per session.
+  multi-query bound `indQCPA_from_concreteOIA` (**Quantitative**)
+  for designs that issue many ciphertext queries per session.
 * **§4.5 (reputation without deanonymization).** The
-  `invariant_attack` discipline informally cited here is now also
-  backed by the R-01 strengthening
+  `invariant_attack` discipline informally cited here is also
+  backed by the strengthening
   `indCPAAdvantage_invariantAttackAdversary_eq_one` — under a
   separating G-invariant the IND-1-CPA advantage is *exactly* `1`
   (in `Theorems/InvariantAttack.lean`), not merely "exists adversary
   with some advantage". Designers should treat any leakage of a
   separating G-invariant as a complete privacy collapse, with no
-  ε-bound recoverable. (No body text edit was needed — the
-  discipline is unchanged; the strengthening is recorded here for
-  cross-reference.)
-* **No design-level claims weakened.** The R-13 discharge actually
-  strengthens §3.4's HGOE-binding posture: pre-R-13 the only
-  formal INT-CTXT witness was typed at `ZMod p` (incompatible with
-  HGOE without an adapter); post-R-13 there is a direct
-  `Bitstring n`-typed Standalone witness. No other section's claim
-  shape changed.
+  ε-bound recoverable.
 * **Theorem-numbering source.** All theorem numbers in this document
   reference the canonical numbering of `docs/API_SURFACE.md`
-  § "Three core theorems, by cluster". Numbers preserved across
-  W6 deletions (rows #14, #3, #5, #8 do not exist post-W6 —
-  Scaffolding deleted — but no surviving prose cites them as
-  positive evidence).
+  § "Three core theorems, by cluster".
 
 No identifier renames since 2026-04-29; all Lean identifier
-citations remain valid.
+citations remain valid. No design-level claims weakened.
