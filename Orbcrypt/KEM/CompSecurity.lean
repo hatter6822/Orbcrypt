@@ -37,8 +37,6 @@ Prop, then proves a quantitative security reduction (KEM version of
 * `Orbcrypt.concreteKEMOIA_one` — `ConcreteKEMOIA kem 1` is trivially true
   (satisfiability witness).
 * `Orbcrypt.concreteKEMOIA_mono` — monotonicity in the bound.
-* `Orbcrypt.det_kemoia_implies_concreteKEMOIA_zero` — deterministic bridge:
-  `KEMOIA kem → ConcreteKEMOIA kem 0` (Workstream E1c).
 * `Orbcrypt.concrete_kemoia_implies_secure` — main reduction: for any
   adversary and any pair `g₀, g₁ : G`, the per-pair KEM advantage is
   bounded by `ε` (Workstream E1d).
@@ -177,10 +175,13 @@ theorem kemEncapsDist_pos_of_reachable [Group G] [Fintype G] [Nonempty G]
     can take any value in `[0, 1]` as `g` varies, so intermediate `ε`
     parameterise meaningful security.
 
-    **Why keep the point-mass form.** It is the natural Prop-level target
-    of the deterministic-to-probabilistic bridge
-    `det_kemoia_implies_concreteKEMOIA_zero` below, and is what the
-    audit plan (§ E1b) called out as the minimum viable predicate. -/
+    **Why keep the point-mass form.** It is what the audit plan
+    (§ E1b) called out as the minimum viable predicate, and the
+    natural starting point for `ConcreteKEMOIA_uniform`'s
+    quantitative refinement (which see below). The pre-W6.2 link to
+    a deterministic-to-probabilistic bridge
+    `det_kemoia_implies_concreteKEMOIA_zero` was removed as part of
+    the deterministic-chain deletion scheduled for v0.4.0. -/
 def ConcreteKEMOIA [Group G] [Fintype G] [Nonempty G]
     [MulAction G X] [DecidableEq X]
     (kem : OrbitKEM G X K) (ε : ℝ) : Prop :=
@@ -257,75 +258,14 @@ theorem concreteKEMOIA_mono [Group G] [Fintype G] [Nonempty G]
     ConcreteKEMOIA kem ε₂ :=
   fun D g₀ g₁ => le_trans (hOIA D g₀ g₁) hle
 
--- ============================================================================
--- Workstream E1c — Deterministic → probabilistic KEMOIA bridge
--- ============================================================================
-
-/-- **Bridge theorem.** The deterministic `KEMOIA` of `KEM/Security.lean`
-    implies `ConcreteKEMOIA kem 0`: when no Boolean function distinguishes
-    orbit elements, the point-mass advantage between any two encapsulation
-    outputs is zero. Key constancy across the orbit — previously provided
-    by the now-removed second conjunct of `KEMOIA` — is proved
-    unconditionally via `kem_key_constant_direct` (Workstream L5).
-
-    **Proof strategy (post-Workstream-L5 simplification).**
-    1. Specialise the Boolean distinguisher `D : X × K → Bool` to a single
-       orbit element by fixing the key argument to the canonical key
-       `keyDerive (canon basePoint)`.
-    2. Use `kem_key_constant_direct` (unconditionally, no `hOIA` extraction)
-       to rewrite each encapsulation's key component to the canonical key.
-    3. Use `hOIA` (which post-L5 is precisely the orbit-indistinguishability
-       predicate) applied to the partially applied distinguisher
-       `fun c => D (c, canonical_key)` to conclude `D (encaps kem g₀) =
-       D (encaps kem g₁)` as Booleans.
-    4. Point-mass advantages with equal Boolean outputs are zero. -/
-theorem det_kemoia_implies_concreteKEMOIA_zero
-    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
-    (kem : OrbitKEM G X K) (hOIA : KEMOIA kem) :
-    ConcreteKEMOIA kem 0 := by
-  intro D g₀ g₁
-  -- Goal: advantage D (pure (encaps g₀)) (pure (encaps g₁)) ≤ 0.
-  -- Since advantage ≥ 0, suffices to show the two point-mass Booleans agree.
-  have hkey0 := kem_key_constant_direct kem g₀
-  have hkey1 := kem_key_constant_direct kem g₁
-  -- The canonical key of basePoint is the common value.
-  set kbp := kem.keyDerive (kem.canonForm.canon kem.basePoint) with hkbp
-  -- encaps kem g unfolds to (g • basePoint, keyDerive (canon (g • basePoint))).
-  -- Via `kem_key_constant_direct`, the second component is kbp regardless of g.
-  have heq0 : encaps kem g₀ = (g₀ • kem.basePoint, kbp) := by
-    simp only [encaps, hkey0]
-  have heq1 : encaps kem g₁ = (g₁ • kem.basePoint, kbp) := by
-    simp only [encaps, hkey1]
-  -- Build the partially applied Boolean distinguisher fixing the key to kbp.
-  let f : X → Bool := fun c => D (c, kbp)
-  -- hOIA (now single-conjunct) applied to f gives f (g₀ • bp) = f (g₁ • bp).
-  have hf : f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint) := hOIA f g₀ g₁
-  -- Rewrite D (encaps g₀) and D (encaps g₁) through the equalities.
-  have hD : D (encaps kem g₀) = D (encaps kem g₁) := by
-    rw [heq0, heq1]; exact hf
-  -- Advantage between point masses with equal Boolean outputs is zero.
-  unfold advantage
-  have hprob0 : probTrue (PMF.pure (encaps kem g₀)) D =
-      probTrue (PMF.pure (encaps kem g₁)) D := by
-    unfold probTrue
-    rw [PMF.toOuterMeasure_pure_apply, PMF.toOuterMeasure_pure_apply]
-    -- `D (encaps g₀) = D (encaps g₁)` makes the set-membership propositions
-    -- equivalent; split on the Boolean to keep the decidability instances
-    -- aligned on both sides.
-    by_cases h0 : D (encaps kem g₀) = true
-    · have h0' : encaps kem g₀ ∈ {x : X × K | D x = true} := h0
-      have h1' : encaps kem g₁ ∈ {x : X × K | D x = true} := by
-        show D (encaps kem g₁) = true
-        rw [← hD]; exact h0
-      rw [if_pos h0', if_pos h1']
-    · have h0' : encaps kem g₀ ∉ {x : X × K | D x = true} := h0
-      have h1' : encaps kem g₁ ∉ {x : X × K | D x = true} := by
-        show ¬ (D (encaps kem g₁) = true)
-        intro h; apply h0; rw [hD]; exact h
-      rw [if_neg h0', if_neg h1']
-  -- |x - x| = 0 ≤ 0.
-  rw [hprob0]
-  simp
+-- W6.2 of structural review 2026-05-06: the deterministic-to-
+-- probabilistic KEM bridge `det_kemoia_implies_concreteKEMOIA_zero`
+-- (formerly defined here, Workstream E1c) was deleted as part of
+-- the deterministic-chain removal scheduled for v0.4.0. The
+-- probabilistic chain (`ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`,
+-- `ConcreteKEMHardnessChain`) is the sole security chain post-
+-- deletion; the bridge to the deleted deterministic `KEMOIA` is
+-- no longer meaningful.
 
 -- ============================================================================
 -- Workstream E1d — Probabilistic KEM security reduction

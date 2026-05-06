@@ -328,7 +328,8 @@ open Orbcrypt
 #print axioms SchemeFamily.orbitDistAt
 #print axioms SchemeFamily.advantageAt
 #print axioms CompOIA
-#print axioms det_oia_implies_concrete_zero
+-- W6.2 of structural review 2026-05-06: the deterministic-to-
+-- probabilistic bridge `det_oia_implies_concrete_zero` was deleted.
 
 -- Crypto.CompSecurity
 #print axioms indCPAAdvantage
@@ -378,7 +379,9 @@ open Orbcrypt
 #print axioms concreteKEMOIA_uniform_one
 #print axioms concreteKEMOIA_mono
 #print axioms concreteKEMOIA_uniform_mono
-#print axioms det_kemoia_implies_concreteKEMOIA_zero
+-- W6.2 of structural review 2026-05-06: the deterministic-to-
+-- probabilistic KEM bridge `det_kemoia_implies_concreteKEMOIA_zero`
+-- was deleted.
 #print axioms kemAdvantage
 #print axioms kemAdvantage_nonneg
 #print axioms kemAdvantage_le_one
