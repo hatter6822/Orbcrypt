@@ -8,7 +8,7 @@
 
 # Orbcrypt for an Anonymous Software Development Platform
 
-**Status:** exploratory design notes — last updated 2026-04-29.
+**Status:** exploratory design notes — last updated 2026-05-06.
 
 This document applies the primitives catalogued in `docs/USE_CASES.md` to
 the specific setting of an **anonymous software development platform**
@@ -17,11 +17,17 @@ re-derive the Orbcrypt primitives; readers should first skim `docs/POE.md`
 (concept), `docs/USE_CASES.md` §0 (the five primitives), and
 `docs/PUBLIC_KEY_ANALYSIS.md` (feasibility) so that references to
 `canon`, `encaps`, `OrbitalRandomizers`, and the `CombineImpossibility`
-no-go are familiar. Theorem numbers below match `CLAUDE.md`'s registry;
-status classifications (`Standalone` / `Quantitative` / `Conditional`
-/ `Scaffolding`) follow the release-messaging policy introduced by
-Workstream A of the 2026-04-23 audit (see `CLAUDE.md`'s Key
-Conventions § "Release messaging policy").
+no-go are familiar. Theorem numbers below match the canonical numbering
+in `docs/API_SURFACE.md` § "Three core theorems, by cluster" (mirrored
+in `CLAUDE.md`'s registry); status classifications (`Standalone` /
+`Quantitative` / `Conditional` / `Structural` / `Scaffolding`) follow
+the release-messaging policy introduced by Workstream A of the
+2026-04-23 audit (see `CLAUDE.md`'s Key Conventions § "Release messaging
+policy"). The **Scaffolding** class — pre-W6 deterministic-chain
+theorems whose `OIA` / `KEMOIA` / `HardnessChain` hypotheses were
+`False` on every non-trivial scheme — was retired by Workstream W6 of
+the 2026-05-06 structural review; surviving security citations all live
+in the probabilistic chain (Standalone / Quantitative / Conditional).
 
 The focus is the three-way intersection:
 
@@ -92,7 +98,7 @@ that certify correctness or hiding for each.
 | Sybil-resistance stake-binding | Seed-derived KEM from wallet HD path | Theorem 9 `seed_kem_correctness` (Standalone) |
 | Audit log entry (deterministic) | Nonce-based encapsulation | Theorem 10 (Standalone) + nonce caveat below |
 | Correctness of authenticated artefact release | AEAD-KEM round-trip | Theorem 12 `aead_correctness` (Standalone) |
-| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — game-shape refactor (Workstream B of audit 2026-04-23, landed 2026-04-24) absorbed the orbit-cover condition into a per-challenge well-formedness precondition `hOrbit`; `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | Theorem 19 `authEncrypt_is_int_ctxt` (**Standalone** post-Workstream-B); Theorem 20 `carterWegmanMAC_int_ctxt` witness (**Conditional** — requires `X = ZMod p × ZMod p`, incompatible with HGOE's `Bitstring n`, research R-13). Workstream C (audit F-07), Workstream B (audit 2026-04-23). |
+| Integrity of published artefact | `INT_CTXT` on `AuthOrbitKEM` — game-shape refactor (Workstream B of audit 2026-04-23, landed 2026-04-24) absorbed the orbit-cover condition into a per-challenge well-formedness precondition `hOrbit`; `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | Theorem 19 `authEncrypt_is_int_ctxt` (**Standalone** post-Workstream-B); `bitstringPolynomialMAC_int_ctxt` HGOE-compatible witness (**Standalone**, R-13 discharged 2026-04-30, `AEAD/BitstringPolynomialMAC.lean`); Theorem 20 `carterWegmanMAC_int_ctxt` `ZMod p`-typed witness (**Conditional** — requires `X = ZMod p`, retained as the single-block prime-field witness). Workstream C (audit F-07), Workstream B (audit 2026-04-23), R-13 (audit 2026-04-29). |
 
 Two caveats recur and must be stated once:
 
@@ -106,8 +112,14 @@ Two caveats recur and must be stated once:
   default for contributor-side operations.** A contributor holding
   only one orbit element cannot mint fresh representatives under the
   symmetric scheme; `CombineImpossibility` is the Lean-proved no-go.
-  The project server (which holds `G_P`) must issue bundles and
-  refresh them on schedule. CSIDH-style key agreement (§1.3 of
+  The probabilistic refinement
+  `combinerDistinguisherAdvantage_ge_inv_card` (Workstream R-07,
+  **Standalone**) lower-bounds the cross-orbit advantage of any
+  cross-orbit non-degenerate combiner-induced distinguisher at
+  `1/|G|`, and `no_concreteOIA_below_inv_card_of_combiner` rules out
+  any `ConcreteOIA(ε)` bound for `ε < 1/|G|` whenever such a combiner
+  exists. The project server (which holds `G_P`) must issue bundles
+  and refresh them on schedule. CSIDH-style key agreement (§1.3 of
   `PUBLIC_KEY_ANALYSIS.md`) is the only known bypass and depends on a
   concrete `CommGroupAction` instantiation that is still open.
 
@@ -274,14 +286,30 @@ game as a per-challenge well-formedness precondition `hOrbit`, not as
 a theorem-level assumption — out-of-orbit ciphertexts are rejected as
 ill-formed at game level, matching the real-world KEM model.
 
-* **Concrete witness.** `carterWegmanMAC_int_ctxt` (Theorem 20,
-  **Conditional**) demonstrates the composition is inhabitable, but is
-  typed over `X = ZMod p × ZMod p` and is **not** directly compatible
-  with HGOE's `Bitstring n` ciphertext space without a `Bitstring n →
-  ZMod p` adapter (research milestone R-13). Cite
-  `carterWegmanHash_isUniversal` when a standalone universal-hash
-  statement is wanted (proven `(1/p)`-universal at `[Fact (Nat.Prime p)]`,
-  Workstream L2 of audit 2026-04-21).
+* **HGOE-compatible witness (R-13 discharged 2026-04-30).**
+  `bitstringPolynomialMAC_int_ctxt` (`AEAD/BitstringPolynomialMAC.lean`,
+  **Standalone**) discharges `INT_CTXT` for `bitstringPolynomial_authKEM
+  p n kem` on every `OrbitKEM G (Bitstring n) (ZMod p × ZMod p)`. This is
+  the direct R-13 composition: the polynomial-evaluation hash family
+  `bitstringPolynomialHash` is typed at `Bitstring n → ZMod p`, so
+  composition with HGOE's natural ciphertext space requires *no*
+  `Bitstring n → ZMod p` adapter. Cite
+  `bitstringPolynomialHash_isEpsilonSU2` (**Quantitative**, ε = n/p) for
+  a standalone strongly-universal-2 statement and
+  `bitstringPolynomialMAC_isSUFCMASecure` (**Quantitative**, ε = n/p)
+  for the 1-time SUF-CMA bound; both are informative when `n ≪ p`.
+* **Original `ZMod p`-typed witness.** `carterWegmanMAC_int_ctxt`
+  (Theorem 20, **Conditional** — requires `X = ZMod p`)
+  demonstrates the composition was inhabitable on the original Carter–
+  Wegman composition before R-13 landed; it remains in-tree as the
+  single-block prime-field witness. Cite `carterWegmanHash_isUniversal`
+  when a standalone universal-hash statement is wanted (proven
+  `(1/p)`-universal at `[Fact (Nat.Prime p)]`, Workstream L2 of
+  audit 2026-04-21) and `carterWegmanMAC_isSUFCMASecure`
+  (**Quantitative**, ε = 1/p, R-08 1-time SUF-CMA reduction) for the
+  Stinson-1994-style bound. Q-time SUF-CMA does *not* hold for
+  Carter–Wegman without a fresh nonce per query (key-recovery attack
+  per `not_carterWegmanMAC_isQtimeSUFCMASecure`).
 * **Round-trip complement.** `aead_correctness` (Theorem 12,
   **Standalone**) is unconditional.
 
@@ -714,9 +742,24 @@ Four adversary classes, in increasing capability:
    time and prompt rotation on detection.
 
 A fifth adversary class, **a CRQC (quantum)**, is the reason the
-platform chose Orbcrypt in the first place. All orbit-layer
-guarantees reduce to TI / GI / CE hardness (Theorems 1, 6, 14); the
-PQ signature and DEM choices are assumed also PQ-hard.
+platform chose Orbcrypt in the first place. The orbit-layer
+correctness theorems (Theorem 1 `correctness`, Theorem 4
+`kem_correctness`) are **Standalone** — they hold unconditionally.
+The orbit-layer security guarantees reduce to TI / GI / CE hardness
+through the **Quantitative** probabilistic chain
+`concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27,
+ε-bounded; KEM-layer parallel `concrete_kem_hardness_chain_implies_kem_advantage_bound`,
+Theorem 29) composed with `concrete_oia_implies_1cpa` (Theorem 6) at
+the scheme layer. Both #27 and #29 are inhabited unconditionally only
+at ε = 1 via the `tight_one_exists` family in the current
+formalisation; ε < 1 requires a caller-supplied surrogate + encoder
+profile (research-scope per `docs/planning/`'s R-02 / R-03 / R-04 /
+R-05 milestones). The pre-W6 deterministic chain
+(`hardness_chain_implies_security`, formerly Theorem 14) was
+**Scaffolding** — vacuously true on every non-trivial scheme — and
+was deleted in Workstream W6 of structural review 2026-05-06; only
+the probabilistic chain remains. The PQ signature and DEM choices
+are assumed also PQ-hard.
 
 ---
 
@@ -754,15 +797,23 @@ An implementation team that wants to stand up a real version of
 Architecture A or B should proceed in this order, each step
 gated on Lean-formalized theorems:
 
-1. **Deploy hybrid at-rest storage (§§3.1, 3.4).** Theorems 12, 13.
-   Independent of every open problem. This is the single biggest
-   practical win from Orbcrypt in a dev-platform setting.
+1. **Deploy hybrid at-rest storage (§§3.1, 3.4).** Theorems 12
+   `aead_correctness` and 13 `hybrid_correctness` (both
+   **Standalone**), plus `bitstringPolynomialMAC_int_ctxt`
+   (**Standalone**, R-13 discharged 2026-04-30) for HGOE-typed
+   integrity. Independent of every open problem. This is the single
+   biggest practical win from Orbcrypt in a dev-platform setting.
 2. **Deploy wallet-derived pseudonyms (§§2.1, 2.3, 6.4).** Theorem 9
-   plus classical PQ signing. `refresh_depends_only_on_epoch_range` bounds bundle
-   rotation semantics.
-3. **Deploy category-sealed routing (§3.2, §5.2).** Theorems 4, 6.
-   Requires invariant-hygiene discipline in routing code; defer
-   until a linter exists.
+   `seed_kem_correctness` (**Standalone**) plus classical PQ
+   signing. `refresh_depends_only_on_epoch_range` (**Standalone**)
+   bounds bundle rotation semantics.
+3. **Deploy category-sealed routing (§3.2, §5.2).** Theorem 4
+   `kem_correctness` (**Standalone**), Theorem 6
+   `concrete_oia_implies_1cpa` (**Quantitative** — cite with
+   explicit ε; for multi-query designs compose with
+   `indQCPA_from_concreteOIA`, **Quantitative** R-09 discharge,
+   ε per query bounded by `Q · ε`). Requires invariant-hygiene
+   discipline in routing code; defer until a linter exists.
 4. **Deploy batch-reveal release and disclosure (§§3.3, 4.2).**
    Needs threshold-`G`; that is the open-problem dependency.
 5. **Deploy agent CSIDH session keys (§5.5) and escrow (§6.1).**
@@ -950,4 +1001,102 @@ claims were weakened.
 The Status taxonomy is the canonical machine-readable
 release-messaging tag; readers wanting the full table of which
 theorems are Standalone vs Quantitative vs Conditional vs Scaffolding
-should consult `CLAUDE.md`'s "Three core theorems" table directly.
+should consult `docs/API_SURFACE.md` § "Three core theorems, by
+cluster" (regenerable from `lake build` +
+`scripts/audit_phase_16.lean`).
+
+---
+
+## 15. Audit changelog (2026-05-06)
+
+A third pass reconciled the document with the structural-review
+workstreams of 2026-05-06 (plan
+`docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`) and with
+the research-scope discharges R-01, R-07, R-09, R-13, and R-14
+(audit 2026-04-29 / 2026-04-30 / 2026-05-01 landings).
+
+* **Header.** The canonical theorem-numbering reference is now
+  `docs/API_SURFACE.md` § "Three core theorems, by cluster" rather
+  than `CLAUDE.md` directly (the `CLAUDE.md` table mirrors API_SURFACE
+  but the latter is the regenerable source of truth). The Status
+  taxonomy now surfaces **Structural** as a separately-labelled
+  class for Mathlib-grade equivalence-relation / subgroup identities
+  (rows #21–#23). The W6 deletion of the deterministic chain is
+  flagged so readers do not search for **Scaffolding** theorems that
+  no longer exist in source.
+* **§1 (primitive map).** The "Integrity of published artefact" row
+  now lists three Lean handles: `authEncrypt_is_int_ctxt`
+  (**Standalone**), `bitstringPolynomialMAC_int_ctxt` (**Standalone**,
+  R-13 discharged 2026-04-30) for HGOE-compatible composition, and
+  the original `carterWegmanMAC_int_ctxt` (**Conditional** —
+  `X = ZMod p`) as the prime-field witness.
+* **§1 caveats.** The "bundle-mediated rotation pattern" caveat now
+  cites the R-07 quantitative refinement
+  (`combinerDistinguisherAdvantage_ge_inv_card`,
+  `no_concreteOIA_below_inv_card_of_combiner`): any cross-orbit
+  non-degenerate combiner forces `ConcreteOIA(ε)` for some
+  `ε ≥ 1/|G|`. The pre-W6 deterministic combiner-impossibility
+  theorem was vacuously true on every non-trivial scheme and was
+  deleted in W6; the R-07 result is the surviving substantive
+  content.
+* **§3.4 (build and CI artefact binding).** The R-13 discharge is
+  the headline change: `bitstringPolynomialMAC_int_ctxt` is the
+  new HGOE-compatible **Standalone** witness for INT-CTXT typed
+  at `Bitstring n` with no `Bitstring n → ZMod p` adapter required.
+  The polynomial-evaluation hash family `bitstringPolynomialHash`
+  is `(n / p)`-strongly-universal-2 (`bitstringPolynomialHash_isEpsilonSU2`,
+  **Quantitative**) and `(n / p)`-SUF-CMA-secure 1-time
+  (`bitstringPolynomialMAC_isSUFCMASecure`, **Quantitative** R-13⁺).
+  The original `carterWegmanMAC_int_ctxt` is retained as the
+  single-block `ZMod p`-typed witness; its 1-time SUF-CMA bound
+  `(1/p)` is now machine-checked via `carterWegmanMAC_isSUFCMASecure`
+  (R-08 discharge). For both witnesses, Q-time SUF-CMA does not
+  hold without a fresh nonce per query (key-recovery attack
+  formally proven via `not_carterWegmanMAC_isQtimeSUFCMASecure`
+  and `not_bitstringPolynomialMAC_isQtimeSUFCMASecure`).
+* **§9 (threat model class 5 — CRQC adversary).** The "Theorems 1,
+  6, 14" framing is replaced with the post-W6 reality: orbit-layer
+  correctness is **Standalone** (#1, #4); orbit-layer security
+  reduces to TI / GI / CE hardness through the **Quantitative**
+  probabilistic chain (#27 at the scheme layer, #29 at the KEM
+  layer) composed with `concrete_oia_implies_1cpa` (#6). Both #27
+  and #29 are inhabited unconditionally only at ε = 1 via the
+  trivial `tight_one_exists` family; ε < 1 requires a caller-
+  supplied surrogate + encoder profile (research-scope per the
+  R-02 / R-03 / R-04 / R-05 milestones in `docs/planning/`). The
+  pre-W6 deterministic Theorem 14 (`hardness_chain_implies_security`)
+  was **Scaffolding** — vacuously true on every non-trivial scheme
+  — and was deleted in W6.
+* **§11 (incremental path).** Each step's theorem citations now
+  carry their Status labels inline. Step 1 (hybrid at-rest storage)
+  picks up `bitstringPolynomialMAC_int_ctxt` for HGOE-typed
+  integrity. Step 3 (category-sealed routing) cross-references the
+  R-09 multi-query bound `indQCPA_from_concreteOIA`
+  (**Quantitative**) for designs that issue many ciphertext queries
+  per session.
+* **§4.5 (reputation without deanonymization).** The
+  `invariant_attack` discipline informally cited here is now also
+  backed by the R-01 strengthening
+  `indCPAAdvantage_invariantAttackAdversary_eq_one` — under a
+  separating G-invariant the IND-1-CPA advantage is *exactly* `1`
+  (in `Theorems/InvariantAttack.lean`), not merely "exists adversary
+  with some advantage". Designers should treat any leakage of a
+  separating G-invariant as a complete privacy collapse, with no
+  ε-bound recoverable. (No body text edit was needed — the
+  discipline is unchanged; the strengthening is recorded here for
+  cross-reference.)
+* **No design-level claims weakened.** The R-13 discharge actually
+  strengthens §3.4's HGOE-binding posture: pre-R-13 the only
+  formal INT-CTXT witness was typed at `ZMod p` (incompatible with
+  HGOE without an adapter); post-R-13 there is a direct
+  `Bitstring n`-typed Standalone witness. No other section's claim
+  shape changed.
+* **Theorem-numbering source.** All theorem numbers in this document
+  reference the canonical numbering of `docs/API_SURFACE.md`
+  § "Three core theorems, by cluster". Numbers preserved across
+  W6 deletions (rows #14, #3, #5, #8 do not exist post-W6 —
+  Scaffolding deleted — but no surviving prose cites them as
+  positive evidence).
+
+No identifier renames since 2026-04-29; all Lean identifier
+citations remain valid.

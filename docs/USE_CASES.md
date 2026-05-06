@@ -8,25 +8,31 @@
 
 # Novel Use Cases for Orbcrypt
 
-**Status:** exploratory design notes — last updated 2026-04-29.
+**Status:** exploratory design notes — last updated 2026-05-06.
 
 This document catalogues application designs that genuinely exploit
 Orbcrypt's distinctive primitives rather than treating it as a drop-in
 replacement for AES or Kyber. Each sketch identifies (a) the concrete
 Orbcrypt primitive it leans on, (b) why competing primitives are a poor
 fit, and (c) how it aligns with the existing Lean 4 formalization — in
-particular which Phase-13 limitations bite.
+particular which Phase-13 / hardness-chain limitations bite.
 
 Readers unfamiliar with the scheme should first skim `docs/POE.md` (concept),
 `docs/DEVELOPMENT.md` §§4–6 (specification), and `docs/PUBLIC_KEY_ANALYSIS.md`
 (public-key feasibility). The Lean theorem numbers referenced here match
-`CLAUDE.md`'s theorem registry; theorem **Status** classifications
-(`Standalone` / `Quantitative` / `Conditional` / `Scaffolding`) follow
-the release-messaging policy in `CLAUDE.md`'s Key Conventions and the
-`Status` column of its "Three core theorems" table. **Quantitative**
-theorems must be cited with an explicit ε; **Conditional** theorems
-must be cited with their hypothesis disclosed; **Scaffolding** theorems
-must not be cited as standalone security claims.
+the canonical numbering in `docs/API_SURFACE.md` § "Three core theorems,
+by cluster" (mirrored in `CLAUDE.md`'s theorem registry); theorem
+**Status** classifications (`Standalone` / `Quantitative` / `Conditional`
+/ `Structural` / `Scaffolding`) follow the release-messaging policy in
+`CLAUDE.md`'s Key Conventions and `docs/API_SURFACE.md`'s Status column.
+**Quantitative** theorems must be cited with an explicit ε; **Conditional**
+theorems must be cited with their hypothesis disclosed; **Structural**
+theorems are Mathlib-grade equivalence-relation / subgroup identities,
+unconditionally true but not security claims; **Scaffolding** theorems
+were vacuously true on every non-trivial scheme — the deterministic
+`OIA` / `KEMOIA` / `HardnessChain` chain was deleted in Workstream W6
+of structural review 2026-05-06, so no Scaffolding citations should
+appear in new prose.
 
 ---
 
@@ -60,14 +66,22 @@ Three observations drive the designs below:
 Two caveats from Phase 13 recur throughout the sketches:
 
 * **Public re-randomization is blocked.** `CombineImpossibility.lean`
-  shows that no `G`-equivariant, orbit-closed, non-degenerate combiner
-  exists under deterministic OIA. Designs that need fresh orbit
-  elements from a non-`G`-holder must therefore either (i) use the
-  commutative CSIDH-style variant (§1.3), or (ii) route randomization
-  through a `G`-holder who issues signed `OrbitalRandomizers` bundles
-  consumed one element at a time with `refreshRandomizers` rotation.
-  A participant holding only *one* orbit element cannot mint fresh
-  ones without one of these routes.
+  shows that any `G`-equivariant, orbit-closed, non-degenerate combiner
+  on a non-trivial group action induces a distinguisher with provable
+  advantage. The probabilistic version is now quantitative:
+  `combinerDistinguisherAdvantage_ge_inv_card` (Workstream R-07,
+  **Standalone**) lower-bounds the cross-orbit advantage at `1/|G|`
+  under `CrossOrbitNonDegenerateCombiner`; composed with the
+  `concrete_combiner_advantage_bounded_by_oia` upper bound, this
+  yields `no_concreteOIA_below_inv_card_of_combiner` — a public
+  combiner forces `ConcreteOIA(ε)` for some `ε ≥ 1/|G|`. Designs
+  that need fresh orbit elements from a non-`G`-holder must
+  therefore either (i) use the commutative CSIDH-style variant
+  (§1.3), or (ii) route randomization through a `G`-holder who
+  issues signed `OrbitalRandomizers` bundles consumed one element at
+  a time with `refreshRandomizers` rotation. A participant holding
+  only *one* orbit element cannot mint fresh ones without one of
+  these routes.
 * **Sampling from `G` requires holding `G`.** `encaps g` takes
   `g : G` as input; sampling `g` uniformly requires knowing `G`'s
   structure. Anywhere a sketch says "party X presents a fresh orbit
@@ -535,13 +549,19 @@ adversary with `hasAdvantage` — a specific `(g₀, g₁)` pair on which
 the adversary's two guesses disagree. Informal shorthand: "complete
 break under a separating G-invariant"; the formal conclusion is
 `∃ A, hasAdvantage scheme A` (existence of one distinguishing
-adversary), not a quantitative "advantage = 1/2" claim. See `CLAUDE.md`
-row #2 for the full three-convention advantage catalogue (deterministic
-= 1, two-distribution = 1, centred = 1/2). The privacy collapses
-either way. This constrains the kinds of recommendation logic
-permissible: clustering on `canon` is safe; clustering on any
-non-invariant feature destroys the guarantee. Designers must state
-explicitly which invariants the service may compute.
+adversary), not a quantitative "advantage = 1/2" claim. See
+`docs/API_SURFACE.md` row #2 for the full three-convention advantage
+catalogue (deterministic = 1, two-distribution = 1, centred = 1/2).
+The probabilistic strengthening
+`indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream R-01,
+**Standalone**) tightens the existential claim to a *quantitative*
+equality: the invariant-attack adversary's IND-1-CPA advantage is
+*exactly* `1`, ruling out any `ConcreteOIA(ε)` bound for `ε < 1` once
+a separating G-invariant exists. The privacy collapses either way.
+This constrains the kinds of recommendation logic permissible:
+clustering on `canon` is safe; clustering on any non-invariant feature
+destroys the guarantee. Designers must state explicitly which
+invariants the service may compute.
 
 ### 4.4 Group PSI via orbit intersection
 
@@ -633,21 +653,33 @@ For *quantitative* security citations, use the probabilistic chain:
 `concrete_hardness_chain_implies_1cpa_advantage_bound` (#27,
 Quantitative) for end-to-end TI-hardness → IND-1-CPA, and
 `concrete_kem_hardness_chain_implies_kem_advantage_bound` (#29,
-Quantitative) for the KEM layer. (The deterministic counterparts
-formerly numbered #3, #5, #8, #14 plus the deterministic half of
-#30 were vacuously true `Scaffolding` results — their
-`OIA`/`KEMOIA`/`HardnessChain` hypotheses were `False` on every
-non-trivial scheme — and were deleted in Workstream W6 of the
-2026-05-06 structural review.)
+Quantitative) for the KEM layer. Both #27 and #29 are inhabited
+unconditionally only at ε = 1 via the trivial `tight_one_exists`
+witness (PUnit surrogate) or `tight_one_exists_at_s2Surrogate`
+(S₂ surrogate); ε < 1 requires a caller-supplied surrogate +
+encoder profile (research-scope per `docs/planning/`'s R-02 / R-03
+/ R-04 / R-05 milestones). For multi-query IND-Q-CPA, compose with
+`indQCPA_from_concreteOIA` (Workstream R-09, **Quantitative**),
+which delivers a `Q · ε` bound from `ConcreteOIA(ε)` alone. (The
+deterministic counterparts formerly numbered #3, #5, #8, #14 plus
+the deterministic half of #30 were vacuously true `Scaffolding`
+results — their `OIA` / `KEMOIA` / `HardnessChain` hypotheses
+were `False` on every non-trivial scheme — and were deleted in
+Workstream W6 of the 2026-05-06 structural review.)
 
 Three structural gaps recur:
 
 * **Sender-side sampling without `G`.** The `combine` impossibility
-  (Phase 13) is the hard bound. Progress depends on either (i)
-  instantiating `CommGroupAction` concretely, making §§1.3, 3.4
-  deployable and bypassing the impossibility, or (ii) introducing
-  a signed-bundle ("randomizer certificate") protocol layer that
-  pushes the trust to a rotating issuer, as hinted in `refreshRandomizers`.
+  (Phase 13) is the hard bound, now in quantitative form per the
+  Workstream R-07 lower bound `combinerDistinguisherAdvantage_ge_inv_card`
+  and its corollary `no_concreteOIA_below_inv_card_of_combiner`
+  (any cross-orbit non-degenerate combiner forces
+  `ConcreteOIA(ε)` for some `ε ≥ 1/|G|`). Progress depends on
+  either (i) instantiating `CommGroupAction` concretely, making
+  §§1.3, 3.4 deployable and bypassing the impossibility, or (ii)
+  introducing a signed-bundle ("randomizer certificate") protocol
+  layer that pushes the trust to a rotating issuer, as hinted in
+  `refreshRandomizers`.
 
 * **Threshold-sharing `G`.** Several applications want to reveal `G`
   atomically under a distributed trigger. The natural approach is
@@ -851,3 +883,77 @@ A–G of that audit and by Workstream R-CE / R-TI.
 No design-level claims were weakened in this pass; the changes are
 purely classification + naming alignment with the post-Workstream-A
 release-messaging policy.
+
+---
+
+## 11. Audit changelog (2026-05-06)
+
+A third pass aligned the document with the structural-review
+workstreams of 2026-05-06 (plan
+`docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`) and with
+research-scope discharges R-01 / R-07 / R-09 / R-13 (audit
+2026-04-29 / 2026-04-30 / 2026-05-01 landings).
+
+* **Header.** Cross-references promoted from `CLAUDE.md` to
+  `docs/API_SURFACE.md` § "Three core theorems, by cluster" — that
+  document is now the canonical "what does the formalization
+  deliver" reference and the source of truth for theorem
+  numbering. Status taxonomy expanded to surface **Structural**
+  (Mathlib-grade equivalence-relation / subgroup identities) as a
+  separately-labelled class. Scaffolding language tightened to
+  flag the W6 deletion of the deterministic chain.
+* **§0 (the five primitives).** The "Public re-randomization is
+  blocked" caveat now references the quantitative refinement of
+  the `combine` no-go: `combinerDistinguisherAdvantage_ge_inv_card`
+  (Workstream R-07, **Standalone**) with its
+  `no_concreteOIA_below_inv_card_of_combiner` corollary forces
+  `ConcreteOIA(ε)` for some `ε ≥ 1/|G|` whenever a cross-orbit
+  non-degenerate combiner exists. The pre-W6 deterministic
+  combiner-impossibility theorem (`combiner_implies_oia_break`,
+  vacuously true on every non-trivial scheme) was deleted in W6
+  along with the rest of the deterministic chain; the R-07
+  probabilistic refinement is the surviving substantive content.
+* **§1.3 (CSIDH).** The deterministic-chain deletion was already
+  noted in the body (the pre-W6 `hardness_chain_implies_security`
+  was vacuously true on every non-trivial scheme); no further
+  edit needed. The probabilistic chain
+  `concrete_hardness_chain_implies_1cpa_advantage_bound` (#27,
+  **Quantitative**) is the canonical TI → IND-1-CPA citation.
+* **§4.3 (private recommendations).** The `invariant_attack`
+  caveat now also cites
+  `indCPAAdvantage_invariantAttackAdversary_eq_one` (Workstream
+  R-01, **Standalone**) — the probabilistic strengthening that
+  pins the invariant-attack adversary's IND-1-CPA advantage to
+  *exactly* `1`, ruling out any `ConcreteOIA(ε)` bound for `ε < 1`
+  once a separating G-invariant exists.
+* **§6 alignment table closing paragraph.** Added the inhabitation
+  posture for #27 / #29 (ε = 1 unconditional via `tight_one_exists`
+  / `tight_one_exists_at_s2Surrogate`; ε < 1 research-scope per
+  R-02 / R-03 / R-04 / R-05) and the multi-query bound
+  `indQCPA_from_concreteOIA` (Workstream R-09, **Quantitative**)
+  for designs that issue many ciphertext queries (DEX batch
+  auctions, dark-pool order books, glass-ballot voting at scale).
+* **§6 third bullet (combine impossibility).** Updated to cite
+  the R-07 quantitative refinement.
+* **Theorem-numbering source.** All theorem numbers in this
+  document now reference the canonical numbering of
+  `docs/API_SURFACE.md` § "Three core theorems, by cluster".
+  The numbering is preserved across W6 deletions: rows #14, #3,
+  #5, #8 do not exist post-W6 (deterministic chain Scaffolding,
+  deleted), but the document does not cite those rows in any
+  surviving prose.
+* **Naming.** No identifier renames since 2026-04-29; all Lean
+  identifier citations remain valid.
+* **Benchmark figures.** The §1.1 GAP benchmark figures
+  (172 / 320 / ≈1.2s ms canon at λ=80/128/256) are unchanged
+  versus the pre-Workstream-A2 anchor; the §9 changelog's
+  "1186 ms" historical mention reflects the 2026-04-18 reading
+  and is retained as historical record. The current
+  `implementation/gap/orbcrypt_benchmarks.csv` reports
+  canon_ms = 1158 at λ=256 (vs. decaps_ms = 1186 — distinct
+  columns).
+
+No design-level claims were weakened in this pass; the changes
+are classification + naming + theorem-citation alignment with
+the post-W6 reality and with the recently-discharged research
+milestones (R-01, R-07, R-09, R-13).
