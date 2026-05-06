@@ -526,9 +526,9 @@ end;;
 #' directory as this file, validates each non-comment line, and reports
 #' the per-line result. Returns true iff every line passes.
 TestLeanVectors := function()
-    local file, line, parts, n, group_id, input_bits, expected_bits;
-    local G, support_in, canon_set, gap_canon_bits;
-    local total, passed, failed, vectorPath;
+    local file, line, parts, n, group_id, input_bits, expected_bits,
+          G, support_in, canon_set, gap_canon_bits,
+          total, passed, failed, vectorPath;
 
     # GAP's standard `InputTextFile` is relative to the current working
     # directory. The file lives next to this test script; the existing

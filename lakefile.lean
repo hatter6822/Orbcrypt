@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.5"
+  version := v!"0.3.6"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,27 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W3C (sub-unit) of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 3):
+-- end-to-end CI integration of the GAP–Lean canonical-image
+-- correspondence test from W3 (3A + 3B). Three coordinated changes:
+--   (1) `scripts/setup_lean_env.sh` gains an `install_gap_environment`
+--       function that idempotently installs GAP via apt and clones
+--       `gap-packages/images@v1.3.3` (the most recent tag compatible
+--       with Ubuntu 24.04's apt-installed GAP 4.12.1; master requires
+--       GAP >= 4.13). Called from both the fast-path and the slow-path
+--       so every environment-startup invocation gets GAP. Failures
+--       are non-fatal — the Lean environment is fully usable without
+--       GAP, only the W3C correspondence test depends on it.
+--   (2) `implementation/gap/orbcrypt_test.g` `TestLeanVectors`'s GAP
+--       `local` declarations consolidated into one statement (GAP
+--       syntax requires a single `local` per function).
+--   (3) `.github/workflows/lean4-build.yml` gains a "GAP–Lean
+--       canonical-image correspondence" CI step that re-runs
+--       setup-lean-env.sh (idempotent), then invokes the
+--       TestLeanVectors function and asserts FINAL: true.
+-- Verified locally: 48/48 test vectors pass on GAP 4.12.1 + images
+-- v1.3.3. Patch bump 0.3.5 → 0.3.6.
 -- W3 (sub-units 3A + 3B) of structural review 2026-05-06 (plan
 -- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 3):
 -- machine-checked GAP–Lean canonical-image correspondence at small
