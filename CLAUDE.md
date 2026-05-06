@@ -684,6 +684,49 @@ When changing behavior, theorems, or formalization status, update in the same PR
 
 Canonical ownership: `docs/DEVELOPMENT.md` owns the full scheme specification. `docs/dev_history/formalization/FORMALIZATION_PLAN.md` owns the Lean 4 architecture and conventions. Phase documents own implementation-level guidance for their respective phases. `docs/POE.md` and `docs/COUNTEREXAMPLE.md` own the high-level concept exposition and vulnerability analysis respectively.
 
+## Pre-merge checks
+
+Every PR to this branch must pass the following CI gates (configured in
+`.github/workflows/lean4-build.yml`):
+
+1. **`lake build`** — the full project builds clean (zero warnings,
+   zero errors).
+2. **No-`sorry` check** — the comment-aware Perl strip + `grep` returns
+   empty across `Orbcrypt/`. (Comment-aware stripping handles nested
+   block comments — see the W2 / I5 disclosure in the workflow file.)
+3. **No-axiom check** — `grep -rEn '^axiom\s+\w+\s*[\[({:]' Orbcrypt/`
+   returns empty. (OIA, KEMOIA, ConcreteOIA, etc. are `def`s, not
+   `axiom`s.)
+4. **`lake-manifest.json` drift check** — every direct `require ... @
+   git "<rev>"` directive in `lakefile.lean` matches the corresponding
+   `rev` field in `lake-manifest.json`.
+5. **Hypothesis-consumption gate** — `python3
+   scripts/audit_hypothesis_consumption.py` reports zero violations.
+   The gate catches the "theatrical theorem" pattern: a non-
+   underscored hypothesis name that the proof body never references
+   (and that doesn't appear in the conclusion type or in any
+   subsequent binder's type either). Tactics that consume hypotheses
+   by type (`omega`, `simp`, `simp_all`, `assumption`, `aesop`,
+   `decide`, `linarith`, etc.) short-circuit the per-theorem check.
+   Underscored names (`_h_foo`) are exempt by convention. See the
+   script's module docstring for the full algorithm and the
+   `ALLOW_LIST` for documented exemptions.
+6. **Phase-16 axiom-transparency audit** — `lake env lean
+   scripts/audit_phase_16.lean` exits 0; every `#print axioms` line
+   reports `[propext, Classical.choice, Quot.sound]` or "does not
+   depend on any axioms". A hidden `sorry` in any dependency chain
+   surfaces as `sorryAx` in the script's output.
+
+A sixth check is conventionally enforced at landing time but not by CI
+(because it requires `git diff` against `origin/main`):
+
+7. **Naming-rule grep** — every newly added `def` /
+   `theorem` / `structure` / `class` / `instance` / `abbrev` /
+   `lemma` declaration must pass the project's "Names describe
+   content, never provenance" rule (see Key Conventions § "Naming
+   conventions"). Run the recipe in that section's "Enforcement at
+   review time" subsection before merging.
+
 ## Pull request authoring policy (ABSOLUTE)
 
 **Forbidden in PR summaries / descriptions / bodies:** session URLs of

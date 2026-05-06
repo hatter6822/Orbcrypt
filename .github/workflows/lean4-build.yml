@@ -215,6 +215,31 @@ jobs:
           fi
           echo "lake-manifest.json drift check passed (${#requires[@]} direct require(s) verified)"
 
+      - name: Verify hypothesis consumption (theatrical-theorem gate)
+        # Workstream 2 of structural review 2026-05-06 (plan
+        # `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`):
+        # pre-merge gate that catches the "theatrical theorem" pattern —
+        # a theorem with a non-underscored hypothesis name that the
+        # proof body never references (and that doesn't appear in the
+        # conclusion type or in any subsequent binder's type either).
+        #
+        # The pattern has recurred across post-landing audits (R-TI
+        # Phase 3 v1, Workstream I v1, Stage-3/Stage-5 identity-case
+        # witnesses, the audit-2 cleanup of post-Path-B Discharge.lean,
+        # the audit-pass-v2 of the Manin chain). Each recurrence has
+        # been caught only by a deep-audit pass *after* landing; this
+        # gate fronts-loads the work and prevents regression.
+        #
+        # The gate is implemented in Python (`scripts/audit_hypothesis_
+        # consumption.py`) rather than Lean to avoid toolchain
+        # dependency for a pre-merge check. It uses regex parsing with
+        # tactic-whitelist short-circuits and an ALLOW_LIST for known
+        # release-facing signature markers. See the script's module
+        # docstring for full detection semantics.
+        run: |
+          set -e
+          python3 scripts/audit_hypothesis_consumption.py
+
       - name: Phase 16 axiom-transparency audit
         # Run the consolidated Phase 16 audit script:
         # `#print axioms` over every headline result in Phases 1–14, plus

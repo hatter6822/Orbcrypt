@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.3"
+  version := v!"0.3.4"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,14 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W2 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 2):
+-- pre-merge gate `scripts/audit_hypothesis_consumption.py` catches the
+-- "theatrical theorem" pattern (hypothesis bound but never consumed in
+-- proof body, conclusion type, or any subsequent binder's type). The
+-- gate is integrated as a CI step between manifest-drift and the
+-- Phase-16 audit, and a "Pre-merge checks" subsection in CLAUDE.md
+-- documents the full set of CI gates. Patch bump 0.3.3 → 0.3.4.
 -- W1 of structural review 2026-05-06 (plan
 -- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`): rename
 -- `two_phase_correct` → `canonical_agreement_under_two_phase_decomposition`
