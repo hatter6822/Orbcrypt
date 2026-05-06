@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.4"
+  version := v!"0.3.5"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,20 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W3 (sub-units 3A + 3B) of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 3):
+-- machine-checked GAP–Lean canonical-image correspondence at small
+-- parameters. New: `scripts/generate_test_vectors.lean` (Lean #eval
+-- generator over `Bitstring n` for n ∈ {3, 4} under full-S_n and
+-- trivial subgroups — 48 records); `implementation/gap/lean_test_vectors.txt`
+-- (committed deterministic artifact); `TestLeanVectors()` in
+-- `implementation/gap/orbcrypt_test.g` reads the file and validates
+-- each record via GAP's `CanonicalImage(G, support, OnSets)`. The
+-- cyclic-group case `C<n>` was dropped because `Subgroup.zpowers σ`'s
+-- `Fintype` instance is noncomputable; tracked as a follow-up. CI
+-- integration (sub-unit 3C) is deferred to a follow-up workstream
+-- pending Docker / GAP-version-pinning resolution. Patch bump
+-- 0.3.4 → 0.3.5.
 -- W2 of structural review 2026-05-06 (plan
 -- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 2):
 -- pre-merge gate `scripts/audit_hypothesis_consumption.py` catches the
