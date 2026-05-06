@@ -35,7 +35,6 @@ pattern established in `Crypto/OIA.lean`) or states a computational reduction
 * `Orbcrypt.GIOIA` — deterministic OIA for graph isomorphism under S_n
 * `Orbcrypt.TensorOIAImpliesCEOIA` — TensorOIA → CEOIA reduction (Prop)
 * `Orbcrypt.CEOIAImpliesGIOIA` — CEOIA → GIOIA reduction (Prop)
-* `Orbcrypt.HardnessChain` — deterministic composite chain (TensorOIA → OIA)
 * `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c)
 * `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound probabilistic
   tensor-OIA (post-Workstream-G Fix B: carries `SurrogateTensor F`)
@@ -49,21 +48,20 @@ pattern established in `Crypto/OIA.lean`) or states a computational reduction
 
 ## Main results
 
-* `Orbcrypt.hardness_chain_implies_security` — deterministic chain →
-  IND-1-CPA (vacuous on non-trivial schemes; see the Workstream J
-  "deterministic vs probabilistic" framing).
-* `Orbcrypt.hardness_chain_implies_security_distinct` — classical
-  distinct-challenge form of the deterministic chain corollary
-  (IsSecureDistinct). Release-facing: matches the literature's
-  IND-1-CPA game shape (Workstream K, audit finding
-  F-AUDIT-2026-04-21-M1).
-* `Orbcrypt.oia_from_hardness_chain` — TensorOIA + reductions → OIA.
-* `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` — probabilistic
-  chain composition threading advantage through the chain-image
-  `encCG ∘ encTC` (Workstream G).
-* `Orbcrypt.ConcreteHardnessChain.tight_one_exists` — non-vacuity witness
-  at `ε = 1` via `punitSurrogate F` + dimension-0 trivial encoders
-  (Workstream G).
+W6.3 / W6.5 of structural review 2026-05-06 deleted the
+deterministic-chain results (`hardness_chain_implies_security`,
+`_distinct`, `oia_from_hardness_chain`, `HardnessChain`). The
+non-vacuous probabilistic chain is the sole hardness-chain
+content post-deletion:
+
+* `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` —
+  probabilistic chain composition threading advantage through the
+  chain-image `encCG ∘ encTC` (Workstream G).
+* `Orbcrypt.ConcreteHardnessChain.tight_one_exists` — non-vacuity
+  witness at `ε = 1` via `punitSurrogate F` + dimension-0 trivial
+  encoders (Workstream G); W4 of the 2026-05-06 structural review
+  adds `tight_one_exists_at_s2Surrogate` for the non-trivial
+  `S_2`-shaped surrogate.
 * `Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound` —
   ε-bounded IND-1-CPA advantage from the probabilistic chain
   (Workstream E5, post-G signature threads `SurrogateTensor`).
@@ -84,11 +82,14 @@ TensorOIA        (strongest — no quasi-poly algorithm known)
     | GIOIAImpliesOIA (graph-to-orbit encoding)
     ↓
    OIA            (Orbcrypt's core assumption — Crypto/OIA.lean)
-    |
-    | oia_implies_1cpa (Phase 4 — fully proved)
-    ↓
-IND-1-CPA secure  (Theorems/OIAImpliesCPA.lean)
 ```
+
+The deterministic-chain composition `OIA → IND-1-CPA secure` and
+the chain Prop `HardnessChain` were removed by W6.3 / W6.5 of
+structural review 2026-05-06. The non-vacuous probabilistic chain
+(`ConcreteHardnessChain.concreteOIA_from_chain` →
+`concrete_hardness_chain_implies_1cpa_advantage_bound`) is the
+substantive end-to-end security reduction.
 
 ## References
 
@@ -256,39 +257,14 @@ def GIOIAImpliesOIA {G : Type*} {X : Type*} {M : Type*}
   (∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool), GIOIA adj₀ adj₁) →
     OIA scheme
 
-/-- The full hardness chain: TensorOIA, through all reductions, implies
-    the scheme-level OIA.
-
-    This packages all individual reductions into a single composite Prop.
-    A scheme satisfying this chain inherits the hardness of TI. -/
-def HardnessChain {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) : Prop :=
-  -- Tensor-level indistinguishability is provided
-  (∃ (m : ℕ) (T₀ T₁ : Tensor3 m F), @TensorOIA m F _ T₀ T₁) ∧
-  -- All reductions transfer indistinguishability
-  @TensorOIAImpliesCEOIA F _ ∧
-  @CEOIAImpliesGIOIA F ∧
-  GIOIAImpliesOIA scheme
-
-/-- The full chain implies OIA: composing TensorOIA with the reduction
-    chain yields the scheme-level OIA.
-
-    **Proof:** Unfold the chain, apply each reduction in sequence, then
-    apply GIOIAImpliesOIA to obtain OIA for the scheme. -/
-theorem oia_from_hardness_chain
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := F) scheme) :
-    OIA scheme := by
-  obtain ⟨⟨m, T₀, T₁, hTensor⟩, hTI_CE, hCE_GI, hGI_OIA⟩ := hChain
-  -- Step 1: TensorOIA → CEOIA
-  obtain ⟨k₁, C₀, C₁, hCEOIA⟩ := hTI_CE m T₀ T₁ hTensor
-  -- Step 2: CEOIA → GIOIA
-  obtain ⟨k₂, adj₀, adj₁, hGIOIA⟩ := hCE_GI k₁ C₀ C₁ hCEOIA
-  -- Step 3: GIOIA → OIA
-  exact hGI_OIA ⟨k₂, adj₀, adj₁, hGIOIA⟩
+-- W6.5 of structural review 2026-05-06: the deterministic chain
+-- composition `HardnessChain` (the `Prop`-valued composite of
+-- `TensorOIA` + per-link Props + GIOIAImpliesOIA) and the chain
+-- implication `oia_from_hardness_chain` were deleted as part of
+-- the deterministic-chain removal scheduled for v0.4.0. The non-
+-- vacuous counterpart `ConcreteHardnessChain` (with its
+-- `concreteOIA_from_chain` composition) carries the substantive
+-- ε-smooth hardness-chain content.
 
 -- W6.3 of structural review 2026-05-06: the deterministic chain
 -- composition `hardness_chain_implies_security` and its distinct-

@@ -592,10 +592,10 @@ open Orbcrypt
 #print axioms TensorOIAImpliesCEOIA
 #print axioms CEOIAImpliesGIOIA
 #print axioms GIOIAImpliesOIA
-#print axioms HardnessChain
-#print axioms oia_from_hardness_chain
--- W6.3 of structural review 2026-05-06: `hardness_chain_implies_security`
--- (Phase 12 deterministic chain composition) was deleted.
+-- W6.5 of structural review 2026-05-06: `HardnessChain` and
+-- `oia_from_hardness_chain` (Phase 12 deterministic-chain
+-- composition) were deleted; W6.3 already removed
+-- `hardness_chain_implies_security`.
 -- Workstream E2c + E3 + E4 + E5 (probabilistic chain)
 #print axioms graphOrbitDist
 #print axioms ConcreteGIOIA
