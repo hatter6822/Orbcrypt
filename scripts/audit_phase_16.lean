@@ -120,9 +120,10 @@ open Orbcrypt
 
 -- OIA
 #print axioms OIA
--- Workstream E (audit 2026-04-23, finding C-07): machine-checked
--- vacuity witness for the deterministic OIA.
-#print axioms det_oia_false_of_distinct_reps
+-- W6.1 of structural review 2026-05-06: the deterministic-OIA
+-- vacuity witness `det_oia_false_of_distinct_reps` (audit
+-- 2026-04-23 finding C-07) was deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0.
 
 -- ============================================================================
 -- §3  Core theorems (Phase 4)
@@ -266,9 +267,10 @@ open Orbcrypt
 #print axioms KEMIsSecure
 #print axioms kemIsSecure_iff
 #print axioms KEMOIA
--- Workstream E (audit 2026-04-23, finding E-06): machine-checked
--- vacuity witness for the deterministic KEMOIA.
-#print axioms det_kemoia_false_of_nontrivial_orbit
+-- W6.1 of structural review 2026-05-06: the deterministic-KEMOIA
+-- vacuity witness `det_kemoia_false_of_nontrivial_orbit` (audit
+-- 2026-04-23 finding E-06) was deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0.
 #print axioms kem_key_constant_direct
 #print axioms kem_ciphertext_indistinguishable
 #print axioms kemoia_implies_secure
@@ -1322,13 +1324,11 @@ example : IsEpsilonUniversal (carterWegmanHash 2)
       rw [carterWegmanHash_collision_card 2 h_ne])
 
 -- ============================================================================
--- Workstream E non-vacuity witnesses (audit 2026-04-23, findings C-07 /
--- E-06): machine-checked vacuity of the deterministic `OIA` and `KEMOIA`
--- predicates. The two `example` blocks below instantiate
--- `det_oia_false_of_distinct_reps` and
--- `det_kemoia_false_of_nontrivial_orbit` on concrete scheme / KEM
--- fixtures to confirm each witness fires on a known-good input and
--- closes its `¬ OIA` / `¬ KEMOIA` goal by direct term construction.
+-- Shared fixtures: `trivialSchemeBool` (top-level, used by the
+-- Workstream-I3 distinct-messages-separator witness below).
+-- The fixture was originally introduced for the now-deleted W6.1
+-- vacuity witness; the fixture itself is preserved because other
+-- tests reference it.
 -- ============================================================================
 
 /-- **Trivial (identity) action of `Equiv.Perm (Fin 1)` on `Bool`.**
@@ -1348,127 +1348,29 @@ local instance trivialPermFin1ActionBool :
     `Equiv.Perm (Fin 1)` on `Bool`, with `reps := id`. Under the
     trivial action, `smul _ b := b` holds by `rfl`, so every orbit
     `MulAction.orbit G b = {b}` is a singleton and `reps_distinct`
-    follows from point-distinctness. Canonical form is the identity;
-    `orbit_iff` reduces to the tautology `b₁ = b₂ ↔ {b₁} = {b₂}`.
-    Used as the concrete target for
-    `det_oia_false_of_distinct_reps`. -/
+    follows from point-distinctness. -/
 def trivialSchemeBool :
     OrbitEncScheme (Equiv.Perm (Fin 1)) Bool Bool where
   reps := id
   reps_distinct := fun b₀ b₁ hNeq hOrb => by
-    -- Under the trivial action, `orbit G b = {b}`, so
-    -- `orbit G b₀ = orbit G b₁` forces `b₀ ∈ {b₁}`, i.e. `b₀ = b₁`.
     apply hNeq
-    -- Normalise `id b₀`, `id b₁` in `hOrb` so subsequent rewrites
-    -- match syntactically (Lean's `rw` is syntactic, not definitional).
     simp only [id_eq] at hOrb
     have hmem : b₀ ∈ MulAction.orbit (Equiv.Perm (Fin 1)) b₁ := by
-      -- `b₀ ∈ orbit b₀ = orbit b₁`.
       rw [← hOrb]
       exact MulAction.mem_orbit_self _
     obtain ⟨g, hg⟩ := hmem
-    -- `hg : g • b₁ = b₀`; under `trivialPermFin1ActionBool`,
-    -- `g • b₁ = b₁` by `rfl`, so `hg : b₁ = b₀` up to defeq.
     exact hg.symm
   canonForm :=
     { canon := id
       mem_orbit := fun b => MulAction.mem_orbit_self b
       orbit_iff := fun b₁ b₂ => by
-        -- `canon = id`, so `canon b₁ = canon b₂ ↔ b₁ = b₂`.
-        -- Under the trivial action, `orbit G b₁ = orbit G b₂ ↔
-        -- b₁ = b₂` for the same reason as `reps_distinct` above.
         refine ⟨fun h => ?_, fun h => ?_⟩
-        · -- Forward: `b₁ = b₂` ⇒ singletons coincide.
-          change b₁ = b₂ at h
+        · change b₁ = b₂ at h
           subst h; rfl
-        · -- Backward: `orbit G b₁ = orbit G b₂` ⇒ `b₁ = b₂`.
-          have hmem : b₁ ∈ MulAction.orbit (Equiv.Perm (Fin 1)) b₂ := by
+        · have hmem : b₁ ∈ MulAction.orbit (Equiv.Perm (Fin 1)) b₂ := by
             rw [← h]; exact MulAction.mem_orbit_self _
           obtain ⟨g, hg⟩ := hmem
-          -- `hg : g • b₂ = b₁`; under the trivial action this is
-          -- `b₂ = b₁` (defeq). Goal is `canon b₁ = canon b₂` i.e.
-          -- `b₁ = b₂`; close with `.symm`.
           exact hg.symm }
-
-/-- **Workstream E1 non-vacuity witness.** Fires
-    `det_oia_false_of_distinct_reps` on `trivialSchemeBool`: the
-    distinctness hypothesis `scheme.reps true ≠ scheme.reps false`
-    is `true ≠ false` (discharged by `Bool.noConfusion`), and the
-    theorem delivers `¬ OIA trivialSchemeBool`. A genuine witness
-    of the deterministic-OIA vacuity at a concrete (non-trivial)
-    scheme; exercises the full elaboration path from
-    `OrbitEncScheme` construction to `decide`-based distinguisher
-    dispatch. -/
-example : ¬ OIA trivialSchemeBool :=
-  det_oia_false_of_distinct_reps (M := Bool) trivialSchemeBool
-    (m₀ := true) (m₁ := false)
-    (by decide)
-
-/-- **Natural action of `Equiv.Perm (ZMod 2)` on `ZMod 2`.**
-    Mathlib's standard `MulAction (Equiv.Perm α) α` instance,
-    registered locally to keep the inference explicit for the
-    `OrbitKEM` below. Under this action, the swap `Equiv.swap 0 1`
-    sends `0 ↦ 1`, so `(Equiv.swap 0 1) • 0 = 1 ≠ 0 = 1 • 0` and
-    the basepoint orbit has cardinality 2. -/
-local instance permActionZMod2_forE2 :
-    MulAction (Equiv.Perm (ZMod 2)) (ZMod 2) := inferInstance
-
-/-- A concrete `OrbitKEM` under `Equiv.Perm (ZMod 2)` on `ZMod 2`
-    with base point `0`. The canonical form `canon _ := 0` is
-    constant, and `mem_orbit` / `orbit_iff` are discharged via the
-    transitive-action witness `Equiv.swap x 0`. Parallels the
-    Workstream-C `toyKEMZMod2` fixture (which lives in
-    `scripts/legacy/audit_c_workstream.lean`, relocated by
-    Workstream B2 of the 2026-04-29 audit plan) but is
-    re-materialised here so `audit_phase_16.lean` remains a
-    self-contained audit script.
-    Used as the concrete target for
-    `det_kemoia_false_of_nontrivial_orbit`. -/
-def trivialKEM_PermZMod2 :
-    OrbitKEM (Equiv.Perm (ZMod 2)) (ZMod 2) Unit where
-  basePoint := (0 : ZMod 2)
-  canonForm :=
-    { canon := fun _ => 0
-      mem_orbit := fun x => by
-        refine ⟨Equiv.swap x 0, ?_⟩
-        show (Equiv.swap x 0) x = 0
-        exact Equiv.swap_apply_left x 0
-      orbit_iff := by
-        intro x y
-        refine ⟨fun _ => ?_, fun _ => rfl⟩
-        ext z
-        refine ⟨fun _ => ⟨Equiv.swap y z, Equiv.swap_apply_left y z⟩,
-                fun _ => ⟨Equiv.swap x z, Equiv.swap_apply_left x z⟩⟩ }
-  keyDerive := fun _ => ()
-
-/-- **Workstream E2 non-vacuity witness.** Fires
-    `det_kemoia_false_of_nontrivial_orbit` on
-    `trivialKEM_PermZMod2`: the non-triviality hypothesis
-    `(Equiv.swap 0 1) • basePoint ≠ 1 • basePoint` reduces to
-    `(Equiv.swap 0 1) • 0 ≠ 0`, which is `1 ≠ 0` in `ZMod 2`.
-    The theorem delivers `¬ KEMOIA trivialKEM_PermZMod2`. Confirms
-    the KEM-layer vacuity witness elaborates on a concrete input
-    where the basepoint orbit is genuinely non-trivial
-    (cardinality 2). -/
-example : ¬ KEMOIA trivialKEM_PermZMod2 :=
-  det_kemoia_false_of_nontrivial_orbit trivialKEM_PermZMod2
-    (g₀ := Equiv.swap 0 1) (g₁ := 1)
-    (by
-      -- The `MulAction (Equiv.Perm α) α` instance is defined so
-      -- `σ • a = σ a`. `(Equiv.swap 0 1) 0 = 1` by
-      -- `Equiv.swap_apply_left`, and `(1 : Equiv.Perm _) 0 = 0`
-      -- by the definition of `1` as `Equiv.refl`. The resulting
-      -- `(1 : ZMod 2) ≠ 0` is decidable.
-      intro h
-      -- `h : (Equiv.swap 0 1) • 0 = 1 • 0`; defeq to
-      -- `(Equiv.swap 0 1) 0 = (1 : Perm _) 0`, which reduces to
-      -- `(1 : ZMod 2) = (0 : ZMod 2)` after applying
-      -- `Equiv.swap_apply_left` on the LHS and unfolding
-      -- `(1 : Perm) 0 = 0` on the RHS.
-      have h' : (Equiv.swap (0 : ZMod 2) 1) 0 = (0 : ZMod 2) := h
-      rw [Equiv.swap_apply_left] at h'
-      -- `h' : (1 : ZMod 2) = 0`, which is false.
-      exact absurd h' (by decide))
 
 /-! ## Workstream F non-vacuity witnesses
 

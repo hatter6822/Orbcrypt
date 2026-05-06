@@ -206,66 +206,14 @@ def OIA {G : Type*} {X : Type*} {M : Type*}
 -- 5. How to audit (via #print axioms — shows zero custom axioms)
 -- 6. Hardness foundations (GI and Code Equivalence reductions)
 
--- ============================================================================
--- Workstream E1 (audit 2026-04-23, finding C-07): machine-checked
--- vacuity witness for the deterministic OIA.
--- ============================================================================
-
-/--
-**Vacuity witness (audit 2026-04-23 C-07).** The deterministic `OIA`
-predicate is `False` whenever the scheme exhibits two messages whose
-representatives are distinct — which is always the case on every
-non-trivial scheme (the `reps_distinct` obligation rules out
-representative collisions at the orbit level, and for schemes whose
-messages map to distinct points the stronger pointwise distinctness
-follows immediately).
-
-The distinguisher is the orbit-membership test
-`fun x => decide (x = scheme.reps m₀)`, which is `true` on the
-`m₀`-orbit point after identity-element action and `false` on the
-`m₁`-orbit point (by the distinctness hypothesis).
-
-This theorem machine-checks the scaffolding disclosure that the
-`Orbcrypt/Crypto/OIA.lean` module docstring and
-`Orbcrypt.lean`'s vacuity map previously asserted only in prose.
-Callers of `oia_implies_1cpa` now have a formal handle on the
-vacuity: the theorem
-`oia_implies_1cpa : OIA scheme → IsSecure scheme` is vacuously true
-on every scheme with two distinct representatives, witnessed by
-composing `det_oia_false_of_distinct_reps` with `absurd`.
-
-Parallel KEM-layer witness: `det_kemoia_false_of_nontrivial_orbit`
-in `Orbcrypt/KEM/Security.lean`.
-
-**Release-messaging status.** Standalone (unconditional on the
-distinctness hypothesis). Safe to cite directly as formal evidence
-that the deterministic chain is scaffolding, not substantive
-security content.
--/
-theorem det_oia_false_of_distinct_reps
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    {m₀ m₁ : M} (hDistinct : scheme.reps m₀ ≠ scheme.reps m₁) :
-    ¬ OIA scheme := by
-  -- Assume OIA and derive a contradiction via the membership-at-`reps m₀`
-  -- distinguisher at identity group elements.
-  intro hOIA
-  have h := hOIA (fun x => decide (x = scheme.reps m₀)) m₀ m₁ 1 1
-  -- Identity action: rewrite `1 • reps mᵢ` to `reps mᵢ` on both sides.
-  -- We use `rw` (not `simp only`) to avoid the auto-`eq_self_eq_true`
-  -- simplification that would collapse `reps m₀ = reps m₀` to `True`
-  -- on the LHS before we can rewrite it via `hLHS`.
-  rw [one_smul, one_smul] at h
-  -- LHS decides `reps m₀ = reps m₀` ⇒ `true` (reflexivity).
-  -- RHS decides `reps m₁ = reps m₀` ⇒ `false` (distinctness symmetry).
-  have hLHS : decide (scheme.reps m₀ = scheme.reps m₀) = true :=
-    decide_eq_true (Eq.refl _)
-  have hRHS : decide (scheme.reps m₁ = scheme.reps m₀) = false :=
-    decide_eq_false (fun heq => hDistinct heq.symm)
-  rw [hLHS, hRHS] at h
-  -- `h : true = false` is impossible; `Bool.noConfusion` closes any
-  -- goal (here `False`) from a constructor mismatch.
-  exact Bool.noConfusion h
+-- W6.1 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 7):
+-- the deterministic-OIA vacuity witness `det_oia_false_of_distinct_reps`
+-- (formerly defined here, audit 2026-04-23 finding C-07) was deleted
+-- as part of the deterministic-chain removal scheduled for v0.4.0.
+-- The theorem was the leaf of the deterministic chain; later W6
+-- commits remove the rest. Historical entry in
+-- `docs/dev_history/WORKSTREAM_CHANGELOG.md` under the 2026-04-23
+-- Workstream E section.
 
 end Orbcrypt
