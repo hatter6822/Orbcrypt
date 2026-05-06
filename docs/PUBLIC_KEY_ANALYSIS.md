@@ -137,31 +137,30 @@ structure GEquivariantCombiner (G X : Type*) [Group G] [MulAction G X]
   equivariant : ∀ g x y, combine (g • x) (g • y) = g • combine x y
 ```
 
-and proves the headline no-go **`equivariant_combiner_breaks_oia`**:
+and proves the headline probabilistic upper bound
+**`concrete_combiner_advantage_bounded_by_oia`**:
 
 ```lean
-theorem equivariant_combiner_breaks_oia
-    (scheme : OrbitEncScheme G X M) (m_bp : M)
-    (combiner : GEquivariantCombiner G X (scheme.reps m_bp))
-    (hND : NonDegenerateCombiner combiner) :
-    ¬ OIA scheme
+theorem concrete_combiner_advantage_bounded_by_oia
+    {scheme : OrbitEncScheme G X M}
+    (h_oia : ConcreteOIA scheme ε) (m_bp m : M)
+    (comb : GEquivariantCombiner G X (scheme.reps m_bp)) :
+    combinerDistinguisherAdvantage scheme m_bp comb m_bp m ≤ ε
 ```
 
-where `NonDegenerateCombiner combiner` merely asserts
-`∃ g, combine bp (g • bp) ≠ combine bp bp` — the *minimal* "actually
-mixes" property. The contrapositives
-
-* `oia_forces_combine_constant_in_snd` — under `OIA`, for every `g : G`,
-  `combine bp (g • bp) = combine bp bp`;
-* `oia_forces_combine_constant_on_orbit` — same statement for arbitrary
-  `y ∈ orbit G bp` (not only those presented as `g • bp`);
-
-show that any `OIA`-respecting equivariant combiner is constant in its
-second argument on the basepoint orbit. The bridge theorem
-**`oblivious_sample_equivariant_obstruction`** then promotes this
-into a statement about `obliviousSample`: with an equivariant `combine`,
-the second sender index contributes nothing to the output. A *fresh*
-ciphertext is impossible by this route.
+(Workstream E6, Phase 8). The upper bound is paired with the
+quantitative cross-orbit lower bound
+**`combinerDistinguisherAdvantage_ge_inv_card`** (Workstream R-07,
+2026-04-30): under `CrossOrbitNonDegenerateCombiner` (intra-orbit
+non-triviality on `m_bp`'s orbit + cross-orbit constant-false witness
+on `m_target`'s orbit), the combiner-induced distinguisher's
+cross-orbit advantage is at least `1/|G|`. The corollary
+`no_concreteOIA_below_inv_card_of_combiner` composes them into
+`ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε`. A further W4.3 entry
+`combinerDistinguisherAdvantage_eq_half_on_R07` (structural review
+2026-05-06) tightens the lower bound to a `1/2` equality on the R-07
+fixture (S_2 ⤳ Bitstring 2, projection-on-second-argument combiner,
+weight-0 vs weight-1 orbits).
 
 A further structural lemma, **`combine_section_form`**, records that
 equivariance already collapses the functional degrees of freedom of
@@ -174,18 +173,28 @@ combine (g • bp) (h • bp) = g • combine bp ((g⁻¹ * h) • bp)
 
 This is the *algebraic reason* the no-go holds: once equivariance forces
 combine to be determined by a section, the non-degenerate section
-immediately yields a within-orbit Boolean distinguisher, which the
-deterministic `OIA` forbids.
+yields a within-orbit Boolean distinguisher whose cross-orbit advantage
+is bounded below by the `1/|G|` mass concentration the equivariance
+preserves.
 
-**What remains open.** The result is stated against the deterministic
-`OIA`. The same structural obstruction is expected to translate to the
-probabilistic `ConcreteOIA` / `CompOIA` setting (Phase 8) with a
-quantitative loss; that quantitative refinement is deferred to future
-work. Combiners that *violate* equivariance (i.e., that behave
-differently on orbit-congruent input pairs) are outside the scope of
-this theorem — but they also violate the basic symmetry that makes the
-sender's output distribution well-defined, so they are of limited
-cryptographic interest.
+**Historical note.** Pre-Workstream-W6 of structural review 2026-05-06,
+this section also proved the deterministic-chain headline
+`equivariant_combiner_breaks_oia : ¬ OIA scheme` (under non-degeneracy)
+plus its contrapositives `oia_forces_combine_constant_in_snd`,
+`oia_forces_combine_constant_on_orbit`, and the bridge theorem
+`oblivious_sample_equivariant_obstruction`. The deterministic OIA
+predicate was vacuously false on every non-trivial scheme, so these
+deterministic no-go theorems were vacuously true (and consequently
+provided no concrete cryptographic obstruction). They were deleted in
+W6 along with the rest of the deterministic chain. The substantive
+content is now carried entirely by the probabilistic upper bound +
+quantitative R-07 lower bound above.
+
+**What remains open.** Combiners that *violate* equivariance (i.e.,
+that behave differently on orbit-congruent input pairs) are outside
+the scope of these theorems — but they also violate the basic symmetry
+that makes the sender's output distribution well-defined, so they are
+of limited cryptographic interest.
 
 Quotient-space constructions (e.g., working in `X / orbit G basePoint`)
 do not evade this obstruction either. Any such construction falls into
@@ -228,10 +237,10 @@ such combiner is known.
 | Orbit-membership theorem | ✅ (`oblivious_sample_in_orbit`) |
 | Refresh protocol formalised | ✅ |
 | Structural refresh-determinism | ✅ (`refresh_depends_only_on_epoch_range`) |
-| No-go for equivariant non-degenerate combiners | ✅ (`equivariant_combiner_breaks_oia`) |
-| OIA forces equivariant combiners to be constant in `snd` | ✅ (`oia_forces_combine_constant_on_orbit`) |
-| Collapse of the `obliviousSample` sender flow | ✅ (`oblivious_sample_equivariant_obstruction`) |
-| Concrete orbit-preserving, G-hiding `combine` (equivariant) | ❌ Infeasible under `OIA` |
+| Probabilistic upper bound on combiner advantage | ✅ (`concrete_combiner_advantage_bounded_by_oia`, Workstream E6) |
+| Quantitative lower bound on cross-orbit combiner advantage | ✅ (`combinerDistinguisherAdvantage_ge_inv_card`, Workstream R-07) |
+| Tight `1/2` equality on the R-07 fixture | ✅ (`combinerDistinguisherAdvantage_eq_half_on_R07`, W4.3 of 2026-05-06) |
+| Concrete orbit-preserving, G-hiding `combine` (equivariant) | ❌ Probabilistic obstruction: `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε` (`no_concreteOIA_below_inv_card_of_combiner`, R-07) |
 | Concrete orbit-preserving, G-hiding `combine` (non-equivariant) | ❓ Open — probabilistic analysis required |
 | Cryptographic sender privacy (`ObliviousSamplingPerfectHiding`, deterministic; renamed in Workstream I6) | ⚠️ `False` on every non-trivial bundle (perfect-extremum) |
 | Cryptographic sender privacy (`ObliviousSamplingConcreteHiding`, probabilistic ε-smooth, Workstream I6 NEW) | ⚠️ Conditional on caller-supplied ε bound; non-vacuity witness at ε = 0 on singleton-orbit bundles |
@@ -472,7 +481,7 @@ The most plausible paths forward are therefore:
 | Approach | Formal content | Cryptographic status | Verdict |
 |----------|----------------|---------------------|---------|
 | Oblivious sampling (§1) | `OrbitalRandomizers`, `obliviousSample`, `refreshRandomizers`, all correctness theorems | `combine` is an open problem | Bounded-use / Open (non-equivariant only) |
-| No-go for equivariant combiners (§1) | `GEquivariantCombiner`, `equivariant_combiner_breaks_oia`, `oia_forces_combine_constant_on_orbit`, `oblivious_sample_equivariant_obstruction` | Equivariant `combine` ⇒ ¬ `OIA` (machine-checked) | Infeasible under `OIA` |
+| No-go for equivariant combiners (§1) | `GEquivariantCombiner`, `concrete_combiner_advantage_bounded_by_oia` (Workstream E6, upper bound), `combinerDistinguisherAdvantage_ge_inv_card` (Workstream R-07, lower bound), `combinerDistinguisherAdvantage_eq_half_on_R07` (W4.3 of 2026-05-06, tight `1/2` equality) | Probabilistic obstruction: `ConcreteOIA scheme ε ⇒ 1/|G| ≤ ε` | Infeasible under non-trivial `ConcreteOIA` |
 | KEM key agreement (§2) | `OrbitKeyAgreement`, `sessionKey`, `kem_agreement_correctness` | Requires symmetric keys on both sides | Works, NOT public-key |
 | Commutative action (§3) | `CommGroupAction`, `csidh_exchange`, `CommOrbitPKE`, `comm_pke_correctness` | Needs CSIDH-like concrete instantiation | Most promising path |
 | Fundamental obstacle (§4) | — | Non-commutativity is essential to hardness | Open research direction |
@@ -507,10 +516,10 @@ The most plausible paths forward are therefore:
 | `combinerDistinguisher_eq` (simp) | `PublicKey/CombineImpossibility.lean` | None |
 | `combinerDistinguisher_basePoint` (simp) | `PublicKey/CombineImpossibility.lean` | None |
 | `combinerDistinguisher_witness` | `PublicKey/CombineImpossibility.lean` | None |
-| **`equivariant_combiner_breaks_oia`** | `PublicKey/CombineImpossibility.lean` | `propext` only (OIA is a hypothesis; theorem concludes `¬ OIA`) |
-| `oia_forces_combine_constant_in_snd` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
-| `oia_forces_combine_constant_on_orbit` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
-| `oblivious_sample_equivariant_obstruction` | `PublicKey/CombineImpossibility.lean` | `propext` only (carries `OIA` as hypothesis) |
+| **`concrete_combiner_advantage_bounded_by_oia`** (Workstream E6, probabilistic upper bound) | `PublicKey/CombineImpossibility.lean` | Standard Lean only (carries `ConcreteOIA scheme ε` as hypothesis) |
+| **`combinerDistinguisherAdvantage_ge_inv_card`** (Workstream R-07, quantitative lower bound) | `PublicKey/CombineImpossibility.lean` | Standard Lean only (carries `CrossOrbitNonDegenerateCombiner` as hypothesis) |
+| **`combinerDistinguisherAdvantage_eq_half_on_R07`** (W4.3 of structural review 2026-05-06, tight `1/2` equality on the R-07 fixture) | audit script `scripts/audit_phase_16.lean` namespace `R07NonVacuity` | Standard Lean only |
+| `no_concreteOIA_below_inv_card_of_combiner` (Workstream R-07 corollary) | `PublicKey/CombineImpossibility.lean` | Standard Lean only (composes the upper and lower bounds) |
 
 Every Phase 13 theorem either (i) carries its cryptographic assumption
 as an explicit `Prop`-typed hypothesis (`ObliviousSamplingPerfectHiding`

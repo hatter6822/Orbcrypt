@@ -940,56 +940,41 @@ collisions that the classical game rejects. Downstream probabilistic
 theorems (Phase 8) use the advantage-bounded formulation
 `indCPAAdvantage ≤ ε`, which is independent of this structural choice.
 
-**Classical distinct-challenge corollaries (audit F-AUDIT-2026-04-21-M1
-/ Workstream K).** For release-facing citations that prefer the
-literature's IND-1-CPA game shape, the formalization carries
-`_distinct`-suffixed corollaries composing each uniform-game security
-theorem with `isSecure_implies_isSecureDistinct`:
+**Classical distinct-challenge corollaries.** For release-facing
+citations that prefer the literature's IND-1-CPA game shape, the
+formalization carries the probabilistic `_distinct` corollary:
 
-- `oia_implies_1cpa_distinct : OIA scheme → IsSecureDistinct scheme`
-  (Workstream K1, `Theorems/OIAImpliesCPA.lean`).
-- `hardness_chain_implies_security_distinct : HardnessChain scheme →
-  IsSecureDistinct scheme` (Workstream K3, `Hardness/Reductions.lean`).
 - `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
-  (Workstream K4 companion, `Hardness/Reductions.lean`) —
-  probabilistic chain bound restated in classical-game form.
+  (`Hardness/Reductions.lean`) — probabilistic chain bound restated
+  in classical-game form. Distinctness is attached as a release-
+  facing signature marker; the underlying ε-bound holds
+  unconditionally for every adversary (collision or not).
 
 The corresponding structural lemma `indCPAAdvantage_collision_zero`
-(Workstream K4, `Crypto/CompSecurity.lean`) witnesses that a
-collision-choice adversary always has probabilistic advantage `0`,
-which formalises why the `ConcreteOIA(ε) → indCPAAdvantage ≤ ε` bound
-transfers from the uniform game to the classical distinct-challenge
-game for free — no new theorem with a distinctness hypothesis is
-required at the probabilistic level.
+(`Crypto/CompSecurity.lean`) witnesses that a collision-choice
+adversary always has probabilistic advantage `0`, which formalises
+why the `ConcreteOIA(ε) → indCPAAdvantage ≤ ε` bound transfers from
+the uniform game to the classical distinct-challenge game for free —
+no new theorem with a distinctness hypothesis is required at the
+probabilistic level.
 
-The deterministic scaffolding corollaries (K1, K3) inherit the
-vacuity of their `OIA` / `HardnessChain` ancestors; cite them only
-to explain type-theoretic game-shape alignment, not as standalone
-security claims. The probabilistic K4 companion retains the
-genuinely ε-smooth content of `concrete_hardness_chain_implies_1cpa_
-advantage_bound` (Workstream G) — distinctness is attached as a
-release-facing signature marker only.
-
-The vacuity of the `OIA` / `KEMOIA` hypotheses themselves is now
-machine-checked: `det_oia_false_of_distinct_reps`
-(`Crypto/OIA.lean`, Workstream E of the 2026-04-23 audit, finding
-C-07) proves `¬ OIA scheme` whenever
-`scheme.reps m₀ ≠ scheme.reps m₁`; `det_kemoia_false_of_nontrivial_
-orbit` (`KEM/Security.lean`, finding E-06) proves `¬ KEMOIA kem`
-whenever the base-point orbit has cardinality ≥ 2. Both theorems
-carry only standard-trio axiom dependencies and are classified
-**Standalone** for release-messaging purposes — consumers can
-cite them as formal evidence that the deterministic chain is
-scaffolding, not substantive security content.
-
-**K2 design note — no KEM `_distinct` corollary.** The KEM-layer
-security game (`kemHasAdvantage` in `KEM/Security.lean`) parameterises
-adversaries by *group elements* rather than messages; every
-encapsulation operates on the single base point `kem.basePoint`. There
-is no per-message collision gap analogous to the scheme-level
-`(m, m)` issue, so no `kemoia_implies_secure_distinct` corollary is
-introduced. The extended docstring on `kemoia_implies_secure`
-documents this design decision.
+**Historical note.** Earlier formalization snapshots (audit
+F-AUDIT-2026-04-21-M1 / Workstream K, audit 2026-04-23 / Workstream
+E, finding C-07/E-06) carried deterministic-chain scaffolding
+counterparts (`oia_implies_1cpa_distinct`,
+`hardness_chain_implies_security_distinct`,
+`det_oia_false_of_distinct_reps`,
+`det_kemoia_false_of_nontrivial_orbit`,
+`kemoia_implies_secure`). These were vacuously true on every
+non-trivial scheme because their `OIA` / `KEMOIA` / `HardnessChain`
+hypotheses are unsatisfiable on production HGOE; the entire
+deterministic chain was deleted in the 2026-05-06 structural review
+(Workstream W6). The probabilistic chain
+(`ConcreteOIA`, `ConcreteHardnessChain`, `ConcreteKEMOIA_uniform`,
+`ConcreteKEMHardnessChain`) is the sole security chain post-W6 —
+see `docs/dev_history/WORKSTREAM_CHANGELOG.md` for the per-commit
+deletion log and `docs/API_SURFACE.md` § 2.6 for the deletion
+audit-trail summary.
 
 ### 8.2 Multi-Query Security (Full IND-CPA)
 

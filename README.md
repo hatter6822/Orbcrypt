@@ -48,17 +48,21 @@ build warnings**.
 
 | Metric | Value |
 |--------|-------|
-| Lean source modules | 81 (+ root import file) |
+| Lean source modules | 80 (post-W6 of structural review 2026-05-06) |
 | Public declarations | 460+, all with docstrings |
-| Phase-16 audit script | 1150+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
-| Build | `lake build` runs ~3,424 jobs successfully |
+| Phase-16 audit script | 1130+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
+| Build | `lake build` runs ~3,423 jobs successfully |
 | Toolchain | Lean 4 v4.30.0-rc1 + Mathlib pinned at commit `fa6418a8` |
 | CI | GitHub Actions on every push: build + sorry scan + axiom-decl scan + lake-manifest drift check + Phase-16 regression sentinel |
-| Package version | `0.3.2` |
+| Package version | `0.4.0` |
 
-The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
-*hypothesis*, not a Lean `axiom` — verify with
-`#print axioms Orbcrypt.<theorem_name>`.
+The Orbit Indistinguishability Assumption is encoded as the
+`Prop`-valued `ConcreteOIA` (probabilistic, ε-bounded), not a Lean
+`axiom`. The deterministic `OIA` Prop and its dependent chain were
+deleted in Workstream W6 of structural review 2026-05-06 — they were
+vacuously false on every non-trivial scheme, so the probabilistic
+chain is the sole security chain post-W6. Verify axiom dependencies
+with `#print axioms Orbcrypt.<theorem_name>`.
 
 ---
 
@@ -77,11 +81,11 @@ The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
 | `csidh_correctness`, `comm_pke_correctness` | CSIDH-style commutative action + PKE | Standalone |
 
 The full release-messaging classification (Standalone / Quantitative /
-Conditional / Scaffolding) is in
+Conditional) is in
 [`docs/API_SURFACE.md`](docs/API_SURFACE.md)'s clustered headline-
 theorem table (symmetric primary / hardness chain quantitative /
 public-key research scaffolding / structural API / distinct-challenge
-corollaries / vacuity witnesses).
+corollaries / W6 deletion log).
 [`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) carries
 the prose verification audit.
 
@@ -124,10 +128,10 @@ under [`docs/benchmarks/`](docs/benchmarks/).
 ```
 Orbcrypt/
 ├── Orbcrypt.lean                 Root import file (axiom-transparency report)
-├── Orbcrypt/                     Lean 4 source tree (81 modules)
+├── Orbcrypt/                     Lean 4 source tree (80 modules post-W6 of 2026-05-06)
 │   ├── GroupAction/              Orbits, stabilizers, canonical forms (incl. `ofLexMin`)
-│   ├── Crypto/                   AOE scheme, IND-CPA game, OIA, ConcreteOIA
-│   ├── Theorems/                 Correctness, invariant attack, OIA → IND-1-CPA
+│   ├── Crypto/                   AOE scheme, IND-CPA game, ConcreteOIA (probabilistic)
+│   ├── Theorems/                 Correctness, invariant attack, AdversaryStructural
 │   ├── KEM/                      KEM reformulation + probabilistic security
 │   ├── Probability/              PMF wrappers, negligible functions, hybrid arg
 │   ├── KeyMgmt/                  Seed-key compression, nonce-based encryption

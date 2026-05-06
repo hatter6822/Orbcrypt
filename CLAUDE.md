@@ -76,7 +76,7 @@ Orbcrypt/
     Syntax.lean                       OrbitKEM structure, OrbitEncScheme.toKEM bridge
     Encapsulate.lean                  encaps and decaps functions, simp lemmas
     Correctness.lean                  decaps(encaps()) recovers the key (rfl)
-    Security.lean                     KEMAdversary, KEMOIA, kemoia_implies_secure
+    Security.lean                     KEMAdversary, kem_key_constant_direct (post-W6)
   Construction/
     Permutation.lean                  S_n action on {0,1}^n, Bitstring type, Hamming weight
     HGOE.lean                         Hidden-Group Orbit Encryption instance, correctness, weight defense
@@ -95,9 +95,11 @@ Orbcrypt/
                                        SurrogateTensor structure + punitSurrogate (Workstream G / Fix B)
     Encoding.lean                     OrbitPreservingEncoding structure, identityEncoding
                                        (reference target for Workstream G / Fix C per-encoding Props)
-    Reductions.lean                   TensorOIA, GIOIA, reduction chain, hardness_chain_implies_security,
-                                       ConcreteHardnessChain (with SurrogateTensor + encoder fields),
-                                       *_viaEncoding per-encoding reduction Props (Workstream G / Fix C)
+    Reductions.lean                   ConcreteHardnessChain (with SurrogateTensor + encoder fields),
+                                       *_viaEncoding per-encoding reduction Props (Workstream G / Fix C),
+                                       tight_one_exists_at_s2Surrogate (W4 of structural review 2026-05-06).
+                                       (Deterministic chain TensorOIA/GIOIA/HardnessChain plus
+                                       hardness_chain_implies_security{,_distinct} deleted in W6.)
   PublicKey/
     ObliviousSampling.lean            OrbitalRandomizers, obliviousSample, refreshRandomizers (Phase 13)
     KEMAgreement.lean                 Two-party OrbitKeyAgreement, kem_agreement_correctness (Phase 13)
@@ -207,11 +209,12 @@ scripts/
                 \              (OrbitPreservingEncoding,
                  \              identityEncoding — reference target)
                   v                                v
-              Hardness.Reductions ◄── Crypto.OIA, Theorems.OIAImpliesCPA
-              (TensorOIA, GIOIA, HardnessChain,
-               hardness_chain_implies_security,
-               ConcreteHardnessChain (surrogate + encoder fields),
-               *_viaEncoding per-encoding Props — Workstream G / Fix C)
+              Hardness.Reductions ◄── Crypto.CompOIA
+              (ConcreteHardnessChain (surrogate + encoder fields),
+               *_viaEncoding per-encoding Props — Workstream G / Fix C;
+               tight_one_exists_at_s2Surrogate — W4 of 2026-05-06.
+               Deterministic TensorOIA/GIOIA/HardnessChain +
+               hardness_chain_implies_security deleted in W6.)
 
   KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
               |
@@ -460,13 +463,22 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
     correctness argument runs through `fast_kem_round_trip` via
     orbit-constancy". Pure Conditional citations without the
     hypothesis disclosure are **forbidden**.
-  * **Scaffolding citations.** Theorems classified **Scaffolding**
-    may be cited **only to explain type-theoretic structure**, never
-    as standalone security claims. For example, `oia_implies_1cpa`
-    may be cited as "the deterministic reduction demonstrates the
-    *shape* of the OIA→CPA argument; quantitative security content
-    runs through `concrete_oia_implies_1cpa`". Pure Scaffolding
-    citations framed as security claims are **forbidden**.
+  * **Scaffolding citations (historical).** Pre-Workstream-W6 of
+    structural review 2026-05-06, the formalisation carried
+    deterministic-chain Scaffolding theorems (`oia_implies_1cpa`,
+    `kemoia_implies_secure`, `hardness_chain_implies_security`,
+    plus the K-distinct corollaries, plus the deterministic
+    combiner-impossibility theorems). These were vacuously true on
+    every non-trivial scheme and were deleted in W6. Quantitative
+    security content runs through `concrete_oia_implies_1cpa`,
+    `concrete_hardness_chain_implies_1cpa_advantage_bound`, and
+    their KEM-layer parallels. The Scaffolding citation class
+    remains in the policy as a forbidden category — any
+    documentation that *re-introduces* a Scaffolding-shaped
+    citation must explicitly mark it as historical (e.g., "the
+    pre-W6 deterministic chain demonstrated the *shape* of the
+    OIA→CPA reduction") and direct readers to the probabilistic
+    counterpart.
   * **ε = 1 disclosure.** Every Quantitative-at-ε=1 result must be
     cited with the explicit phrase "inhabited only at ε = 1 via the
     trivial `_one_*` / `tight_one_exists` witness in the current
@@ -506,7 +518,7 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
   messaging policy guarantees that external prose *accurately
   describes* the Lean content.
 
-- **No axiom/sorry**: forbidden in the final formalization proof surface. Zero custom axioms — the OIA (Orbit Indistinguishability Assumption) is a `Prop`-valued definition, NOT a Lean `axiom`. Theorems carry it as an explicit hypothesis (e.g., `theorem oia_implies_1cpa (hOIA : OIA scheme) : IsSecure scheme`). A universal `axiom` would introduce inconsistency by asserting OIA for trivial group actions where it is provably false. Zero `sorry` at release.
+- **No axiom/sorry**: forbidden in the final formalization proof surface. Zero custom axioms — the Orbit Indistinguishability Assumption is encoded as the `Prop`-valued `ConcreteOIA` (probabilistic, ε-bounded), NOT a Lean `axiom`. Theorems carry it as an explicit hypothesis (e.g., `theorem concrete_oia_implies_1cpa (h : ConcreteOIA scheme ε) (A : Adversary X M) : indCPAAdvantage scheme A ≤ ε`). A universal `axiom` would introduce inconsistency by asserting OIA for trivial group actions where it is provably false. The deterministic `OIA` Prop and its dependent chain (which were vacuously false on every non-trivial scheme) were deleted in Workstream W6 of structural review 2026-05-06; the probabilistic chain is the sole security chain post-W6. Zero `sorry` at release.
 - **autoImplicit := false**: the lakefile.lean enforces this project-wide. All universe and type variables must be declared explicitly. This prevents subtle bugs from Lean auto-introducing variables.
 - **Maximal Mathlib reuse**: never redefine what Mathlib already provides. Wrap and re-export where convenient, but the source of truth is Mathlib's `MulAction` framework. Import only the specific Mathlib modules needed — never `import Mathlib`.
 - **Naming conventions**:
