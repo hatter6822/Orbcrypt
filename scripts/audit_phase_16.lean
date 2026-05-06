@@ -589,9 +589,11 @@ open Orbcrypt
 #print axioms tensorOIA_symm
 #print axioms GIOIA
 #print axioms gioia_symm
-#print axioms TensorOIAImpliesCEOIA
-#print axioms CEOIAImpliesGIOIA
-#print axioms GIOIAImpliesOIA
+-- W6.6 of structural review 2026-05-06: the per-link reduction
+-- Props `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
+-- `GIOIAImpliesOIA` were deleted; the non-vacuous probabilistic
+-- counterparts `*_viaEncoding` (Workstream G / Fix C) are
+-- preserved.
 -- W6.5 of structural review 2026-05-06: `HardnessChain` and
 -- `oia_from_hardness_chain` (Phase 12 deterministic-chain
 -- composition) were deleted; W6.3 already removed

@@ -33,8 +33,9 @@ pattern established in `Crypto/OIA.lean`) or states a computational reduction
 
 * `Orbcrypt.TensorOIA` — deterministic OIA for tensor isomorphism under GL(n,F)³
 * `Orbcrypt.GIOIA` — deterministic OIA for graph isomorphism under S_n
-* `Orbcrypt.TensorOIAImpliesCEOIA` — TensorOIA → CEOIA reduction (Prop)
-* `Orbcrypt.CEOIAImpliesGIOIA` — CEOIA → GIOIA reduction (Prop)
+
+
+
 * `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c)
 * `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound probabilistic
   tensor-OIA (post-Workstream-G Fix B: carries `SurrogateTensor F`)
@@ -178,84 +179,15 @@ section ReductionChain
 
 variable [Field F]
 
-/-- Tensor-OIA implies CE-OIA under the tensor-to-code encoding.
-
-    The encoding maps tensors to codes such that tensor isomorphism
-    corresponds to code equivalence, preserving orbit indistinguishability.
-    This step uses the structure tensor construction (Grochow & Qiao, 2021).
-
-    Stated as a `Prop`-valued definition: the encoding proof requires
-    explicit algebraic constructions beyond this formalization's scope.
-    Results carry this as an explicit hypothesis.
-
-    **Scaffolding disclosure (audit 2026-04-21 finding L3 / Workstream M).**
-    The existential `∃ (k : ℕ) (C₀ C₁ : Finset (Fin k → F)), CEOIA C₀ C₁`
-    admits a trivial satisfier: take `k = 0, C₀ = C₁ = ∅`; then `CEOIA`
-    is vacuously true because no codeword `c₀ ∈ ∅` exists. This
-    deterministic reduction Prop is therefore *algebraic scaffolding*,
-    not a quantitative hardness transfer. The chain containing it is
-    already vacuous on non-trivial schemes via Workstream J's
-    "deterministic vs probabilistic" release framing (`HardnessChain`
-    and `oia_from_hardness_chain` carry the deterministic `TensorOIA`
-    which is itself `False` on non-trivial instances). For the
-    non-vacuous counterpart carrying a genuinely ε-smooth advantage
-    transfer, cite the Workstream G per-encoding reduction Prop
-    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` instead. -/
-def TensorOIAImpliesCEOIA : Prop :=
-  ∀ (m : ℕ) (T₀ T₁ : Tensor3 m F),
-    @TensorOIA m F _ T₀ T₁ →
-    ∃ (k : ℕ) (C₀ C₁ : Finset (Fin k → F)),
-      CEOIA C₀ C₁
-
-/-- CE-OIA implies GI-OIA under the code-to-graph encoding.
-
-    The encoding maps codes to graphs such that code equivalence
-    corresponds to graph isomorphism, preserving orbit indistinguishability.
-    Since CE is at least as hard as GI (GI ≤_p CE), this direction always
-    exists.
-
-    Stated as a `Prop`-valued definition following the OIA pattern.
-
-    **Scaffolding disclosure (audit 2026-04-21 finding L3 / Workstream M).**
-    Like `TensorOIAImpliesCEOIA`, the existential
-    `∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool), GIOIA adj₀ adj₁`
-    admits a trivial satisfier: take `k = 0`; the 0-vertex adjacency
-    functions `adj₀ = adj₁ = fun _ _ => false` satisfy `GIOIA` vacuously
-    (there is no permutation-action content at dimension 0). This
-    deterministic Prop is *algebraic scaffolding*. The non-vacuous
-    counterpart is `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`
-    (Workstream G / Fix C), which names an explicit encoder and forces
-    callers to supply a concrete discharge at ε < 1. -/
-def CEOIAImpliesGIOIA : Prop :=
-  ∀ (m : ℕ) (C₀ C₁ : Finset (Fin m → F)),
-    CEOIA C₀ C₁ →
-    ∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool),
-      GIOIA adj₀ adj₁
-
-/-- GI-OIA implies the scheme-level OIA.
-
-    The encoding maps graph isomorphism instances to orbit encryption
-    scheme instances. This is the step where CFI graph constructions
-    (Cai-Furer-Immerman, 1992) provide hard instances for the scheme.
-
-    Stated as a `Prop`-valued definition following the OIA pattern.
-
-    **Scaffolding disclosure (audit 2026-04-21 finding L3 / Workstream M).**
-    This Prop's hypothesis is itself an existential that admits a
-    trivial satisfier (`k = 0`; see `CEOIAImpliesGIOIA`'s docstring);
-    its conclusion is the deterministic `OIA scheme`, which is
-    vacuously `False` on every non-trivial scheme. Both halves are
-    therefore *scaffolding*: the Prop encodes the *shape* of the chain
-    step but transfers no quantitative hardness. The non-vacuous
-    counterpart is `ConcreteGIOIAImpliesConcreteOIA_viaEncoding`
-    (Workstream G / Fix C), whose hypothesis is the chain-image GI
-    hardness at a caller-supplied encoder pair and whose conclusion is
-    `ConcreteOIA scheme ε`. -/
-def GIOIAImpliesOIA {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) : Prop :=
-  (∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool), GIOIA adj₀ adj₁) →
-    OIA scheme
+-- W6.6 of structural review 2026-05-06: the deterministic per-link
+-- reduction Props `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
+-- `GIOIAImpliesOIA` (Phase 12 § 12.7) were deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0. The non-vacuous
+-- per-encoding probabilistic counterparts
+-- `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
+-- `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`, and
+-- `ConcreteGIOIAImpliesConcreteOIA_viaEncoding` (Workstream G /
+-- Fix C) carry the substantive ε-smooth per-link content.
 
 -- W6.5 of structural review 2026-05-06: the deterministic chain
 -- composition `HardnessChain` (the `Prop`-valued composite of
