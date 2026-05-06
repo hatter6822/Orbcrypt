@@ -154,12 +154,11 @@ open Orbcrypt
 #print axioms indCPAAdvantage_invariantAttackAdversary_eq_one
 
 -- OIAImpliesCPA
-#print axioms oia_specialized
+-- W6.3 of structural review 2026-05-06: `oia_specialized`,
+-- `no_advantage_from_oia`, `oia_implies_1cpa`, and
+-- `oia_implies_1cpa_distinct` (Workstream K1) were deleted as part
+-- of the deterministic-chain removal scheduled for v0.4.0.
 #print axioms hasAdvantage_iff
-#print axioms no_advantage_from_oia
-#print axioms oia_implies_1cpa
--- Workstream K1 (F-AUDIT-2026-04-21-M1): distinct-challenge corollary
-#print axioms oia_implies_1cpa_distinct
 -- Track D (contrapositive)
 #print axioms adversary_yields_distinguisher
 -- Workstream I3 (audit 2026-04-23, finding D-07): pre-I
@@ -593,7 +592,8 @@ open Orbcrypt
 #print axioms GIOIAImpliesOIA
 #print axioms HardnessChain
 #print axioms oia_from_hardness_chain
-#print axioms hardness_chain_implies_security
+-- W6.3 of structural review 2026-05-06: `hardness_chain_implies_security`
+-- (Phase 12 deterministic chain composition) was deleted.
 -- Workstream E2c + E3 + E4 + E5 (probabilistic chain)
 #print axioms graphOrbitDist
 #print axioms ConcreteGIOIA
@@ -625,9 +625,11 @@ open Orbcrypt
 -- shape but with the `s2Surrogate` (cardinality 2, non-trivial).
 #print axioms ConcreteHardnessChain.tight_one_exists_at_s2Surrogate
 #print axioms concrete_hardness_chain_implies_1cpa_advantage_bound
--- Workstream K3 + K4 companion (F-AUDIT-2026-04-21-M1):
--- distinct-challenge IND-1-CPA corollaries in the hardness-chain layer
-#print axioms hardness_chain_implies_security_distinct
+-- Workstream K4 companion (F-AUDIT-2026-04-21-M1):
+-- distinct-challenge IND-1-CPA corollary in the probabilistic
+-- hardness-chain layer. W6.3 of structural review 2026-05-06:
+-- `hardness_chain_implies_security_distinct` (deterministic K3
+-- companion) was deleted.
 #print axioms concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
 
 -- ============================================================================
@@ -947,26 +949,13 @@ example {G : Type} {X : Type} {M : Type} {K : Type}
     scheme Bool m₀ keyDerive
   concrete_kem_hardness_chain_implies_kem_advantage_bound hc A g_ref
 
-/-- Workstream K1 non-vacuity: `oia_implies_1cpa_distinct` is
-    well-typed on every scheme and the composition with
-    `isSecure_implies_isSecureDistinct` elaborates. Exercises the
-    deterministic distinct-challenge corollary at the scheme level. -/
-example {G : Type} {X : Type} {M : Type}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) (hOIA : OIA scheme) :
-    IsSecureDistinct scheme :=
-  oia_implies_1cpa_distinct scheme hOIA
-
-/-- Workstream K3 non-vacuity: `hardness_chain_implies_security_distinct`
-    is well-typed on every scheme. Exercises the chain-level
-    distinct-challenge corollary. The `HardnessChain` Prop requires
-    `[Field F]`, so we use `ZMod 2` as the witness field. -/
-example {G : Type} {X : Type} {M : Type}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := ZMod 2) scheme) :
-    IsSecureDistinct scheme :=
-  hardness_chain_implies_security_distinct scheme hChain
+-- W6.3 of structural review 2026-05-06: the Workstream K1 / K3
+-- non-vacuity examples for `oia_implies_1cpa_distinct` and
+-- `hardness_chain_implies_security_distinct` were deleted along
+-- with their underlying theorems. The probabilistic K4 companion
+-- below (and `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`'s
+-- audit-script entry above) carry the substantive distinct-
+-- challenge content.
 
 /-- Workstream K4 non-vacuity (structural): `indCPAAdvantage_collision_zero`
     accepts any scheme + adversary pair satisfying the collision

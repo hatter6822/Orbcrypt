@@ -290,59 +290,16 @@ theorem oia_from_hardness_chain
   -- Step 3: GIOIA → OIA
   exact hGI_OIA ⟨k₂, adj₀, adj₁, hGIOIA⟩
 
-/-- The culmination: the full hardness chain implies IND-1-CPA security.
-
-    This composes `oia_from_hardness_chain` with `oia_implies_1cpa`
-    (proved in Phase 4) to derive security from TI-hardness.
-
-    **Security guarantee:** If TI is hard (no efficient algorithm
-    distinguishes tensor orbits) and the reductions are sound, then
-    the Orbcrypt scheme is IND-1-CPA secure. -/
-theorem hardness_chain_implies_security
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := F) scheme) :
-    IsSecure scheme :=
-  oia_implies_1cpa scheme (oia_from_hardness_chain scheme hChain)
-
-/-- **Distinct-challenge IND-1-CPA from the hardness chain (classical game).**
-
-    Chain-level parallel of `oia_implies_1cpa_distinct`: composing
-    `hardness_chain_implies_security` with
-    `isSecure_implies_isSecureDistinct` delivers the classical
-    distinct-challenge security predicate `IsSecureDistinct` from a
-    `HardnessChain (F := F) scheme` hypothesis.
-
-    **Why this corollary.** Consumers reading "TI-hardness implies
-    IND-1-CPA" through the lens of the literature expect the
-    distinct-challenge form (the classical IND-1-CPA challenger rejects
-    `(m, m)` collisions before sampling). `IsSecure` is strictly
-    stronger — it demands security even against the degenerate
-    collision choice. External summaries that cite TI-hardness as the
-    security basis should prefer this theorem over
-    `hardness_chain_implies_security`.
-
-    **Scaffolding disclosure.** Like `hardness_chain_implies_security`,
-    this corollary carries the deterministic `HardnessChain` as a
-    hypothesis. `HardnessChain` is composed from the deterministic
-    `TensorOIA` / `CEOIA` / `GIOIA` / `OIA` predicates, each of which
-    is **False on every non-trivial scheme**; consequently the
-    conclusion is vacuously true on production instances. For the
-    genuinely ε-smooth distinct-challenge bound, cite the probabilistic
-    chain (`concrete_hardness_chain_implies_1cpa_advantage_bound`
-    composed with `indCPAAdvantage_collision_zero`, which shows the
-    `≤ ε` bound holds unconditionally — the distinct-challenge
-    restriction transfers for free since the collision branch yields
-    advantage 0). -/
-theorem hardness_chain_implies_security_distinct
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := F) scheme) :
-    IsSecureDistinct scheme :=
-  isSecure_implies_isSecureDistinct scheme
-    (hardness_chain_implies_security scheme hChain)
+-- W6.3 of structural review 2026-05-06: the deterministic chain
+-- composition `hardness_chain_implies_security` and its distinct-
+-- challenge sibling `hardness_chain_implies_security_distinct`
+-- (formerly defined here, Workstream K3) were deleted as part of
+-- the deterministic-chain removal scheduled for v0.4.0. The non-
+-- vacuous probabilistic counterpart
+-- `concrete_hardness_chain_implies_1cpa_advantage_bound` (and its
+-- `_distinct` companion) carries the substantive ε-smooth content;
+-- the deterministic-chain compositions were vacuously true on
+-- every non-trivial scheme.
 
 end ReductionChain
 

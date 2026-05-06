@@ -80,19 +80,18 @@ variable {G : Type*} {X : Type*} {M : Type*}
 -- Work Unit 4.10: OIA Specialization to Adversary
 -- ============================================================================
 
-/-- Specialize the strong OIA to the adversary's guess function.
-    For ANY pair of group elements, the guess is the same on both orbits.
-
-    The strong OIA gives `f(g₀ • reps m₀) = f(g₁ • reps m₁)` for any
-    Boolean function `f`. Instantiating `f` with `A.guess scheme.reps`
-    (which has type `X → Bool`) yields the result directly. -/
-theorem oia_specialized [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hOIA : OIA scheme)
-    (A : Adversary X M) (m₀ m₁ : M) (g₀ g₁ : G) :
-    A.guess scheme.reps (g₀ • scheme.reps m₀) =
-    A.guess scheme.reps (g₁ • scheme.reps m₁) :=
-  hOIA (fun x => A.guess scheme.reps x) m₀ m₁ g₀ g₁
+-- W6.3 of structural review 2026-05-06: `oia_specialized`,
+-- `no_advantage_from_oia`, `oia_implies_1cpa`, and
+-- `oia_implies_1cpa_distinct` (formerly defined here, audit Work
+-- Units 4.11-4.13 + Workstream K1) were deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0. The
+-- probabilistic chain (`concrete_oia_implies_1cpa` +
+-- `indCPAAdvantage_collision_zero` for the distinct-challenge
+-- form) is the sole security reduction post-deletion.
+--
+-- `hasAdvantage_iff` (Work Unit 4.11) is preserved because it is
+-- not OIA-dependent — it's a structural unfolding lemma for
+-- `hasAdvantage` that retains downstream utility.
 
 -- ============================================================================
 -- Work Unit 4.11: hasAdvantage Unfolding Lemma
@@ -113,80 +112,6 @@ theorem hasAdvantage_iff [Group G] [MulAction G X] [DecidableEq X]
         A.guess scheme.reps (g₁ • scheme.reps (A.choose scheme.reps).2) := by
   -- hasAdvantage already uses .1 / .2 directly, so this is Iff.rfl
   rfl
-
--- ============================================================================
--- Work Unit 4.12: Advantage Elimination
--- ============================================================================
-
-/-- OIA implies no adversary has advantage.
-
-    **Proof strategy:** Assume `hasAdvantage scheme A` for contradiction.
-    Destructure to get `g₀, g₁` and the inequality `guess(...) ≠ guess(...)`.
-    Apply `oia_specialized` to derive the equality, contradicting the
-    inequality directly. -/
-theorem no_advantage_from_oia [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hOIA : OIA scheme) (A : Adversary X M) :
-    ¬ hasAdvantage scheme A := by
-  -- Negate the existential: ∀ g₀ g₁, guess(g₀ • reps m₀) = guess(g₁ • reps m₁)
-  intro ⟨g₀, g₁, hNeq⟩
-  -- Apply OIA to derive the equality that contradicts hNeq
-  exact hNeq (oia_specialized scheme hOIA A _ _ g₀ g₁)
-
--- ============================================================================
--- Work Unit 4.13: Security Theorem Assembly (Headline Result #3)
--- ============================================================================
-
-/--
-**Security Theorem.** The OIA implies IND-1-CPA security.
-Formalizes docs/DEVELOPMENT.md §8.1.
-
-If the Orbit Indistinguishability Assumption holds for a scheme, then no
-adversary can achieve non-zero advantage in the IND-1-CPA game. This is the
-core conditional security guarantee of the Orbcrypt construction.
-
-**Note on the OIA hypothesis:** `OIA scheme` is a `Prop`-valued definition,
-NOT a Lean `axiom`. The theorem carries it as an explicit hypothesis, so
-`#print axioms oia_implies_1cpa` shows only standard Lean axioms. -/
-theorem oia_implies_1cpa [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hOIA : OIA scheme) : IsSecure scheme := by
-  -- IsSecure = ∀ A, ¬ hasAdvantage scheme A
-  intro A
-  exact no_advantage_from_oia scheme hOIA A
-
-/--
-**Distinct-challenge IND-1-CPA from OIA (classical game).**
-
-Corollary of `oia_implies_1cpa`: the OIA hypothesis implies the
-classical distinct-challenge security predicate `IsSecureDistinct`.
-Composes the strong uniform-challenge `oia_implies_1cpa` with
-`isSecure_implies_isSecureDistinct` (proved in `Crypto/Security.lean`).
-
-**Why this corollary.** The classical IND-1-CPA game in the literature
-requires the adversary to submit *distinct* challenges `m₀ ≠ m₁`; the
-challenger rejects `(m, m)` before sampling. `IsSecure` is strictly
-stronger — it demands security even against the degenerate collision
-choice that the classical challenger would reject. External summaries
-and downstream citations that read "IND-1-CPA under OIA" should prefer
-`oia_implies_1cpa_distinct` over `oia_implies_1cpa` because this form
-matches the game shape actually studied in the literature.
-
-**Scaffolding disclosure.** Like `oia_implies_1cpa`, this theorem
-inherits the *scaffolding* status of the deterministic chain: the
-`OIA` hypothesis quantifies over every Boolean distinguisher and is
-**False on every non-trivial scheme** (see `Crypto/OIA.lean`).
-Consequently the conclusion is vacuously true on production
-instances. For genuinely ε-smooth distinct-challenge security, cite
-the probabilistic chain (`concrete_oia_implies_1cpa` +
-`indCPAAdvantage_collision_zero`; the probabilistic advantage is
-unconditionally bounded for every adversary, so the distinct-challenge
-restriction transfers for free).
--/
-theorem oia_implies_1cpa_distinct [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hOIA : OIA scheme) : IsSecureDistinct scheme :=
-  isSecure_implies_isSecureDistinct scheme (oia_implies_1cpa scheme hOIA)
 
 -- ============================================================================
 -- Track D (Optional): Contrapositive Direction
