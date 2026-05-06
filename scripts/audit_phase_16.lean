@@ -6024,8 +6024,8 @@ end MarginalUniformityNonVacuity
 --   `QCCyclicCanonical` abbrev that headline theorems #24-#26
 --   indirectly consume).
 -- * `Optimization/TwoPhaseDecrypt.lean` (11 declarations including
---   the headline theorems #24 `two_phase_correct`, #25
---   `two_phase_kem_correctness`, and #26 `fast_kem_round_trip`).
+--   the headline theorems #24 `canonical_agreement_under_two_phase_decomposition`, #25
+--   `kem_round_trip_under_two_phase_decomposition`, and #26 `fast_kem_round_trip`).
 -- * `Probability/Monad.lean` (2 declarations: `probTrue_map`,
 --   `probTrue_uniformPMF_card`).
 -- * `Hardness/GrochowQiao/AlgebraWrapper.lean` (37 declarations
@@ -6050,11 +6050,11 @@ end MarginalUniformityNonVacuity
 -- Optimization/TwoPhaseDecrypt.lean (headline theorems #24, #25, #26)
 #print axioms Orbcrypt.TwoPhaseDecomposition
 #print axioms Orbcrypt.two_phase_decompose
-#print axioms Orbcrypt.two_phase_correct
+#print axioms Orbcrypt.canonical_agreement_under_two_phase_decomposition
 #print axioms Orbcrypt.full_canon_invariant
 #print axioms Orbcrypt.two_phase_invariant_under_G
 #print axioms Orbcrypt.two_phase_kem_decaps
-#print axioms Orbcrypt.two_phase_kem_correctness
+#print axioms Orbcrypt.kem_round_trip_under_two_phase_decomposition
 #print axioms Orbcrypt.IsOrbitConstant
 #print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint
 #print axioms Orbcrypt.fast_kem_round_trip

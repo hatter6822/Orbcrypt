@@ -918,8 +918,8 @@ limitations, each documented in source and tracked as future work:
     V1-1 / I-03 / I-04 / D1 / D12.
 
 11. **`TwoPhaseDecomposition` is empirically False on the default
-    GAP fallback group.** `two_phase_correct` and
-    `two_phase_kem_correctness` in
+    GAP fallback group.** `canonical_agreement_under_two_phase_decomposition` and
+    `kem_round_trip_under_two_phase_decomposition` in
     `Optimization/TwoPhaseDecrypt.lean` carry
     `TwoPhaseDecomposition` as an explicit hypothesis; the module
     docstring self-discloses that on the default GAP fallback group
@@ -933,7 +933,7 @@ limitations, each documented in source and tracked as future work:
     `FastCanonicalImage` whenever the cyclic subgroup is normal in
     G. Release-facing citations of production fast-decryption
     correctness should use `fast_kem_round_trip`, not
-    `two_phase_kem_correctness` (audit 2026-04-23 finding V1-2 /
+    `kem_round_trip_under_two_phase_decomposition` (audit 2026-04-23 finding V1-2 /
     L-03 / D2).
 
 12. **`carterWegmanMAC_int_ctxt` is incompatible with HGOE's
@@ -1218,7 +1218,7 @@ The formalization's public release posture (detailed):
      claims at `n = 1`, or
      `bitstringPolynomialHash_isUniversal` for the `n ≥ 1`
      polynomial-hash family (class (a) above).
-   * `two_phase_correct` / `two_phase_kem_correctness`
+   * `canonical_agreement_under_two_phase_decomposition` / `kem_round_trip_under_two_phase_decomposition`
      (`Optimization/TwoPhaseDecrypt.lean`) — fast-decryption
      conditionals **under `TwoPhaseDecomposition`**, which is
      **empirically false on the default GAP fallback group** (lex-
@@ -1284,7 +1284,7 @@ The formalization's public release posture (detailed):
      precondition on the `INT_CTXT` game itself, so citations can
      drop the disclosure. The remaining class (c) theorems
      (`carterWegmanMAC_int_ctxt` HGOE incompatibility;
-     `two_phase_correct` / `two_phase_kem_correctness`
+     `canonical_agreement_under_two_phase_decomposition` / `kem_round_trip_under_two_phase_decomposition`
      `TwoPhaseDecomposition`; `oblivious_sample_in_orbit` closure
      hypothesis; `indQCPA_from_perStepBound` `h_step` hypothesis)
      still require the hypothesis disclosure when cited.
@@ -2792,7 +2792,7 @@ The exit criteria from `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md`
     `lakefile.lean` from `0.1.4` to `0.1.5` to capture the two
     new `Optimization/` modules (`QCCanonical.lean`,
     `TwoPhaseDecrypt.lean`), the three new headline theorems
-    (#24 `two_phase_correct`, #25 `two_phase_kem_correctness`,
+    (#24 `canonical_agreement_under_two_phase_decomposition`, #25 `kem_round_trip_under_two_phase_decomposition`,
     #26 `fast_kem_round_trip`), their supporting declarations,
     and the Phase-15.3 post-landing orbit-constancy refactor
     that delivered theorem #26 and
@@ -2868,7 +2868,7 @@ The exit criteria from `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md`
     `concrete_hardness_chain_implies_*` citations with the
     ε = 1 disclosure, the Conditional class explicitly catalogues
     `authEncrypt_is_int_ctxt`, `carterWegmanMAC_int_ctxt`,
-    `two_phase_correct`, `two_phase_kem_correctness`,
+    `canonical_agreement_under_two_phase_decomposition`, `kem_round_trip_under_two_phase_decomposition`,
     `oblivious_sample_in_orbit`, and `indQCPA_from_perStepBound`
     (renamed from `indQCPA_bound_via_hybrid` in Workstream C of
     the same audit) with their hypothesis disclosures; (c) a
@@ -2893,7 +2893,7 @@ The exit criteria from `docs/dev_history/PHASE_16_FORMAL_VERIFICATION.md`
     canonical source of truth, and forbids prose that overclaims
     beyond the Lean content. "Three core theorems" table: rows
     #19 (`authEncrypt_is_int_ctxt`), #20 (`carterWegmanMAC_int_ctxt`),
-    #24 (`two_phase_correct`), #25 (`two_phase_kem_correctness`)
+    #24 (`canonical_agreement_under_two_phase_decomposition`), #25 (`kem_round_trip_under_two_phase_decomposition`)
     reclassified from **Standalone** to **Conditional** with
     explicit hypothesis / compatibility disclosures in the
     Significance column; row #2 (`invariant_attack`) restated so

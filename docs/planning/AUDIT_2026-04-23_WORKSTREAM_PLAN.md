@@ -317,8 +317,8 @@ run sequentially, one if parallelised with the critical slate.
 
 Audit finding X-01 identifies the CRITICAL release-messaging gap:
 `CLAUDE.md`'s "Three core theorems" Status column labels rows #19
-(`authEncrypt_is_int_ctxt`), #24 (`two_phase_correct`), #25
-(`two_phase_kem_correctness`), and #20 (`carterWegmanMAC_int_ctxt`) as
+(`authEncrypt_is_int_ctxt`), #24 (`canonical_agreement_under_two_phase_decomposition`), #25
+(`kem_round_trip_under_two_phase_decomposition`), and #20 (`carterWegmanMAC_int_ctxt`) as
 **Standalone**, when each one carries a hypothesis that is **false on
 production HGOE** (row #19: `hOrbitCover`; rows #24 #25:
 `TwoPhaseDecomposition` as self-disclosed in
@@ -389,7 +389,7 @@ pass**:
   context.
 * **Conditional citations:** theorems classified **Conditional** may
   be cited **only with their hypothesis made explicit**; e.g.
-  `two_phase_kem_correctness` may be cited "under the
+  `kem_round_trip_under_two_phase_decomposition` may be cited "under the
   `TwoPhaseDecomposition` hypothesis, which does not hold on the
   default GAP fallback group". Pure Conditional citations without
   the hypothesis disclosure are forbidden.
@@ -430,8 +430,8 @@ for theorem #19 / #20 / #24 / #25 in the 30-row table).
 |-----|---------|---------------|----------------|-----------|
 | #19 | `authEncrypt_is_int_ctxt` | Standalone | **Conditional** | Carries `hOrbitCover`, false on production HGOE (audit I-03). |
 | #20 | `carterWegmanMAC_int_ctxt` | Standalone | **Conditional** | Requires `X = ZMod p` ≠ HGOE's `Bitstring n`; is a `MAC.verify_inj` satisfiability witness only (audit I-08 / D4). |
-| #24 | `two_phase_correct` | Standalone | **Conditional** | Carries `TwoPhaseDecomposition` hypothesis, empirically false on the default GAP fallback group (audit L-03 / D2). |
-| #25 | `two_phase_kem_correctness` | Standalone | **Conditional** | Same hypothesis as #24; the `(conditional)` suffix already in the theorem's display name is correctly surfaced, but the Status column is currently `Standalone`. |
+| #24 | `canonical_agreement_under_two_phase_decomposition` | Standalone | **Conditional** | Carries `TwoPhaseDecomposition` hypothesis, empirically false on the default GAP fallback group (audit L-03 / D2). |
+| #25 | `kem_round_trip_under_two_phase_decomposition` | Standalone | **Conditional** | Same hypothesis as #24; the `(conditional)` suffix already in the theorem's display name is correctly surfaced, but the Status column is currently `Standalone`. |
 
 Add a per-row prose qualifier (~1–2 lines in the "Significance"
 column) disclosing the hypothesis and pointing to the non-vacuous

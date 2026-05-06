@@ -105,7 +105,7 @@ Orbcrypt/
     CombineImpossibility.lean         Combiner impossibility + probabilistic counterpart (Phase 13 + E6)
   Optimization/
     QCCanonical.lean                  QCCyclicCanonical abbrev + orbit-constancy lemmas (Phase 15.1 / 15.5)
-    TwoPhaseDecrypt.lean              TwoPhaseDecomposition, two_phase_correct, two_phase_kem_correctness (Phase 15.3 / 15.5)
+    TwoPhaseDecrypt.lean              TwoPhaseDecomposition, canonical_agreement_under_two_phase_decomposition, kem_round_trip_under_two_phase_decomposition (Phase 15.3 / 15.5)
 implementation/
   gap/
     orbcrypt_keygen.g                 7-stage HGOE key generation pipeline (GAP)
@@ -236,9 +236,9 @@ scripts/
    qc_invariant_under_cyclic, qc_canon_idem)
 
   Optimization.TwoPhaseDecrypt ◄── Optimization.QCCanonical, KEM.Correctness
-  (TwoPhaseDecomposition predicate, two_phase_correct,
+  (TwoPhaseDecomposition predicate, canonical_agreement_under_two_phase_decomposition,
    full_canon_invariant, two_phase_invariant_under_G,
-   two_phase_kem_decaps, two_phase_kem_correctness,
+   two_phase_kem_decaps, kem_round_trip_under_two_phase_decomposition,
    IsOrbitConstant, orbit_constant_encaps_eq_basePoint)
 ```
 
@@ -454,7 +454,7 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
     witness, or at ε < 1 via a caller-supplied hardness witness).
   * **Conditional citations.** Theorems classified **Conditional**
     may be cited **only with their hypothesis made explicit**. For
-    example, `two_phase_kem_correctness` may be cited as
+    example, `kem_round_trip_under_two_phase_decomposition` may be cited as
     "under the `TwoPhaseDecomposition` hypothesis, which does not
     hold on the default GAP fallback group — the production-
     correctness argument runs through `fast_kem_round_trip` via
@@ -495,8 +495,8 @@ Background agents (launched via the Task tool with `run_in_background: true`) ru
   X-01 in the 2026-04-23 pre-release audit would have let an external
   reviewer read `docs/VERIFICATION_REPORT.md`'s pre-audit "Release
   readiness" section and conclude that `authEncrypt_is_int_ctxt`,
-  `carterWegmanMAC_int_ctxt`, `two_phase_correct`, and
-  `two_phase_kem_correctness` were standalone machine-checked
+  `carterWegmanMAC_int_ctxt`, `canonical_agreement_under_two_phase_decomposition`, and
+  `kem_round_trip_under_two_phase_decomposition` were standalone machine-checked
   security content — when in fact each carries a hypothesis that
   fails on production HGOE (see rows #19, #20, #24, #25 of the
   "Three core theorems" table). The policy above forbids framing
@@ -597,8 +597,8 @@ rationale):
 | 21 | **Code Equivalence is an `Equivalence`** | `arePermEquivalent_setoid : Setoid {C : Finset (Fin n → F) // C.card = k}` (built from `arePermEquivalent_refl` / `_symm` / `_trans`) | `Hardness/CodeEquivalence.lean` | Structural | Permutation code equivalence is now a Mathlib-grade equivalence relation; `_symm` carries `C₁.card = C₂.card`, `_trans` is unconditional (audit F-08, Workstream D1+D4) |
 | 22 | **PAut is a `Subgroup`** | `PAutSubgroup C : Subgroup (Equiv.Perm (Fin n))` with `PAut_eq_PAutSubgroup_carrier C : PAut C = (PAutSubgroup C : Set _)` | `Hardness/CodeEquivalence.lean` | Structural | Permutation Automorphism group has full Mathlib `Subgroup` API (cosets, Lagrange, quotient); the Set-valued `PAut` and Subgroup-packaged `PAutSubgroup` agree definitionally (audit F-08, Workstream D2) |
 | 23 | **CE coset set identity** | `paut_equivalence_set_eq_coset : {ρ \| ρ : C₁ → C₂} = σ · PAut C₁` (given a witness σ and `C₁.card = C₂.card`) | `Hardness/CodeEquivalence.lean` | Structural | The set of all CE-witnessing permutations is *exactly* a left coset of PAut; this is the algebraic statement underlying the LESS signature scheme's effective-search-space reduction (audit F-16 extended, Workstream D3) |
-| 24 | **Two-Phase Correctness** | `two_phase_correct : can_full.canon (g • x) = can_residual.canon (can_cyclic.canon (g • x))` (given `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | Conditional | The fast (cyclic ∘ residual) canonical form agrees with the full canonical form on every ciphertext `g • x` **when** `TwoPhaseDecomposition` holds. The theorem is a conditional that documents the strong "fast = slow" agreement property; it is **not** the actual GAP correctness story — post-landing audit empirically confirmed that `TwoPhaseDecomposition` **fails on the default GAP fallback group** because lex-min and the residual transversal action don't commute (self-disclosed in `Optimization/TwoPhaseDecrypt.lean`'s module docstring). The non-vacuous sibling is `fast_kem_round_trip` (row #26), which captures the actual production-correctness story via orbit-constancy of the fast canonical form. Audit 2026-04-23 finding V1-2 / L-03 / D2 (Phase 15.5) |
-| 25 | **Two-Phase KEM Correctness (conditional)** | `two_phase_kem_correctness : kem.keyDerive (can_residual.canon (can_cyclic.canon (encaps kem g).1)) = (encaps kem g).2` | `Optimization/TwoPhaseDecrypt.lean` | Conditional | Decapsulation via the fast path recovers the encapsulated key WHEN the two-phase decomposition holds (composes `two_phase_kem_decaps` with `kem_correctness`). **Same hypothesis as row #24**: the GAP implementation does NOT discharge `TwoPhaseDecomposition` because lex-min and the residual transversal action don't commute — this theorem is a conditional that documents the strong agreement property, not the actual GAP correctness story. The non-vacuous sibling is `fast_kem_round_trip` (row #26). Audit 2026-04-23 finding V1-2 / L-03 (Phase 15.3 / 15.5) |
+| 24 | **Two-Phase Correctness** | `canonical_agreement_under_two_phase_decomposition : can_full.canon (g • x) = can_residual.canon (can_cyclic.canon (g • x))` (given `TwoPhaseDecomposition`) | `Optimization/TwoPhaseDecrypt.lean` | Conditional | The fast (cyclic ∘ residual) canonical form agrees with the full canonical form on every ciphertext `g • x` **when** `TwoPhaseDecomposition` holds. The theorem is a conditional that documents the strong "fast = slow" agreement property; it is **not** the actual GAP correctness story — post-landing audit empirically confirmed that `TwoPhaseDecomposition` **fails on the default GAP fallback group** because lex-min and the residual transversal action don't commute (self-disclosed in `Optimization/TwoPhaseDecrypt.lean`'s module docstring). The non-vacuous sibling is `fast_kem_round_trip` (row #26), which captures the actual production-correctness story via orbit-constancy of the fast canonical form. Audit 2026-04-23 finding V1-2 / L-03 / D2 (Phase 15.5) |
+| 25 | **Two-Phase KEM Correctness (conditional)** | `kem_round_trip_under_two_phase_decomposition : kem.keyDerive (can_residual.canon (can_cyclic.canon (encaps kem g).1)) = (encaps kem g).2` | `Optimization/TwoPhaseDecrypt.lean` | Conditional | Decapsulation via the fast path recovers the encapsulated key WHEN the two-phase decomposition holds (composes `two_phase_kem_decaps` with `kem_correctness`). **Same hypothesis as row #24**: the GAP implementation does NOT discharge `TwoPhaseDecomposition` because lex-min and the residual transversal action don't commute — this theorem is a conditional that documents the strong agreement property, not the actual GAP correctness story. The non-vacuous sibling is `fast_kem_round_trip` (row #26). Audit 2026-04-23 finding V1-2 / L-03 (Phase 15.3 / 15.5) |
 | 26 | **Fast-KEM Round-Trip (orbit-constancy)** | `fast_kem_round_trip : keyDerive (fastCanon (g • basePoint)) = keyDerive (fastCanon basePoint)` (given `IsOrbitConstant G fastCanon`) | `Optimization/TwoPhaseDecrypt.lean` | Standalone | The actual correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair: orbit-constancy of the fast canonical form is sufficient for round-trip correctness, and orbit-constancy IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G (Phase 15.3, post-landing audit) |
 | 27 | **Surrogate-Bound Hardness Chain (non-vacuous)** | `ConcreteHardnessChain.concreteOIA_from_chain hc : ConcreteOIA scheme ε` for `hc : ConcreteHardnessChain scheme F S ε` with explicit `S : SurrogateTensor F` and encoder fields `encTC, encCG`; `tight_one_exists` witnesses inhabitation at ε = 1 via `punitSurrogate F` and dimension-0 trivial encoders | `Hardness/Reductions.lean` | Quantitative | Closes audit finding H1 (2026-04-21, HIGH). Pre-G the chain's `UniversalConcreteTensorOIA εT` implicitly quantified over every `G_TI : Type` including PUnit, making the Prop collapse at εT < 1. Fix B binds the surrogate; Fix C adds per-encoding reduction Props (`*_viaEncoding`) naming explicit encoder functions. Composition threads advantage through the chain image `encCG ∘ encTC`, not a universal hypothesis (Workstream G). The end-to-end bound `concrete_hardness_chain_implies_1cpa_advantage_bound : ConcreteHardnessChain … → IND-1-CPA advantage ≤ ε` is the **primary public-release citation** for scheme-level quantitative security |
 | 28 | **Per-Encoding Reduction Props (Fix C)** | `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding S enc εT εC`, `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding enc εC εG`, `ConcreteGIOIAImpliesConcreteOIA_viaEncoding scheme encTC encCG εG ε` | `Hardness/Reductions.lean` | Quantitative | Each reduction Prop names an explicit encoder function and asserts hardness transfer *through* that encoder. Satisfiable at ε = 1 via the `*_one_one` witnesses (conclusion is unconditionally true); non-trivial ε < 1 discharges require concrete encoder witnesses (CFI, Grochow–Qiao — research-scope, audit plan § 15.1). This is the "cryptographically cleanest" formulation the audit calls for (Workstream G / Fix C) |
@@ -1020,28 +1020,28 @@ Phase 15 (Decryption Optimisation Formalisation) has been completed:
   the Phase-2 `CanonicalForm` API.
 - `Orbcrypt/Optimization/TwoPhaseDecrypt.lean` — `TwoPhaseDecomposition`
   predicate (carried as the explicit hypothesis `hDecomp` on every
-  downstream theorem) plus `two_phase_correct`, `full_canon_invariant`,
+  downstream theorem) plus `canonical_agreement_under_two_phase_decomposition`, `full_canon_invariant`,
   `two_phase_invariant_under_G`, `two_phase_kem_decaps`,
-  `two_phase_kem_correctness`. Orbit-constancy layer (`IsOrbitConstant`,
+  `kem_round_trip_under_two_phase_decomposition`. Orbit-constancy layer (`IsOrbitConstant`,
   `orbit_constant_encaps_eq_basePoint`, `fast_kem_round_trip`,
   `fast_canon_composition_orbit_constant`) added by the Phase 15.3
   post-landing audit after empirically confirming that the strong
   `TwoPhaseDecomposition` does not hold for the default fallback group
   (lex-min and the residual transversal action don't commute). The
   actual GAP correctness story runs through `fast_kem_round_trip`;
-  `two_phase_kem_correctness` is retained as the strong-agreement
+  `kem_round_trip_under_two_phase_decomposition` is retained as the strong-agreement
   conditional documented at theorem #25.
 - `docs/benchmarks/phase15_decryption.csv` — per-method timing table
   emitted by `WritePhase15CSV`, covering full-KEM / fast / syndrome /
   orbit-hash decapsulation speeds at the §14 balanced tier.
-- Headline theorems #24 `two_phase_correct`, #25
-  `two_phase_kem_correctness` (conditional), and #26
+- Headline theorems #24 `canonical_agreement_under_two_phase_decomposition`, #25
+  `kem_round_trip_under_two_phase_decomposition` (conditional), and #26
   `fast_kem_round_trip` landed with this phase; all three depend only
   on the standard Lean trio (`propext`, `Classical.choice`,
   `Quot.sound`) — see the axiom-transparency block below.
 - `Orbcrypt.lean` dependency graph + axiom-transparency block extended
   with the `Optimization/` layer and nine `#print axioms` assertions
-  (`two_phase_correct`, `two_phase_kem_correctness`,
+  (`canonical_agreement_under_two_phase_decomposition`, `kem_round_trip_under_two_phase_decomposition`,
   `full_canon_invariant`, `orbit_constant_encaps_eq_basePoint`,
   `qc_invariant_under_cyclic`, `qc_canon_idem`, `fast_kem_round_trip`,
   `fast_canon_composition_orbit_constant`, and
@@ -1056,8 +1056,8 @@ Phase 15 (Decryption Optimisation Formalisation) has been completed:
   files.
 - Patch version: `lakefile.lean` bumped from `0.1.4` to `0.1.5` in
   the Phase 15 landing commit to capture the two new `Optimization/`
-  modules, the three new headline theorems #24 `two_phase_correct`,
-  #25 `two_phase_kem_correctness` (conditional), and #26
+  modules, the three new headline theorems #24 `canonical_agreement_under_two_phase_decomposition`,
+  #25 `kem_round_trip_under_two_phase_decomposition` (conditional), and #26
   `fast_kem_round_trip`, along with their supporting declarations
   (`QCCyclicCanonical`, `qc_invariant_under_cyclic`,
   `qc_canon_idem`, `TwoPhaseDecomposition`, `full_canon_invariant`,
@@ -2290,8 +2290,8 @@ been completed (2026-04-23):
   `lakefile.lean`'s `version` field from `0.1.4` to `0.1.5` to
   capture the two new `Optimization/` modules
   (`QCCanonical.lean`, `TwoPhaseDecrypt.lean`), the three new
-  headline theorems (#24 `two_phase_correct`, #25
-  `two_phase_kem_correctness`, #26 `fast_kem_round_trip`), their
+  headline theorems (#24 `canonical_agreement_under_two_phase_decomposition`, #25
+  `kem_round_trip_under_two_phase_decomposition`, #26 `fast_kem_round_trip`), their
   supporting declarations, and the Phase-15.3 post-landing
   orbit-constancy refactor that delivered theorem #26 and
   `fast_canon_composition_orbit_constant`. This bump was
@@ -2719,8 +2719,8 @@ been completed:
   (the planned orbit-cover refactor that will upgrade row #19 to
   **Standalone** once it lands); the row-#20 entry forward-references
   research milestone R-13 (the `Bitstring n → ZMod p` adapter).
-- `CLAUDE.md` — rows #24 (`two_phase_correct`) and #25
-  (`two_phase_kem_correctness`) reclassified to **Conditional** with
+- `CLAUDE.md` — rows #24 (`canonical_agreement_under_two_phase_decomposition`) and #25
+  (`kem_round_trip_under_two_phase_decomposition`) reclassified to **Conditional** with
   the `TwoPhaseDecomposition`-falsity disclosure and a
   cross-reference to row #26 (`fast_kem_round_trip`) as the
   non-vacuous sibling (V1-2 / audit findings L-03 / D2).
@@ -6335,8 +6335,8 @@ theatrical theorems, zero security-by-docstring violations.
 - `#print axioms hybrid_argument_uniform` — standard Lean only (sum telescoping, Workstream E8 prereq)
 - `#print axioms indQCPA_from_perStepBound` — standard Lean only (per-step bound `h_step` carried as user-supplied hypothesis; telescopes via `hybrid_argument_uniform`, audit F-11, Workstream E8c; renamed from `indQCPA_bound_via_hybrid` in Workstream C of audit 2026-04-23, finding V1-8 / C-13)
 - `#print axioms indQCPA_from_perStepBound_recovers_single_query` — standard Lean only (Q = 1 regression sentinel; renamed from `indQCPA_bound_recovers_single_query` in Workstream C of audit 2026-04-23 for naming consistency)
-- `#print axioms Orbcrypt.two_phase_correct` — standard Lean only (TwoPhaseDecomposition predicate carried as a hypothesis, Phase 15.5)
-- `#print axioms Orbcrypt.two_phase_kem_correctness` — standard Lean only (composes two_phase_kem_decaps with kem_correctness, Phase 15.3 / 15.5)
+- `#print axioms Orbcrypt.canonical_agreement_under_two_phase_decomposition` — standard Lean only (TwoPhaseDecomposition predicate carried as a hypothesis, Phase 15.5)
+- `#print axioms Orbcrypt.kem_round_trip_under_two_phase_decomposition` — standard Lean only (composes two_phase_kem_decaps with kem_correctness, Phase 15.3 / 15.5)
 - `#print axioms Orbcrypt.full_canon_invariant` — standard Lean only (direct canon_eq_of_mem_orbit + smul_mem_orbit, Phase 15.5)
 - `#print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint` — standard Lean only (IsOrbitConstant carried as a hypothesis, Phase 15.4)
 - `#print axioms Orbcrypt.qc_invariant_under_cyclic` / `qc_canon_idem` — standard Lean only (Phase 15.1 / 15.5)
@@ -8869,8 +8869,8 @@ linter-silencer documentation:
 - **HIGH (audit coverage gap)** — A coverage-gap analysis on the
   Phase-16 audit script revealed that **73 public declarations**
   across five modules had no `#print axioms` entries.  Among these
-  were headline theorems #24 `two_phase_correct`, #25
-  `two_phase_kem_correctness`, and #26 `fast_kem_round_trip`
+  were headline theorems #24 `canonical_agreement_under_two_phase_decomposition`, #25
+  `kem_round_trip_under_two_phase_decomposition`, and #26 `fast_kem_round_trip`
   (Phase 15 fast-decryption), plus the entire Layer 1-5 path-algebra
   Ring/Algebra infrastructure in `AlgebraWrapper.lean` (37
   declarations), the Wedderburn–Mal'cev radical infrastructure in
@@ -8880,7 +8880,7 @@ linter-silencer documentation:
   (2: `probTrue_map`, `probTrue_uniformPMF_card`).
   CLAUDE.md's exit-criteria checklist had ALREADY claimed these
   Phase-15 theorems were covered (entries like
-  "`#print axioms Orbcrypt.two_phase_correct` — standard Lean
+  "`#print axioms Orbcrypt.canonical_agreement_under_two_phase_decomposition` — standard Lean
   only"), but the actual audit script did not exercise them.
   **Fix.** Added 73 new `#print axioms` entries in a new § 15.28
   section "Audit-pass coverage closure (deep audit 2026-05-05)"

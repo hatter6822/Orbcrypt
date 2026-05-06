@@ -27,12 +27,12 @@ followed by the residual canonical form. This file carries that
 decomposition as an explicit hypothesis `hDecomp` and proves the
 downstream consequences that the Phase 15 plan explicitly calls out:
 
-* `two_phase_correct` — correctness of two-phase decryption on the
+* `canonical_agreement_under_two_phase_decomposition` — correctness of two-phase decryption on the
   image of the encryption map;
 * `two_phase_kem_decaps` — the KEM decapsulation key is the same whether
   computed via the full canonical form or via the cyclic-then-residual
   composition;
-* `two_phase_kem_correctness` — the two-phase fast path still satisfies
+* `kem_round_trip_under_two_phase_decomposition` — the two-phase fast path still satisfies
   `decaps(encaps g).1 = (encaps g).2` when `hDecomp` is assumed.
 
 As with every Phase 15 optimisation, the decomposition hypothesis
@@ -114,7 +114,7 @@ theorem two_phase_decompose
   hDecomp x
 
 -- ============================================================================
--- Work Unit 15.5 (Lean): two_phase_correct on an arbitrary ciphertext
+-- Work Unit 15.5 (Lean): canonical_agreement_under_two_phase_decomposition on an arbitrary ciphertext
 -- ============================================================================
 
 /-- **Phase 15 § 15.5 headline theorem.** The two-phase canonical form
@@ -127,7 +127,7 @@ theorem two_phase_decompose
     the full canonical map.
 
     **Proof strategy.** Apply `hDecomp` at `g • x`. -/
-theorem two_phase_correct
+theorem canonical_agreement_under_two_phase_decomposition
     {G C : Subgroup (Equiv.Perm (Fin n))}
     (can_full : CanonicalForm (↥G) (Bitstring n))
     (can_cyclic : QCCyclicCanonical C)
@@ -157,7 +157,7 @@ theorem full_canon_invariant
     element `g : ↥G` before the two-phase pipeline yields the same
     result as applying the pipeline directly.
 
-    **Proof strategy.** Combine `two_phase_correct` (which rewrites both
+    **Proof strategy.** Combine `canonical_agreement_under_two_phase_decomposition` (which rewrites both
     sides as `can_full.canon (g • x)` resp. `can_full.canon x`) with
     `full_canon_invariant` (which collapses those to each other). -/
 theorem two_phase_invariant_under_G
@@ -182,7 +182,7 @@ theorem two_phase_invariant_under_G
     the composite `keyDerive ∘ can_residual.canon ∘ can_cyclic.canon`
     agrees with the usual `decaps` on every ciphertext `c`.
 
-    This is the decapsulation-level statement of `two_phase_correct`:
+    This is the decapsulation-level statement of `canonical_agreement_under_two_phase_decomposition`:
     since the decapsulation key is computed by applying `keyDerive` to
     the canonical form, and the two canonical forms agree by `hDecomp`,
     the two decapsulation routines return the same key. -/
@@ -207,7 +207,7 @@ theorem two_phase_kem_decaps
     **Proof.** Compose `two_phase_kem_decaps` (which rewrites the fast
     path to the full path) with `kem_correctness` (which says the full
     path is correct). -/
-theorem two_phase_kem_correctness
+theorem kem_round_trip_under_two_phase_decomposition
     {K : Type*}
     {G C : Subgroup (Equiv.Perm (Fin n))}
     (kem : OrbitKEM (↥G) (Bitstring n) K)
@@ -270,7 +270,7 @@ theorem orbit_constant_encaps_eq_basePoint
 
     This is the actual correctness story for the GAP `FastEncaps` /
     `FastDecaps` pair (`implementation/gap/orbcrypt_fast_dec.g` §5).
-    Unlike `two_phase_kem_correctness`, this theorem does NOT require
+    Unlike `kem_round_trip_under_two_phase_decomposition`, this theorem does NOT require
     the strong `TwoPhaseDecomposition` predicate; it only requires
     the orbit-constancy property that any composition of two
     `CanonicalForm` instances automatically inherits.

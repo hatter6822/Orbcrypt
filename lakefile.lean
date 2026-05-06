@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.2"
+  version := v!"0.3.3"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,16 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W1 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`): rename
+-- `two_phase_correct` → `canonical_agreement_under_two_phase_decomposition`
+-- and `two_phase_kem_correctness` → `kem_round_trip_under_two_phase_decomposition`.
+-- The new identifiers surface the `TwoPhaseDecomposition` hypothesis in
+-- the name itself, paralleling Workstream C of audit 2026-04-23
+-- (`indQCPA_bound_via_hybrid` → `indQCPA_from_perStepBound`). API-
+-- breaking rename → patch bump 0.3.2 → 0.3.3. Verification posture
+-- preserved: 3,424 lake build jobs clean, every `#print axioms` on the
+-- standard Lean trio.
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md

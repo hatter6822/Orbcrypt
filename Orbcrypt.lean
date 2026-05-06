@@ -330,9 +330,9 @@ AEAD.MAC ◄── Mathlib.Tactic
 
   Optimization.TwoPhaseDecrypt ◄── Optimization.QCCanonical, KEM.Correctness
   ◄── TwoPhaseDecomposition (correctness predicate)
-  ◄── two_phase_correct, full_canon_invariant
+  ◄── canonical_agreement_under_two_phase_decomposition, full_canon_invariant
   ◄── two_phase_invariant_under_G
-  ◄── two_phase_kem_decaps, two_phase_kem_correctness
+  ◄── two_phase_kem_decaps, kem_round_trip_under_two_phase_decomposition
   ◄── IsOrbitConstant, orbit_constant_encaps_eq_basePoint
 ```
 
@@ -505,10 +505,10 @@ comm_pke_correctness (PublicKey/CommutativeAction.lean)
   ├── CommGroupAction.comm        — commutativity axiom of the class (13.5)
   └── CommOrbitPKE.pk_valid       — public-key validity field (13.6)
 
-two_phase_correct (Optimization/TwoPhaseDecrypt.lean)           ◄── Phase 15.5
+canonical_agreement_under_two_phase_decomposition (Optimization/TwoPhaseDecrypt.lean)           ◄── Phase 15.5
   └── hDecomp (hypothesis)        — TwoPhaseDecomposition predicate
 
-two_phase_kem_correctness (Optimization/TwoPhaseDecrypt.lean)   ◄── Phase 15.3
+kem_round_trip_under_two_phase_decomposition (Optimization/TwoPhaseDecrypt.lean)   ◄── Phase 15.3
   ├── two_phase_kem_decaps        — decapsulation-level rewrite (15.5)
   └── kem_correctness             — full-group KEM correctness (7.3)
 
@@ -524,7 +524,7 @@ fast_kem_round_trip (Optimization/TwoPhaseDecrypt.lean)         ◄── Phase 
   └── IsOrbitConstant (hypothesis) — true for the GAP `FastCanonicalImage`
       whenever the cyclic subgroup is normal in G; this is the actual
       KEM-correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair,
-      not the stronger `two_phase_kem_correctness` (which requires the
+      not the stronger `kem_round_trip_under_two_phase_decomposition` (which requires the
       `TwoPhaseDecomposition` predicate, empirically false for the
       default fallback wreath-product G).
 
@@ -758,7 +758,7 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
 
 **Phase 15 (Decryption Optimisation):**
 
-- `two_phase_correct` (`Optimization/TwoPhaseDecrypt.lean`) — the
+- `canonical_agreement_under_two_phase_decomposition` (`Optimization/TwoPhaseDecrypt.lean`) — the
   two-phase (cyclic ∘ residual) canonical form agrees with the full
   canonical form on `g • x`, *given* a `TwoPhaseDecomposition`
   hypothesis `hDecomp` (15.5).
@@ -770,7 +770,7 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
   invariant under the full-group action, given `hDecomp` (15.5).
 - `two_phase_kem_decaps` (`Optimization/TwoPhaseDecrypt.lean`) —
   decapsulation-level rewrite of the fast path, given `hDecomp` (15.3).
-- `two_phase_kem_correctness`
+- `kem_round_trip_under_two_phase_decomposition`
   (`Optimization/TwoPhaseDecrypt.lean`) — the two-phase fast path
   correctly recovers the KEM key on `(encaps g).1`, given `hDecomp`
   (15.3).
@@ -1209,7 +1209,7 @@ Users can verify axiom dependencies by running in a Lean file:
 
 -- Phase 15 (Decryption Optimisation):
 
-#print axioms Orbcrypt.two_phase_correct
+#print axioms Orbcrypt.canonical_agreement_under_two_phase_decomposition
 -- (standard Lean only — `hDecomp : TwoPhaseDecomposition G C ...`
 --  carried as a hypothesis; Work Unit 15.5)
 
@@ -1221,14 +1221,14 @@ Users can verify axiom dependencies by running in a Lean file:
 --  `canon_eq_of_mem_orbit` and `smul_mem_orbit`, Work Unit 15.5)
 
 #print axioms Orbcrypt.two_phase_invariant_under_G
--- (standard Lean only — combines `two_phase_correct` with
+-- (standard Lean only — combines `canonical_agreement_under_two_phase_decomposition` with
 --  `full_canon_invariant`, Work Unit 15.5)
 
 #print axioms Orbcrypt.two_phase_kem_decaps
 -- (standard Lean only — unfolds `decaps` and rewrites by `hDecomp`,
 --  Work Unit 15.3)
 
-#print axioms Orbcrypt.two_phase_kem_correctness
+#print axioms Orbcrypt.kem_round_trip_under_two_phase_decomposition
 -- (standard Lean only — composes `two_phase_kem_decaps` with
 --  `kem_correctness`, Work Unit 15.3)
 
@@ -1292,8 +1292,8 @@ standalone sibling theorem exists, it is named.
 |---|---|---|
 | `authEncrypt_is_int_ctxt` (row #19) | ~~`hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` — False on production HGOE~~. **Closed by audit 2026-04-23 Workstream B (2026-04-24).** The orbit condition is now a per-challenge well-formedness precondition `hOrbit` *on the `INT_CTXT` game itself*, not a theorem-level obligation. Row #19 is now **Standalone**: `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | `keyDerive_canon_eq_of_mem_orbit` (orbit-restricted key uniqueness; unconditional, still useful as the internal lemma at the heart of the proof) |
 | `carterWegmanMAC_int_ctxt` (row #20) | Implicit type constraint `X = ZMod p × ZMod p`; **incompatible with HGOE's `Bitstring n` ciphertext space** without a `Bitstring n → ZMod p` adapter | `carterWegmanHash_isUniversal` — the standalone `(1/p)`-universal hash theorem. The adapter is research-scope R-13 |
-| `two_phase_correct` (row #24) | `TwoPhaseDecomposition` — empirically False on the default GAP fallback group (lex-min and the residual transversal action don't commute) | `fast_kem_round_trip` (row #26) — orbit-constancy of the fast canonical form; IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G |
-| `two_phase_kem_correctness` (row #25) | Same `TwoPhaseDecomposition` as row #24 | Same `fast_kem_round_trip` (row #26) |
+| `canonical_agreement_under_two_phase_decomposition` (row #24) | `TwoPhaseDecomposition` — empirically False on the default GAP fallback group (lex-min and the residual transversal action don't commute) | `fast_kem_round_trip` (row #26) — orbit-constancy of the fast canonical form; IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G |
+| `kem_round_trip_under_two_phase_decomposition` (row #25) | Same `TwoPhaseDecomposition` as row #24 | Same `fast_kem_round_trip` (row #26) |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`
