@@ -19,41 +19,39 @@ import Mathlib.Data.Fintype.Perm
 /-!
 # Orbcrypt.Hardness.Reductions
 
-Hardness reduction chain connecting Tensor Isomorphism (TI), Code Equivalence
-(CE), Graph Isomorphism (GI), and Orbcrypt's Orbit Indistinguishability
-Assumption (OIA). Formalizes the chain:
+Probabilistic hardness reduction chain connecting Tensor Isomorphism
+(TI), Code Equivalence (CE), Graph Isomorphism (GI), and Orbcrypt's
+probabilistic security chain `ConcreteOIA`.
 
-    TI-hard → TensorOIA → CE-OIA → GI-OIA → OIA → IND-1-CPA secure
+The reduction chain is:
 
-Each step either defines an OIA variant (Prop-valued definition following the
-pattern established in `Crypto/OIA.lean`) or states a computational reduction
-(also as a Prop, carried as an explicit hypothesis in downstream theorems).
+    TI-hard → ConcreteTensorOIA(ε_T) → ConcreteCEOIA(ε_C)
+            → ConcreteGIOIA(ε_G) → ConcreteOIA(ε)
+            → IND-1-CPA bound (ε)
+
+Each layer's hardness Prop is `Concrete*` (genuinely ε-smooth).
+The per-link reductions are the `*_viaEncoding` Props (Workstream
+G / Fix C), each naming an explicit encoder function.
 
 ## Main definitions
 
-* `Orbcrypt.TensorOIA` — deterministic OIA for tensor isomorphism under GL(n,F)³
-* `Orbcrypt.GIOIA` — deterministic OIA for graph isomorphism under S_n
-
-
-
-* `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c)
-* `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound probabilistic
-  tensor-OIA (post-Workstream-G Fix B: carries `SurrogateTensor F`)
+* `Orbcrypt.permuteAdj` — `S_n` action on adjacency functions
+  (preserved post-W6, used by `ConcreteGIOIA` and the Petrank–Roth
+  Karp-reduction chain).
+* `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c).
+* `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound
+  probabilistic tensor-OIA (Workstream G / Fix B: carries
+  `SurrogateTensor F`).
 * `Orbcrypt.ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
   `Orbcrypt.ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`,
-  `Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` — per-encoding
-  probabilistic reduction Props naming explicit encoder functions
-  (Workstream G Fix C, primary post-G vocabulary)
+  `Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` —
+  per-encoding probabilistic reduction Props naming explicit
+  encoder functions (Workstream G / Fix C).
 * `Orbcrypt.ConcreteHardnessChain` — packaged ε-bounded chain with
-  `SurrogateTensor` parameter and two encoder fields (Workstream G)
+  `SurrogateTensor` parameter and two encoder fields (Workstream
+  G).
 
 ## Main results
-
-W6.3 / W6.5 of structural review 2026-05-06 deleted the
-deterministic-chain results (`hardness_chain_implies_security`,
-`_distinct`, `oia_from_hardness_chain`, `HardnessChain`). The
-non-vacuous probabilistic chain is the sole hardness-chain
-content post-deletion:
 
 * `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` —
   probabilistic chain composition threading advantage through the
@@ -67,30 +65,23 @@ content post-deletion:
   ε-bounded IND-1-CPA advantage from the probabilistic chain
   (Workstream E5, post-G signature threads `SurrogateTensor`).
 
-## Reduction Chain
+## W6 deletion log
 
-```text
-TensorOIA        (strongest — no quasi-poly algorithm known)
-    |
-    | TensorOIAImpliesCEOIA (tensor-to-code encoding)
-    ↓
-  CEOIA           (LESS/MEDS hardness — NIST PQC candidates)
-    |
-    | CEOIAImpliesGIOIA (code-to-graph encoding)
-    ↓
-  GIOIA           (2^O(√(n log n)) — Babai 2015)
-    |
-    | GIOIAImpliesOIA (graph-to-orbit encoding)
-    ↓
-   OIA            (Orbcrypt's core assumption — Crypto/OIA.lean)
-```
+W6 of structural review 2026-05-06 (plan
+`docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1
+row 7) deleted the deterministic chain previously defined in this
+file:
 
-The deterministic-chain composition `OIA → IND-1-CPA secure` and
-the chain Prop `HardnessChain` were removed by W6.3 / W6.5 of
-structural review 2026-05-06. The non-vacuous probabilistic chain
-(`ConcreteHardnessChain.concreteOIA_from_chain` →
-`concrete_hardness_chain_implies_1cpa_advantage_bound`) is the
-substantive end-to-end security reduction.
+* W6.3: `oia_implies_1cpa`, `oia_implies_1cpa_distinct` (Theorems/
+  OIAImpliesCPA.lean); `hardness_chain_implies_security`,
+  `hardness_chain_implies_security_distinct`.
+* W6.5: `HardnessChain`, `oia_from_hardness_chain` (Tier 4).
+* W6.6: `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
+  `GIOIAImpliesOIA` (Tier 5 per-link).
+* W6.7: `TensorOIA`, `GIOIA`, `tensorOIA_symm`, `gioia_symm`
+  (Tier 6 per-layer; CEOIA in `Hardness/CodeEquivalence.lean`).
+
+The probabilistic chain is the sole security chain post-W6.
 
 ## References
 
@@ -104,44 +95,21 @@ namespace Orbcrypt
 variable {n : ℕ} {F : Type*}
 
 -- ============================================================================
--- Work Unit 12.6: Tensor-OIA Definition
+-- Permutation action on adjacency matrices (preserved post-W6).
 -- ============================================================================
+--
+-- W6.7 of structural review 2026-05-06 deleted the deterministic
+-- per-layer Props `TensorOIA`, `GIOIA` (and their `_symm` siblings,
+-- which were OIA-dependent). The probabilistic counterparts
+-- `ConcreteTensorOIA`, `ConcreteGIOIA`, and the `Universal*` Props
+-- carry the substantive ε-smooth content.
+--
+-- `permuteAdj` is preserved because it is `OIA`-independent: it's
+-- the underlying S_n action on adjacency matrices used by both
+-- `ConcreteGIOIA` and the Petrank–Roth Karp-reduction chain
+-- (`Orbcrypt/Hardness/PetrankRoth/`).
 
-section TensorOIADefinition
-
-variable [Field F]
-
-/-- Tensor OIA: orbit indistinguishability for the tensor isomorphism problem.
-
-    No Boolean function can distinguish elements from two different tensor
-    orbits under the GL(n,F)³ action. For non-isomorphic tensors T₀, T₁:
-
-      ∀ f : Tensor3 → Bool, ∀ g₀ g₁ ∈ GL³, f(g₀ • T₀) = f(g₁ • T₁)
-
-    This is the strongest OIA variant in the reduction chain. TI is believed
-    strictly harder than GI: no quasi-polynomial algorithm is known.
-
-    Follows the OIA pattern (`Crypto/OIA.lean`): a `Prop`-valued definition,
-    not an axiom. Theorems carry it as an explicit hypothesis. -/
-def TensorOIA (T₀ T₁ : Tensor3 n F) : Prop :=
-  ∀ (f : Tensor3 n F → Bool)
-    (g₀ g₁ : GL (Fin n) F × GL (Fin n) F × GL (Fin n) F),
-    f (g₀ • T₀) = f (g₁ • T₁)
-
-/-- TensorOIA is symmetric: if no function distinguishes orbits of T₀ and T₁,
-    the same holds with T₀ and T₁ swapped. -/
-theorem tensorOIA_symm {T₀ T₁ : Tensor3 n F}
-    (h : TensorOIA T₀ T₁) : TensorOIA T₁ T₀ := by
-  intro f g₀ g₁
-  exact (h f g₁ g₀).symm
-
-end TensorOIADefinition
-
--- ============================================================================
--- Work Unit 12.6 (continued): Graph OIA Definition
--- ============================================================================
-
-section GIOIADefinition
+section GraphActionDefinition
 
 /-- Permutation action on adjacency matrices: σ acts by permuting both
     row and column indices. This is the natural S_n action on graphs. -/
@@ -149,27 +117,7 @@ def permuteAdj (σ : Equiv.Perm (Fin n)) (adj : Fin n → Fin n → Bool) :
     Fin n → Fin n → Bool :=
   fun i j => adj (σ⁻¹ i) (σ⁻¹ j)
 
-/-- Graph OIA: orbit indistinguishability for graph isomorphism.
-
-    No Boolean function can distinguish permuted copies of two non-isomorphic
-    graphs. For graphs with adjacency functions adj₀, adj₁:
-
-      ∀ f, ∀ σ₀ σ₁ ∈ S_n, f(σ₀(adj₀)) = f(σ₁(adj₁))
-
-    The GI problem has a quasi-polynomial algorithm (Babai, 2015),
-    so GI-OIA is weaker than CE-OIA or TensorOIA. -/
-def GIOIA (adj₀ adj₁ : Fin n → Fin n → Bool) : Prop :=
-  ∀ (f : (Fin n → Fin n → Bool) → Bool)
-    (σ₀ σ₁ : Equiv.Perm (Fin n)),
-    f (permuteAdj σ₀ adj₀) = f (permuteAdj σ₁ adj₁)
-
-/-- GIOIA is symmetric. -/
-theorem gioia_symm {adj₀ adj₁ : Fin n → Fin n → Bool}
-    (h : GIOIA adj₀ adj₁) : GIOIA adj₁ adj₀ := by
-  intro f σ₀ σ₁
-  exact (h f σ₁ σ₀).symm
-
-end GIOIADefinition
+end GraphActionDefinition
 
 -- ============================================================================
 -- Work Unit 12.7: Reduction Chain

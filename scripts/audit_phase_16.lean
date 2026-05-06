@@ -515,7 +515,9 @@ open Orbcrypt
 #print axioms PAutSubgroup
 #print axioms mem_PAutSubgroup
 #print axioms PAut_eq_PAutSubgroup_carrier
-#print axioms CEOIA
+-- W6.7 of structural review 2026-05-06: `CEOIA` (deterministic
+-- per-layer Prop) was deleted; the probabilistic counterpart
+-- `ConcreteCEOIA` (Workstream E2a) is preserved.
 -- Workstream I4 (audit 2026-04-23, finding J-03): the strengthened
 -- `GIReducesToCE` Prop carries non-degeneracy fields (`codeSize_pos`,
 -- `encode_card_eq`) that rule out the audit-flagged
@@ -583,12 +585,12 @@ open Orbcrypt
 #print axioms OrbitPreservingEncoding
 #print axioms identityEncoding
 
--- Hardness.Reductions (Phase 12 deterministic chain)
+-- Hardness.Reductions (post-W6 probabilistic-only chain)
 #print axioms permuteAdj
-#print axioms TensorOIA
-#print axioms tensorOIA_symm
-#print axioms GIOIA
-#print axioms gioia_symm
+-- W6.7 of structural review 2026-05-06: deterministic per-layer Props
+-- `TensorOIA`, `GIOIA` (and their `_symm` siblings) were deleted; the
+-- probabilistic counterparts `ConcreteTensorOIA`, `ConcreteGIOIA`,
+-- and the `Universal*` Props (Workstream E2b/E2c/G) are preserved.
 -- W6.6 of structural review 2026-05-06: the per-link reduction
 -- Props `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
 -- `GIOIAImpliesOIA` were deleted; the non-vacuous probabilistic
