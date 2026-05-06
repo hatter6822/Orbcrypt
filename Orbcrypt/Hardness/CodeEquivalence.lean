@@ -33,7 +33,9 @@ and establishes the PAut (Permutation Automorphism group) framework.
   (Workstream D2)
 * `Orbcrypt.arePermEquivalent_setoid` — `Setoid` instance making
   `ArePermEquivalent` a Mathlib equivalence (Workstream D4)
-* `Orbcrypt.CEOIA` — Code Equivalence OIA variant
+
+
+
 * `Orbcrypt.GIReducesToCE` — GI ≤_p CE (Prop definition, not axiom).
   **Workstream I4-strengthened (audit 2026-04-23, finding J-03):**
   the existential carries a `codeSize` function plus
@@ -308,22 +310,13 @@ end CodeEquivalenceDefinitions
 -- Work Unit 12.1 (continued): CEOIA and GI Reduction
 -- ============================================================================
 
+-- W6.7 of structural review 2026-05-06: the deterministic per-layer
+-- Prop `CEOIA` (formerly defined here) was deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0. The non-vacuous
+-- probabilistic counterpart `ConcreteCEOIA` (Workstream E2a) carries
+-- the substantive ε-smooth code-equivalence content.
+
 section CEOIADefinition
-
-/-- Code Equivalence OIA: orbit indistinguishability for permutation codes.
-    No Boolean function can distinguish permuted codewords drawn from two
-    non-equivalent codes C₀ and C₁.
-
-    Analogous to the main OIA (`Crypto/OIA.lean`) but specialized to the CE
-    setting. Follows the OIA pattern: a `Prop`-valued definition carried as
-    an explicit hypothesis, NOT an axiom. This avoids inconsistency since
-    CEOIA is provably false for codes distinguishable by any invariant
-    (e.g., different minimum distances). -/
-def CEOIA (C₀ C₁ : Finset (Fin n → F)) : Prop :=
-  ∀ (f : (Fin n → F) → Bool) (σ₀ σ₁ : Equiv.Perm (Fin n))
-    (c₀ : Fin n → F) (c₁ : Fin n → F),
-    c₀ ∈ C₀ → c₁ ∈ C₁ →
-    f (permuteCodeword σ₀ c₀) = f (permuteCodeword σ₁ c₁)
 
 /-- **Graph Isomorphism reduces to Permutation Code Equivalence
     (post-Workstream-I strengthened form).**

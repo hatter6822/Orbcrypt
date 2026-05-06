@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.2"
+  version := v!"0.4.0"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,155 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W6 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1
+-- row 7): deletion of the deterministic security chain. Eleven
+-- leaf-first commits (W6.1–W6.9 + W6.10 documentation sweep)
+-- removed 19 declarations across 6 modules:
+--
+--   * W6.1 (vacuity witnesses): `det_oia_false_of_distinct_reps`,
+--     `det_kemoia_false_of_nontrivial_orbit`.
+--   * W6.2 (det→prob bridges): `det_oia_implies_concrete_zero`,
+--     `det_kemoia_implies_concreteKEMOIA_zero`.
+--   * W6.3 (Tier 3 reductions): `oia_specialized`,
+--     `no_advantage_from_oia`, `oia_implies_1cpa`,
+--     `oia_implies_1cpa_distinct`, `hardness_chain_implies_security`,
+--     `hardness_chain_implies_security_distinct`.
+--   * W6.4 (KEM Tier 3): `kem_ciphertext_indistinguishable`,
+--     `kemoia_implies_secure`.
+--   * W6.5 (Tier 4): `oia_from_hardness_chain`, `HardnessChain`.
+--   * W6.6 (Tier 5 per-link): `TensorOIAImpliesCEOIA`,
+--     `CEOIAImpliesGIOIA`, `GIOIAImpliesOIA`.
+--   * W6.7 (Tier 6 per-layer): `TensorOIA`, `tensorOIA_symm`,
+--     `GIOIA`, `gioia_symm`, `CEOIA`. Plus four OIA-dependent
+--     combiner theorems in `PublicKey/CombineImpossibility.lean`
+--     (W6.8): `equivariant_combiner_breaks_oia`,
+--     `oia_forces_combine_constant_in_snd`,
+--     `oia_forces_combine_constant_on_orbit`,
+--     `oblivious_sample_equivariant_obstruction`.
+--   * W6.8 (Tier 7 top-level Props): `OIA`, `KEMOIA`.
+--   * W6.9 (Tier 8 file deletions): `Orbcrypt/Crypto/OIA.lean`
+--     and `Orbcrypt/Theorems/OIAImpliesCPA.lean` deleted; the
+--     four surviving Track-D theorems
+--     (`hasAdvantage_iff`, `adversary_yields_distinguisher`,
+--     `insecure_implies_orbit_distinguisher`,
+--     `distinct_messages_have_invariant_separator`) relocated
+--     to a new `Orbcrypt/Theorems/AdversaryStructural.lean`.
+--
+-- The non-vacuous probabilistic chain
+-- (`ConcreteOIA`, `ConcreteKEMOIA_uniform`, `ConcreteHardnessChain`,
+-- `ConcreteKEMHardnessChain`,
+-- `concrete_hardness_chain_implies_1cpa_advantage_bound`, the
+-- W4 `s2Surrogate` non-trivial witness) is the sole security
+-- chain post-W6.
+--
+-- Module count: 81 → 80 (W6.9 net deletion). Audit-script
+-- `#print axioms` count: 1,163 → 1,135 (≈ 28 entries removed
+-- across W6.1–W6.9). Public-declaration count drops by ≈ 19.
+-- Zero-sorry / zero-custom-axiom posture and standard-trio-only
+-- axiom-dependency posture preserved across every W6 commit.
+-- Minor bump 0.3.8 → 0.4.0 signalling the major API removal.
+-- W5 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 5
+-- + § 1 row 6): three-way split of `CLAUDE.md` plus public-key
+-- framing rebalance. `CLAUDE.md` shrinks from 9,061 → 869 lines;
+-- new files: `docs/API_SURFACE.md` (~400 lines) carries the
+-- clustered headline-theorem tables (symmetric primary, hardness
+-- chain quantitative, public-key research scaffolding, structural /
+-- integrity API, distinct-challenge corollaries, vacuity witnesses
+-- + scaffolding) and the regenerable canonical state;
+-- `docs/dev_history/WORKSTREAM_CHANGELOG.md` (~8,276 lines) carries
+-- the historical workstream-snapshot prose extracted verbatim from
+-- the pre-W5.2 `CLAUDE.md`'s "Active development status" section
+-- (lines 880–9100). Cross-references in `README.md` and
+-- `Orbcrypt.lean`'s module-header docstring point at the new
+-- documents. Documentation-only change; no Lean source semantics
+-- modified. Patch bump 0.3.7 → 0.3.8.
+-- W4 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 4):
+-- tractable Conditional-Prop wins replacing PUnit-collapse witnesses
+-- with non-trivial counterparts. Three deliverables:
+--   (1) `Orbcrypt/Hardness/TensorAction.lean` gains `s2Surrogate F`
+--       (cardinality 2; carrier = `Equiv.Perm (Fin 2)`) and the
+--       cardinality-distinction lemma `s2Surrogate_carrier_card`.
+--       The action remains trivial (`g • T := T`) — the win is the
+--       structural break of the PUnit-only reading at the type
+--       level, not a quantitative ε-bound improvement.
+--   (2) `Orbcrypt/Hardness/Reductions.lean` gains
+--       `tight_one_exists_at_s2Surrogate`, the chain-inhabitation
+--       analogue of `tight_one_exists` parameterised over the
+--       `s2Surrogate` instead of `punitSurrogate`. Confirms the
+--       chain accepts non-trivial surrogates without further
+--       infrastructure — only the surrogate value moves from
+--       PUnit to S_2.
+--   (3) `scripts/audit_phase_16.lean`'s `R07NonVacuity` namespace
+--       gains `combinerDistinguisherAdvantage_eq_half_on_R07`,
+--       proving the advantage on the R-07 fixture is *exactly*
+--       `1/2` (matching the existing `_ge_inv_card` lower bound,
+--       confirming the bound is attained / tight). The proof
+--       routes through the new public bridge lemma
+--       `probTrue_orbitDist_eq` (W4.3 promoted from private in
+--       `CombineImpossibility.lean`) + `probTrue_uniformPMF_card`
+--       to compute `(filter card)/|G| = 1/2` on the basepoint
+--       orbit; the target side reuses
+--       `probTrue_combinerDistinguisher_target_eq_zero`.
+-- Each new declaration depends only on the standard Lean trio.
+-- Genuine ε < 1 *cryptographic* discharges (Petrank-Roth reverse
+-- direction, Grochow-Qiao rigidity) remain research-scope. Patch
+-- bump 0.3.6 → 0.3.7.
+-- W3C (sub-unit) of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 3):
+-- end-to-end CI integration of the GAP–Lean canonical-image
+-- correspondence test from W3 (3A + 3B). Three coordinated changes:
+--   (1) `scripts/setup_lean_env.sh` gains an `install_gap_environment`
+--       function that idempotently installs GAP via apt and clones
+--       `gap-packages/images@v1.3.3` (the most recent tag compatible
+--       with Ubuntu 24.04's apt-installed GAP 4.12.1; master requires
+--       GAP >= 4.13). Called from both the fast-path and the slow-path
+--       so every environment-startup invocation gets GAP. Failures
+--       are non-fatal — the Lean environment is fully usable without
+--       GAP, only the W3C correspondence test depends on it.
+--   (2) `implementation/gap/orbcrypt_test.g` `TestLeanVectors`'s GAP
+--       `local` declarations consolidated into one statement (GAP
+--       syntax requires a single `local` per function).
+--   (3) `.github/workflows/lean4-build.yml` gains a "GAP–Lean
+--       canonical-image correspondence" CI step that re-runs
+--       setup-lean-env.sh (idempotent), then invokes the
+--       TestLeanVectors function and asserts FINAL: true.
+-- Verified locally: 48/48 test vectors pass on GAP 4.12.1 + images
+-- v1.3.3. Patch bump 0.3.5 → 0.3.6.
+-- W3 (sub-units 3A + 3B) of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 3):
+-- machine-checked GAP–Lean canonical-image correspondence at small
+-- parameters. New: `scripts/generate_test_vectors.lean` (Lean #eval
+-- generator over `Bitstring n` for n ∈ {3, 4} under full-S_n and
+-- trivial subgroups — 48 records); `implementation/gap/lean_test_vectors.txt`
+-- (committed deterministic artifact); `TestLeanVectors()` in
+-- `implementation/gap/orbcrypt_test.g` reads the file and validates
+-- each record via GAP's `CanonicalImage(G, support, OnSets)`. The
+-- cyclic-group case `C<n>` was dropped because `Subgroup.zpowers σ`'s
+-- `Fintype` instance is noncomputable; tracked as a follow-up. CI
+-- integration (sub-unit 3C) is deferred to a follow-up workstream
+-- pending Docker / GAP-version-pinning resolution. Patch bump
+-- 0.3.4 → 0.3.5.
+-- W2 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 2):
+-- pre-merge gate `scripts/audit_hypothesis_consumption.py` catches the
+-- "theatrical theorem" pattern (hypothesis bound but never consumed in
+-- proof body, conclusion type, or any subsequent binder's type). The
+-- gate is integrated as a CI step between manifest-drift and the
+-- Phase-16 audit, and a "Pre-merge checks" subsection in CLAUDE.md
+-- documents the full set of CI gates. Patch bump 0.3.3 → 0.3.4.
+-- W1 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`): rename
+-- `two_phase_correct` → `canonical_agreement_under_two_phase_decomposition`
+-- and `two_phase_kem_correctness` → `kem_round_trip_under_two_phase_decomposition`.
+-- The new identifiers surface the `TwoPhaseDecomposition` hypothesis in
+-- the name itself, paralleling Workstream C of audit 2026-04-23
+-- (`indQCPA_bound_via_hybrid` → `indQCPA_from_perStepBound`). API-
+-- breaking rename → patch bump 0.3.2 → 0.3.3. Verification posture
+-- preserved: 3,424 lake build jobs clean, every `#print axioms` on the
+-- standard Lean trio.
 -- Toolchain posture: rc by design (Scenario C of
 -- docs/planning/AUDIT_2026-04-23_WORKSTREAM_PLAN.md § 7); stable-
 -- toolchain upgrade deferred to v1.1. See docs/VERIFICATION_REPORT.md

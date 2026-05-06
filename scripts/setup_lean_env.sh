@@ -106,6 +106,177 @@ if [ -z "${MATHLIB_REV}" ]; then
   log_elapsed "warning: could not parse a valid Mathlib commit from lake-manifest.json; cache URLs will not be SHA-pinned"
 fi
 
+# -------- Package-management helpers (hoisted) --------
+# These live above the fast path because the W3C GAP install (next
+# section) uses them on both paths. The original definitions
+# (further down, after the fast-path exit) were unreachable from the
+# fast path; W3C's install_gap_environment needs them on every entry.
+APT_UPDATE_DONE=0
+
+run_pkg_install() {
+  if command -v sudo >/dev/null 2>&1; then
+    sudo "$@"
+  else
+    "$@"
+  fi
+}
+
+apt_update_once() {
+  if [ "${APT_UPDATE_DONE}" -eq 0 ]; then
+    if ! run_pkg_install apt-get update; then
+      run_pkg_install apt-get update \
+        -o Dir::Etc::sourceparts="-" \
+        -o APT::Get::List-Cleanup="0" || true
+    fi
+    APT_UPDATE_DONE=1
+  fi
+}
+
+# -------- GAP install (Workstream 3C of structural review 2026-05-06) --------
+#
+# GAP is required for the GAP–Lean canonical-image correspondence test
+# (`implementation/gap/orbcrypt_test.g`'s `TestLeanVectors` function),
+# which validates that Lean's `CanonicalForm.ofLexMin` (under
+# `bitstringLinearOrder`) agrees byte-for-byte with GAP's
+# `CanonicalImage(G, support, OnSets)` from the `images` package.
+#
+# Strategy (designed for the network constraints of this codebase's
+# typical sandboxed environments):
+#   1. GAP itself comes from the Ubuntu/Debian `gap` apt package (pulls
+#      in `gap-core`, `gap-libs`, `gap-doc`, and ~14 sub-packages). On
+#      Ubuntu 24.04 Noble that installs GAP 4.13; on 22.04 Jammy it's
+#      4.11 — both have `CanonicalImage` once `images` loads.
+#   2. The `images` package is NOT in the Ubuntu apt distribution. We
+#      clone it from `github.com/gap-packages/images` directly into
+#      `~/.gap/pkg/images/`, which is one of GAP's standard package-
+#      search directories. (`gap-system.org`'s `InstallPackage` flow
+#      goes through `files.gap-system.org`, which is blocked in this
+#      environment — see `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`
+#      for the network-probe audit.)
+#   3. Verify the install by loading `images` in a one-shot GAP session.
+#
+# Idempotent at every step: skip if already present. Non-fatal at every
+# step: a failed GAP install does NOT block the rest of setup. The Lean
+# environment is fully usable without GAP — only the W3C correspondence
+# test requires it.
+#
+# Like `install_zstd_if_needed`, this runs after the Lean toolchain is
+# verified ready and is invoked from both the fast path and the slow
+# path so any developer entering the environment gets GAP regardless of
+# how often they re-run the setup script.
+
+GAP_PACKAGE_DIR="${HOME}/.gap/pkg"
+GAP_IMAGES_DIR="${GAP_PACKAGE_DIR}/images"
+GAP_IMAGES_REPO="https://github.com/gap-packages/images.git"
+# `images` master requires GAP >= 4.13; the apt-installed GAP on
+# Ubuntu 24.04 is 4.12.1. Pin to v1.3.3 (released 2024-08-27), the most
+# recent tag whose `PackageInfo.g` declares `GAP := ">= 4.10"` and only
+# requires GAPDoc (which apt's gap-doc already provides). Bump this if
+# the project's apt-targeted GAP version moves to 4.13+.
+GAP_IMAGES_TAG="v1.3.3"
+
+install_gap_via_apt() {
+  if command -v gap >/dev/null 2>&1; then
+    log_elapsed "gap already on PATH; skipping apt install"
+    return 0
+  fi
+  if ! command -v apt-get >/dev/null 2>&1; then
+    log_elapsed "note: gap not installed and apt-get unavailable; skipping"
+    log_elapsed "  (W3C GAP–Lean correspondence test will not be runnable;"
+    log_elapsed "   install gap manually if you need that test locally)"
+    return 0
+  fi
+  log_elapsed "installing gap via apt (this may take ~30s on first run)"
+  apt_update_once
+  # `gap` package brings in gap-core + the standard sub-package family.
+  # `--no-install-recommends` is intentionally NOT passed: GAP's
+  # `gap-doc` and `gap-character-tables` are pulled by recommendation
+  # and are needed by package loading.
+  if ! run_pkg_install env DEBIAN_FRONTEND=noninteractive apt-get install -y gap; then
+    log_elapsed "warning: 'apt-get install gap' failed; skipping GAP setup"
+    log_elapsed "  (the W3C correspondence test will not be runnable;"
+    log_elapsed "   the rest of the Lean environment is unaffected)"
+    return 1
+  fi
+  log_elapsed "gap installed: $(gap --version 2>&1 | head -1)"
+  return 0
+}
+
+install_gap_images_package() {
+  if ! command -v gap >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -d "${GAP_IMAGES_DIR}" ] && [ -f "${GAP_IMAGES_DIR}/init.g" ]; then
+    log_elapsed "gap-packages/images already present at ${GAP_IMAGES_DIR}"
+    return 0
+  fi
+  if ! command -v git >/dev/null 2>&1; then
+    log_elapsed "warning: git unavailable; cannot fetch gap-packages/images"
+    return 1
+  fi
+  mkdir -p "${GAP_PACKAGE_DIR}"
+  log_elapsed "cloning gap-packages/images@${GAP_IMAGES_TAG} from ${GAP_IMAGES_REPO}"
+  # Shallow-clone the specific tag (`--branch ${GAP_IMAGES_TAG} --depth=1`)
+  # to keep the clone small (~few MB) and avoid pulling master's
+  # GAP-4.13 requirement. Ubuntu 24.04's apt-installed GAP is 4.12.1.
+  if ! git clone --depth=1 --branch "${GAP_IMAGES_TAG}" \
+         "${GAP_IMAGES_REPO}" "${GAP_IMAGES_DIR}" >/dev/null 2>&1; then
+    log_elapsed "warning: git clone of gap-packages/images@${GAP_IMAGES_TAG} failed"
+    log_elapsed "  (network issue; the W3C test will report 'images package not loadable')"
+    return 1
+  fi
+  log_elapsed "gap-packages/images@${GAP_IMAGES_TAG} cloned to ${GAP_IMAGES_DIR}"
+  return 0
+}
+
+verify_gap_setup() {
+  if ! command -v gap >/dev/null 2>&1; then
+    return 0
+  fi
+  # Run a one-shot GAP session that loads the `images` package and
+  # exercises `CanonicalImage` on a tiny example (S_3 acting on a
+  # 2-element subset of {1,2,3}). Output is captured and inspected.
+  # No `trap RETURN` is used here — under `set -u` the trap fires
+  # after local-variable scope has unwound, leading to a false
+  # "unbound variable" diagnostic. Manual cleanup at every exit
+  # path is robust and explicit.
+  local gap_log
+  gap_log="$(mktemp)"
+  local gap_status=0
+  gap -q -b -c '
+    if LoadPackage("images") = true then
+      Print("LOAD_OK\n");
+      if CanonicalImage(SymmetricGroup(3), [1,2], OnSets) = [1,2] then
+        Print("CANONICAL_OK\n");
+      else
+        Print("CANONICAL_FAIL\n");
+      fi;
+    else
+      Print("LOAD_FAIL\n");
+    fi;
+    QUIT;
+  ' > "${gap_log}" 2>&1 || gap_status=$?
+  if [ "${gap_status}" -eq 0 ] \
+      && grep -q '^LOAD_OK$' "${gap_log}" \
+      && grep -q '^CANONICAL_OK$' "${gap_log}"; then
+    log_elapsed "gap + images package verified (CanonicalImage on S_3 returned expected value)"
+  else
+    log_elapsed "warning: gap installed but verification failed (gap_status=${gap_status})"
+    if [ "${QUIET}" -eq 0 ]; then
+      head -20 "${gap_log}" || true
+    fi
+  fi
+  rm -f "${gap_log}"
+}
+
+install_gap_environment() {
+  if ! install_gap_via_apt; then
+    return 0  # apt failed; nothing more to do for GAP
+  fi
+  install_gap_images_package || true
+  verify_gap_setup
+}
+
 # -------- Lake / Mathlib cache configuration --------
 # Mathlib ships precompiled `.olean` caches that can shave ~30 min off a fresh
 # build. They are hosted on Azure Blob Storage (`lakecache.blob.core.windows.net`)
@@ -502,6 +673,7 @@ fast_path_ready() {
 if fast_path_ready; then
   log_elapsed "Lean environment already configured (fast-path)"
   configure_lake_cache || true
+  install_gap_environment || true
   if [ "${BUILD_REQUESTED}" -eq 1 ]; then
     log_elapsed "running lake build"
     (cd "${ROOT_DIR}" && lake build)
@@ -517,30 +689,9 @@ if ! command -v curl >/dev/null 2>&1; then
   exit 1
 fi
 
-# -------- Package management helpers --------
-APT_UPDATE_DONE=0
-
-run_pkg_install() {
-  if command -v sudo >/dev/null 2>&1; then
-    sudo "$@"
-  else
-    "$@"
-  fi
-}
-
-apt_update_once() {
-  if [ "${APT_UPDATE_DONE}" -eq 0 ]; then
-    if ! run_pkg_install apt-get update; then
-      run_pkg_install apt-get update \
-        -o Dir::Etc::sourceparts="-" \
-        -o APT::Get::List-Cleanup="0" || true
-    fi
-    APT_UPDATE_DONE=1
-  fi
-}
-
-# Note: `compute_sha256` is defined above the C2 snapshot helpers (which
-# run inside `fast_path_ready`); see the "SHA-256 helper" section.
+# Note: `run_pkg_install`, `apt_update_once`, and `compute_sha256` are
+# all hoisted above the fast path — see the "Package-management helpers
+# (hoisted)" and "SHA-256 helper" sections above.
 
 verify_toolchain_sha256() {
   local target_file="$1"
@@ -850,6 +1001,7 @@ log_elapsed "Lean environment is ready"
 log_elapsed "lake version: $(lake --version)"
 
 configure_lake_cache || true
+install_gap_environment || true
 
 if [ "${QUIET}" -eq 0 ]; then
   echo "[setup] next steps:"

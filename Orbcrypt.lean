@@ -13,11 +13,11 @@ import Orbcrypt.GroupAction.Invariant
 
 import Orbcrypt.Crypto.Scheme
 import Orbcrypt.Crypto.Security
-import Orbcrypt.Crypto.OIA
+
 
 import Orbcrypt.Theorems.Correctness
 import Orbcrypt.Theorems.InvariantAttack
-import Orbcrypt.Theorems.OIAImpliesCPA
+import Orbcrypt.Theorems.AdversaryStructural
 
 import Orbcrypt.KEM.Syntax
 import Orbcrypt.KEM.Encapsulate
@@ -124,6 +124,17 @@ encryption and hybrid modes layer (Phase 10), the hardness
 alignment with NIST PQC candidates (Phase 12), and the public-key
 extension scaffolding (Phase 13).
 
+**Canonical API reference.** The user-facing "what does the
+formalization deliver" reference is `docs/API_SURFACE.md` (clustered
+headline-theorem table with release-messaging Status columns,
+module dependency graph, formalization roadmap, axiom-transparency
+summary, and the live headline metric anchor). The dependency-graph
+section below is the source-of-truth structural view — duplicate
+information appears in `docs/API_SURFACE.md` § 3 for documentation
+parity. The historical record of how the API surface evolved
+(per-workstream snapshots, audit-pass cleanups, phase-completion
+logs) lives in `docs/dev_history/WORKSTREAM_CHANGELOG.md`.
+
 ## Module Dependency Graph
 
 External dependencies (Mathlib):
@@ -206,9 +217,8 @@ Mathlib.Probability.Distributions.Uniform
           │                                       └─── AEAD.CarterWegmanMAC
           │                                            (post-audit universal-hash)
           ▼
-  Crypto.CompOIA ◄── Crypto.OIA
+  Crypto.CompOIA ◄── Crypto.Scheme
   ◄── orbitDist, ConcreteOIA, CompOIA
-  ◄── det_oia_implies_concrete_zero
           │
           ▼
   Crypto.CompSecurity ◄── Crypto.Security
@@ -278,14 +288,25 @@ AEAD.MAC ◄── Mathlib.Tactic
           │
           ▼
   Hardness.CodeEquivalence ◄── Perm.Basic
-  ◄── ArePermEquivalent, PAut, CEOIA, GIReducesToCE
+  ◄── ArePermEquivalent, PAut, GIReducesToCE
+  ◄── ConcreteCEOIA (probabilistic; deterministic `CEOIA` deleted in
+       W6 of structural review 2026-05-06)
 
   Hardness.TensorAction ◄── GeneralLinearGroup.Defs
   ◄── Tensor3, tensorAction (MulAction GL³), AreTensorIsomorphic
+  ◄── SurrogateTensor, punitSurrogate, s2Surrogate (W4.1 of
+       structural review 2026-05-06; non-trivial replacement for the
+       PUnit-collapse witness)
 
-  Hardness.Reductions ◄── CodeEquivalence, TensorAction, Crypto.OIA
-  ◄── TensorOIA, GIOIA, HardnessChain
-  ◄── hardness_chain_implies_security
+  Hardness.Reductions ◄── CodeEquivalence, TensorAction, Crypto.CompOIA
+  ◄── ConcreteHardnessChain, ConcreteHardnessChain.tight_one_exists,
+       tight_one_exists_at_s2Surrogate
+  ◄── concrete_hardness_chain_implies_1cpa_advantage_bound
+       (deterministic chain `TensorOIA`/`GIOIA`/`HardnessChain` plus
+        `hardness_chain_implies_security{,_distinct}` and per-link
+        deterministic Props deleted in W6 of structural review
+        2026-05-06; the probabilistic chain is the sole reduction
+        surface post-W6)
 
   KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
           │
@@ -330,55 +351,70 @@ AEAD.MAC ◄── Mathlib.Tactic
 
   Optimization.TwoPhaseDecrypt ◄── Optimization.QCCanonical, KEM.Correctness
   ◄── TwoPhaseDecomposition (correctness predicate)
-  ◄── two_phase_correct, full_canon_invariant
+  ◄── canonical_agreement_under_two_phase_decomposition, full_canon_invariant
   ◄── two_phase_invariant_under_G
-  ◄── two_phase_kem_decaps, two_phase_kem_correctness
+  ◄── two_phase_kem_decaps, kem_round_trip_under_two_phase_decomposition
   ◄── IsOrbitConstant, orbit_constant_encaps_eq_basePoint
 ```
 
-## Deterministic-vs-probabilistic security chains
+## Probabilistic security chain (post-W6 of structural review 2026-05-06)
 
-Orbcrypt's formalization carries *two* parallel security chains. Knowing
-which chain a headline theorem belongs to is essential for reading the
-results correctly — the deterministic chain is algebraic scaffolding, the
-probabilistic chain is the substantive security content.
+Orbcrypt's formalization carries a single ε-smooth security chain:
+`ConcreteHardnessChain` composes `ConcreteTensorOIA`,
+`ConcreteCEOIA`, `ConcreteGIOIA` (per-encoding via the
+`*_viaEncoding` Props introduced by Workstream G of audit
+2026-04-21) into `ConcreteOIA scheme ε`, which feeds into
+`concrete_oia_implies_1cpa` to deliver
+`indCPAAdvantage scheme A ≤ ε`. The end-to-end bound is
+`concrete_hardness_chain_implies_1cpa_advantage_bound`. The KEM
+layer's parallel chain runs through `ConcreteKEMHardnessChain` and
+`concrete_kem_hardness_chain_implies_kem_advantage_bound` (audit
+2026-04-21 Workstream H).
 
-1. **Deterministic chain** (Phases 3, 4, 7, 10, 12). Built from
-   `Prop`-valued OIA variants (`OIA`, `KEMOIA`, `TensorOIA`, `CEOIA`,
-   `GIOIA`). Each quantifies over every Boolean distinguisher,
-   including orbit-membership oracles. These predicates are
-   **False on every non-trivial scheme** (as documented in
-   `Crypto/OIA.lean`); consequently the downstream theorems
-   `oia_implies_1cpa`, `kemoia_implies_secure`,
-   `hardness_chain_implies_security` are vacuously true on
-   production instances. They are **algebraic scaffolding** —
-   type-theoretic templates whose existence we verify, not
-   standalone security claims. Their role in the formalization is to
-   fix the *shape* of an OIA-style reduction argument and to serve as
-   reference types that the probabilistic predicates refine.
+The chain admits genuinely ε-smooth values (at ε = 0 it collapses
+to the deterministic limit; at ε = 1 it is trivially inhabited via
+`ConcreteHardnessChain.tight_one_exists` and the new W4.1 entry
+`tight_one_exists_at_s2Surrogate`; intermediate ε ∈ (0, 1)
+parameterises concrete security and requires caller-supplied
+`SurrogateTensor` + encoder hardness witnesses).
 
-2. **Probabilistic chain** (Phase 8, Workstream E, Workstream G,
-   Workstream H). Built from `ConcreteOIA`,
-   `ConcreteKEMOIA_uniform`, `ConcreteHardnessChain`,
-   `ConcreteKEMHardnessChain`, and related ε-bounded predicates on
-   the PMF-valued orbit distributions. These admit genuinely
-   ε-smooth values (at ε = 0 they collapse to the deterministic
-   form; at ε = 1 they are trivially inhabited; intermediate ε ∈
-   (0, 1) parameterises concrete security). The probabilistic chain
-   is the **substantive security content**, subject to a
-   caller-supplied `SurrogateTensor` (Workstream G) or explicit
-   GI/CE hardness assumption (plus, for the KEM layer, a caller-
-   supplied scheme-to-KEM reduction witness at the chosen
-   `(m₀, keyDerive)` pair — Workstream H).
-
-External release claims of the form "Orbcrypt is IND-1-CPA secure
-under TI-hardness" should cite the probabilistic chain
+**Historical note.** Pre-2026-05-06, the formalisation also
+carried a parallel deterministic chain built from `Prop`-valued
+OIA variants (`OIA`, `KEMOIA`, `TensorOIA`, `CEOIA`, `GIOIA`),
+plus headline theorems `oia_implies_1cpa`,
+`kemoia_implies_secure`, `hardness_chain_implies_security`, plus
+the per-link reduction Props
+(`TensorOIAImpliesCEOIA`/`CEOIAImpliesGIOIA`/`GIOIAImpliesOIA`),
+plus the chain-composition theorem `oia_from_hardness_chain`,
+plus the bridge lemmas
+(`det_oia_implies_concrete_zero`,
+`det_kemoia_implies_concreteKEMOIA_zero`), plus the vacuity
+witnesses (`det_oia_false_of_distinct_reps`,
+`det_kemoia_false_of_nontrivial_orbit`), plus the K-distinct
+corollaries (`oia_implies_1cpa_distinct`,
+`hardness_chain_implies_security_distinct`), plus the
+deterministic combiner-impossibility lemmas
+(`equivariant_combiner_breaks_oia`,
+`oia_forces_combine_constant_in_snd`,
+`oia_forces_combine_constant_on_orbit`,
+`oblivious_sample_equivariant_obstruction`). Every deterministic
+predicate was `False` on every non-trivial scheme, so the chain's
+headline theorems were vacuously true on production instances —
+encoding the *shape* of an OIA-style reduction argument without
+delivering standalone security content. The deterministic chain
+plus its supporting Props was deleted in Workstream W6 of the
+2026-05-06 structural review (~17 declarations across 6 modules;
+`Crypto/OIA.lean` and `Theorems/OIAImpliesCPA.lean` removed; the
+surviving four Track-D adversary-structural theorems migrated to
+`Theorems/AdversaryStructural.lean`). External release claims of
+the form "Orbcrypt is IND-1-CPA secure under TI-hardness" cite the
+probabilistic chain
 (`concrete_hardness_chain_implies_1cpa_advantage_bound` at the
 scheme level, `concrete_kem_hardness_chain_implies_kem_advantage_bound`
-at the KEM level), not the deterministic one. See
-`docs/VERIFICATION_REPORT.md` § "Release readiness" for the exact
-citations and the `CLAUDE.md` "Three core theorems" table's
-**Status** column (Standalone / Scaffolding / Quantitative) for the
+at the KEM level). See `docs/VERIFICATION_REPORT.md` §
+"Release readiness" for the exact citations and the
+`docs/API_SURFACE.md` "Three core theorems" table's **Status**
+column (Standalone / Quantitative / Conditional) for the
 per-theorem classification.
 
 ## Headline Theorem Dependencies
@@ -396,27 +432,8 @@ invariant_attack (Theorems/InvariantAttack.lean)
   ├── invariant_on_encrypt           — f(g • reps m) = f(reps m) (4.7)
   └── invariantAttackAdversary_correct — case-split correctness (4.8)
 
-oia_implies_1cpa (Theorems/OIAImpliesCPA.lean)
-  ├── no_advantage_from_oia — advantage elimination (4.12)
-  ├── oia_specialized       — OIA instantiation (4.10)
-  └── OIA (hypothesis)      — Orbit Indistinguishability Assumption
-
-oia_implies_1cpa_distinct (Theorems/OIAImpliesCPA.lean)  ◄── Workstream K1
-  ├── oia_implies_1cpa                — uniform-game security
-  └── isSecure_implies_isSecureDistinct — distinct-challenge bridge (B1)
-
 kem_correctness (KEM/Correctness.lean)
   └── (definitional — rfl)
-
-kemoia_implies_secure (KEM/Security.lean)
-  ├── kem_key_constant_direct         — key constancy unconditionally from
-  │                                     `canonical_isGInvariant` (post-L5;
-  │                                     pre-L5 this step extracted `KEMOIA.2`)
-  ├── kem_ciphertext_indistinguishable — orbit indist. from `KEMOIA`
-  │                                     (single-conjunct form post-L5)
-  └── KEMOIA (hypothesis)             — KEM Orbit Indist. Assumption
-                                        (single-conjunct form post Workstream
-                                        L5 / audit F-AUDIT-2026-04-21-M6)
 
 concrete_oia_implies_1cpa (Crypto/CompSecurity.lean)
   ├── ConcreteOIA (hypothesis)   — probabilistic orbit indistinguishability
@@ -424,21 +441,13 @@ concrete_oia_implies_1cpa (Crypto/CompSecurity.lean)
   ├── advantage                  — distinguishing advantage (8.3)
   └── orbitDist                  — orbit sampling distribution (8.4)
 
-indCPAAdvantage_collision_zero (Crypto/CompSecurity.lean) ◄── Workstream K4
+indCPAAdvantage_collision_zero (Crypto/CompSecurity.lean)
   └── advantage_self             — advantage between coincident PMFs is 0 (8.3)
 
-hardness_chain_implies_security_distinct (Hardness/Reductions.lean)  ◄── K3
-  ├── hardness_chain_implies_security   — uniform-game security
-  └── isSecure_implies_isSecureDistinct — distinct-challenge bridge (B1)
-
 concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
-                                    (Hardness/Reductions.lean)  ◄── K4 companion
+                                    (Hardness/Reductions.lean)
   └── concrete_hardness_chain_implies_1cpa_advantage_bound (Workstream G)
       — the distinctness hypothesis is carried as a signature marker only
-
-det_oia_implies_concrete_zero (Crypto/CompOIA.lean)
-  ├── OIA (hypothesis)           — deterministic OIA
-  └── ConcreteOIA                — probabilistic ConcreteOIA (bridge)
 
 comp_oia_implies_1cpa (Crypto/CompSecurity.lean)
   ├── CompOIA (hypothesis)       — asymptotic computational OIA
@@ -505,10 +514,10 @@ comm_pke_correctness (PublicKey/CommutativeAction.lean)
   ├── CommGroupAction.comm        — commutativity axiom of the class (13.5)
   └── CommOrbitPKE.pk_valid       — public-key validity field (13.6)
 
-two_phase_correct (Optimization/TwoPhaseDecrypt.lean)           ◄── Phase 15.5
+canonical_agreement_under_two_phase_decomposition (Optimization/TwoPhaseDecrypt.lean)           ◄── Phase 15.5
   └── hDecomp (hypothesis)        — TwoPhaseDecomposition predicate
 
-two_phase_kem_correctness (Optimization/TwoPhaseDecrypt.lean)   ◄── Phase 15.3
+kem_round_trip_under_two_phase_decomposition (Optimization/TwoPhaseDecrypt.lean)   ◄── Phase 15.3
   ├── two_phase_kem_decaps        — decapsulation-level rewrite (15.5)
   └── kem_correctness             — full-group KEM correctness (7.3)
 
@@ -524,7 +533,7 @@ fast_kem_round_trip (Optimization/TwoPhaseDecrypt.lean)         ◄── Phase 
   └── IsOrbitConstant (hypothesis) — true for the GAP `FastCanonicalImage`
       whenever the cyclic subgroup is normal in G; this is the actual
       KEM-correctness theorem for the GAP `(FastEncaps, FastDecaps)` pair,
-      not the stronger `two_phase_kem_correctness` (which requires the
+      not the stronger `kem_round_trip_under_two_phase_decomposition` (which requires the
       `TwoPhaseDecomposition` predicate, empirically false for the
       default fallback wreath-product G).
 
@@ -654,74 +663,65 @@ These theorems depend only on Lean's standard axioms (`propext`,
   full canonical form is constant on G-orbits; direct application of
   `canon_eq_of_mem_orbit` (Phase 15.5)
 
-### OIA-dependent results (conditional)
+### Probabilistic-chain results (conditional)
 
-These theorems carry `OIA`, `KEMOIA`, `ConcreteOIA`, `ConcreteKEMOIA`,
+These theorems carry `ConcreteOIA`, `ConcreteKEMOIA`,
 `ConcreteTensorOIA`, `ConcreteCEOIA`, `ConcreteGIOIA`, or `CompOIA` as an
 explicit hypothesis:
 
-- `oia_implies_1cpa` (`Theorems/OIAImpliesCPA.lean`) — OIA implies IND-1-CPA
-- `kemoia_implies_secure` (`KEM/Security.lean`) — KEMOIA implies KEM security
 - `concrete_oia_implies_1cpa` (`Crypto/CompSecurity.lean`) — ConcreteOIA(ε)
   implies IND-1-CPA advantage ≤ ε (Phase 8, non-vacuous)
 - `comp_oia_implies_1cpa` (`Crypto/CompSecurity.lean`) — CompOIA implies
   negligible IND-1-CPA advantage (Phase 8, asymptotic)
-- `det_oia_implies_concrete_zero` (`Crypto/CompOIA.lean`) — deterministic OIA
-  implies ConcreteOIA(0) (Phase 8, bridge/compatibility)
-- `hardness_chain_implies_security` (`Hardness/Reductions.lean`) —
-  TensorOIA + reduction chain → IND-1-CPA (Phase 12, carries
-  HardnessChain as hypothesis)
-
-**Workstream K (audit 2026-04-21, F-AUDIT-2026-04-21-M1):
-distinct-challenge IND-1-CPA corollaries.**
-
-`IsSecure` (uniform game, `Crypto/Security.lean`) is strictly stronger
-than the classical IND-1-CPA game `IsSecureDistinct` (which rejects
-the degenerate collision choice `(m, m)` before sampling). Workstream K
-threads that distinction through the downstream chain:
-
-- `oia_implies_1cpa_distinct` (`Theorems/OIAImpliesCPA.lean`, K1) —
-  `OIA → IsSecureDistinct`; classical distinct-challenge IND-1-CPA
-  from the deterministic OIA. Composition of `oia_implies_1cpa` with
-  `isSecure_implies_isSecureDistinct`.
-- `hardness_chain_implies_security_distinct` (`Hardness/Reductions.lean`,
-  K3) — `HardnessChain scheme → IsSecureDistinct scheme`; chain-level
-  parallel, composition with the same bridge.
+- `concrete_hardness_chain_implies_1cpa_advantage_bound`
+  (`Hardness/Reductions.lean`) — `ConcreteHardnessChain` →
+  IND-1-CPA advantage ≤ ε (Workstream G of audit 2026-04-21).
 - `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
-  (`Hardness/Reductions.lean`, K4 companion) — probabilistic
-  chain-level bound restated in the classical distinct-challenge
-  framing. Since the bound already holds unconditionally, the
-  distinctness hypothesis is carried as a release-facing signature
-  marker — not used in the proof.
+  (`Hardness/Reductions.lean`) — probabilistic chain-level bound
+  restated in the classical distinct-challenge framing. Since the
+  bound already holds unconditionally, the distinctness hypothesis
+  is carried as a release-facing signature marker — not used in the
+  proof.
 
-Each of the three `_distinct` corollaries inherits the deterministic-
-chain scaffolding status: the `OIA` / `HardnessChain` hypothesis is
-`False` on every non-trivial scheme, so the conclusion is vacuously
-true on production instances. Cite the probabilistic chain
-(`concrete_oia_implies_1cpa` +
-`indCPAAdvantage_collision_zero`, or the dedicated
-`concrete_hardness_chain_implies_1cpa_advantage_bound` /
-`_distinct`) for non-vacuous quantitative content.
-
-**K2 design note — no KEM `_distinct` corollary.** The
-`kemoia_implies_secure` theorem does *not* get a `_distinct` corollary.
-`kemHasAdvantage` quantifies over two *group elements* `g₀, g₁ : G`
-(drawn by the challenger from `G`), not two messages chosen by the
-adversary. All ciphertexts lie in the single orbit of the base point,
-so there is no per-message collision risk and no scheme-level
-challenger rejection. The extended docstring on `kemoia_implies_secure`
-documents this.
+**Historical note (deterministic chain).** Pre-Workstream-W6 of the
+2026-05-06 structural review, this section also enumerated
+`oia_implies_1cpa` (`Theorems/OIAImpliesCPA.lean`),
+`kemoia_implies_secure` (`KEM/Security.lean`),
+`hardness_chain_implies_security` (`Hardness/Reductions.lean`), the
+bridge lemmas `det_oia_implies_concrete_zero` (`Crypto/CompOIA.lean`)
+and `det_kemoia_implies_concreteKEMOIA_zero`
+(`KEM/CompSecurity.lean`), and the K-distinct corollaries
+`oia_implies_1cpa_distinct`,
+`hardness_chain_implies_security_distinct`. Each of these carried an
+`OIA` / `KEMOIA` / `HardnessChain` hypothesis that was `False` on
+every non-trivial scheme, making the conclusion vacuously true on
+production instances. The deterministic chain plus its supporting
+Props (`OIA`, `KEMOIA`, `HardnessChain`, `TensorOIA`, `CEOIA`,
+`GIOIA`, the per-link reduction Props
+`TensorOIAImpliesCEOIA`/`CEOIAImpliesGIOIA`/`GIOIAImpliesOIA`, the
+chain-composition theorem `oia_from_hardness_chain`, the vacuity
+witnesses `det_oia_false_of_distinct_reps` and
+`det_kemoia_false_of_nontrivial_orbit`, the deterministic combiner-
+impossibility lemmas
+`equivariant_combiner_breaks_oia`/`oia_forces_combine_constant_in_snd`/
+`oia_forces_combine_constant_on_orbit`/
+`oblivious_sample_equivariant_obstruction`) was deleted in W6
+(`Crypto/OIA.lean` and `Theorems/OIAImpliesCPA.lean` removed; the
+surviving four Track-D adversary-structural theorems migrated to
+`Theorems/AdversaryStructural.lean`). The probabilistic chain is the
+sole security chain post-W6.
 
 **Workstream E (audit 2026-04-18 + 2026-04-20 follow-up,
 F-01 + F-10 + F-11 + F-17 + F-20):**
 
-- `det_kemoia_implies_concreteKEMOIA_zero` (`KEM/CompSecurity.lean`) —
-  deterministic KEMOIA → ConcreteKEMOIA 0 (E1c).
 - `concrete_kemoia_implies_secure` (`KEM/CompSecurity.lean`) —
   ConcreteKEMOIA ε bounds per-pair KEM advantage by ε (E1d). Note the
   docstring's disclosure that `ConcreteKEMOIA` is point-mass and collapses
   on `ε ∈ [0, 1)`; the genuinely ε-smooth `ConcreteKEMOIA_uniform` is
-  defined alongside.
+  defined alongside. (The companion bridge
+  `det_kemoia_implies_concreteKEMOIA_zero` was deleted in W6 of
+  structural review 2026-05-06 along with the deterministic
+  `KEMOIA` predicate.)
 - `ConcreteHardnessChain.concreteOIA_from_chain` (`Hardness/Reductions.lean`)
   — packaged ε-bounded hardness chain → ConcreteOIA ε. Post-Workstream-G
   (audit F-AUDIT-2026-04-21-H1, Fix B + Fix C), the chain carries a
@@ -758,7 +758,7 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
 
 **Phase 15 (Decryption Optimisation):**
 
-- `two_phase_correct` (`Optimization/TwoPhaseDecrypt.lean`) — the
+- `canonical_agreement_under_two_phase_decomposition` (`Optimization/TwoPhaseDecrypt.lean`) — the
   two-phase (cyclic ∘ residual) canonical form agrees with the full
   canonical form on `g • x`, *given* a `TwoPhaseDecomposition`
   hypothesis `hDecomp` (15.5).
@@ -770,7 +770,7 @@ F-01 + F-10 + F-11 + F-17 + F-20):**
   invariant under the full-group action, given `hDecomp` (15.5).
 - `two_phase_kem_decaps` (`Optimization/TwoPhaseDecrypt.lean`) —
   decapsulation-level rewrite of the fast path, given `hDecomp` (15.3).
-- `two_phase_kem_correctness`
+- `kem_round_trip_under_two_phase_decomposition`
   (`Optimization/TwoPhaseDecrypt.lean`) — the two-phase fast path
   correctly recovers the KEM key on `(encaps g).1`, given `hDecomp`
   (15.3).
@@ -880,23 +880,14 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.invariant_attack
 -- propext (standard Lean only)
 
-#print axioms Orbcrypt.oia_implies_1cpa
--- (empty — zero axioms; OIA appears as a hypothesis, not an axiom)
-
 #print axioms Orbcrypt.kem_correctness
 -- (standard Lean only — definitional equality)
-
-#print axioms Orbcrypt.kemoia_implies_secure
--- (standard Lean only — KEMOIA appears as a hypothesis, not an axiom)
 
 #print axioms Orbcrypt.concrete_oia_implies_1cpa
 -- (standard Lean only — ConcreteOIA appears as a hypothesis)
 
 #print axioms Orbcrypt.comp_oia_implies_1cpa
 -- (standard Lean only — CompOIA appears as a hypothesis)
-
-#print axioms Orbcrypt.det_oia_implies_concrete_zero
--- (standard Lean only — OIA appears as a hypothesis)
 
 #print axioms Orbcrypt.seed_kem_correctness
 -- (standard Lean only — follows from kem_correctness)
@@ -940,9 +931,6 @@ Users can verify axiom dependencies by running in a Lean file:
 
 #print axioms Orbcrypt.hybrid_correctness
 -- (standard Lean only — follows from kem_correctness + DEM.correct)
-
-#print axioms Orbcrypt.hardness_chain_implies_security
--- (standard Lean only — HardnessChain appears as a hypothesis)
 
 #print axioms Orbcrypt.oblivious_sample_in_orbit
 -- (standard Lean only — closure proof is a hypothesis)
@@ -1019,9 +1007,6 @@ Users can verify axiom dependencies by running in a Lean file:
 -- (does not depend on any axioms — one-line corollary of advantage_le_one,
 --  Workstream E1b)
 
-#print axioms Orbcrypt.det_kemoia_implies_concreteKEMOIA_zero
--- (standard Lean only — KEMOIA appears as a hypothesis, Workstream E1c)
-
 #print axioms Orbcrypt.concrete_kemoia_implies_secure
 -- (standard Lean only — ConcreteKEMOIA appears as a hypothesis, Workstream E1d)
 
@@ -1047,24 +1032,11 @@ Users can verify axiom dependencies by running in a Lean file:
 #print axioms Orbcrypt.concreteGIOIAImpliesConcreteOIA_one_one
 -- (standard Lean only — vacuously-true reduction witness, Workstream E3c)
 
--- Workstream E (audit 2026-04-23, findings C-07 + E-06):
--- machine-checked vacuity witnesses for the deterministic OIA and
--- KEMOIA predicates.
-
-#print axioms Orbcrypt.det_oia_false_of_distinct_reps
--- (standard Lean only — formal discharge of the scheme-level
---  vacuity claim that the module docstring of `Crypto/OIA.lean`
---  previously asserted only in prose. Any scheme with two
---  distinct representatives (`reps m₀ ≠ reps m₁`) falsifies
---  `OIA scheme` via the membership-at-`reps m₀` Boolean
---  distinguisher. Standalone; safe to cite directly.)
-
-#print axioms Orbcrypt.det_kemoia_false_of_nontrivial_orbit
--- (standard Lean only — KEM-layer parallel of the scheme-level
---  witness above. Any KEM whose base-point orbit contains two
---  distinct ciphertexts (`g₀ • basePoint ≠ g₁ • basePoint`)
---  falsifies `KEMOIA kem` via the membership-at-`g₀ • basePoint`
---  Boolean distinguisher. Standalone.)
+-- (W6 of structural review 2026-05-06 deleted the deterministic
+-- `OIA` and `KEMOIA` predicates along with their vacuity witnesses
+-- `det_oia_false_of_distinct_reps` and
+-- `det_kemoia_false_of_nontrivial_orbit`; the `#print axioms`
+-- entries for those theorems no longer apply.)
 
 #print axioms Orbcrypt.concrete_chain_zero_compose
 -- (standard Lean only — algebraic composition, Workstream E3d)
@@ -1181,21 +1153,13 @@ Users can verify axiom dependencies by running in a Lean file:
 
 -- Workstream K (audit 2026-04-21, F-AUDIT-2026-04-21-M1): distinct-
 -- challenge IND-1-CPA corollaries threading the classical-game shape
--- through the downstream chain. Each corollary composes its
--- deterministic-chain ancestor with `isSecure_implies_isSecureDistinct`
--- (Workstream B1) and inherits the ancestor's scaffolding status
--- (conclusion vacuously true on every non-trivial scheme, since the
--- OIA / HardnessChain hypothesis is False there). The probabilistic
--- counterparts are axiom-free because the collision branch
--- contributes advantage 0 (`indCPAAdvantage_collision_zero`).
-
-#print axioms Orbcrypt.oia_implies_1cpa_distinct
--- (standard Lean only — OIA appears as a hypothesis; composition of
---  oia_implies_1cpa with isSecure_implies_isSecureDistinct, Workstream K1)
-
-#print axioms Orbcrypt.hardness_chain_implies_security_distinct
--- (standard Lean only — HardnessChain appears as a hypothesis;
---  chain-level parallel of K1, Workstream K3)
+-- through the downstream chain. The deterministic K1 / K3 forms
+-- (`oia_implies_1cpa_distinct`, `hardness_chain_implies_security_distinct`)
+-- were deleted in W6 of structural review 2026-05-06 along with their
+-- `OIA` / `HardnessChain` ancestors. The probabilistic K4 form is
+-- preserved unchanged: `indCPAAdvantage_collision_zero` is the
+-- structural lemma; `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`
+-- is the classical-game-shape restatement of the Workstream-G chain bound.
 
 #print axioms Orbcrypt.indCPAAdvantage_collision_zero
 -- (standard Lean only — one-line consequence of `advantage_self`;
@@ -1209,7 +1173,7 @@ Users can verify axiom dependencies by running in a Lean file:
 
 -- Phase 15 (Decryption Optimisation):
 
-#print axioms Orbcrypt.two_phase_correct
+#print axioms Orbcrypt.canonical_agreement_under_two_phase_decomposition
 -- (standard Lean only — `hDecomp : TwoPhaseDecomposition G C ...`
 --  carried as a hypothesis; Work Unit 15.5)
 
@@ -1221,14 +1185,14 @@ Users can verify axiom dependencies by running in a Lean file:
 --  `canon_eq_of_mem_orbit` and `smul_mem_orbit`, Work Unit 15.5)
 
 #print axioms Orbcrypt.two_phase_invariant_under_G
--- (standard Lean only — combines `two_phase_correct` with
+-- (standard Lean only — combines `canonical_agreement_under_two_phase_decomposition` with
 --  `full_canon_invariant`, Work Unit 15.5)
 
 #print axioms Orbcrypt.two_phase_kem_decaps
 -- (standard Lean only — unfolds `decaps` and rewrites by `hDecomp`,
 --  Work Unit 15.3)
 
-#print axioms Orbcrypt.two_phase_kem_correctness
+#print axioms Orbcrypt.kem_round_trip_under_two_phase_decomposition
 -- (standard Lean only — composes `two_phase_kem_decaps` with
 --  `kem_correctness`, Work Unit 15.3)
 
@@ -1254,31 +1218,31 @@ Users can verify axiom dependencies by running in a Lean file:
 --  Phase 15.3 post-landing audit)
 ```
 
-## Vacuity map (Workstream E)
+## Vacuity map (post-W6 of structural review 2026-05-06)
 
-Each Workstream-E theorem carries an ε-parameterised probabilistic
-hypothesis (`ConcreteOIA`, `ConcreteKEMOIA`, `ConcreteTensorOIA`, etc.) in
-place of the deterministic (vacuous) OIA hypothesis of its Phase-4/7/12
-predecessor. The final column names the **machine-checked vacuity
-witness** theorem (where applicable) — a formal `¬ (OIA-variant)`
-discharge under a mild distinctness hypothesis that every non-trivial
-scheme satisfies. These witnesses close the audit 2026-04-23 findings
-C-07 and E-06 by replacing prose-level vacuity disclosures with Lean
-proofs. The pairing:
+W6 of the 2026-05-06 structural review deleted the deterministic
+chain entirely; the probabilistic chain is the sole security chain
+post-W6. The pre-W6 vacuity map below paired each deleted
+deterministic theorem with its probabilistic counterpart and named
+the machine-checked vacuity witness (`det_oia_false_of_distinct_reps`,
+`det_kemoia_false_of_nontrivial_orbit`) that refuted the
+deterministic ancestor. Both vacuity witnesses were also deleted in
+W6 — they were structural-disclosure machinery serving the
+deterministic chain, and their conclusions (`¬ OIA scheme`,
+`¬ KEMOIA kem`) are no longer expressible because the predicates
+themselves no longer exist. The current map enumerates the
+substantive probabilistic content available for citation:
 
-| Pre-Workstream-E (vacuous today) | Workstream-E/G/H counterpart (non-vacuous) | Machine-checked vacuity witness |
-|---|---|---|
-| `oia_implies_1cpa` | `concrete_oia_implies_1cpa` (Phase 8, already) | `det_oia_false_of_distinct_reps` (Workstream E of audit 2026-04-23, C-07) — `OIA scheme` is `False` when `scheme.reps m₀ ≠ scheme.reps m₁` |
-| `kemoia_implies_secure` | `concrete_kemoia_implies_secure` (E1d, point-mass) + `concrete_kemoia_uniform_implies_secure` (E1d, uniform form — genuinely ε-smooth) | `det_kemoia_false_of_nontrivial_orbit` (Workstream E of audit 2026-04-23, E-06) — `KEMOIA kem` is `False` when `g₀ • basePoint ≠ g₁ • basePoint` |
-| `hardness_chain_implies_security` | `concrete_hardness_chain_implies_1cpa_advantage_bound` (E5, post-G signature threads `SurrogateTensor`) — **ε = 1 inhabited only via `ConcreteHardnessChain.tight_one_exists` (`punitSurrogate F` + dimension-0 trivial encoders); ε < 1 requires a caller-supplied `SurrogateTensor F` + encoder pair with genuine cryptographic hardness (research-scope — see § O of the 2026-04-23 plan: R-02 / R-03 / R-04)** | Composed from `OIA` via the deterministic chain; the terminal vacuity is witnessed by `det_oia_false_of_distinct_reps` (the chain's conclusion `IsSecure scheme` is the OIA→CPA reduction target, which collapses once its OIA hypothesis is refuted) |
-| `equivariant_combiner_breaks_oia` | `concrete_combiner_advantage_bounded_by_oia` (E6) | — (the deterministic antecedent carries `OIA scheme` as a hypothesis; `det_oia_false_of_distinct_reps` refutes that hypothesis on every non-trivial scheme) |
-| *multi-query extension (implicit)* | `indQCPA_from_perStepBound` (E8c, renamed by Workstream C of 2026-04-23 audit from `indQCPA_bound_via_hybrid` — finding V1-8 / C-13) — **carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 (see § O of the 2026-04-23 plan). The `from_perStepBound` suffix surfaces the obligation in the identifier itself per `CLAUDE.md`'s naming rule that identifiers describe what the code *proves*, not what it *aspires to*.** | — (no deterministic pre-E antecedent; the multi-query statement lives only in the probabilistic chain) |
-| *KEM-layer chain (missing pre-H)* | `concreteKEMHardnessChain_implies_kemUniform` (H3) — KEM-layer ε-smooth chain built from Workstream G's `ConcreteHardnessChain` + the Workstream H1 scheme-to-KEM reduction Prop. **ε = 1 inhabited only via `ConcreteKEMHardnessChain.tight_one_exists`; ε < 1 requires caller-supplied scheme-to-KEM reduction witness at `(m₀, keyDerive)` — research-scope R-05** | `det_kemoia_false_of_nontrivial_orbit` applies to the KEM-layer terminal hypothesis (`KEMOIA`), though the scheme-to-KEM bridge at ε < 1 is itself a research-scope obligation |
-| *KEM adversary bound (missing pre-H)* | `concrete_kem_hardness_chain_implies_kem_advantage_bound` (H3) — end-to-end KEM-layer adversary bound, parallel of scheme-level `concrete_hardness_chain_implies_1cpa_advantage_bound`. **Same ε = 1 disclosure as the scheme-level parallel; ε < 1 requires the composition of R-02/R-03/R-04 (scheme-level chain) and R-05 (scheme-to-KEM reduction)** | Same as the row above (terminal hypothesis is `KEMOIA`, refuted by `det_kemoia_false_of_nontrivial_orbit`) |
-| `oia_implies_1cpa` (uniform game) | `oia_implies_1cpa_distinct` (K1) — same scaffolding status, classical-IND-1-CPA signature matching the literature | Inherits `det_oia_false_of_distinct_reps` (antecedent is `OIA scheme`) |
-| `hardness_chain_implies_security` (uniform game) | `hardness_chain_implies_security_distinct` (K3) — same scaffolding status, classical-IND-1-CPA signature | Inherits `det_oia_false_of_distinct_reps` via `oia_from_hardness_chain` |
-| `concrete_oia_implies_1cpa` (unconditional over `Adversary`) | `indCPAAdvantage_collision_zero` + `concrete_oia_implies_1cpa` docstring (K4) — the collision case yields advantage 0, so the existing probabilistic `≤ ε` bound transfers to the classical distinct-challenge game for free | — (probabilistic counterpart is genuinely ε-smooth; no vacuity to discharge) |
-| `concrete_hardness_chain_implies_1cpa_advantage_bound` (unconditional over `Adversary`) | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` (K4 companion) — classical-IND-1-CPA restatement retaining the ε-smooth quantitative content. **Same ε = 1 disclosure as the non-distinct form** | — (probabilistic; no vacuity) |
+| Probabilistic theorem | Citation form |
+|---|---|
+| `concrete_oia_implies_1cpa` | Phase 8; ε-bounded scheme-level reduction |
+| `concrete_kemoia_implies_secure` (point-mass) + `concrete_kemoia_uniform_implies_secure` (uniform, genuinely ε-smooth) | Workstream E1d; KEM-layer parallel |
+| `concrete_hardness_chain_implies_1cpa_advantage_bound` | Workstream G; end-to-end TI-hardness → IND-1-CPA. ε = 1 inhabited via `ConcreteHardnessChain.tight_one_exists` and the new W4.1 entry `tight_one_exists_at_s2Surrogate`; ε < 1 requires caller-supplied `SurrogateTensor F` + encoder pair (research-scope R-02 / R-03 / R-04) |
+| `concrete_combiner_advantage_bounded_by_oia` (upper bound) + `combinerDistinguisherAdvantage_ge_inv_card` (lower bound, R-07) | Probabilistic combiner-impossibility content |
+| `combinerDistinguisherAdvantage_eq_half_on_R07` | W4.3 of structural review 2026-05-06 — tight `1/2` equality on the R-07 fixture (S_2 ⤳ Bitstring 2, projection-on-second-argument combiner, weight-0 vs weight-1 orbits) |
+| `indQCPA_from_perStepBound` | Multi-query IND-Q-CPA; carries `h_step` as a user-supplied hypothesis; discharge from `ConcreteOIA` alone is research-scope R-09 |
+| `concreteKEMHardnessChain_implies_kemUniform` + `concrete_kem_hardness_chain_implies_kem_advantage_bound` | Workstream H; KEM-layer ε-smooth chain. ε = 1 inhabited via `ConcreteKEMHardnessChain.tight_one_exists`; ε < 1 requires caller-supplied scheme-to-KEM reduction witness at `(m₀, keyDerive)` — research-scope R-05 |
+| `indCPAAdvantage_collision_zero` + `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct` | Workstream K4; classical distinct-challenge game-shape transfer of the probabilistic bound — distinctness is a release-facing signature marker, the bound holds unconditionally |
 
 ### Vacuity map (2026-04-23 Workstream A additions — Conditional-status rows)
 
@@ -1292,8 +1256,8 @@ standalone sibling theorem exists, it is named.
 |---|---|---|
 | `authEncrypt_is_int_ctxt` (row #19) | ~~`hOrbitCover : ∀ c : X, c ∈ orbit G basePoint` — False on production HGOE~~. **Closed by audit 2026-04-23 Workstream B (2026-04-24).** The orbit condition is now a per-challenge well-formedness precondition `hOrbit` *on the `INT_CTXT` game itself*, not a theorem-level obligation. Row #19 is now **Standalone**: `authEncrypt_is_int_ctxt` discharges `INT_CTXT` unconditionally on every `AuthOrbitKEM` | `keyDerive_canon_eq_of_mem_orbit` (orbit-restricted key uniqueness; unconditional, still useful as the internal lemma at the heart of the proof) |
 | `carterWegmanMAC_int_ctxt` (row #20) | Implicit type constraint `X = ZMod p × ZMod p`; **incompatible with HGOE's `Bitstring n` ciphertext space** without a `Bitstring n → ZMod p` adapter | `carterWegmanHash_isUniversal` — the standalone `(1/p)`-universal hash theorem. The adapter is research-scope R-13 |
-| `two_phase_correct` (row #24) | `TwoPhaseDecomposition` — empirically False on the default GAP fallback group (lex-min and the residual transversal action don't commute) | `fast_kem_round_trip` (row #26) — orbit-constancy of the fast canonical form; IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G |
-| `two_phase_kem_correctness` (row #25) | Same `TwoPhaseDecomposition` as row #24 | Same `fast_kem_round_trip` (row #26) |
+| `canonical_agreement_under_two_phase_decomposition` (row #24) | `TwoPhaseDecomposition` — empirically False on the default GAP fallback group (lex-min and the residual transversal action don't commute) | `fast_kem_round_trip` (row #26) — orbit-constancy of the fast canonical form; IS satisfied by `FastCanonicalImage` whenever the cyclic subgroup is normal in G |
+| `kem_round_trip_under_two_phase_decomposition` (row #25) | Same `TwoPhaseDecomposition` as row #24 | Same `fast_kem_round_trip` (row #26) |
 
 Each counterpart reduces to its deterministic predecessor at `ε = 0`
 (perfect indistinguishability) and is trivially true at `ε = 1`
@@ -1388,50 +1352,45 @@ non-trivial inhabitants of the iff remain research-scope (R-15).
 No `sorryAx` should appear in any output. If it does, there is a hidden
 `sorry` in the dependency chain.
 
-## Phase 16 Verification Audit Snapshot (2026-04-29)
+## Phase 16 Verification Audit Snapshot (post-W6 of 2026-05-06)
 
 Phase 16 (Formal Verification of New Components) consolidated the
 per-workstream `#print axioms` checks into a single comprehensive audit
 script (`scripts/audit_phase_16.lean`) and produced a prose verification
 report (`docs/VERIFICATION_REPORT.md`).
 
-The Phase 16 snapshot at the 2026-04-29 Workstream-A3 anchor (audit
-2026-04-29 — release-blocking documentation parity refresh, finding
-A-07 / J-02 HIGH; the exact running counts shift with each
-workstream landing and track `CLAUDE.md`'s most recent
-per-workstream changelog entry):
+The Phase 16 snapshot at the 2026-05-06 W7-final-consolidation anchor
+(post-W6 deterministic-OIA chain removal; the exact running counts
+shift with each workstream landing and track
+`docs/dev_history/WORKSTREAM_CHANGELOG.md`'s per-workstream entries):
 
-* **75** Lean source modules under `Orbcrypt/`, all imported by this
-  root file (the post-Workstream-B1 state of the 2026-04-29 audit
-  plan; pre-B1 the count was 76 with the un-imported transient
-  `_ApiSurvey.lean` carrying the count, deleted by B1 after the
-  live `PathAlgebra.lean` / `StructureTensor.lean` modules
-  superseded its regression-sentinel purpose). All 75 modules build
-  successfully via `lake build Orbcrypt` (3,418 jobs as of the
-  post-Workstream-B verification run on
-  `claude/audit-workstream-planning-nOC9R`, zero errors, zero
-  warnings; the deleted `_ApiSurvey.lean` shared most of its
-  dependency graph with the live R-TI modules, and Lake's job
-  count is dominated by Mathlib transitive build artefacts, so
-  the 76 → 75 source-file drop did not produce a corresponding
-  3,418 → 3,417 job-count drop).
+* **80** Lean source modules under `Orbcrypt/`, all imported by this
+  root file (post-W6.9 of structural review 2026-05-06: deletion of
+  `Orbcrypt/Crypto/OIA.lean` and `Orbcrypt/Theorems/OIAImpliesCPA.lean`,
+  plus addition of `Orbcrypt/Theorems/AdversaryStructural.lean` for
+  the surviving Track-D theorems). All 80 modules build successfully
+  via `lake build Orbcrypt` (3,423 jobs, zero errors, zero warnings).
 * **0** uses of `sorry` anywhere in `Orbcrypt/**/*.lean` (verified by the
   comment-aware Perl strip used by CI).
 * **0** custom `axiom` declarations anywhere in `Orbcrypt/`. Every
   security assumption is encoded as a defined entity that downstream
   theorems consume as an explicit hypothesis — never as a
   Lean-level `axiom`.  Specifically:
-  - `Prop`-valued definitions (`def Foo : Prop := …`): OIA,
-    KEMOIA, ConcreteOIA, ConcreteKEMOIA, ConcreteTensorOIA,
-    ConcreteCEOIA, ConcreteGIOIA, CompOIA,
-    ObliviousSamplingPerfectHiding,
-    ObliviousSamplingConcreteHiding, GrochowQiaoRigidity,
-    GL3PreservesPartitionCardinalities,
-    GL3InducesArrowPreservingPerm,
-    GL3InducesAlgEquivOnPathSubspace,
-    RestrictedGL3OnPathOnlyTensor,
-    PathOnlyAlgEquivObligation,
-    PathOnlySubalgebraGraphIsoObligation, ….
+  - `Prop`-valued definitions (`def Foo : Prop := …`):
+    `ConcreteOIA`, `ConcreteKEMOIA`, `ConcreteKEMOIA_uniform`,
+    `ConcreteTensorOIA`, `ConcreteCEOIA`, `ConcreteGIOIA`,
+    `CompOIA`, `ObliviousSamplingPerfectHiding`,
+    `ObliviousSamplingConcreteHiding`, `GrochowQiaoRigidity`,
+    `GL3PreservesPartitionCardinalities`,
+    `GL3InducesArrowPreservingPerm`,
+    `GL3InducesAlgEquivOnPathSubspace`,
+    `RestrictedGL3OnPathOnlyTensor`,
+    `PathOnlyAlgEquivObligation`,
+    `PathOnlySubalgebraGraphIsoObligation`, …. (W6 of structural
+    review 2026-05-06 deleted the deterministic-chain Props
+    `OIA`, `KEMOIA`, `TensorOIA`, `GIOIA`, `CEOIA`, `HardnessChain`,
+    and the per-link `*ImpliesCEOIA`-family; the probabilistic
+    chain is the sole security chain post-W6.)
   - `structure`s bundling `Prop`-valued fields:
     `ConcreteHardnessChain`, `ConcreteKEMHardnessChain`, ….
   Both forms are consumed at the theorem-level by binding the

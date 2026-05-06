@@ -2826,7 +2826,7 @@ Formalize the correctness of two-phase decryption in Lean:
 ```lean
 /-- Two-phase decryption is correct if the cyclic reduction followed by
     residual canonicalization equals the full canonical form. -/
-theorem two_phase_correct
+theorem canonical_agreement_under_two_phase_decomposition
     (G : Subgroup (Equiv.Perm (Fin n)))
     (C : Subgroup G)  -- cyclic subgroup
     (can_full : CanonicalForm G (Bitstring n))

@@ -29,7 +29,7 @@ post-quantum hard.
 | **Batch-openable commitments** | A single `G` reveal opens *every* commitment ever made under it, atomically. No per-commitment opening data. |
 | **Bundle-mediated rotation** | Non-`G`-holders rotate ciphertexts only inside a provisioned bundle (`OrbitalRandomizers`); free public re-randomization is provably blocked (`CombineImpossibility`). |
 | **Canonical-form-as-query** | Functional queries (membership, equality, clustering) factor through `canon`, exposing exactly orbit structure and nothing more. |
-| **Post-quantum hardness chain** | TI-hardness → CE-hardness → GI-hardness → IND-1-CPA, machine-checked end-to-end (`hardness_chain_implies_security`). |
+| **Post-quantum hardness chain** | TI-hardness → CE-hardness → GI-hardness → IND-1-CPA, machine-checked end-to-end via the probabilistic `concrete_hardness_chain_implies_1cpa_advantage_bound` (parametric in surrogate + encoder; `tight_one_exists` and `tight_one_exists_at_s2Surrogate` witness inhabitation at ε = 1). |
 | **Compact ciphertexts** | At λ = 128 balanced: 32 B keys, 43 B ciphertexts — competitive with AES-GCM, far smaller than Kyber's 2.4 kB / 1.1 kB. |
 
 The cryptographic primitive is small, but five of it's capabilities
@@ -48,17 +48,21 @@ build warnings**.
 
 | Metric | Value |
 |--------|-------|
-| Lean source modules | 81 (+ root import file) |
+| Lean source modules | 80 (post-W6 of structural review 2026-05-06) |
 | Public declarations | 460+, all with docstrings |
-| Phase-16 audit script | 1150+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
-| Build | `lake build` runs ~3,424 jobs successfully |
+| Phase-16 audit script | 1130+ `#print axioms` checks; standard Lean trio only (`propext`, `Classical.choice`, `Quot.sound`) |
+| Build | `lake build` runs ~3,423 jobs successfully |
 | Toolchain | Lean 4 v4.30.0-rc1 + Mathlib pinned at commit `fa6418a8` |
 | CI | GitHub Actions on every push: build + sorry scan + axiom-decl scan + lake-manifest drift check + Phase-16 regression sentinel |
-| Package version | `0.3.2` |
+| Package version | `0.4.0` |
 
-The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
-*hypothesis*, not a Lean `axiom` — verify with
-`#print axioms Orbcrypt.<theorem_name>`.
+The Orbit Indistinguishability Assumption is encoded as the
+`Prop`-valued `ConcreteOIA` (probabilistic, ε-bounded), not a Lean
+`axiom`. The deterministic `OIA` Prop and its dependent chain were
+deleted in Workstream W6 of structural review 2026-05-06 — they were
+vacuously false on every non-trivial scheme, so the probabilistic
+chain is the sole security chain post-W6. Verify axiom dependencies
+with `#print axioms Orbcrypt.<theorem_name>`.
 
 ---
 
@@ -77,9 +81,13 @@ The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
 | `csidh_correctness`, `comm_pke_correctness` | CSIDH-style commutative action + PKE | Standalone |
 
 The full release-messaging classification (Standalone / Quantitative /
-Conditional / Scaffolding) is in
-[`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) and the
-`CLAUDE.md` "Three core theorems" table.
+Conditional) is in
+[`docs/API_SURFACE.md`](docs/API_SURFACE.md)'s clustered headline-
+theorem table (symmetric primary / hardness chain quantitative /
+public-key research scaffolding / structural API / distinct-challenge
+corollaries / W6 deletion log).
+[`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) carries
+the prose verification audit.
 
 ---
 
@@ -120,10 +128,10 @@ under [`docs/benchmarks/`](docs/benchmarks/).
 ```
 Orbcrypt/
 ├── Orbcrypt.lean                 Root import file (axiom-transparency report)
-├── Orbcrypt/                     Lean 4 source tree (81 modules)
+├── Orbcrypt/                     Lean 4 source tree (80 modules post-W6 of 2026-05-06)
 │   ├── GroupAction/              Orbits, stabilizers, canonical forms (incl. `ofLexMin`)
-│   ├── Crypto/                   AOE scheme, IND-CPA game, OIA, ConcreteOIA
-│   ├── Theorems/                 Correctness, invariant attack, OIA → IND-1-CPA
+│   ├── Crypto/                   AOE scheme, IND-CPA game, ConcreteOIA (probabilistic)
+│   ├── Theorems/                 Correctness, invariant attack, AdversaryStructural
 │   ├── KEM/                      KEM reformulation + probabilistic security
 │   ├── Probability/              PMF wrappers, negligible functions, hybrid arg
 │   ├── KeyMgmt/                  Seed-key compression, nonce-based encryption
@@ -136,6 +144,10 @@ Orbcrypt/
 │   └── Optimization/             Two-phase decryption + orbit-constancy
 ├── implementation/gap/           GAP reference: keygen, KEM, params, tests, sweep
 ├── docs/
+│   ├── API_SURFACE.md            Canonical "what does the formalization deliver"
+│   │                             reference: clustered headline-theorem table,
+│   │                             dependency graph, formalization roadmap, axiom
+│   │                             transparency, headline metric anchor
 │   ├── DEVELOPMENT.md            Master scheme specification (~56 KB)
 │   ├── POE.md                    High-level concept exposition
 │   ├── COUNTEREXAMPLE.md         Invariant-attack vulnerability analysis
@@ -151,10 +163,16 @@ Orbcrypt/
 │   ├── research/                 Mathematical-research reading notes
 │   └── dev_history/              Completed workstream planning documents (historical record),
 │                                 incl. formalization/ (master Lean 4 roadmap + Phase 1-6 plans)
-├── scripts/                      Setup + audit scripts (incl. `audit_phase_16.lean`)
+│                                 and WORKSTREAM_CHANGELOG.md (frozen archive of
+│                                 every workstream landing across audit cycles)
+├── scripts/                      Setup + audit scripts (incl. `audit_phase_16.lean`,
+│                                 `audit_hypothesis_consumption.py`,
+│                                 `generate_test_vectors.lean`)
 ├── lakefile.lean                 Lake build config (Mathlib pin, linter pins)
 ├── lean-toolchain                Lean version pin (v4.30.0-rc1)
-├── CLAUDE.md                     Development guidance + per-workstream change log
+├── CLAUDE.md                     Development guidance + project conventions
+│                                 (slim, ~870 lines; historical changelog moved
+│                                 to docs/dev_history/WORKSTREAM_CHANGELOG.md)
 └── LICENSE                       MIT
 ```
 

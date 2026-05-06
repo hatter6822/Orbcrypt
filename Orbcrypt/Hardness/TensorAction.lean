@@ -600,4 +600,66 @@ def punitSurrogate (F : Type*) : SurrogateTensor.{0} F where
       one_smul := fun _ => rfl
       mul_smul := fun _ _ _ => rfl }
 
+/-- **`S_2`-shaped surrogate.** A non-trivial `SurrogateTensor F`
+    witness whose carrier is `Equiv.Perm (Fin 2)` (cardinality 2)
+    acting trivially on every `Tensor3 n F`.
+
+    **Why this exists alongside `punitSurrogate`.** The PUnit
+    surrogate (cardinality 1) collapses the chain's hardness Prop
+    `UniversalConcreteTensorOIA εT` to a triviality on its own
+    carrier — there is exactly one tensor pair `(T₀, T₁)` to consider
+    on a one-element acting group, and any advantage bound holds
+    vacuously. A reader of `Hardness.Reductions` who sees only
+    `tight_one_exists` (which uses `punitSurrogate`) might conclude
+    "the chain is only inhabited at PUnit", which is a misreading.
+
+    `s2Surrogate F` rules out that misreading by exhibiting a
+    cardinality-2 surrogate that the chain accepts at ε = 1 (via the
+    companion lemma `tight_one_exists_at_s2Surrogate` in
+    `Orbcrypt.Hardness.Reductions`). The action remains trivial
+    (`g • T := T` for all `g`), so the substantive content is the
+    *type-level* break of the PUnit-only reading; the cryptographic
+    bound is still ε = 1 (the trivial discharge).
+
+    **Why `Equiv.Perm (Fin 2)`.** Smallest non-trivial finite group
+    with already-derived Mathlib `Group` / `Fintype` / `Nonempty`
+    instances. No additional typeclass plumbing required.
+
+    **Universe pinning.** Like `punitSurrogate`, returns `Surrogate
+    Tensor.{0} F`. Audit findings W3 / Workstream M1 already
+    discussed the universe story for `SurrogateTensor.{u}`; consumers
+    wanting a higher-universe surrogate supply their own value.
+
+    **Workstream W4 of structural review 2026-05-06**
+    (`docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1
+    row 4): tractable structural win — replace the PUnit-collapse
+    witness with a non-trivial surrogate while keeping the
+    cryptographic bound at ε = 1. Genuine ε < 1 cryptographic
+    discharges remain research-scope (R-15-residual-CE-reverse and
+    R-15-residual-TI-reverse). -/
+def s2Surrogate (F : Type*) : SurrogateTensor.{0} F where
+  carrier := Equiv.Perm (Fin 2)
+  groupInst := inferInstance
+  fintypeInst := inferInstance
+  nonemptyInst := inferInstance
+  action := fun _ =>
+    { smul := fun _ T => T
+      one_smul := fun _ => rfl
+      mul_smul := fun _ _ _ => rfl }
+
+/-- The `s2Surrogate` carrier has cardinality `2` (not `1`). This
+    is the structural fact that distinguishes `s2Surrogate` from
+    `punitSurrogate`: the existence quantifier in
+    `UniversalConcreteTensorOIA` ranges over a 2-element group, so
+    discharge at this surrogate cannot collapse to a single trivial
+    tensor pair. -/
+theorem s2Surrogate_carrier_card (F : Type*) :
+    Fintype.card (s2Surrogate F).carrier = 2 := by
+  -- `(s2Surrogate F).carrier := Equiv.Perm (Fin 2)`. The cardinality
+  -- is independent of `F`: `|Perm (Fin 2)| = 2! = 2`. We unfold to
+  -- the concrete carrier and discharge by `decide` (which reduces
+  -- once the free `F` no longer appears in the goal).
+  show Fintype.card (Equiv.Perm (Fin 2)) = 2
+  decide
+
 end Orbcrypt

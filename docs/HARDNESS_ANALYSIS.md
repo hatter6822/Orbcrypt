@@ -42,7 +42,10 @@ harder for specific code families (e.g., random codes over large fields).
 plays the role of the secret key's symmetry group.
 
 **Formalization:** `Orbcrypt/Hardness/CodeEquivalence.lean` defines `ArePermEquivalent`,
-`PAut`, `CEOIA`, and proves the PAut coset structure theorems.
+`PAut`, `ConcreteCEOIA` (probabilistic), and proves the PAut coset structure theorems.
+(The deterministic `CEOIA` Prop was deleted in Workstream W6 of the 2026-05-06
+structural review — vacuous on production instances; the probabilistic `ConcreteCEOIA`
+is the substantive content.)
 
 ### 1.3 Linear Code Equivalence (LE)
 
@@ -91,12 +94,16 @@ known** — this is the key distinction from GI.
 **Best quantum complexity:** Open. Inherits the Hidden Subgroup Problem barrier
 from GI, plus additional structural hardness.
 
-**Orbcrypt relation:** TensorOIA is the strongest assumption in the reduction chain.
-TI-based hardness provides the most conservative security margin.
+**Orbcrypt relation:** `ConcreteTensorOIA` is the strongest assumption in the
+probabilistic reduction chain. TI-based hardness provides the most conservative
+security margin.
 
 **Formalization:** `Orbcrypt/Hardness/TensorAction.lean` defines `Tensor3`,
 the GL(n,F)³ `MulAction` instance (with fully proved `one_smul` and `mul_smul`),
-and `AreTensorIsomorphic`.
+`AreTensorIsomorphic`, and the probabilistic `ConcreteTensorOIA` predicate.
+(The deterministic `TensorOIA` Prop was deleted in Workstream W6 of the
+2026-05-06 structural review — vacuous on production instances; the
+probabilistic `ConcreteTensorOIA` is the substantive content.)
 
 ## 2. LESS/MEDS Alignment
 
@@ -138,82 +145,112 @@ Equivalence (MCE) or equivalently the Alternating Trilinear Form Equivalence
 
 ## 3. Reduction Chain
 
-**Scaffolding-vs-quantitative disclosure (audit 2026-04-23 / Workstream A).**
-This section describes the **deterministic** reduction chain —
-`TensorOIA → CEOIA → GIOIA → OIA → IND-1-CPA`. Per `CLAUDE.md`'s
-"Release messaging policy", the deterministic chain is **Scaffolding**:
-each OIA-variant predicate is `False` on every non-trivial scheme
-(the orbit-membership oracle `decide (x = reps m₀)` refutes it), so
-the chain's headline theorems (`oia_implies_1cpa`,
-`hardness_chain_implies_security`) are **vacuously true** on
-production instances. They encode the *shape* of an OIA-style
-reduction argument but are not standalone security claims. The
-**quantitative** counterpart is the probabilistic chain
-(`concrete_oia_implies_1cpa`,
-`concrete_hardness_chain_implies_1cpa_advantage_bound`, and their
-KEM-layer parallels) — satisfiable at `ε ∈ (0, 1]` and the
-substantive security content. In the current formalisation the
-chain is inhabited only at ε = 1 via `tight_one_exists`;
-concrete ε < 1 discharges via the Cai–Fürer–Immerman graph gadget
-(R-03) and the Grochow–Qiao structure-tensor encoding (R-02) are
-research-scope follow-ups. See
-`docs/VERIFICATION_REPORT.md` § "Release readiness" for the full
-citation discipline.
+**Probabilistic chain (substantive security content).** The
+post-W6 formalisation carries a single ε-smooth reduction chain
+threading TI-hardness through CE, GI, and the scheme-level OIA
+to IND-1-CPA at quantitative bounds. The chain is satisfiable at
+`ε ∈ (0, 1]`; in the current formalisation it is inhabited only
+at ε = 1 via `ConcreteHardnessChain.tight_one_exists` (and at
+the new W4 entry `tight_one_exists_at_s2Surrogate` exhibiting a
+non-trivial `S_2`-shaped surrogate at the same ε = 1). Concrete
+ε < 1 discharges via the Cai–Fürer–Immerman graph gadget (R-03)
+and the Grochow–Qiao structure-tensor encoding (R-02) are
+research-scope follow-ups. See `docs/VERIFICATION_REPORT.md`
+§ "Release readiness" for the full citation discipline.
+
+**Historical note.** Pre-2026-05-06, the formalisation also
+carried a parallel deterministic chain
+(`TensorOIA → CEOIA → GIOIA → OIA → IND-1-CPA` via
+`oia_implies_1cpa`, `hardness_chain_implies_security`,
+`oia_from_hardness_chain`, `TensorOIAImpliesCEOIA`,
+`CEOIAImpliesGIOIA`, `GIOIAImpliesOIA`). Each deterministic
+predicate was `False` on every non-trivial scheme (the
+orbit-membership oracle `decide (x = reps m₀)` refutes it), so
+the deterministic chain's headline theorems were vacuously true
+on production instances — encoding the *shape* of an OIA-style
+reduction argument without delivering standalone security
+content. The deterministic chain plus its supporting Props
+(`OIA`, `KEMOIA`, `HardnessChain`, the per-link reduction Props,
+the per-layer Props `TensorOIA`/`CEOIA`/`GIOIA`, the vacuity
+witnesses `det_oia_false_of_distinct_reps` and
+`det_kemoia_false_of_nontrivial_orbit`) was deleted in
+Workstream W6 of the 2026-05-06 structural review. The
+probabilistic chain (`ConcreteOIA`, `ConcreteHardnessChain`,
+`ConcreteKEMOIA_uniform`, `ConcreteKEMHardnessChain`) is the
+sole security chain post-W6.
 
 ### 3.1 Formal Chain
 
-The hardness reduction chain, formalized in `Orbcrypt/Hardness/Reductions.lean`:
+The probabilistic reduction chain, formalized in
+`Orbcrypt/Hardness/Reductions.lean`:
 
 ```
-TensorOIA        (strongest — no quasi-poly algorithm)
+ConcreteTensorOIA   (strongest — no quasi-poly algorithm)
     |
-    | TensorOIAImpliesCEOIA (tensor-to-code encoding)
-    ↓
-  CEOIA           (LESS/MEDS level — NIST PQC candidates)
+    | ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding
+    ↓                 (tensor-to-code, per-encoding)
+  ConcreteCEOIA       (LESS/MEDS level — NIST PQC candidates)
     |
-    | CEOIAImpliesGIOIA (code-to-graph encoding)
-    ↓
-  GIOIA           (2^O(√(n log n)) — Babai 2015)
+    | ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding
+    ↓                 (code-to-graph, per-encoding)
+  ConcreteGIOIA       (2^O(√(n log n)) — Babai 2015)
     |
-    | GIOIAImpliesOIA (graph-to-orbit encoding)
-    ↓
-   OIA            (Orbcrypt core — Crypto/OIA.lean)
+    | ConcreteGIOIAImpliesConcreteOIA_viaEncoding
+    ↓                 (graph-to-orbit, per-encoding)
+  ConcreteOIA         (scheme-level ε-smooth predicate)
     |
-    | oia_implies_1cpa (Phase 4 — fully proved in Lean 4)
+    | concrete_oia_implies_1cpa (Phase 8 — fully proved in Lean 4)
     ↓
-IND-1-CPA secure  (Theorems/OIAImpliesCPA.lean)
+indCPAAdvantage ≤ ε   (Crypto/CompSecurity.lean)
 ```
+
+The chain is composed by `ConcreteHardnessChain.concreteOIA_from_chain`
+(structure inhabitation → `ConcreteOIA scheme ε`); the end-to-end
+ε-bound is delivered by
+`concrete_hardness_chain_implies_1cpa_advantage_bound :
+ConcreteHardnessChain … → indCPAAdvantage ≤ ε`. The KEM-layer
+parallel runs through `ConcreteKEMHardnessChain` ending at
+`concrete_kem_hardness_chain_implies_kem_advantage_bound :
+kemAdvantage_uniform … ≤ ε`.
 
 ### 3.2 Chain Properties
 
-1. **Each step weakens the assumption:** Moving down the chain uses a *weaker*
-   hardness assumption. TensorOIA is the strongest (most conservative);
-   GIOIA is the weakest.
+1. **Each step weakens the assumption:** Moving down the chain
+   uses a *weaker* hardness assumption. `ConcreteTensorOIA` is
+   the strongest (most conservative); `ConcreteGIOIA` is the
+   weakest.
 
-2. **The bottom step is fully proved:** `oia_implies_1cpa` is a Lean 4 theorem
-   with zero `sorry`, zero custom axioms. It is unconditionally correct given
-   its hypothesis.
+2. **The bottom step is fully proved:** `concrete_oia_implies_1cpa`
+   is a Lean 4 theorem with zero `sorry`, zero custom axioms. It
+   is unconditionally correct given its hypothesis.
 
-3. **The top steps are complexity-theoretic:** The reductions TI → CE → GI
-   are well-known results in computational complexity but require encoding
-   constructions (CFI gadgets, incidence matrices, structure tensors) that
-   are beyond the scope of this formalization.
+3. **The top steps are complexity-theoretic:** The reductions
+   TI → CE → GI are well-known results in computational
+   complexity but require encoding constructions (CFI gadgets,
+   incidence matrices, structure tensors) that are beyond the
+   scope of this formalization. The Workstream-G per-encoding
+   shape (`*_viaEncoding`) names explicit encoder functions so
+   that concrete witnesses can land additively (research-scope
+   R-02 / R-03).
 
-4. **All reductions are Prop definitions:** Following the OIA pattern, each
-   reduction is a `Prop`-valued definition (not an `axiom`). This avoids
-   logical inconsistency and enables explicit hypothesis tracking.
+4. **All reductions are Prop definitions:** Each reduction is a
+   `Prop`-valued definition (not an `axiom`). This avoids
+   logical inconsistency and enables explicit hypothesis
+   tracking.
 
-### 3.3 Theorem: Full Chain Implies Security
+### 3.3 Theorem: Full Chain Implies Security Bound
 
 ```lean
-theorem hardness_chain_implies_security
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain scheme) :
-    IsSecure scheme
+theorem concrete_hardness_chain_implies_1cpa_advantage_bound
+    {scheme : OrbitEncScheme G X M} {F : Type*} {S : SurrogateTensor F}
+    (hc : ConcreteHardnessChain scheme F S ε)
+    (A : Adversary X M) :
+    indCPAAdvantage scheme A ≤ ε
 ```
 
-This composes `oia_from_hardness_chain` with `oia_implies_1cpa` to derive
-IND-1-CPA security from the full TI-based hardness chain.
+This composes `ConcreteHardnessChain.concreteOIA_from_chain`
+with `concrete_oia_implies_1cpa` to derive a quantitative
+IND-1-CPA bound from the full TI-based hardness chain.
 
 ## 4. Hardness Comparison Table
 
@@ -227,7 +264,7 @@ IND-1-CPA security from the full TI-based hardness chain.
 | **Linear Equiv (LE)** | ≥ CE | Open | **LESS** | CE-OIA ≤ LE |
 | **Matrix Code Equiv** | ≥ CE | Open | **MEDS** | Extension of CE |
 | **ATFE** | ≥ GI | Open | **MEDS** | Restricted TI |
-| **Tensor Iso (TI)** | ≥ GI, no quasi-poly | Open | Emerging | TensorOIA (strongest) |
+| **Tensor Iso (TI)** | ≥ GI, no quasi-poly | Open | Emerging | `ConcreteTensorOIA` (strongest) |
 | **HSP on S_n** | Super-poly | Super-poly | Multi-query | HGOE multi-query security |
 
 ### 4.1 Key Observations

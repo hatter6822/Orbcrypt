@@ -179,18 +179,17 @@ analogue*, not the *hashlock analogue*.
 `comm_pke_correctness` are machine-checked (all **Standalone**). The
 missing piece is a concrete `CommGroupAction` with a plausible
 hardness assumption; `docs/PUBLIC_KEY_ANALYSIS.md` §3 records the open
-instantiation. The OIA/TI hardness chain (Theorem 14
-`hardness_chain_implies_security`, classified **Scaffolding** because
-deterministic OIA is `False` on every non-trivial scheme — see
-`det_oia_false_of_distinct_reps`, Workstream E1, audit 2026-04-23 /
-finding C-07) does *not* directly underwrite the commutative variant.
-The non-vacuous *quantitative* analogue of Theorem 14 is
+instantiation. The probabilistic TI hardness chain
 `concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27,
-**Quantitative**), which delivers an ε-bound from a caller-supplied
-surrogate + encoder profile; it likewise does not cover the commutative
+**Quantitative**) delivers an ε-bound from a caller-supplied surrogate
++ encoder profile but does *not* directly underwrite the commutative
 variant. CSIDH-style security is a *separate* hypothesis on the
 commutative structure, not a consequence of tensor-isomorphism
-hardness.
+hardness. (The deterministic-chain counterpart
+`hardness_chain_implies_security` was scaffolding — vacuously true
+because deterministic OIA is `False` on every non-trivial scheme —
+and was deleted in Workstream W6 of the 2026-05-06 structural
+review.)
 
 ### 1.4 Confidential asset tags with public equivalence
 
@@ -634,13 +633,12 @@ For *quantitative* security citations, use the probabilistic chain:
 `concrete_hardness_chain_implies_1cpa_advantage_bound` (#27,
 Quantitative) for end-to-end TI-hardness → IND-1-CPA, and
 `concrete_kem_hardness_chain_implies_kem_advantage_bound` (#29,
-Quantitative) for the KEM layer. The deterministic counterparts
-(#3, #5, #8, #14, deterministic half of #30) are **Scaffolding** —
-their `OIA`/`KEMOIA`/`HardnessChain` hypotheses are `False` on every
-non-trivial scheme (witnessed unconditionally by
-`det_oia_false_of_distinct_reps` and
-`det_kemoia_false_of_nontrivial_orbit`, Workstream E of audit
-2026-04-23) and must not be cited as standalone security claims.
+Quantitative) for the KEM layer. (The deterministic counterparts
+formerly numbered #3, #5, #8, #14 plus the deterministic half of
+#30 were vacuously true `Scaffolding` results — their
+`OIA`/`KEMOIA`/`HardnessChain` hypotheses were `False` on every
+non-trivial scheme — and were deleted in Workstream W6 of the
+2026-05-06 structural review.)
 
 Three structural gaps recur:
 
@@ -815,11 +813,12 @@ A–G of that audit and by Workstream R-CE / R-TI.
   label inline. `concrete_oia_implies_1cpa` and the hardness-chain
   references are explicitly tagged **Quantitative** (cite with
   ε); `csidh_correctness`, `comm_pke_correctness`, and
-  `kem_correctness` are tagged **Standalone**;
-  `hardness_chain_implies_security` (Theorem 14) is now disclosed as
-  **Scaffolding**, with the non-vacuous quantitative analogue
-  `concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27)
-  named explicitly.
+  `kem_correctness` are tagged **Standalone**. The non-vacuous
+  quantitative analogue of the (now-deleted) deterministic
+  `hardness_chain_implies_security` is
+  `concrete_hardness_chain_implies_1cpa_advantage_bound` (Theorem 27),
+  which is the sole hardness-chain citation post-Workstream-W6 of
+  the 2026-05-06 structural review.
 * **§1.2 (batched commitments).** No cross-reference change in this
   pass. (An earlier draft of this changelog cited
   `concreteOIA_zero_of_subsingleton_message` as a non-vacuity witness
@@ -837,13 +836,13 @@ A–G of that audit and by Workstream R-CE / R-TI.
   = 1, two-distribution = 1, centred = 1/2) is named explicitly.
 * **§6 alignment table.** Each row now carries its Status label;
   added a closing paragraph naming the canonical **Quantitative**
-  citations (#6, #27, #29) and the **Scaffolding** rows (#3, #5, #8,
-  #14, deterministic half of #30) that must not be cited as
-  standalone security claims. The deterministic vacuity is now
-  machine-checked unconditionally by `det_oia_false_of_distinct_reps`
-  (Workstream E1) and `det_kemoia_false_of_nontrivial_orbit`
-  (Workstream E2) — so this is no longer a prose disclosure but a
-  Lean theorem.
+  citations (#6, #27, #29). The former Scaffolding rows
+  (deterministic #3, #5, #8, #14, deterministic half of #30) and
+  their machine-checked vacuity witnesses
+  (`det_oia_false_of_distinct_reps`,
+  `det_kemoia_false_of_nontrivial_orbit`) were deleted in
+  Workstream W6 of the 2026-05-06 structural review along with
+  the rest of the deterministic chain.
 * **§7 (anti-use cases).** Already correct as of the 2026-04-18
   audit (it referenced `sessionKey_expands_to_canon_form`, the
   current name post-Workstream-L4 of audit 2026-04-21). No further

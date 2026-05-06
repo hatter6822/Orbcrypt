@@ -6,10 +6,11 @@
   under certain conditions. See: https://github.com/hatter6822/Orbcrypt/blob/main/LICENSE
 -/
 
+import Orbcrypt.Crypto.Scheme
 import Orbcrypt.Probability.Monad
 import Orbcrypt.Probability.Negligible
 import Orbcrypt.Probability.Advantage
-import Orbcrypt.Crypto.OIA
+
 
 /-!
 # Orbcrypt.Crypto.CompOIA
@@ -37,7 +38,9 @@ cryptographic assumption.
 * `Orbcrypt.orbitDist_support` — orbit distribution supported on orbit
 * `Orbcrypt.concreteOIA_mono` — ConcreteOIA is monotone in `ε`
 * `Orbcrypt.concreteOIA_one` — ConcreteOIA with `ε = 1` is trivially true
-* `Orbcrypt.det_oia_implies_concrete_zero` — deterministic OIA implies ConcreteOIA 0
+
+
+
 
 ## References
 
@@ -220,33 +223,12 @@ def CompOIA (sf : SchemeFamily) : Prop :=
   ∀ (D : ∀ n, sf.X n → Bool) (m₀ m₁ : ∀ n, sf.M n),
     IsNegligible (sf.advantageAt D m₀ m₁)
 
--- ============================================================================
--- Work Unit 8.8: Bridge — Deterministic OIA implies Probabilistic OIA
--- ============================================================================
-
-/-- The deterministic OIA implies ConcreteOIA with `ε = 0`.
-
-    Proof: Under OIA, `D(g • reps m₀) = D(g • reps m₁)` for all g.
-    So `Pr_g[D(g • reps m₀) = true] = Pr_g[D(g • reps m₁) = true]`,
-    giving advantage exactly 0. -/
-theorem det_oia_implies_concrete_zero [Group G] [Fintype G] [Nonempty G]
-    [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hOIA : OIA scheme) :
-    ConcreteOIA scheme 0 := by
-  intro D m₀ m₁
-  suffices h : probTrue (orbitDist (G := G) (scheme.reps m₀)) D =
-    probTrue (orbitDist (G := G) (scheme.reps m₁)) D by
-    simp [advantage, h]
-  -- Use toOuterMeasure_map_apply to reduce to preimage equality on uniformPMF G
-  simp only [probTrue, orbitDist]
-  rw [PMF.toOuterMeasure_map_apply, PMF.toOuterMeasure_map_apply]
-  congr 1
-  ext g
-  simp only [Set.mem_preimage, Set.mem_setOf_eq]
-  -- D(g • reps m₀) = true ↔ D(g • reps m₁) = true, from OIA
-  constructor
-  · intro h; rwa [← hOIA D m₀ m₁ g g]
-  · intro h; rwa [hOIA D m₀ m₁ g g]
+-- W6.2 of structural review 2026-05-06: the deterministic-to-
+-- probabilistic bridge `det_oia_implies_concrete_zero` (formerly
+-- defined here, Work Unit 8.8) was deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0. The
+-- probabilistic chain (`ConcreteOIA`, `ConcreteHardnessChain`,
+-- etc.) is the sole security chain post-deletion; the bridge to
+-- the deleted deterministic `OIA` is no longer meaningful.
 
 end Orbcrypt

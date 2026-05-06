@@ -119,10 +119,11 @@ open Orbcrypt
 #print axioms isSecure_implies_isSecureDistinct
 
 -- OIA
-#print axioms OIA
--- Workstream E (audit 2026-04-23, finding C-07): machine-checked
--- vacuity witness for the deterministic OIA.
-#print axioms det_oia_false_of_distinct_reps
+-- W6.8 of structural review 2026-05-06: deterministic OIA Prop deleted.
+-- W6.1 of structural review 2026-05-06: the deterministic-OIA
+-- vacuity witness `det_oia_false_of_distinct_reps` (audit
+-- 2026-04-23 finding C-07) was deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0.
 
 -- ============================================================================
 -- §3  Core theorems (Phase 4)
@@ -153,12 +154,11 @@ open Orbcrypt
 #print axioms indCPAAdvantage_invariantAttackAdversary_eq_one
 
 -- OIAImpliesCPA
-#print axioms oia_specialized
+-- W6.3 of structural review 2026-05-06: `oia_specialized`,
+-- `no_advantage_from_oia`, `oia_implies_1cpa`, and
+-- `oia_implies_1cpa_distinct` (Workstream K1) were deleted as part
+-- of the deterministic-chain removal scheduled for v0.4.0.
 #print axioms hasAdvantage_iff
-#print axioms no_advantage_from_oia
-#print axioms oia_implies_1cpa
--- Workstream K1 (F-AUDIT-2026-04-21-M1): distinct-challenge corollary
-#print axioms oia_implies_1cpa_distinct
 -- Track D (contrapositive)
 #print axioms adversary_yields_distinguisher
 -- Workstream I3 (audit 2026-04-23, finding D-07): pre-I
@@ -265,13 +265,16 @@ open Orbcrypt
 #print axioms kemHasAdvantage
 #print axioms KEMIsSecure
 #print axioms kemIsSecure_iff
-#print axioms KEMOIA
--- Workstream E (audit 2026-04-23, finding E-06): machine-checked
--- vacuity witness for the deterministic KEMOIA.
-#print axioms det_kemoia_false_of_nontrivial_orbit
+-- W6.8 of structural review 2026-05-06: deterministic KEMOIA Prop deleted.
+-- W6.1 of structural review 2026-05-06: the deterministic-KEMOIA
+-- vacuity witness `det_kemoia_false_of_nontrivial_orbit` (audit
+-- 2026-04-23 finding E-06) was deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0.
 #print axioms kem_key_constant_direct
-#print axioms kem_ciphertext_indistinguishable
-#print axioms kemoia_implies_secure
+-- W6.4 of structural review 2026-05-06: `kem_ciphertext_indistinguishable`
+-- and `kemoia_implies_secure` (Headline #5, Work Unit 7.6c) were
+-- deleted as part of the deterministic-chain removal scheduled
+-- for v0.4.0.
 
 -- ============================================================================
 -- §6  Probability layer (Phase 8)
@@ -326,7 +329,8 @@ open Orbcrypt
 #print axioms SchemeFamily.orbitDistAt
 #print axioms SchemeFamily.advantageAt
 #print axioms CompOIA
-#print axioms det_oia_implies_concrete_zero
+-- W6.2 of structural review 2026-05-06: the deterministic-to-
+-- probabilistic bridge `det_oia_implies_concrete_zero` was deleted.
 
 -- Crypto.CompSecurity
 #print axioms indCPAAdvantage
@@ -376,7 +380,9 @@ open Orbcrypt
 #print axioms concreteKEMOIA_uniform_one
 #print axioms concreteKEMOIA_mono
 #print axioms concreteKEMOIA_uniform_mono
-#print axioms det_kemoia_implies_concreteKEMOIA_zero
+-- W6.2 of structural review 2026-05-06: the deterministic-to-
+-- probabilistic KEM bridge `det_kemoia_implies_concreteKEMOIA_zero`
+-- was deleted.
 #print axioms kemAdvantage
 #print axioms kemAdvantage_nonneg
 #print axioms kemAdvantage_le_one
@@ -509,7 +515,9 @@ open Orbcrypt
 #print axioms PAutSubgroup
 #print axioms mem_PAutSubgroup
 #print axioms PAut_eq_PAutSubgroup_carrier
-#print axioms CEOIA
+-- W6.7 of structural review 2026-05-06: `CEOIA` (deterministic
+-- per-layer Prop) was deleted; the probabilistic counterpart
+-- `ConcreteCEOIA` (Workstream E2a) is preserved.
 -- Workstream I4 (audit 2026-04-23, finding J-03): the strengthened
 -- `GIReducesToCE` Prop carries non-degeneracy fields (`codeSize_pos`,
 -- `encode_card_eq`) that rule out the audit-flagged
@@ -568,23 +576,30 @@ open Orbcrypt
 #print axioms surrogateTensor_nonempty
 #print axioms surrogateTensor_mulAction
 #print axioms punitSurrogate
+-- W4.1 of structural review 2026-05-06: non-trivial S_2-shaped
+-- surrogate (cardinality 2) and the cardinality-distinction lemma.
+#print axioms s2Surrogate
+#print axioms s2Surrogate_carrier_card
 
 -- Hardness.Encoding (Workstream E3-prep)
 #print axioms OrbitPreservingEncoding
 #print axioms identityEncoding
 
--- Hardness.Reductions (Phase 12 deterministic chain)
+-- Hardness.Reductions (post-W6 probabilistic-only chain)
 #print axioms permuteAdj
-#print axioms TensorOIA
-#print axioms tensorOIA_symm
-#print axioms GIOIA
-#print axioms gioia_symm
-#print axioms TensorOIAImpliesCEOIA
-#print axioms CEOIAImpliesGIOIA
-#print axioms GIOIAImpliesOIA
-#print axioms HardnessChain
-#print axioms oia_from_hardness_chain
-#print axioms hardness_chain_implies_security
+-- W6.7 of structural review 2026-05-06: deterministic per-layer Props
+-- `TensorOIA`, `GIOIA` (and their `_symm` siblings) were deleted; the
+-- probabilistic counterparts `ConcreteTensorOIA`, `ConcreteGIOIA`,
+-- and the `Universal*` Props (Workstream E2b/E2c/G) are preserved.
+-- W6.6 of structural review 2026-05-06: the per-link reduction
+-- Props `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
+-- `GIOIAImpliesOIA` were deleted; the non-vacuous probabilistic
+-- counterparts `*_viaEncoding` (Workstream G / Fix C) are
+-- preserved.
+-- W6.5 of structural review 2026-05-06: `HardnessChain` and
+-- `oia_from_hardness_chain` (Phase 12 deterministic-chain
+-- composition) were deleted; W6.3 already removed
+-- `hardness_chain_implies_security`.
 -- Workstream E2c + E3 + E4 + E5 (probabilistic chain)
 #print axioms graphOrbitDist
 #print axioms ConcreteGIOIA
@@ -612,10 +627,15 @@ open Orbcrypt
 #print axioms ConcreteHardnessChain.concreteOIA_from_chain
 #print axioms ConcreteHardnessChain.tight
 #print axioms ConcreteHardnessChain.tight_one_exists
+-- W4.2 of structural review 2026-05-06: same chain inhabitation
+-- shape but with the `s2Surrogate` (cardinality 2, non-trivial).
+#print axioms ConcreteHardnessChain.tight_one_exists_at_s2Surrogate
 #print axioms concrete_hardness_chain_implies_1cpa_advantage_bound
--- Workstream K3 + K4 companion (F-AUDIT-2026-04-21-M1):
--- distinct-challenge IND-1-CPA corollaries in the hardness-chain layer
-#print axioms hardness_chain_implies_security_distinct
+-- Workstream K4 companion (F-AUDIT-2026-04-21-M1):
+-- distinct-challenge IND-1-CPA corollary in the probabilistic
+-- hardness-chain layer. W6.3 of structural review 2026-05-06:
+-- `hardness_chain_implies_security_distinct` (deterministic K3
+-- companion) was deleted.
 #print axioms concrete_hardness_chain_implies_1cpa_advantage_bound_distinct
 
 -- ============================================================================
@@ -710,12 +730,16 @@ open Orbcrypt
 -- PublicKey.CombineImpossibility (Workstream E6)
 #print axioms GEquivariantCombiner
 #print axioms NonDegenerateCombiner
-#print axioms oia_forces_combine_constant_in_snd
-#print axioms oia_forces_combine_constant_on_orbit
+-- W6.8 of structural review 2026-05-06: deterministic-OIA
+-- combiner-breaks theorems (`equivariant_combiner_breaks_oia`,
+-- `oia_forces_combine_constant_in_snd`,
+-- `oia_forces_combine_constant_on_orbit`,
+-- `oblivious_sample_equivariant_obstruction`) were deleted along
+-- with the deterministic `OIA` Prop. The probabilistic counterpart
+-- `concrete_combiner_advantage_bounded_by_oia` (Workstream E6,
+-- below) carries the ε-smooth content.
 #print axioms GEquivariantCombiner.combine_diagonal_smul
 #print axioms GEquivariantCombiner.combine_section_form
-#print axioms equivariant_combiner_breaks_oia
-#print axioms oblivious_sample_equivariant_obstruction
 #print axioms combinerDistinguisher
 #print axioms combinerDistinguisher_basePoint
 #print axioms combinerDistinguisher_eq
@@ -741,6 +765,13 @@ open Orbcrypt
 #print axioms probTrue_combinerDistinguisher_target_eq_zero
 #print axioms combinerDistinguisherAdvantage_ge_inv_card
 #print axioms no_concreteOIA_below_inv_card_of_combiner
+-- W4.3 of structural review 2026-05-06: bridge lemma promoted from
+-- private (the W4.3 audit-script witness needs it for the tight
+-- R-07 advantage). The W4.3 headline `_eq_half_on_R07` lives inside
+-- the `R07NonVacuity` namespace; its `#print axioms` is emitted at
+-- the bottom of that namespace (forward references aren't allowed
+-- for `#print axioms`).
+#print axioms probTrue_orbitDist_eq
 
 -- ============================================================================
 -- §12  Non-vacuity witnesses
@@ -928,26 +959,13 @@ example {G : Type} {X : Type} {M : Type} {K : Type}
     scheme Bool m₀ keyDerive
   concrete_kem_hardness_chain_implies_kem_advantage_bound hc A g_ref
 
-/-- Workstream K1 non-vacuity: `oia_implies_1cpa_distinct` is
-    well-typed on every scheme and the composition with
-    `isSecure_implies_isSecureDistinct` elaborates. Exercises the
-    deterministic distinct-challenge corollary at the scheme level. -/
-example {G : Type} {X : Type} {M : Type}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) (hOIA : OIA scheme) :
-    IsSecureDistinct scheme :=
-  oia_implies_1cpa_distinct scheme hOIA
-
-/-- Workstream K3 non-vacuity: `hardness_chain_implies_security_distinct`
-    is well-typed on every scheme. Exercises the chain-level
-    distinct-challenge corollary. The `HardnessChain` Prop requires
-    `[Field F]`, so we use `ZMod 2` as the witness field. -/
-example {G : Type} {X : Type} {M : Type}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := ZMod 2) scheme) :
-    IsSecureDistinct scheme :=
-  hardness_chain_implies_security_distinct scheme hChain
+-- W6.3 of structural review 2026-05-06: the Workstream K1 / K3
+-- non-vacuity examples for `oia_implies_1cpa_distinct` and
+-- `hardness_chain_implies_security_distinct` were deleted along
+-- with their underlying theorems. The probabilistic K4 companion
+-- below (and `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct`'s
+-- audit-script entry above) carry the substantive distinct-
+-- challenge content.
 
 /-- Workstream K4 non-vacuity (structural): `indCPAAdvantage_collision_zero`
     accepts any scheme + adversary pair satisfying the collision
@@ -1308,13 +1326,11 @@ example : IsEpsilonUniversal (carterWegmanHash 2)
       rw [carterWegmanHash_collision_card 2 h_ne])
 
 -- ============================================================================
--- Workstream E non-vacuity witnesses (audit 2026-04-23, findings C-07 /
--- E-06): machine-checked vacuity of the deterministic `OIA` and `KEMOIA`
--- predicates. The two `example` blocks below instantiate
--- `det_oia_false_of_distinct_reps` and
--- `det_kemoia_false_of_nontrivial_orbit` on concrete scheme / KEM
--- fixtures to confirm each witness fires on a known-good input and
--- closes its `¬ OIA` / `¬ KEMOIA` goal by direct term construction.
+-- Shared fixtures: `trivialSchemeBool` (top-level, used by the
+-- Workstream-I3 distinct-messages-separator witness below).
+-- The fixture was originally introduced for the now-deleted W6.1
+-- vacuity witness; the fixture itself is preserved because other
+-- tests reference it.
 -- ============================================================================
 
 /-- **Trivial (identity) action of `Equiv.Perm (Fin 1)` on `Bool`.**
@@ -1334,127 +1350,29 @@ local instance trivialPermFin1ActionBool :
     `Equiv.Perm (Fin 1)` on `Bool`, with `reps := id`. Under the
     trivial action, `smul _ b := b` holds by `rfl`, so every orbit
     `MulAction.orbit G b = {b}` is a singleton and `reps_distinct`
-    follows from point-distinctness. Canonical form is the identity;
-    `orbit_iff` reduces to the tautology `b₁ = b₂ ↔ {b₁} = {b₂}`.
-    Used as the concrete target for
-    `det_oia_false_of_distinct_reps`. -/
+    follows from point-distinctness. -/
 def trivialSchemeBool :
     OrbitEncScheme (Equiv.Perm (Fin 1)) Bool Bool where
   reps := id
   reps_distinct := fun b₀ b₁ hNeq hOrb => by
-    -- Under the trivial action, `orbit G b = {b}`, so
-    -- `orbit G b₀ = orbit G b₁` forces `b₀ ∈ {b₁}`, i.e. `b₀ = b₁`.
     apply hNeq
-    -- Normalise `id b₀`, `id b₁` in `hOrb` so subsequent rewrites
-    -- match syntactically (Lean's `rw` is syntactic, not definitional).
     simp only [id_eq] at hOrb
     have hmem : b₀ ∈ MulAction.orbit (Equiv.Perm (Fin 1)) b₁ := by
-      -- `b₀ ∈ orbit b₀ = orbit b₁`.
       rw [← hOrb]
       exact MulAction.mem_orbit_self _
     obtain ⟨g, hg⟩ := hmem
-    -- `hg : g • b₁ = b₀`; under `trivialPermFin1ActionBool`,
-    -- `g • b₁ = b₁` by `rfl`, so `hg : b₁ = b₀` up to defeq.
     exact hg.symm
   canonForm :=
     { canon := id
       mem_orbit := fun b => MulAction.mem_orbit_self b
       orbit_iff := fun b₁ b₂ => by
-        -- `canon = id`, so `canon b₁ = canon b₂ ↔ b₁ = b₂`.
-        -- Under the trivial action, `orbit G b₁ = orbit G b₂ ↔
-        -- b₁ = b₂` for the same reason as `reps_distinct` above.
         refine ⟨fun h => ?_, fun h => ?_⟩
-        · -- Forward: `b₁ = b₂` ⇒ singletons coincide.
-          change b₁ = b₂ at h
+        · change b₁ = b₂ at h
           subst h; rfl
-        · -- Backward: `orbit G b₁ = orbit G b₂` ⇒ `b₁ = b₂`.
-          have hmem : b₁ ∈ MulAction.orbit (Equiv.Perm (Fin 1)) b₂ := by
+        · have hmem : b₁ ∈ MulAction.orbit (Equiv.Perm (Fin 1)) b₂ := by
             rw [← h]; exact MulAction.mem_orbit_self _
           obtain ⟨g, hg⟩ := hmem
-          -- `hg : g • b₂ = b₁`; under the trivial action this is
-          -- `b₂ = b₁` (defeq). Goal is `canon b₁ = canon b₂` i.e.
-          -- `b₁ = b₂`; close with `.symm`.
           exact hg.symm }
-
-/-- **Workstream E1 non-vacuity witness.** Fires
-    `det_oia_false_of_distinct_reps` on `trivialSchemeBool`: the
-    distinctness hypothesis `scheme.reps true ≠ scheme.reps false`
-    is `true ≠ false` (discharged by `Bool.noConfusion`), and the
-    theorem delivers `¬ OIA trivialSchemeBool`. A genuine witness
-    of the deterministic-OIA vacuity at a concrete (non-trivial)
-    scheme; exercises the full elaboration path from
-    `OrbitEncScheme` construction to `decide`-based distinguisher
-    dispatch. -/
-example : ¬ OIA trivialSchemeBool :=
-  det_oia_false_of_distinct_reps (M := Bool) trivialSchemeBool
-    (m₀ := true) (m₁ := false)
-    (by decide)
-
-/-- **Natural action of `Equiv.Perm (ZMod 2)` on `ZMod 2`.**
-    Mathlib's standard `MulAction (Equiv.Perm α) α` instance,
-    registered locally to keep the inference explicit for the
-    `OrbitKEM` below. Under this action, the swap `Equiv.swap 0 1`
-    sends `0 ↦ 1`, so `(Equiv.swap 0 1) • 0 = 1 ≠ 0 = 1 • 0` and
-    the basepoint orbit has cardinality 2. -/
-local instance permActionZMod2_forE2 :
-    MulAction (Equiv.Perm (ZMod 2)) (ZMod 2) := inferInstance
-
-/-- A concrete `OrbitKEM` under `Equiv.Perm (ZMod 2)` on `ZMod 2`
-    with base point `0`. The canonical form `canon _ := 0` is
-    constant, and `mem_orbit` / `orbit_iff` are discharged via the
-    transitive-action witness `Equiv.swap x 0`. Parallels the
-    Workstream-C `toyKEMZMod2` fixture (which lives in
-    `scripts/legacy/audit_c_workstream.lean`, relocated by
-    Workstream B2 of the 2026-04-29 audit plan) but is
-    re-materialised here so `audit_phase_16.lean` remains a
-    self-contained audit script.
-    Used as the concrete target for
-    `det_kemoia_false_of_nontrivial_orbit`. -/
-def trivialKEM_PermZMod2 :
-    OrbitKEM (Equiv.Perm (ZMod 2)) (ZMod 2) Unit where
-  basePoint := (0 : ZMod 2)
-  canonForm :=
-    { canon := fun _ => 0
-      mem_orbit := fun x => by
-        refine ⟨Equiv.swap x 0, ?_⟩
-        show (Equiv.swap x 0) x = 0
-        exact Equiv.swap_apply_left x 0
-      orbit_iff := by
-        intro x y
-        refine ⟨fun _ => ?_, fun _ => rfl⟩
-        ext z
-        refine ⟨fun _ => ⟨Equiv.swap y z, Equiv.swap_apply_left y z⟩,
-                fun _ => ⟨Equiv.swap x z, Equiv.swap_apply_left x z⟩⟩ }
-  keyDerive := fun _ => ()
-
-/-- **Workstream E2 non-vacuity witness.** Fires
-    `det_kemoia_false_of_nontrivial_orbit` on
-    `trivialKEM_PermZMod2`: the non-triviality hypothesis
-    `(Equiv.swap 0 1) • basePoint ≠ 1 • basePoint` reduces to
-    `(Equiv.swap 0 1) • 0 ≠ 0`, which is `1 ≠ 0` in `ZMod 2`.
-    The theorem delivers `¬ KEMOIA trivialKEM_PermZMod2`. Confirms
-    the KEM-layer vacuity witness elaborates on a concrete input
-    where the basepoint orbit is genuinely non-trivial
-    (cardinality 2). -/
-example : ¬ KEMOIA trivialKEM_PermZMod2 :=
-  det_kemoia_false_of_nontrivial_orbit trivialKEM_PermZMod2
-    (g₀ := Equiv.swap 0 1) (g₁ := 1)
-    (by
-      -- The `MulAction (Equiv.Perm α) α` instance is defined so
-      -- `σ • a = σ a`. `(Equiv.swap 0 1) 0 = 1` by
-      -- `Equiv.swap_apply_left`, and `(1 : Equiv.Perm _) 0 = 0`
-      -- by the definition of `1` as `Equiv.refl`. The resulting
-      -- `(1 : ZMod 2) ≠ 0` is decidable.
-      intro h
-      -- `h : (Equiv.swap 0 1) • 0 = 1 • 0`; defeq to
-      -- `(Equiv.swap 0 1) 0 = (1 : Perm _) 0`, which reduces to
-      -- `(1 : ZMod 2) = (0 : ZMod 2)` after applying
-      -- `Equiv.swap_apply_left` on the LHS and unfolding
-      -- `(1 : Perm) 0 = 0` on the RHS.
-      have h' : (Equiv.swap (0 : ZMod 2) 1) 0 = (0 : ZMod 2) := h
-      rw [Equiv.swap_apply_left] at h'
-      -- `h' : (1 : ZMod 2) = 0`, which is false.
-      exact absurd h' (by decide))
 
 /-! ## Workstream F non-vacuity witnesses
 
@@ -5513,6 +5431,142 @@ example (ε : ℝ) (hOIA : ConcreteOIA schemeR07 ε) :
     (1 : ℝ) / (Fintype.card (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) : ℝ) ≤ ε :=
   no_concreteOIA_below_inv_card_of_combiner schemeR07 true combR07 false hND_R07 ε hOIA
 
+-- ============================================================================
+-- Workstream W4.3 of structural review 2026-05-06: tight advantage on R-07
+-- ============================================================================
+--
+-- W4.3 strengthens the existing `_ge_inv_card` lower bound (1/|G| =
+-- 1/2 on this fixture) to an EXACT equality: the advantage on the
+-- R-07 fixture is *precisely* 1/2, demonstrating that the lower
+-- bound is attained (i.e., tight) on a concrete instance.
+--
+-- Proof sketch:
+--   probTrue on basepoint orbit = (filter card)/|G| = 1/2.
+--   The basepoint's orbit `{![T,F], ![F,T]}` has 2 elements; the
+--   distinguisher `decide (· = ![T,F])` returns `true` on exactly
+--   one of them. Under uniform group sampling (|G| = 2), probTrue =
+--   ½. probTrue on target orbit = 0 (by `combR07_cross_constant_false`).
+--   Advantage = |½ − 0| = ½.
+
+/-- The cardinality of `↥⊤ : Subgroup (Equiv.Perm (Fin 2))` is `2`.
+    Witnessed by `decide` on the small finite type. -/
+private theorem card_top_perm_fin2 :
+    Fintype.card (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) = 2 := by
+  decide
+
+/-- The combiner-distinguisher `decide (combR07.combine bp (g • bp) =
+    combR07.combine bp bp)` reduces to `decide (g • bp = bp)`, since
+    `combR07.combine` is projection on the second argument. -/
+private theorem combinerDistinguisher_combR07_at :
+    ∀ g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))),
+      combinerDistinguisher combR07 (g • schemeR07.reps true) =
+        decide (g • schemeR07.reps true = schemeR07.reps true) := by
+  intro g
+  unfold combinerDistinguisher
+  rw [combR07_combine_eq, combR07_combine_eq]
+
+/-- On the basepoint orbit, the combiner-distinguisher's `probTrue`
+    is exactly `1/2`. The basepoint orbit `{![T,F], ![F,T]}` has 2
+    elements; the distinguisher returns `true` only on `![T,F]`
+    itself. Under uniform sampling of `↥⊤ : Subgroup (Equiv.Perm
+    (Fin 2))` (cardinality 2), exactly 1 of the 2 group elements
+    fires the distinguisher.
+
+    **Proof structure.** Bridge `probTrue (orbitDist x) D` to
+    `probTrue (uniformPMF G) (D ∘ (· • x))` via the existing
+    `probTrue_orbitDist_eq` helper, then to `(filter card) / |G|`
+    via `probTrue_uniformPMF_card`. The filter
+    `{g : ↥⊤ | g • ![T,F] = ![T,F]}` has cardinality 1
+    (only the identity stabilises ![T,F]). -/
+private theorem probTrue_combinerDistinguisher_basePoint_R07 :
+    probTrue (orbitDist (G := ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+        (schemeR07.reps true)) (combinerDistinguisher combR07)
+      = (1 : ENNReal) / 2 := by
+  -- Step 1: Bridge to uniformPMF over the group.
+  rw [show probTrue (orbitDist (G := ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+            (schemeR07.reps true)) (combinerDistinguisher combR07)
+        = probTrue (uniformPMF (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))))
+            (fun g => combinerDistinguisher combR07 (g • schemeR07.reps true))
+        from probTrue_orbitDist_eq _ _]
+  -- Step 2: Reduce the inner distinguisher to `decide (g • bp = bp)`
+  -- via `funext` + `combinerDistinguisher_combR07_at`.
+  conv_lhs => rw [show
+      (fun g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))) =>
+          combinerDistinguisher combR07 (g • schemeR07.reps true))
+        = (fun g => decide (g • schemeR07.reps true =
+            schemeR07.reps true))
+      from funext combinerDistinguisher_combR07_at]
+  -- Step 3: Apply `probTrue_uniformPMF_card`.
+  rw [probTrue_uniformPMF_card]
+  -- Step 4: Cardinalities. |G| = 2 by `card_top_perm_fin2`. Filter
+  -- cardinality is 1 (only identity stabilises ![T,F]).
+  rw [card_top_perm_fin2]
+  -- Filter card = 1.
+  have h_filter_card :
+      (Finset.univ.filter (fun g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))) =>
+          decide (g • schemeR07.reps true = schemeR07.reps true) = true)).card
+      = 1 := by
+    -- The filter is `{g : ↥⊤ | g • bp = bp}`. With `bp = ![T,F]`,
+    -- only the identity (1 ∈ ↥⊤) is in the filter; swap moves
+    -- ![T,F] to ![F,T] ≠ ![T,F] (per `swapR07_smul_TF` +
+    -- `combR07_intra`).
+    --
+    -- Direct evaluation: rewrite `schemeR07.reps true` to the
+    -- concrete bitstring, then decide.
+    rw [schemeR07_reps, repsR07_true]
+    -- Goal: card of {g : ↥⊤ | g • ![T,F] = ![T,F]} = 1.
+    decide
+  rw [h_filter_card]
+  -- Goal: (1 : ENNReal) / 2 = (1 : ENNReal) / 2. Reflexivity.
+  norm_cast
+
+/-- On the target orbit, the combiner-distinguisher's `probTrue` is
+    exactly `0`. Re-export of the existing
+    `probTrue_combinerDistinguisher_target_eq_zero` specialised to
+    the R-07 fixture. -/
+private theorem probTrue_combinerDistinguisher_target_R07 :
+    probTrue (orbitDist (G := ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+        (schemeR07.reps false)) (combinerDistinguisher combR07)
+      = 0 :=
+  probTrue_combinerDistinguisher_target_eq_zero
+    schemeR07 true combR07 false combR07_cross_constant_false
+
+/-- **W4.3 headline witness.** The combiner-distinguisher's
+    cross-orbit advantage on the R-07 fixture (`S_2 ⤳ Bitstring 2`,
+    weight-1 vs weight-0 orbits, projection-on-second-argument
+    combiner) is **exactly** `1/2`. This shows the existing
+    `combinerDistinguisherAdvantage_ge_inv_card` lower bound is
+    attained (tight) on a concrete in-tree fixture.
+
+    **Significance.** The `_ge_inv_card` bound is a sufficient-
+    condition refutation of `ConcreteOIA scheme ε` for ε <
+    1/|G|. W4.3 confirms the bound is non-trivially achievable
+    (as opposed to vacuously satisfied) on the R-07 model.
+
+    **Composition with `concrete_combiner_advantage_bounded_by_oia`.**
+    Composed with the upper bound, this gives `1/2 ≤ ε` for every
+    ε such that `ConcreteOIA schemeR07 ε` holds — i.e.,
+    `ConcreteOIA schemeR07` is impossible at any ε < 1/2 on this
+    fixture. -/
+theorem combinerDistinguisherAdvantage_eq_half_on_R07 :
+    combinerDistinguisherAdvantage schemeR07 true combR07 true false
+      = (1 : ℝ) / 2 := by
+  rw [combinerDistinguisherAdvantage_eq, advantage]
+  rw [probTrue_combinerDistinguisher_basePoint_R07,
+      probTrue_combinerDistinguisher_target_R07]
+  -- Goal: |((1 : ℝ≥0∞)/2).toReal - (0 : ℝ≥0∞).toReal| = 1/2.
+  simp [ENNReal.toReal_div, abs_of_pos]
+
+-- W4.3 audit-script axiom dump (placed inside the namespace so the
+-- short name `combinerDistinguisherAdvantage_eq_half_on_R07`
+-- resolves; the helpers are also dumped to confirm each is on the
+-- standard Lean trio).
+#print axioms card_top_perm_fin2
+#print axioms combinerDistinguisher_combR07_at
+#print axioms probTrue_combinerDistinguisher_basePoint_R07
+#print axioms probTrue_combinerDistinguisher_target_R07
+#print axioms combinerDistinguisherAdvantage_eq_half_on_R07
+
 end R07NonVacuity
 
 -- ============================================================================
@@ -6024,8 +6078,8 @@ end MarginalUniformityNonVacuity
 --   `QCCyclicCanonical` abbrev that headline theorems #24-#26
 --   indirectly consume).
 -- * `Optimization/TwoPhaseDecrypt.lean` (11 declarations including
---   the headline theorems #24 `two_phase_correct`, #25
---   `two_phase_kem_correctness`, and #26 `fast_kem_round_trip`).
+--   the headline theorems #24 `canonical_agreement_under_two_phase_decomposition`, #25
+--   `kem_round_trip_under_two_phase_decomposition`, and #26 `fast_kem_round_trip`).
 -- * `Probability/Monad.lean` (2 declarations: `probTrue_map`,
 --   `probTrue_uniformPMF_card`).
 -- * `Hardness/GrochowQiao/AlgebraWrapper.lean` (37 declarations
@@ -6050,11 +6104,11 @@ end MarginalUniformityNonVacuity
 -- Optimization/TwoPhaseDecrypt.lean (headline theorems #24, #25, #26)
 #print axioms Orbcrypt.TwoPhaseDecomposition
 #print axioms Orbcrypt.two_phase_decompose
-#print axioms Orbcrypt.two_phase_correct
+#print axioms Orbcrypt.canonical_agreement_under_two_phase_decomposition
 #print axioms Orbcrypt.full_canon_invariant
 #print axioms Orbcrypt.two_phase_invariant_under_G
 #print axioms Orbcrypt.two_phase_kem_decaps
-#print axioms Orbcrypt.two_phase_kem_correctness
+#print axioms Orbcrypt.kem_round_trip_under_two_phase_decomposition
 #print axioms Orbcrypt.IsOrbitConstant
 #print axioms Orbcrypt.orbit_constant_encaps_eq_basePoint
 #print axioms Orbcrypt.fast_kem_round_trip

@@ -9,9 +9,9 @@
 import Orbcrypt.Hardness.CodeEquivalence
 import Orbcrypt.Hardness.TensorAction
 import Orbcrypt.Hardness.Encoding
-import Orbcrypt.Crypto.OIA
+
 import Orbcrypt.Crypto.Security
-import Orbcrypt.Theorems.OIAImpliesCPA
+import Orbcrypt.Theorems.AdversaryStructural
 import Orbcrypt.Crypto.CompOIA
 import Orbcrypt.Crypto.CompSecurity
 import Mathlib.Data.Fintype.Perm
@@ -19,76 +19,69 @@ import Mathlib.Data.Fintype.Perm
 /-!
 # Orbcrypt.Hardness.Reductions
 
-Hardness reduction chain connecting Tensor Isomorphism (TI), Code Equivalence
-(CE), Graph Isomorphism (GI), and Orbcrypt's Orbit Indistinguishability
-Assumption (OIA). Formalizes the chain:
+Probabilistic hardness reduction chain connecting Tensor Isomorphism
+(TI), Code Equivalence (CE), Graph Isomorphism (GI), and Orbcrypt's
+probabilistic security chain `ConcreteOIA`.
 
-    TI-hard → TensorOIA → CE-OIA → GI-OIA → OIA → IND-1-CPA secure
+The reduction chain is:
 
-Each step either defines an OIA variant (Prop-valued definition following the
-pattern established in `Crypto/OIA.lean`) or states a computational reduction
-(also as a Prop, carried as an explicit hypothesis in downstream theorems).
+    TI-hard → ConcreteTensorOIA(ε_T) → ConcreteCEOIA(ε_C)
+            → ConcreteGIOIA(ε_G) → ConcreteOIA(ε)
+            → IND-1-CPA bound (ε)
+
+Each layer's hardness Prop is `Concrete*` (genuinely ε-smooth).
+The per-link reductions are the `*_viaEncoding` Props (Workstream
+G / Fix C), each naming an explicit encoder function.
 
 ## Main definitions
 
-* `Orbcrypt.TensorOIA` — deterministic OIA for tensor isomorphism under GL(n,F)³
-* `Orbcrypt.GIOIA` — deterministic OIA for graph isomorphism under S_n
-* `Orbcrypt.TensorOIAImpliesCEOIA` — TensorOIA → CEOIA reduction (Prop)
-* `Orbcrypt.CEOIAImpliesGIOIA` — CEOIA → GIOIA reduction (Prop)
-* `Orbcrypt.HardnessChain` — deterministic composite chain (TensorOIA → OIA)
-* `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c)
-* `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound probabilistic
-  tensor-OIA (post-Workstream-G Fix B: carries `SurrogateTensor F`)
+* `Orbcrypt.permuteAdj` — `S_n` action on adjacency functions
+  (preserved post-W6, used by `ConcreteGIOIA` and the Petrank–Roth
+  Karp-reduction chain).
+* `Orbcrypt.ConcreteGIOIA` — probabilistic GI-OIA (Workstream E2c).
+* `Orbcrypt.UniversalConcreteTensorOIA` — surrogate-bound
+  probabilistic tensor-OIA (Workstream G / Fix B: carries
+  `SurrogateTensor F`).
 * `Orbcrypt.ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
   `Orbcrypt.ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`,
-  `Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` — per-encoding
-  probabilistic reduction Props naming explicit encoder functions
-  (Workstream G Fix C, primary post-G vocabulary)
+  `Orbcrypt.ConcreteGIOIAImpliesConcreteOIA_viaEncoding` —
+  per-encoding probabilistic reduction Props naming explicit
+  encoder functions (Workstream G / Fix C).
 * `Orbcrypt.ConcreteHardnessChain` — packaged ε-bounded chain with
-  `SurrogateTensor` parameter and two encoder fields (Workstream G)
+  `SurrogateTensor` parameter and two encoder fields (Workstream
+  G).
 
 ## Main results
 
-* `Orbcrypt.hardness_chain_implies_security` — deterministic chain →
-  IND-1-CPA (vacuous on non-trivial schemes; see the Workstream J
-  "deterministic vs probabilistic" framing).
-* `Orbcrypt.hardness_chain_implies_security_distinct` — classical
-  distinct-challenge form of the deterministic chain corollary
-  (IsSecureDistinct). Release-facing: matches the literature's
-  IND-1-CPA game shape (Workstream K, audit finding
-  F-AUDIT-2026-04-21-M1).
-* `Orbcrypt.oia_from_hardness_chain` — TensorOIA + reductions → OIA.
-* `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` — probabilistic
-  chain composition threading advantage through the chain-image
-  `encCG ∘ encTC` (Workstream G).
-* `Orbcrypt.ConcreteHardnessChain.tight_one_exists` — non-vacuity witness
-  at `ε = 1` via `punitSurrogate F` + dimension-0 trivial encoders
-  (Workstream G).
+* `Orbcrypt.ConcreteHardnessChain.concreteOIA_from_chain` —
+  probabilistic chain composition threading advantage through the
+  chain-image `encCG ∘ encTC` (Workstream G).
+* `Orbcrypt.ConcreteHardnessChain.tight_one_exists` — non-vacuity
+  witness at `ε = 1` via `punitSurrogate F` + dimension-0 trivial
+  encoders (Workstream G); W4 of the 2026-05-06 structural review
+  adds `tight_one_exists_at_s2Surrogate` for the non-trivial
+  `S_2`-shaped surrogate.
 * `Orbcrypt.concrete_hardness_chain_implies_1cpa_advantage_bound` —
   ε-bounded IND-1-CPA advantage from the probabilistic chain
   (Workstream E5, post-G signature threads `SurrogateTensor`).
 
-## Reduction Chain
+## W6 deletion log
 
-```text
-TensorOIA        (strongest — no quasi-poly algorithm known)
-    |
-    | TensorOIAImpliesCEOIA (tensor-to-code encoding)
-    ↓
-  CEOIA           (LESS/MEDS hardness — NIST PQC candidates)
-    |
-    | CEOIAImpliesGIOIA (code-to-graph encoding)
-    ↓
-  GIOIA           (2^O(√(n log n)) — Babai 2015)
-    |
-    | GIOIAImpliesOIA (graph-to-orbit encoding)
-    ↓
-   OIA            (Orbcrypt's core assumption — Crypto/OIA.lean)
-    |
-    | oia_implies_1cpa (Phase 4 — fully proved)
-    ↓
-IND-1-CPA secure  (Theorems/OIAImpliesCPA.lean)
-```
+W6 of structural review 2026-05-06 (plan
+`docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1
+row 7) deleted the deterministic chain previously defined in this
+file:
+
+* W6.3: `oia_implies_1cpa`, `oia_implies_1cpa_distinct` (Theorems/
+  OIAImpliesCPA.lean); `hardness_chain_implies_security`,
+  `hardness_chain_implies_security_distinct`.
+* W6.5: `HardnessChain`, `oia_from_hardness_chain` (Tier 4).
+* W6.6: `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
+  `GIOIAImpliesOIA` (Tier 5 per-link).
+* W6.7: `TensorOIA`, `GIOIA`, `tensorOIA_symm`, `gioia_symm`
+  (Tier 6 per-layer; CEOIA in `Hardness/CodeEquivalence.lean`).
+
+The probabilistic chain is the sole security chain post-W6.
 
 ## References
 
@@ -102,44 +95,21 @@ namespace Orbcrypt
 variable {n : ℕ} {F : Type*}
 
 -- ============================================================================
--- Work Unit 12.6: Tensor-OIA Definition
+-- Permutation action on adjacency matrices (preserved post-W6).
 -- ============================================================================
+--
+-- W6.7 of structural review 2026-05-06 deleted the deterministic
+-- per-layer Props `TensorOIA`, `GIOIA` (and their `_symm` siblings,
+-- which were OIA-dependent). The probabilistic counterparts
+-- `ConcreteTensorOIA`, `ConcreteGIOIA`, and the `Universal*` Props
+-- carry the substantive ε-smooth content.
+--
+-- `permuteAdj` is preserved because it is `OIA`-independent: it's
+-- the underlying S_n action on adjacency matrices used by both
+-- `ConcreteGIOIA` and the Petrank–Roth Karp-reduction chain
+-- (`Orbcrypt/Hardness/PetrankRoth/`).
 
-section TensorOIADefinition
-
-variable [Field F]
-
-/-- Tensor OIA: orbit indistinguishability for the tensor isomorphism problem.
-
-    No Boolean function can distinguish elements from two different tensor
-    orbits under the GL(n,F)³ action. For non-isomorphic tensors T₀, T₁:
-
-      ∀ f : Tensor3 → Bool, ∀ g₀ g₁ ∈ GL³, f(g₀ • T₀) = f(g₁ • T₁)
-
-    This is the strongest OIA variant in the reduction chain. TI is believed
-    strictly harder than GI: no quasi-polynomial algorithm is known.
-
-    Follows the OIA pattern (`Crypto/OIA.lean`): a `Prop`-valued definition,
-    not an axiom. Theorems carry it as an explicit hypothesis. -/
-def TensorOIA (T₀ T₁ : Tensor3 n F) : Prop :=
-  ∀ (f : Tensor3 n F → Bool)
-    (g₀ g₁ : GL (Fin n) F × GL (Fin n) F × GL (Fin n) F),
-    f (g₀ • T₀) = f (g₁ • T₁)
-
-/-- TensorOIA is symmetric: if no function distinguishes orbits of T₀ and T₁,
-    the same holds with T₀ and T₁ swapped. -/
-theorem tensorOIA_symm {T₀ T₁ : Tensor3 n F}
-    (h : TensorOIA T₀ T₁) : TensorOIA T₁ T₀ := by
-  intro f g₀ g₁
-  exact (h f g₁ g₀).symm
-
-end TensorOIADefinition
-
--- ============================================================================
--- Work Unit 12.6 (continued): Graph OIA Definition
--- ============================================================================
-
-section GIOIADefinition
+section GraphActionDefinition
 
 /-- Permutation action on adjacency matrices: σ acts by permuting both
     row and column indices. This is the natural S_n action on graphs. -/
@@ -147,27 +117,7 @@ def permuteAdj (σ : Equiv.Perm (Fin n)) (adj : Fin n → Fin n → Bool) :
     Fin n → Fin n → Bool :=
   fun i j => adj (σ⁻¹ i) (σ⁻¹ j)
 
-/-- Graph OIA: orbit indistinguishability for graph isomorphism.
-
-    No Boolean function can distinguish permuted copies of two non-isomorphic
-    graphs. For graphs with adjacency functions adj₀, adj₁:
-
-      ∀ f, ∀ σ₀ σ₁ ∈ S_n, f(σ₀(adj₀)) = f(σ₁(adj₁))
-
-    The GI problem has a quasi-polynomial algorithm (Babai, 2015),
-    so GI-OIA is weaker than CE-OIA or TensorOIA. -/
-def GIOIA (adj₀ adj₁ : Fin n → Fin n → Bool) : Prop :=
-  ∀ (f : (Fin n → Fin n → Bool) → Bool)
-    (σ₀ σ₁ : Equiv.Perm (Fin n)),
-    f (permuteAdj σ₀ adj₀) = f (permuteAdj σ₁ adj₁)
-
-/-- GIOIA is symmetric. -/
-theorem gioia_symm {adj₀ adj₁ : Fin n → Fin n → Bool}
-    (h : GIOIA adj₀ adj₁) : GIOIA adj₁ adj₀ := by
-  intro f σ₀ σ₁
-  exact (h f σ₁ σ₀).symm
-
-end GIOIADefinition
+end GraphActionDefinition
 
 -- ============================================================================
 -- Work Unit 12.7: Reduction Chain
@@ -177,172 +127,35 @@ section ReductionChain
 
 variable [Field F]
 
-/-- Tensor-OIA implies CE-OIA under the tensor-to-code encoding.
+-- W6.6 of structural review 2026-05-06: the deterministic per-link
+-- reduction Props `TensorOIAImpliesCEOIA`, `CEOIAImpliesGIOIA`,
+-- `GIOIAImpliesOIA` (Phase 12 § 12.7) were deleted as part of the
+-- deterministic-chain removal scheduled for v0.4.0. The non-vacuous
+-- per-encoding probabilistic counterparts
+-- `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding`,
+-- `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`, and
+-- `ConcreteGIOIAImpliesConcreteOIA_viaEncoding` (Workstream G /
+-- Fix C) carry the substantive ε-smooth per-link content.
 
-    The encoding maps tensors to codes such that tensor isomorphism
-    corresponds to code equivalence, preserving orbit indistinguishability.
-    This step uses the structure tensor construction (Grochow & Qiao, 2021).
+-- W6.5 of structural review 2026-05-06: the deterministic chain
+-- composition `HardnessChain` (the `Prop`-valued composite of
+-- `TensorOIA` + per-link Props + GIOIAImpliesOIA) and the chain
+-- implication `oia_from_hardness_chain` were deleted as part of
+-- the deterministic-chain removal scheduled for v0.4.0. The non-
+-- vacuous counterpart `ConcreteHardnessChain` (with its
+-- `concreteOIA_from_chain` composition) carries the substantive
+-- ε-smooth hardness-chain content.
 
-    Stated as a `Prop`-valued definition: the encoding proof requires
-    explicit algebraic constructions beyond this formalization's scope.
-    Results carry this as an explicit hypothesis.
-
-    **Scaffolding disclosure (audit 2026-04-21 finding L3 / Workstream M).**
-    The existential `∃ (k : ℕ) (C₀ C₁ : Finset (Fin k → F)), CEOIA C₀ C₁`
-    admits a trivial satisfier: take `k = 0, C₀ = C₁ = ∅`; then `CEOIA`
-    is vacuously true because no codeword `c₀ ∈ ∅` exists. This
-    deterministic reduction Prop is therefore *algebraic scaffolding*,
-    not a quantitative hardness transfer. The chain containing it is
-    already vacuous on non-trivial schemes via Workstream J's
-    "deterministic vs probabilistic" release framing (`HardnessChain`
-    and `oia_from_hardness_chain` carry the deterministic `TensorOIA`
-    which is itself `False` on non-trivial instances). For the
-    non-vacuous counterpart carrying a genuinely ε-smooth advantage
-    transfer, cite the Workstream G per-encoding reduction Prop
-    `ConcreteTensorOIAImpliesConcreteCEOIA_viaEncoding` instead. -/
-def TensorOIAImpliesCEOIA : Prop :=
-  ∀ (m : ℕ) (T₀ T₁ : Tensor3 m F),
-    @TensorOIA m F _ T₀ T₁ →
-    ∃ (k : ℕ) (C₀ C₁ : Finset (Fin k → F)),
-      CEOIA C₀ C₁
-
-/-- CE-OIA implies GI-OIA under the code-to-graph encoding.
-
-    The encoding maps codes to graphs such that code equivalence
-    corresponds to graph isomorphism, preserving orbit indistinguishability.
-    Since CE is at least as hard as GI (GI ≤_p CE), this direction always
-    exists.
-
-    Stated as a `Prop`-valued definition following the OIA pattern.
-
-    **Scaffolding disclosure (audit 2026-04-21 finding L3 / Workstream M).**
-    Like `TensorOIAImpliesCEOIA`, the existential
-    `∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool), GIOIA adj₀ adj₁`
-    admits a trivial satisfier: take `k = 0`; the 0-vertex adjacency
-    functions `adj₀ = adj₁ = fun _ _ => false` satisfy `GIOIA` vacuously
-    (there is no permutation-action content at dimension 0). This
-    deterministic Prop is *algebraic scaffolding*. The non-vacuous
-    counterpart is `ConcreteCEOIAImpliesConcreteGIOIA_viaEncoding`
-    (Workstream G / Fix C), which names an explicit encoder and forces
-    callers to supply a concrete discharge at ε < 1. -/
-def CEOIAImpliesGIOIA : Prop :=
-  ∀ (m : ℕ) (C₀ C₁ : Finset (Fin m → F)),
-    CEOIA C₀ C₁ →
-    ∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool),
-      GIOIA adj₀ adj₁
-
-/-- GI-OIA implies the scheme-level OIA.
-
-    The encoding maps graph isomorphism instances to orbit encryption
-    scheme instances. This is the step where CFI graph constructions
-    (Cai-Furer-Immerman, 1992) provide hard instances for the scheme.
-
-    Stated as a `Prop`-valued definition following the OIA pattern.
-
-    **Scaffolding disclosure (audit 2026-04-21 finding L3 / Workstream M).**
-    This Prop's hypothesis is itself an existential that admits a
-    trivial satisfier (`k = 0`; see `CEOIAImpliesGIOIA`'s docstring);
-    its conclusion is the deterministic `OIA scheme`, which is
-    vacuously `False` on every non-trivial scheme. Both halves are
-    therefore *scaffolding*: the Prop encodes the *shape* of the chain
-    step but transfers no quantitative hardness. The non-vacuous
-    counterpart is `ConcreteGIOIAImpliesConcreteOIA_viaEncoding`
-    (Workstream G / Fix C), whose hypothesis is the chain-image GI
-    hardness at a caller-supplied encoder pair and whose conclusion is
-    `ConcreteOIA scheme ε`. -/
-def GIOIAImpliesOIA {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) : Prop :=
-  (∃ (k : ℕ) (adj₀ adj₁ : Fin k → Fin k → Bool), GIOIA adj₀ adj₁) →
-    OIA scheme
-
-/-- The full hardness chain: TensorOIA, through all reductions, implies
-    the scheme-level OIA.
-
-    This packages all individual reductions into a single composite Prop.
-    A scheme satisfying this chain inherits the hardness of TI. -/
-def HardnessChain {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) : Prop :=
-  -- Tensor-level indistinguishability is provided
-  (∃ (m : ℕ) (T₀ T₁ : Tensor3 m F), @TensorOIA m F _ T₀ T₁) ∧
-  -- All reductions transfer indistinguishability
-  @TensorOIAImpliesCEOIA F _ ∧
-  @CEOIAImpliesGIOIA F ∧
-  GIOIAImpliesOIA scheme
-
-/-- The full chain implies OIA: composing TensorOIA with the reduction
-    chain yields the scheme-level OIA.
-
-    **Proof:** Unfold the chain, apply each reduction in sequence, then
-    apply GIOIAImpliesOIA to obtain OIA for the scheme. -/
-theorem oia_from_hardness_chain
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := F) scheme) :
-    OIA scheme := by
-  obtain ⟨⟨m, T₀, T₁, hTensor⟩, hTI_CE, hCE_GI, hGI_OIA⟩ := hChain
-  -- Step 1: TensorOIA → CEOIA
-  obtain ⟨k₁, C₀, C₁, hCEOIA⟩ := hTI_CE m T₀ T₁ hTensor
-  -- Step 2: CEOIA → GIOIA
-  obtain ⟨k₂, adj₀, adj₁, hGIOIA⟩ := hCE_GI k₁ C₀ C₁ hCEOIA
-  -- Step 3: GIOIA → OIA
-  exact hGI_OIA ⟨k₂, adj₀, adj₁, hGIOIA⟩
-
-/-- The culmination: the full hardness chain implies IND-1-CPA security.
-
-    This composes `oia_from_hardness_chain` with `oia_implies_1cpa`
-    (proved in Phase 4) to derive security from TI-hardness.
-
-    **Security guarantee:** If TI is hard (no efficient algorithm
-    distinguishes tensor orbits) and the reductions are sound, then
-    the Orbcrypt scheme is IND-1-CPA secure. -/
-theorem hardness_chain_implies_security
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := F) scheme) :
-    IsSecure scheme :=
-  oia_implies_1cpa scheme (oia_from_hardness_chain scheme hChain)
-
-/-- **Distinct-challenge IND-1-CPA from the hardness chain (classical game).**
-
-    Chain-level parallel of `oia_implies_1cpa_distinct`: composing
-    `hardness_chain_implies_security` with
-    `isSecure_implies_isSecureDistinct` delivers the classical
-    distinct-challenge security predicate `IsSecureDistinct` from a
-    `HardnessChain (F := F) scheme` hypothesis.
-
-    **Why this corollary.** Consumers reading "TI-hardness implies
-    IND-1-CPA" through the lens of the literature expect the
-    distinct-challenge form (the classical IND-1-CPA challenger rejects
-    `(m, m)` collisions before sampling). `IsSecure` is strictly
-    stronger — it demands security even against the degenerate
-    collision choice. External summaries that cite TI-hardness as the
-    security basis should prefer this theorem over
-    `hardness_chain_implies_security`.
-
-    **Scaffolding disclosure.** Like `hardness_chain_implies_security`,
-    this corollary carries the deterministic `HardnessChain` as a
-    hypothesis. `HardnessChain` is composed from the deterministic
-    `TensorOIA` / `CEOIA` / `GIOIA` / `OIA` predicates, each of which
-    is **False on every non-trivial scheme**; consequently the
-    conclusion is vacuously true on production instances. For the
-    genuinely ε-smooth distinct-challenge bound, cite the probabilistic
-    chain (`concrete_hardness_chain_implies_1cpa_advantage_bound`
-    composed with `indCPAAdvantage_collision_zero`, which shows the
-    `≤ ε` bound holds unconditionally — the distinct-challenge
-    restriction transfers for free since the collision branch yields
-    advantage 0). -/
-theorem hardness_chain_implies_security_distinct
-    {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M)
-    (hChain : HardnessChain (F := F) scheme) :
-    IsSecureDistinct scheme :=
-  isSecure_implies_isSecureDistinct scheme
-    (hardness_chain_implies_security scheme hChain)
+-- W6.3 of structural review 2026-05-06: the deterministic chain
+-- composition `hardness_chain_implies_security` and its distinct-
+-- challenge sibling `hardness_chain_implies_security_distinct`
+-- (formerly defined here, Workstream K3) were deleted as part of
+-- the deterministic-chain removal scheduled for v0.4.0. The non-
+-- vacuous probabilistic counterpart
+-- `concrete_hardness_chain_implies_1cpa_advantage_bound` (and its
+-- `_distinct` companion) carries the substantive ε-smooth content;
+-- the deterministic-chain compositions were vacuously true on
+-- every non-trivial scheme.
 
 end ReductionChain
 
@@ -908,6 +721,54 @@ theorem tight_one_exists
     (h_tensor := fun T₀ T₁ => concreteTensorOIA_one T₀ T₁)
     (h_tc := concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one
       (punitSurrogate F) encTC)
+    (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
+      (F := F) encCG)
+    (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
+      scheme encTC encCG)⟩
+
+/-- **`s2Surrogate` companion non-vacuity witness (W4 of structural
+    review 2026-05-06).** The chain is inhabited at `ε = 1` with the
+    `S_2`-shaped surrogate `s2Surrogate F` (cardinality 2) and
+    dimension-0 trivial encoders. Same content shape as
+    `tight_one_exists`, parameterised over `s2Surrogate F` instead of
+    `punitSurrogate F`.
+
+    **Why this exists alongside `tight_one_exists`.** A reader
+    encountering `tight_one_exists` alone might conclude the chain is
+    only inhabitable at `PUnit` (cardinality 1, the trivial group).
+    `s2Surrogate` (cardinality 2, the smallest non-trivial finite
+    group) breaks that misreading at the type level: the chain
+    accepts any `SurrogateTensor F` whose action and encoders satisfy
+    the discharge profile, and `s2Surrogate` exhibits a non-trivial
+    instance.
+
+    **What this does NOT prove.** Cryptographic ε < 1 hardness
+    transfer remains research-scope (R-15-residual-CE-reverse and
+    R-15-residual-TI-reverse). The action is trivial (`g • T := T`),
+    so the bound is still ε = 1 — only the surrogate cardinality
+    moves from 1 to 2. See `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`
+    § 1 row 4 for the rationale.
+
+    **Construction.** Identical to `tight_one_exists` except the `S`
+    parameter is `s2Surrogate F`. The discharge functions
+    (`concreteTensorOIA_one`, the three `*_viaEncoding_one_one`
+    discharges) are surrogate-polymorphic, so the same proof
+    template applies. -/
+theorem tight_one_exists_at_s2Surrogate
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (F : Type*) [Fintype F] [DecidableEq F] :
+    Nonempty (ConcreteHardnessChain scheme F (s2Surrogate F) 1) :=
+  let encTC : Tensor3 0 F → Finset (Fin 0 → F) := fun _ => ∅
+  let encCG : Finset (Fin 0 → F) → (Fin 0 → Fin 0 → Bool) :=
+    fun _ _ _ => false
+  ⟨tight (S := s2Surrogate F) (nT := 0) (mC := 0) (kG := 0)
+    (encTC := encTC)
+    (encCG := encCG)
+    (h_tensor := fun T₀ T₁ => concreteTensorOIA_one T₀ T₁)
+    (h_tc := concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one
+      (s2Surrogate F) encTC)
     (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
       (F := F) encCG)
     (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
