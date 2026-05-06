@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.7"
+  version := v!"0.3.8"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,22 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W5 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 5
+-- + § 1 row 6): three-way split of `CLAUDE.md` plus public-key
+-- framing rebalance. `CLAUDE.md` shrinks from 9,061 → 869 lines;
+-- new files: `docs/API_SURFACE.md` (~400 lines) carries the
+-- clustered headline-theorem tables (symmetric primary, hardness
+-- chain quantitative, public-key research scaffolding, structural /
+-- integrity API, distinct-challenge corollaries, vacuity witnesses
+-- + scaffolding) and the regenerable canonical state;
+-- `docs/dev_history/WORKSTREAM_CHANGELOG.md` (~8,276 lines) carries
+-- the historical workstream-snapshot prose extracted verbatim from
+-- the pre-W5.2 `CLAUDE.md`'s "Active development status" section
+-- (lines 880–9100). Cross-references in `README.md` and
+-- `Orbcrypt.lean`'s module-header docstring point at the new
+-- documents. Documentation-only change; no Lean source semantics
+-- modified. Patch bump 0.3.7 → 0.3.8.
 -- W4 of structural review 2026-05-06 (plan
 -- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 4):
 -- tractable Conditional-Prop wins replacing PUnit-collapse witnesses

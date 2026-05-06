@@ -124,6 +124,17 @@ encryption and hybrid modes layer (Phase 10), the hardness
 alignment with NIST PQC candidates (Phase 12), and the public-key
 extension scaffolding (Phase 13).
 
+**Canonical API reference.** The user-facing "what does the
+formalization deliver" reference is `docs/API_SURFACE.md` (clustered
+headline-theorem table with release-messaging Status columns,
+module dependency graph, formalization roadmap, axiom-transparency
+summary, and the live headline metric anchor). The dependency-graph
+section below is the source-of-truth structural view — duplicate
+information appears in `docs/API_SURFACE.md` § 3 for documentation
+parity. The historical record of how the API surface evolved
+(per-workstream snapshots, audit-pass cleanups, phase-completion
+logs) lives in `docs/dev_history/WORKSTREAM_CHANGELOG.md`.
+
 ## Module Dependency Graph
 
 External dependencies (Mathlib):

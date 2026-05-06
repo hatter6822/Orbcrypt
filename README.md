@@ -78,8 +78,12 @@ The Orbit Indistinguishability Assumption (OIA) is a `Prop`-valued
 
 The full release-messaging classification (Standalone / Quantitative /
 Conditional / Scaffolding) is in
-[`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) and the
-`CLAUDE.md` "Three core theorems" table.
+[`docs/API_SURFACE.md`](docs/API_SURFACE.md)'s clustered headline-
+theorem table (symmetric primary / hardness chain quantitative /
+public-key research scaffolding / structural API / distinct-challenge
+corollaries / vacuity witnesses).
+[`docs/VERIFICATION_REPORT.md`](docs/VERIFICATION_REPORT.md) carries
+the prose verification audit.
 
 ---
 
@@ -136,6 +140,10 @@ Orbcrypt/
 │   └── Optimization/             Two-phase decryption + orbit-constancy
 ├── implementation/gap/           GAP reference: keygen, KEM, params, tests, sweep
 ├── docs/
+│   ├── API_SURFACE.md            Canonical "what does the formalization deliver"
+│   │                             reference: clustered headline-theorem table,
+│   │                             dependency graph, formalization roadmap, axiom
+│   │                             transparency, headline metric anchor
 │   ├── DEVELOPMENT.md            Master scheme specification (~56 KB)
 │   ├── POE.md                    High-level concept exposition
 │   ├── COUNTEREXAMPLE.md         Invariant-attack vulnerability analysis
@@ -151,10 +159,16 @@ Orbcrypt/
 │   ├── research/                 Mathematical-research reading notes
 │   └── dev_history/              Completed workstream planning documents (historical record),
 │                                 incl. formalization/ (master Lean 4 roadmap + Phase 1-6 plans)
-├── scripts/                      Setup + audit scripts (incl. `audit_phase_16.lean`)
+│                                 and WORKSTREAM_CHANGELOG.md (frozen archive of
+│                                 every workstream landing across audit cycles)
+├── scripts/                      Setup + audit scripts (incl. `audit_phase_16.lean`,
+│                                 `audit_hypothesis_consumption.py`,
+│                                 `generate_test_vectors.lean`)
 ├── lakefile.lean                 Lake build config (Mathlib pin, linter pins)
 ├── lean-toolchain                Lean version pin (v4.30.0-rc1)
-├── CLAUDE.md                     Development guidance + per-workstream change log
+├── CLAUDE.md                     Development guidance + project conventions
+│                                 (slim, ~870 lines; historical changelog moved
+│                                 to docs/dev_history/WORKSTREAM_CHANGELOG.md)
 └── LICENSE                       MIT
 ```
 
