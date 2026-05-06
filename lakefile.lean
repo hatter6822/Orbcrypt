@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.6"
+  version := v!"0.3.7"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,38 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W4 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 4):
+-- tractable Conditional-Prop wins replacing PUnit-collapse witnesses
+-- with non-trivial counterparts. Three deliverables:
+--   (1) `Orbcrypt/Hardness/TensorAction.lean` gains `s2Surrogate F`
+--       (cardinality 2; carrier = `Equiv.Perm (Fin 2)`) and the
+--       cardinality-distinction lemma `s2Surrogate_carrier_card`.
+--       The action remains trivial (`g • T := T`) — the win is the
+--       structural break of the PUnit-only reading at the type
+--       level, not a quantitative ε-bound improvement.
+--   (2) `Orbcrypt/Hardness/Reductions.lean` gains
+--       `tight_one_exists_at_s2Surrogate`, the chain-inhabitation
+--       analogue of `tight_one_exists` parameterised over the
+--       `s2Surrogate` instead of `punitSurrogate`. Confirms the
+--       chain accepts non-trivial surrogates without further
+--       infrastructure — only the surrogate value moves from
+--       PUnit to S_2.
+--   (3) `scripts/audit_phase_16.lean`'s `R07NonVacuity` namespace
+--       gains `combinerDistinguisherAdvantage_eq_half_on_R07`,
+--       proving the advantage on the R-07 fixture is *exactly*
+--       `1/2` (matching the existing `_ge_inv_card` lower bound,
+--       confirming the bound is attained / tight). The proof
+--       routes through the new public bridge lemma
+--       `probTrue_orbitDist_eq` (W4.3 promoted from private in
+--       `CombineImpossibility.lean`) + `probTrue_uniformPMF_card`
+--       to compute `(filter card)/|G| = 1/2` on the basepoint
+--       orbit; the target side reuses
+--       `probTrue_combinerDistinguisher_target_eq_zero`.
+-- Each new declaration depends only on the standard Lean trio.
+-- Genuine ε < 1 *cryptographic* discharges (Petrank-Roth reverse
+-- direction, Grochow-Qiao rigidity) remain research-scope. Patch
+-- bump 0.3.6 → 0.3.7.
 -- W3C (sub-unit) of structural review 2026-05-06 (plan
 -- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 3):
 -- end-to-end CI integration of the GAP–Lean canonical-image

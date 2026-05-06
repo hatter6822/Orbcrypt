@@ -538,9 +538,18 @@ private theorem probTrue_map_id_eq {α : Type*}
   rw [PMF.toOuterMeasure_map_apply]
   rfl
 
-/-- Helper: `probTrue` through an `orbitDist` with a distinguisher
-    factors as `probTrue uniformPMF (D ∘ orbit action)`. -/
-private theorem probTrue_orbitDist_eq
+/-- **Bridge lemma** (W4.3 promoted from private, structural review
+    2026-05-06): `probTrue` of a `orbitDist` factors through the
+    underlying `uniformPMF G` via the orbit action.
+
+    `probTrue (orbitDist x) D = probTrue (uniformPMF G) (D ∘ (· • x))`
+
+    Composed with `probTrue_uniformPMF_card`, this gives an explicit
+    `(filter card)/|G|` expression for the orbit-distribution
+    probTrue, useful for concrete fixture computations (W4.3
+    leverages this to derive the exact `1/2` advantage on the R-07
+    fixture). -/
+theorem probTrue_orbitDist_eq
     {G : Type*} {X : Type*}
     [Group G] [Fintype G] [Nonempty G] [MulAction G X]
     (x : X) (D : X → Bool) :

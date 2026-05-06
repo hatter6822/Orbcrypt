@@ -568,6 +568,10 @@ open Orbcrypt
 #print axioms surrogateTensor_nonempty
 #print axioms surrogateTensor_mulAction
 #print axioms punitSurrogate
+-- W4.1 of structural review 2026-05-06: non-trivial S_2-shaped
+-- surrogate (cardinality 2) and the cardinality-distinction lemma.
+#print axioms s2Surrogate
+#print axioms s2Surrogate_carrier_card
 
 -- Hardness.Encoding (Workstream E3-prep)
 #print axioms OrbitPreservingEncoding
@@ -612,6 +616,9 @@ open Orbcrypt
 #print axioms ConcreteHardnessChain.concreteOIA_from_chain
 #print axioms ConcreteHardnessChain.tight
 #print axioms ConcreteHardnessChain.tight_one_exists
+-- W4.2 of structural review 2026-05-06: same chain inhabitation
+-- shape but with the `s2Surrogate` (cardinality 2, non-trivial).
+#print axioms ConcreteHardnessChain.tight_one_exists_at_s2Surrogate
 #print axioms concrete_hardness_chain_implies_1cpa_advantage_bound
 -- Workstream K3 + K4 companion (F-AUDIT-2026-04-21-M1):
 -- distinct-challenge IND-1-CPA corollaries in the hardness-chain layer
@@ -741,6 +748,13 @@ open Orbcrypt
 #print axioms probTrue_combinerDistinguisher_target_eq_zero
 #print axioms combinerDistinguisherAdvantage_ge_inv_card
 #print axioms no_concreteOIA_below_inv_card_of_combiner
+-- W4.3 of structural review 2026-05-06: bridge lemma promoted from
+-- private (the W4.3 audit-script witness needs it for the tight
+-- R-07 advantage). The W4.3 headline `_eq_half_on_R07` lives inside
+-- the `R07NonVacuity` namespace; its `#print axioms` is emitted at
+-- the bottom of that namespace (forward references aren't allowed
+-- for `#print axioms`).
+#print axioms probTrue_orbitDist_eq
 
 -- ============================================================================
 -- §12  Non-vacuity witnesses
@@ -5512,6 +5526,142 @@ example :
 example (ε : ℝ) (hOIA : ConcreteOIA schemeR07 ε) :
     (1 : ℝ) / (Fintype.card (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) : ℝ) ≤ ε :=
   no_concreteOIA_below_inv_card_of_combiner schemeR07 true combR07 false hND_R07 ε hOIA
+
+-- ============================================================================
+-- Workstream W4.3 of structural review 2026-05-06: tight advantage on R-07
+-- ============================================================================
+--
+-- W4.3 strengthens the existing `_ge_inv_card` lower bound (1/|G| =
+-- 1/2 on this fixture) to an EXACT equality: the advantage on the
+-- R-07 fixture is *precisely* 1/2, demonstrating that the lower
+-- bound is attained (i.e., tight) on a concrete instance.
+--
+-- Proof sketch:
+--   probTrue on basepoint orbit = (filter card)/|G| = 1/2.
+--   The basepoint's orbit `{![T,F], ![F,T]}` has 2 elements; the
+--   distinguisher `decide (· = ![T,F])` returns `true` on exactly
+--   one of them. Under uniform group sampling (|G| = 2), probTrue =
+--   ½. probTrue on target orbit = 0 (by `combR07_cross_constant_false`).
+--   Advantage = |½ − 0| = ½.
+
+/-- The cardinality of `↥⊤ : Subgroup (Equiv.Perm (Fin 2))` is `2`.
+    Witnessed by `decide` on the small finite type. -/
+private theorem card_top_perm_fin2 :
+    Fintype.card (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))) = 2 := by
+  decide
+
+/-- The combiner-distinguisher `decide (combR07.combine bp (g • bp) =
+    combR07.combine bp bp)` reduces to `decide (g • bp = bp)`, since
+    `combR07.combine` is projection on the second argument. -/
+private theorem combinerDistinguisher_combR07_at :
+    ∀ g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))),
+      combinerDistinguisher combR07 (g • schemeR07.reps true) =
+        decide (g • schemeR07.reps true = schemeR07.reps true) := by
+  intro g
+  unfold combinerDistinguisher
+  rw [combR07_combine_eq, combR07_combine_eq]
+
+/-- On the basepoint orbit, the combiner-distinguisher's `probTrue`
+    is exactly `1/2`. The basepoint orbit `{![T,F], ![F,T]}` has 2
+    elements; the distinguisher returns `true` only on `![T,F]`
+    itself. Under uniform sampling of `↥⊤ : Subgroup (Equiv.Perm
+    (Fin 2))` (cardinality 2), exactly 1 of the 2 group elements
+    fires the distinguisher.
+
+    **Proof structure.** Bridge `probTrue (orbitDist x) D` to
+    `probTrue (uniformPMF G) (D ∘ (· • x))` via the existing
+    `probTrue_orbitDist_eq` helper, then to `(filter card) / |G|`
+    via `probTrue_uniformPMF_card`. The filter
+    `{g : ↥⊤ | g • ![T,F] = ![T,F]}` has cardinality 1
+    (only the identity stabilises ![T,F]). -/
+private theorem probTrue_combinerDistinguisher_basePoint_R07 :
+    probTrue (orbitDist (G := ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+        (schemeR07.reps true)) (combinerDistinguisher combR07)
+      = (1 : ENNReal) / 2 := by
+  -- Step 1: Bridge to uniformPMF over the group.
+  rw [show probTrue (orbitDist (G := ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+            (schemeR07.reps true)) (combinerDistinguisher combR07)
+        = probTrue (uniformPMF (↥(⊤ : Subgroup (Equiv.Perm (Fin 2)))))
+            (fun g => combinerDistinguisher combR07 (g • schemeR07.reps true))
+        from probTrue_orbitDist_eq _ _]
+  -- Step 2: Reduce the inner distinguisher to `decide (g • bp = bp)`
+  -- via `funext` + `combinerDistinguisher_combR07_at`.
+  conv_lhs => rw [show
+      (fun g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))) =>
+          combinerDistinguisher combR07 (g • schemeR07.reps true))
+        = (fun g => decide (g • schemeR07.reps true =
+            schemeR07.reps true))
+      from funext combinerDistinguisher_combR07_at]
+  -- Step 3: Apply `probTrue_uniformPMF_card`.
+  rw [probTrue_uniformPMF_card]
+  -- Step 4: Cardinalities. |G| = 2 by `card_top_perm_fin2`. Filter
+  -- cardinality is 1 (only identity stabilises ![T,F]).
+  rw [card_top_perm_fin2]
+  -- Filter card = 1.
+  have h_filter_card :
+      (Finset.univ.filter (fun g : ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))) =>
+          decide (g • schemeR07.reps true = schemeR07.reps true) = true)).card
+      = 1 := by
+    -- The filter is `{g : ↥⊤ | g • bp = bp}`. With `bp = ![T,F]`,
+    -- only the identity (1 ∈ ↥⊤) is in the filter; swap moves
+    -- ![T,F] to ![F,T] ≠ ![T,F] (per `swapR07_smul_TF` +
+    -- `combR07_intra`).
+    --
+    -- Direct evaluation: rewrite `schemeR07.reps true` to the
+    -- concrete bitstring, then decide.
+    rw [schemeR07_reps, repsR07_true]
+    -- Goal: card of {g : ↥⊤ | g • ![T,F] = ![T,F]} = 1.
+    decide
+  rw [h_filter_card]
+  -- Goal: (1 : ENNReal) / 2 = (1 : ENNReal) / 2. Reflexivity.
+  norm_cast
+
+/-- On the target orbit, the combiner-distinguisher's `probTrue` is
+    exactly `0`. Re-export of the existing
+    `probTrue_combinerDistinguisher_target_eq_zero` specialised to
+    the R-07 fixture. -/
+private theorem probTrue_combinerDistinguisher_target_R07 :
+    probTrue (orbitDist (G := ↥(⊤ : Subgroup (Equiv.Perm (Fin 2))))
+        (schemeR07.reps false)) (combinerDistinguisher combR07)
+      = 0 :=
+  probTrue_combinerDistinguisher_target_eq_zero
+    schemeR07 true combR07 false combR07_cross_constant_false
+
+/-- **W4.3 headline witness.** The combiner-distinguisher's
+    cross-orbit advantage on the R-07 fixture (`S_2 ⤳ Bitstring 2`,
+    weight-1 vs weight-0 orbits, projection-on-second-argument
+    combiner) is **exactly** `1/2`. This shows the existing
+    `combinerDistinguisherAdvantage_ge_inv_card` lower bound is
+    attained (tight) on a concrete in-tree fixture.
+
+    **Significance.** The `_ge_inv_card` bound is a sufficient-
+    condition refutation of `ConcreteOIA scheme ε` for ε <
+    1/|G|. W4.3 confirms the bound is non-trivially achievable
+    (as opposed to vacuously satisfied) on the R-07 model.
+
+    **Composition with `concrete_combiner_advantage_bounded_by_oia`.**
+    Composed with the upper bound, this gives `1/2 ≤ ε` for every
+    ε such that `ConcreteOIA schemeR07 ε` holds — i.e.,
+    `ConcreteOIA schemeR07` is impossible at any ε < 1/2 on this
+    fixture. -/
+theorem combinerDistinguisherAdvantage_eq_half_on_R07 :
+    combinerDistinguisherAdvantage schemeR07 true combR07 true false
+      = (1 : ℝ) / 2 := by
+  rw [combinerDistinguisherAdvantage_eq, advantage]
+  rw [probTrue_combinerDistinguisher_basePoint_R07,
+      probTrue_combinerDistinguisher_target_R07]
+  -- Goal: |((1 : ℝ≥0∞)/2).toReal - (0 : ℝ≥0∞).toReal| = 1/2.
+  simp [ENNReal.toReal_div, abs_of_pos]
+
+-- W4.3 audit-script axiom dump (placed inside the namespace so the
+-- short name `combinerDistinguisherAdvantage_eq_half_on_R07`
+-- resolves; the helpers are also dumped to confirm each is on the
+-- standard Lean trio).
+#print axioms card_top_perm_fin2
+#print axioms combinerDistinguisher_combR07_at
+#print axioms probTrue_combinerDistinguisher_basePoint_R07
+#print axioms probTrue_combinerDistinguisher_target_R07
+#print axioms combinerDistinguisherAdvantage_eq_half_on_R07
 
 end R07NonVacuity
 

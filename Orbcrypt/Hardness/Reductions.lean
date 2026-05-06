@@ -913,6 +913,54 @@ theorem tight_one_exists
     (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
       scheme encTC encCG)⟩
 
+/-- **`s2Surrogate` companion non-vacuity witness (W4 of structural
+    review 2026-05-06).** The chain is inhabited at `ε = 1` with the
+    `S_2`-shaped surrogate `s2Surrogate F` (cardinality 2) and
+    dimension-0 trivial encoders. Same content shape as
+    `tight_one_exists`, parameterised over `s2Surrogate F` instead of
+    `punitSurrogate F`.
+
+    **Why this exists alongside `tight_one_exists`.** A reader
+    encountering `tight_one_exists` alone might conclude the chain is
+    only inhabitable at `PUnit` (cardinality 1, the trivial group).
+    `s2Surrogate` (cardinality 2, the smallest non-trivial finite
+    group) breaks that misreading at the type level: the chain
+    accepts any `SurrogateTensor F` whose action and encoders satisfy
+    the discharge profile, and `s2Surrogate` exhibits a non-trivial
+    instance.
+
+    **What this does NOT prove.** Cryptographic ε < 1 hardness
+    transfer remains research-scope (R-15-residual-CE-reverse and
+    R-15-residual-TI-reverse). The action is trivial (`g • T := T`),
+    so the bound is still ε = 1 — only the surrogate cardinality
+    moves from 1 to 2. See `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md`
+    § 1 row 4 for the rationale.
+
+    **Construction.** Identical to `tight_one_exists` except the `S`
+    parameter is `s2Surrogate F`. The discharge functions
+    (`concreteTensorOIA_one`, the three `*_viaEncoding_one_one`
+    discharges) are surrogate-polymorphic, so the same proof
+    template applies. -/
+theorem tight_one_exists_at_s2Surrogate
+    {G : Type*} {X : Type*} {M : Type*}
+    [Group G] [Fintype G] [Nonempty G] [MulAction G X] [DecidableEq X]
+    (scheme : OrbitEncScheme G X M)
+    (F : Type*) [Fintype F] [DecidableEq F] :
+    Nonempty (ConcreteHardnessChain scheme F (s2Surrogate F) 1) :=
+  let encTC : Tensor3 0 F → Finset (Fin 0 → F) := fun _ => ∅
+  let encCG : Finset (Fin 0 → F) → (Fin 0 → Fin 0 → Bool) :=
+    fun _ _ _ => false
+  ⟨tight (S := s2Surrogate F) (nT := 0) (mC := 0) (kG := 0)
+    (encTC := encTC)
+    (encCG := encCG)
+    (h_tensor := fun T₀ T₁ => concreteTensorOIA_one T₀ T₁)
+    (h_tc := concreteTensorOIAImpliesConcreteCEOIA_viaEncoding_one_one
+      (s2Surrogate F) encTC)
+    (h_cg := concreteCEOIAImpliesConcreteGIOIA_viaEncoding_one_one
+      (F := F) encCG)
+    (h_go := concreteGIOIAImpliesConcreteOIA_viaEncoding_one_one
+      scheme encTC encCG)⟩
+
 end ConcreteHardnessChain
 
 -- ============================================================================
