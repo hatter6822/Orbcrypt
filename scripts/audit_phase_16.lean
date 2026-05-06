@@ -119,7 +119,7 @@ open Orbcrypt
 #print axioms isSecure_implies_isSecureDistinct
 
 -- OIA
-#print axioms OIA
+-- W6.8 of structural review 2026-05-06: deterministic OIA Prop deleted.
 -- W6.1 of structural review 2026-05-06: the deterministic-OIA
 -- vacuity witness `det_oia_false_of_distinct_reps` (audit
 -- 2026-04-23 finding C-07) was deleted as part of the
@@ -265,7 +265,7 @@ open Orbcrypt
 #print axioms kemHasAdvantage
 #print axioms KEMIsSecure
 #print axioms kemIsSecure_iff
-#print axioms KEMOIA
+-- W6.8 of structural review 2026-05-06: deterministic KEMOIA Prop deleted.
 -- W6.1 of structural review 2026-05-06: the deterministic-KEMOIA
 -- vacuity witness `det_kemoia_false_of_nontrivial_orbit` (audit
 -- 2026-04-23 finding E-06) was deleted as part of the
@@ -730,12 +730,16 @@ open Orbcrypt
 -- PublicKey.CombineImpossibility (Workstream E6)
 #print axioms GEquivariantCombiner
 #print axioms NonDegenerateCombiner
-#print axioms oia_forces_combine_constant_in_snd
-#print axioms oia_forces_combine_constant_on_orbit
+-- W6.8 of structural review 2026-05-06: deterministic-OIA
+-- combiner-breaks theorems (`equivariant_combiner_breaks_oia`,
+-- `oia_forces_combine_constant_in_snd`,
+-- `oia_forces_combine_constant_on_orbit`,
+-- `oblivious_sample_equivariant_obstruction`) were deleted along
+-- with the deterministic `OIA` Prop. The probabilistic counterpart
+-- `concrete_combiner_advantage_bounded_by_oia` (Workstream E6,
+-- below) carries the ε-smooth content.
 #print axioms GEquivariantCombiner.combine_diagonal_smul
 #print axioms GEquivariantCombiner.combine_section_form
-#print axioms equivariant_combiner_breaks_oia
-#print axioms oblivious_sample_equivariant_obstruction
 #print axioms combinerDistinguisher
 #print axioms combinerDistinguisher_basePoint
 #print axioms combinerDistinguisher_eq

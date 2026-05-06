@@ -160,42 +160,12 @@ theorem kemIsSecure_iff [Group G] [MulAction G X] [DecidableEq X]
     intro hAll A ⟨g₀, g₁, hNeq⟩
     exact hNeq (hAll A g₀ g₁)
 
--- ============================================================================
--- Work Unit 7.5: KEM-OIA Definition
--- ============================================================================
-
-/--
-KEM variant of the Orbit Indistinguishability Assumption.
-
-**Single-conjunct form (audit F-AUDIT-2026-04-21-M6 / Workstream L5,
-2026-04-22).** Previously this definition carried a second "key
-uniformity" conjunct asserting that the derived key is constant
-across the orbit. That conjunct is **unconditionally provable** from
-`canonical_isGInvariant` (see `kem_key_constant_direct` below) and
-therefore contributed no assumption content. It has been dropped:
-`KEMOIA kem` is now precisely the orbit-indistinguishability
-predicate, and downstream proofs that previously extracted the
-second conjunct (e.g., `kemoia_implies_secure`) now invoke
-`kem_key_constant_direct` directly.
-
-Semantic content: no Boolean function distinguishes orbit elements
-(the original OIA restricted to a single orbit).
-
-**Strength:** Like the original `OIA`, the quantification over ALL
-Boolean functions makes `KEMOIA` `False` for non-trivial schemes
-(where the orbit has more than one element). The security theorem
-is therefore vacuously true for such schemes — matching the original
-`oia_implies_1cpa`. Phase 8 addresses this with probabilistic OIA.
-
-**Why a `Prop` definition (not an `axiom`):** Same rationale as `OIA`
-in `Crypto/OIA.lean` — a Lean `axiom` would assert KEMOIA for ALL
-group actions, including trivial ones where the claim is provably
-false.
--/
-def KEMOIA [Group G] [MulAction G X] [DecidableEq X]
-    (kem : OrbitKEM G X K) : Prop :=
-  ∀ (f : X → Bool) (g₀ g₁ : G),
-    f (g₀ • kem.basePoint) = f (g₁ • kem.basePoint)
+-- W6.8 of structural review 2026-05-06: the deterministic KEMOIA
+-- Prop (formerly defined here, Work Unit 7.5) was deleted as part
+-- of the deterministic-chain removal scheduled for v0.4.0. The
+-- non-vacuous probabilistic counterpart `ConcreteKEMOIA_uniform`
+-- (in `KEM/CompSecurity.lean`) carries the substantive ε-smooth
+-- KEM-orbit indistinguishability content.
 
 -- ============================================================================
 -- Work Unit 7.6a: Key Constancy Lemma

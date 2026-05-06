@@ -150,70 +150,19 @@ The OIA is grounded in two well-studied hardness assumptions:
 
 namespace Orbcrypt
 
--- ============================================================================
--- Work Unit 3.7: OIA Definition
--- ============================================================================
-
-/--
-The Orbit Indistinguishability Assumption (OIA) for a specific scheme.
-
-The OIA asserts that no Boolean function can distinguish elements drawn
-from two different message orbits. Specifically: for any `f : X → Bool`,
-any two messages `m₀ m₁`, and any group elements `g₀ g₁ ∈ G`,
-`f(g₀ • reps(m₀)) = f(g₁ • reps(m₁))`.
-
-This is the strong deterministic reformulation of the probabilistic OIA
-(docs/DEVELOPMENT.md §5.2). When assumed for a specific scheme, it directly
-implies IND-1-CPA security (proved in `Theorems/OIAImpliesCPA.lean`).
-
-**Why a `Prop`-valued definition, not an `axiom`:** A Lean `axiom` is
-universally quantified over all types, instances, and schemes. An OIA
-axiom would assert indistinguishability for ALL group actions — including
-trivial ones (e.g., `Unit` acting on `Bool`) where the claim is provably
-false (`true ≠ false`). This would introduce logical inconsistency,
-making every proposition provable and defeating formal verification.
-
-Instead, OIA is defined as a `Prop` that specific theorems carry as a
-hypothesis: `theorem oia_implies_1cpa (hOIA : OIA scheme) : IsSecure scheme`.
-This matches docs/DEVELOPMENT.md §8.1, which states *"If the OIA holds for the
-setup family Π"* — a conditional statement about a specific scheme.
-
-The result is STRONGER assurance: `#print axioms oia_implies_1cpa` shows
-only Lean's standard axioms (`propext`, `Quot.sound`, `Classical.choice`),
-confirming the theorem introduces no custom axioms beyond the hypothesis.
--/
--- Justification: The OIA is a computational conjecture grounded in the
--- hardness of Graph Isomorphism (GI-OIA, §5.3) and Code Equivalence
--- (CE-OIA, §5.4). It is NOT a mathematical theorem. We state it as a
--- Prop-valued definition so that theorems carry it as an explicit hypothesis,
--- following standard practice in formal cryptography (cf. CryptHOL, EasyCrypt).
-def OIA {G : Type*} {X : Type*} {M : Type*}
-    [Group G] [MulAction G X] [DecidableEq X]
-    (scheme : OrbitEncScheme G X M) : Prop :=
-  ∀ (f : X → Bool) (m₀ m₁ : M) (g₀ g₁ : G),
-    f (g₀ • scheme.reps m₀) = f (g₁ • scheme.reps m₁)
-
--- ============================================================================
--- Work Unit 3.8: OIA Discussion Comment Block
--- ============================================================================
--- See the module docstring (/-! ... -/) at the top of this file for the
--- comprehensive OIA discussion covering:
+-- W6.8 of structural review 2026-05-06: the deterministic OIA Prop
+-- (formerly the sole content of this file, Phase 3 § 3.7) was
+-- deleted as part of the deterministic-chain removal scheduled
+-- for v0.4.0. The probabilistic counterparts `ConcreteOIA` and
+-- `CompOIA` (in `Orbcrypt/Crypto/CompOIA.lean`) carry the
+-- substantive ε-smooth security-assumption content.
 --
--- 1. Why a Prop definition, not an axiom (avoids inconsistency)
--- 2. Relationship to probabilistic OIA (zero-advantage limit)
--- 3. Why the weak per-element version is insufficient (with counterexample)
--- 4. What depends on it (only OIAImpliesCPA.lean)
--- 5. How to audit (via #print axioms — shows zero custom axioms)
--- 6. Hardness foundations (GI and Code Equivalence reductions)
-
--- W6.1 of structural review 2026-05-06 (plan
--- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 7):
--- the deterministic-OIA vacuity witness `det_oia_false_of_distinct_reps`
--- (formerly defined here, audit 2026-04-23 finding C-07) was deleted
--- as part of the deterministic-chain removal scheduled for v0.4.0.
--- The theorem was the leaf of the deterministic chain; later W6
--- commits remove the rest. Historical entry in
--- `docs/dev_history/WORKSTREAM_CHANGELOG.md` under the 2026-04-23
--- Workstream E section.
+-- This file is reduced to a stub. W6.9 will delete the file
+-- itself; a transitional comment block here lets the in-progress
+-- W6 sequence build cleanly between W6.8 and W6.9.
+--
+-- Historical entries for `OIA`, `det_oia_false_of_distinct_reps`,
+-- and the surrounding Phase-3 vocabulary live in
+-- `docs/dev_history/WORKSTREAM_CHANGELOG.md`.
 
 end Orbcrypt
