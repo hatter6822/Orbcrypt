@@ -150,43 +150,36 @@ when adjacent rows live in different clusters.
 
 ### 2.5 Distinct-challenge corollaries
 
-> **Classical IND-1-CPA literature-game-shape corollaries.** Cite
-> these when matching the standard literature game-form. Composes
-> the deterministic-chain Scaffolding theorems (rows #3, #14) with
-> `isSecure_implies_isSecureDistinct` (Workstream B1) for the
-> `_distinct` shape, and the probabilistic chain (#27) with
-> `indCPAAdvantage_collision_zero` for the probabilistic distinct-
-> challenge bound.
+> **Classical IND-1-CPA literature-game-shape corollary.** Cite
+> when matching the standard literature game-form. Composes the
+> probabilistic chain (#27) with `indCPAAdvantage_collision_zero`
+> for the distinct-challenge bound that holds unconditionally on
+> every adversary (the collision branch contributes advantage 0).
 
 | # | Name | Statement | File | Status | Significance |
 |---|------|-----------|------|--------|--------------|
-| 30 | **Distinct-challenge IND-1-CPA (classical game)** | `oia_implies_1cpa_distinct : OIA scheme → IsSecureDistinct scheme`; `hardness_chain_implies_security_distinct : HardnessChain scheme → IsSecureDistinct scheme`; `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct : ConcreteHardnessChain … → _ ≠ _ → indCPAAdvantage ≤ ε`; `indCPAAdvantage_collision_zero : (A.choose).1 = (A.choose).2 → indCPAAdvantage = 0` | `Theorems/OIAImpliesCPA.lean`, `Hardness/Reductions.lean`, `Crypto/CompSecurity.lean` | Scaffolding (K1, K3) + Quantitative (K4) + Standalone (collision lemma) | `IsSecure` (uniform game) is strictly stronger than the classical IND-1-CPA game `IsSecureDistinct` (rejects `(m, m)` challenges). Workstream K threads this through the deterministic chain and the probabilistic chain. Release-facing citations should prefer the `_distinct` forms because they match the literature's IND-1-CPA game shape |
+| 30 | **Distinct-challenge IND-1-CPA (classical game)** | `concrete_hardness_chain_implies_1cpa_advantage_bound_distinct : ConcreteHardnessChain … → _ ≠ _ → indCPAAdvantage ≤ ε`; `indCPAAdvantage_collision_zero : (A.choose).1 = (A.choose).2 → indCPAAdvantage = 0` | `Hardness/Reductions.lean`, `Crypto/CompSecurity.lean` | Quantitative (K4 companion) + Standalone (collision lemma) | `IsSecure` (uniform game) is strictly stronger than the classical IND-1-CPA game `IsSecureDistinct` (rejects `(m, m)` challenges). The probabilistic ε-bound transfers for free since `indCPAAdvantage_collision_zero` shows the collision branch contributes advantage 0. The deterministic K1 / K3 forms of this corollary were deleted in W6.3 / W6.5 of structural review 2026-05-06; the probabilistic K4 companion is the sole release-facing distinct-challenge bound |
 
-### 2.6 Vacuity witnesses + scaffolding (deterministic chain)
+### 2.6 W6 deletion log (v0.4.0)
 
-> **Deterministic-chain theorems whose hypothesis is `False` on every
-> non-trivial scheme** — the conclusions hold vacuously on production
-> instances. Cite **only** to explain the type-theoretic structure
-> of the OIA-style argument, never as standalone security claims.
+> **The deterministic security chain was removed in v0.4.0** by W6
+> of structural review 2026-05-06 (plan
+> `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1
+> row 7). The probabilistic chain in §2.2 is the sole security
+> chain post-deletion.
 >
-> The vacuity is itself machine-checked by rows #31 / #32 (the
-> deterministic-OIA / deterministic-KEMOIA refutations on every
-> scheme that admits two distinct-rep messages or a non-trivial
-> base-point orbit). The substantive security content is the
-> probabilistic chain in §2.2.
+> The `Prop`-valued `OIA` / `KEMOIA` / `HardnessChain` /
+> `TensorOIA` / `CEOIA` / `GIOIA` / per-link reduction Props were
+> all `False` on every non-trivial scheme — they were algebraic
+> scaffolding, not substantive security content. Their previous
+> rows (#3, #5, #8, #14, #31, #32) are removed from this table.
 >
-> **NOTE (W6 of structural review 2026-05-06):** All rows in this
-> cluster are scheduled for deletion in v0.4.0. The probabilistic
-> chain (§2.2) is the sole security chain post-deletion.
-
-| # | Name | Statement | File | Status | Significance |
-|---|------|-----------|------|--------|--------------|
-| 3 | **Conditional Security** | OIA implies IND-1-CPA | `Theorems/OIAImpliesCPA.lean` | Scaffolding | Deterministic OIA is `False` on every non-trivial scheme (witness: row #31). Vacuously true on production instances |
-| 5 | **KEM Security** | KEMOIA implies KEM security | `KEM/Security.lean` | Scaffolding | Deterministic KEMOIA is vacuous on every non-trivial KEM (witness: row #32). Cite the probabilistic counterpart (`concrete_kemoia_*_implies_secure` family) |
-| 8 | **Bridge** | Deterministic OIA implies ConcreteOIA(0) | `Crypto/CompOIA.lean` | Scaffolding | Backward compatibility: probabilistic framework generalizes deterministic. Vacuous in practice; exists to anchor the definitional link between the two chains |
-| 14 | **Hardness Chain (deterministic)** | HardnessChain(scheme) → IsSecure(scheme) | `Hardness/Reductions.lean` | Scaffolding | Deterministic `HardnessChain` is composed from deterministic `TensorOIA`/`CEOIA`/`GIOIA` and is vacuous on production instances; the non-vacuous counterpart is #27 |
-| 31 | **Deterministic OIA Vacuity Witness** | `det_oia_false_of_distinct_reps : scheme.reps m₀ ≠ scheme.reps m₁ → ¬ OIA scheme` | `Crypto/OIA.lean` | Standalone | Machine-checks that the deterministic `OIA` predicate is `False` on every scheme that admits two messages with distinct representatives. The distinguisher is the Boolean membership test `fun x => decide (x = reps m₀)` evaluated at identity group elements |
-| 32 | **Deterministic KEMOIA Vacuity Witness** | `det_kemoia_false_of_nontrivial_orbit : g₀ • kem.basePoint ≠ g₁ • kem.basePoint → ¬ KEMOIA kem` | `KEM/Security.lean` | Standalone | KEM-layer parallel of #31. `KEMOIA` collapses whenever two group elements produce distinct ciphertexts, i.e. whenever the base-point orbit is non-trivial (production HGOE has `\|orbit\| ≫ 2`) |
+> The historical record of those declarations (definitions, proofs,
+> per-workstream landing notes) lives in
+> [`docs/dev_history/WORKSTREAM_CHANGELOG.md`](dev_history/WORKSTREAM_CHANGELOG.md).
+> Identifiers in changelog entries (e.g., `oia_implies_1cpa`,
+> `hardness_chain_implies_security`, `det_oia_false_of_distinct_reps`)
+> may not exist in current source; they describe state-at-the-time.
 
 ## Module dependency graph
 
@@ -264,12 +257,12 @@ when adjacent rows live in different clusters.
                 \              (OrbitPreservingEncoding,
                  \              identityEncoding — reference target)
                   v                                v
-              Hardness.Reductions ◄── Crypto.OIA, Theorems.OIAImpliesCPA
-              (TensorOIA, GIOIA, HardnessChain,
-               hardness_chain_implies_security,
+              Hardness.Reductions ◄── Theorems.AdversaryStructural
+              (permuteAdj action; deterministic chain deleted in
+               W6 of structural review 2026-05-06;
                ConcreteHardnessChain (surrogate + encoder fields),
                *_viaEncoding per-encoding Props — Workstream G / Fix C,
-               tight_one_exists_at_s2Surrogate — W4)
+               tight_one_exists + tight_one_exists_at_s2Surrogate — W4)
 
   KEM.{Syntax, Encapsulate, Correctness} + GroupAction.{Basic, Canonical}
               |
@@ -382,15 +375,19 @@ recipes in the rightmost column.
 
 | Metric | Value | Recipe |
 |--------|-------|--------|
-| Lean modules under `Orbcrypt/` | 81 | `find Orbcrypt -name '*.lean' \| wc -l` |
-| Public declarations (decl-prefix lines) | ≈ 1,083 | `find Orbcrypt -name '*.lean' -exec grep -cE '^(theorem\|def\|structure\|class\|instance\|abbrev\|lemma)\b' {} \; \| awk '{s+=$1} END {print s}'` |
-| Audit-script `#print axioms` entries | 1,163 | `grep -c '^#print axioms' scripts/audit_phase_16.lean` |
-| Lake build jobs | 3,424 | `lake build Orbcrypt 2>&1 \| tail -1` |
+| Lean modules under `Orbcrypt/` | 80 | `find Orbcrypt -name '*.lean' \| wc -l` |
+| Public declarations (decl-prefix lines) | ≈ 1,066 | `find Orbcrypt -name '*.lean' -exec grep -cE '^(theorem\|def\|structure\|class\|instance\|abbrev\|lemma)\b' {} \; \| awk '{s+=$1} END {print s}'` |
+| Audit-script `#print axioms` entries | 1,135 | `grep -c '^#print axioms' scripts/audit_phase_16.lean` |
+| Lake build jobs | 3,423 | `lake build Orbcrypt 2>&1 \| tail -1` |
 | Sorry / custom-axiom count | 0 / 0 | `grep -rn '\bsorry\b' Orbcrypt/` + `grep -rEn '^axiom\s+\w+\s*[\[({:]' Orbcrypt/` |
-| `lakefile.lean` version | `0.3.7` | `grep '^  version' lakefile.lean` |
-| Last verified | 2026-05-06 | (W4 of structural review 2026-05-06; this anchor is refreshed by W7 Final consolidation post-W6 deletion) |
+| `lakefile.lean` version | `0.4.0` | `grep '^  version' lakefile.lean` |
+| Last verified | 2026-05-06 | post-W6 (deterministic-OIA chain removal); W7 Final consolidation refreshes this anchor end-to-end |
 
-**Expected post-W6 deletion (deterministic-OIA chain removal):**
-module count `81 → 79`, audit-script `#print axioms` count drops
-by ≈ 17, public-declaration count drops by ≈ 17, version
-`0.3.7 → 0.4.0` (minor bump for major API removal).
+**Post-W6 reductions** (vs. pre-W6 baseline):
+- Module count `81 → 80` (W6.9 net deletion: `Crypto/OIA.lean` and
+  `Theorems/OIAImpliesCPA.lean` removed; `Theorems/AdversaryStructural.lean`
+  added with the surviving Track-D theorems).
+- Audit-script `#print axioms` count `1,163 → 1,135` (≈ 28
+  entries removed across W6.1–W6.9).
+- Version bump `0.3.7 → 0.4.0` (minor bump signalling major API
+  removal).

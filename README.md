@@ -29,7 +29,7 @@ post-quantum hard.
 | **Batch-openable commitments** | A single `G` reveal opens *every* commitment ever made under it, atomically. No per-commitment opening data. |
 | **Bundle-mediated rotation** | Non-`G`-holders rotate ciphertexts only inside a provisioned bundle (`OrbitalRandomizers`); free public re-randomization is provably blocked (`CombineImpossibility`). |
 | **Canonical-form-as-query** | Functional queries (membership, equality, clustering) factor through `canon`, exposing exactly orbit structure and nothing more. |
-| **Post-quantum hardness chain** | TI-hardness → CE-hardness → GI-hardness → IND-1-CPA, machine-checked end-to-end (`hardness_chain_implies_security`). |
+| **Post-quantum hardness chain** | TI-hardness → CE-hardness → GI-hardness → IND-1-CPA, machine-checked end-to-end via the probabilistic `concrete_hardness_chain_implies_1cpa_advantage_bound` (parametric in surrogate + encoder; `tight_one_exists` and `tight_one_exists_at_s2Surrogate` witness inhabitation at ε = 1). |
 | **Compact ciphertexts** | At λ = 128 balanced: 32 B keys, 43 B ciphertexts — competitive with AES-GCM, far smaller than Kyber's 2.4 kB / 1.1 kB. |
 
 The cryptographic primitive is small, but five of it's capabilities

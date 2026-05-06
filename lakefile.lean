@@ -10,7 +10,7 @@ import Lake
 open Lake DSL
 
 package "orbcrypt" where
-  version := v!"0.3.8"
+  version := v!"0.4.0"
   leanOptions := #[
     ⟨`autoImplicit, false⟩,           -- Enforce explicit universe/variable declarations
     ⟨`linter.unusedVariables, true⟩,  -- Default-true in Lean core; pinned defensively (Workstream D / audit 2026-04-23, A-01)
@@ -82,6 +82,54 @@ package "orbcrypt" where
 -- Type fix: `IsPRF`'s `ε` is now `ℝ` (matching `ConcreteOIA`
 -- convention; eliminates the `⊤`-collapse degeneracy). Patch bump
 -- 0.3.1 → 0.3.2.
+-- W6 of structural review 2026-05-06 (plan
+-- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1
+-- row 7): deletion of the deterministic security chain. Eleven
+-- leaf-first commits (W6.1–W6.9 + W6.10 documentation sweep)
+-- removed 19 declarations across 6 modules:
+--
+--   * W6.1 (vacuity witnesses): `det_oia_false_of_distinct_reps`,
+--     `det_kemoia_false_of_nontrivial_orbit`.
+--   * W6.2 (det→prob bridges): `det_oia_implies_concrete_zero`,
+--     `det_kemoia_implies_concreteKEMOIA_zero`.
+--   * W6.3 (Tier 3 reductions): `oia_specialized`,
+--     `no_advantage_from_oia`, `oia_implies_1cpa`,
+--     `oia_implies_1cpa_distinct`, `hardness_chain_implies_security`,
+--     `hardness_chain_implies_security_distinct`.
+--   * W6.4 (KEM Tier 3): `kem_ciphertext_indistinguishable`,
+--     `kemoia_implies_secure`.
+--   * W6.5 (Tier 4): `oia_from_hardness_chain`, `HardnessChain`.
+--   * W6.6 (Tier 5 per-link): `TensorOIAImpliesCEOIA`,
+--     `CEOIAImpliesGIOIA`, `GIOIAImpliesOIA`.
+--   * W6.7 (Tier 6 per-layer): `TensorOIA`, `tensorOIA_symm`,
+--     `GIOIA`, `gioia_symm`, `CEOIA`. Plus four OIA-dependent
+--     combiner theorems in `PublicKey/CombineImpossibility.lean`
+--     (W6.8): `equivariant_combiner_breaks_oia`,
+--     `oia_forces_combine_constant_in_snd`,
+--     `oia_forces_combine_constant_on_orbit`,
+--     `oblivious_sample_equivariant_obstruction`.
+--   * W6.8 (Tier 7 top-level Props): `OIA`, `KEMOIA`.
+--   * W6.9 (Tier 8 file deletions): `Orbcrypt/Crypto/OIA.lean`
+--     and `Orbcrypt/Theorems/OIAImpliesCPA.lean` deleted; the
+--     four surviving Track-D theorems
+--     (`hasAdvantage_iff`, `adversary_yields_distinguisher`,
+--     `insecure_implies_orbit_distinguisher`,
+--     `distinct_messages_have_invariant_separator`) relocated
+--     to a new `Orbcrypt/Theorems/AdversaryStructural.lean`.
+--
+-- The non-vacuous probabilistic chain
+-- (`ConcreteOIA`, `ConcreteKEMOIA_uniform`, `ConcreteHardnessChain`,
+-- `ConcreteKEMHardnessChain`,
+-- `concrete_hardness_chain_implies_1cpa_advantage_bound`, the
+-- W4 `s2Surrogate` non-trivial witness) is the sole security
+-- chain post-W6.
+--
+-- Module count: 81 → 80 (W6.9 net deletion). Audit-script
+-- `#print axioms` count: 1,163 → 1,135 (≈ 28 entries removed
+-- across W6.1–W6.9). Public-declaration count drops by ≈ 19.
+-- Zero-sorry / zero-custom-axiom posture and standard-trio-only
+-- axiom-dependency posture preserved across every W6 commit.
+-- Minor bump 0.3.8 → 0.4.0 signalling the major API removal.
 -- W5 of structural review 2026-05-06 (plan
 -- `docs/dev_history/AUDIT_2026-05-06_STRUCTURAL_REVIEW.md` § 1 row 5
 -- + § 1 row 6): three-way split of `CLAUDE.md` plus public-key
