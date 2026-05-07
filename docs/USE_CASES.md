@@ -254,12 +254,288 @@ has `k − 1` adjacent transitions, each with advantage ≤ ε;
 `hybrid_argument` in `Probability/Advantage.lean` bounds the overall
 distinguishing advantage by `(k − 1)·ε` (so `2ε` at `k = 3`).
 
-**Open.** Coercion resistance: a voter who later reveals their `g_i` can
-prove how they voted. Standard remedies (receipt-freeness via
-re-randomization by the ballot box) are exactly the "public combiner"
-we lack — so orbit voting is currently fit for settings where
-coercion is out of scope (small councils, salary committees, internal
-forecasting markets) rather than general retail governance.
+**Open: per-voter coercion-resistance.** A voter who later reveals
+their `g_i` can prove how they voted, since `c_i = g_i • reps(m_i)`
+becomes a verifier-checkable equation once `G` is published. The
+classical remedy — a public ballot-box that re-randomizes each
+ciphertext — is bounded both below and above in the orbit setting:
+`combinerDistinguisherAdvantage_ge_inv_card`
+(`Orbcrypt/PublicKey/CombineImpossibility.lean:750`, **Standalone**)
+forces any non-degenerate `G`-equivariant public combiner to leak at
+least `1/|G|`, while `concrete_combiner_advantage_bounded_by_oia`
+(same file, line 440, **Quantitative** at any `ε` for which
+`ConcreteOIA(ε)` holds) caps the leakage at `ε`. The mathematical
+gap `[1/|G|, ε]` is non-empty and even narrow at the recommended
+parameters (`[2⁻²⁵⁷, 2⁻¹²⁸]` at the **balanced** λ=128 tier of
+`docs/PARAMETERS.md` §6.2), but no concrete non-degenerate
+`G`-equivariant combiner is known for HGOE's `S_n`-on-bitstrings
+action. Receipt-freeness via *public* per-ballot re-randomization
+is therefore not currently realisable. Single-key §2.1 voting is
+consequently fit for settings where coercion is socially out of
+scope — small councils, salary committees, internal forecasting
+markets — rather than general retail governance. §2.1.1 below
+documents four batching strategies that route around this
+constraint and extend the design to substantially larger
+electorates.
+
+### 2.1.1 Scaling the voting pool
+
+§2.1's "small councils" framing is a *sociological* bound on
+per-voter coercion-resistance, not a cryptographic limit on the
+number of ballots. The two ceilings on a single-key election are
+quantitatively unrelated:
+
+* **Cryptographic ceiling.** `indQCPA_from_concreteOIA`
+  (`Orbcrypt/Crypto/CompSecurity.lean:774`, **Quantitative**)
+  delivers `indQCPAAdvantage scheme A ≤ Q · ε` from
+  `ConcreteOIA(ε)` alone — so `Q` ballots cost a linear factor in
+  the security bound. Combined with the §2.1 hybrid bound
+  `(k − 1)·ε` per ballot, total advantage scales as
+  `Q · (k − 1) · ε`. At the **balanced** λ=128 tier from
+  `docs/PARAMETERS.md` §6.2 (`n = 512`, `log₂|G| = 257`,
+  `b = 4`), `docs/PARAMETERS.md` §4.3's birthday-on-orbits
+  ceiling is `√|G| ≈ 2¹²⁸`, vastly above any realistic
+  electorate. Even `Q = 10⁹` voters with `k = 4` options at
+  `ε = 2⁻¹²⁸` leave total advantage at
+  `Q · (k − 1) · ε ≤ 2³⁰ · 3 · 2⁻¹²⁸ ≈ 2⁻⁹⁶` — negligible. The
+  cryptographic ceiling is *not* the binding constraint for any
+  deployment that matches the §6.2 balanced parameters or
+  stronger.
+* **Coercion-resistance ceiling.** Independent of `Q`, set by the
+  §2.1 "Open" caveat: per-voter coercion is governed by the
+  `[1/|G|, ε]` combiner-leakage gap and the absence of a known
+  concrete equivariant public combiner for HGOE. The four
+  strategies below trade trust assumptions for pool size at this
+  ceiling.
+
+The four strategies are independent and composable; §2.1.1.7
+gives a recommended stack by pool size.
+
+#### 2.1.1.1 Strategy 1 — Threshold-`G` mix-net (receipt-freeness)
+
+**Setup.** The council of `n` members already holds `G` in
+`t`-of-`n` threshold form per §2.1's reveal procedure. Each member
+`j` holds a subgroup `H_j ≤ G` such that `⟨H_1, …, H_n⟩ = G`.
+
+**Mix protocol.** For ballots `c_1, …, c_Q` posted before the
+deadline:
+
+1. **Pre-mix commitment.** Each member `j` samples per-ballot
+   randomness `δ_{i,j} ← H_j` uniformly and posts a hiding
+   commitment `Com_j(δ_{i,1}, …, δ_{i,Q})` to the public bulletin
+   board. Each member also samples a uniform permutation
+   `σ_j ∈ S_Q` and commits to it.
+2. **Mix application.** In a fixed order, member `j` applies
+   `c^{(j)}_i = δ_{i,j} • c^{(j-1)}_{σ_j(i)}` (with
+   `c^{(0)} = c`). The final mix output is `c'_i = c^{(n)}_i`.
+3. **Reveal.** After the deadline each member opens
+   `(δ_{i,j}, σ_j)`. `G` is revealed.
+4. **Public audit.** Anyone verifies, for each `(i, j)`: the
+   commitment opens correctly; `δ_{i,j} ∈ H_j`; the mix step
+   `c^{(j)}_i = δ_{i,j} • c^{(j-1)}_{σ_j(i)}` matches.
+
+**Soundness.** Re-randomization preserves orbits: `c'_i ∈
+orbit(c_{σ(i)})` because `∏_j δ_{i,j} ∈ G`, so
+`canon_G(c'_i) = canon_G(c_{σ(i)})` by `canon_eq_of_mem_orbit`
+(`Orbcrypt/GroupAction/Canonical.lean`, **Standalone**). The
+canonical-form tally is therefore unchanged by mixing — only
+ballot identity is scrambled. Receipt-freeness against an
+`< t`-corrupted council is information-theoretic conditioned on
+any honest member: `δ_{i,j}` is uniform over `H_j` and the voter
+does not learn it before the deadline.
+
+**Cost.** One commit-reveal round per council member; per-ballot
+cost is `n` permutation actions on a 512-bit vector — a few tens
+of µs at balanced λ=128. Total mix work is bounded by `Q · n`
+such operations and is small relative to ballot-collection
+windows in practice.
+
+**Open formalisation.** The threshold sharing and joint-mix
+steps sit *above* the orbit primitive and are not currently
+formalised in Lean. The cryptographic content of the orbit layer
+(orbit-preservation, OIA-bounded distinguishing) is fully
+machine-checked; the `t`-of-`n` permutation-MPC content is
+research-scope (see §2.1.1.8).
+
+#### 2.1.1.2 Strategy 2 — Cohort partitioning with VRF-based assignment
+
+**Setup.** Split `N` voters into `B` cohorts of size `N/B`, each
+with its own `G_b` (independent threshold-shared council per
+cohort, or one super-council holding all `G_b`). Cohort
+assignment for voter `j` is `H(s ∥ pk_j) mod B`, where `s` is a
+fresh public verifiable-randomness-beacon seed (drand / RANDAO /
+threshold-BLS) committed *after* voter registration closes and
+`pk_j` is the voter's registration key. Both `s` and `pk_j` are
+committed before the assignment is computed, so neither side can
+grind cohort placement.
+
+**Tally.** Per-cohort canonical-form counts are revealed; the
+global tally is the sum. Per-ballot tallies are not revealed.
+
+**Anonymity budget.** The cohort size determines the per-voter
+anonymity set, with empirical guidance:
+
+| Coercion adversary       | Cohort size | Anonymity bits |
+|--------------------------|-------------|----------------|
+| Casual / social          | 16          | 4              |
+| Workplace / familial     | 64          | 6              |
+| Organised / state-level  | 1 024       | 10             |
+
+Below 16 the cohort can be exhaustively interrogated; above
+~1 024 the council overhead per cohort dominates and Strategy 2
+should be combined with Strategy 1 hierarchically (§2.1.1.5) or
+swapped for delegation (§2.1.1.3).
+
+**Soundness.** Each cohort is an independent §2.1 deployment;
+per-cohort tally is correct by `canon_eq_of_mem_orbit`
+(**Standalone**). Cross-cohort independence is structural:
+`G_1 ⊥ G_2 ⊥ …` is a direct-product ambient, and the VRF beacon
+makes assignment uniform conditional on adversary view. The
+sender-side property "ε-bounded distinguishing inside a cohort"
+follows from `concrete_oia_implies_1cpa` (**Quantitative**)
+applied per cohort.
+
+#### 2.1.1.3 Strategy 3 — Delegation tree (representative democracy)
+
+**Setup.** `N` voters elect `E « N` delegates via a
+coercion-tolerant primary (any non-orbit method — paper ballots,
+in-person voting, signed online ballot under social oversight).
+The `E` delegates then run §2.1 + §2.1.1.1 amongst themselves.
+
+**Why this works for scale.** Coercion now operates at the
+delegate layer rather than the voter layer. Delegates are a
+smaller, more publicly accountable population — well-matched to
+the §2.1 "small council" sociological bound. The orbit-layer
+voting pool is `E`, which can be tuned independently of `N`.
+
+**Formalisation handle.** §2.4 of this document already
+formalises the delegation-tree structure as a chain of subgroups
+via `subgroupBitstringAction`
+(`Orbcrypt/Construction/HGOE.lean`, **Standalone**); each
+delegate level is a separate canonicalization under the
+level-appropriate subgroup, with rotation handled by subgroup
+refresh.
+
+#### 2.1.1.4 Strategy 4 — Per-epoch `G` rotation (forward secrecy)
+
+**Setup.** A long-running governance system rotates `G_t` per
+epoch using `refreshRandomizers`
+(`Orbcrypt/PublicKey/ObliviousSampling.lean`, **Standalone** via
+`refresh_depends_only_on_epoch_range`). Each epoch is a §2.1
+deployment with its own threshold-shared `G_t` and its own
+published-after-deadline reveal.
+
+**What this gives.** Forward secrecy across epochs: leak of
+`G_t` does not deanonymise epoch-`(t-1)` ballots, because
+`refresh_depends_only_on_epoch_range` certifies bundle-element
+independence across epoch ranges.
+
+**What this does not give.** Within-epoch coercion-resistance is
+unchanged from §2.1 — Strategy 4 is a *temporal* extension, not
+a per-epoch coercion fix. Combine with Strategies 1–3 for full
+coverage.
+
+**Open formalisation.** Cross-epoch ciphertext indistinguishability
+(distinct from bundle-element independence) requires composing two
+`ConcreteOIA(ε)` games on independent groups, giving a `2ε`
+bound. The composition lemma is straightforward but currently
+research-scope (§2.1.1.8).
+
+#### 2.1.1.5 Hierarchical composition
+
+For pool sizes beyond ~50 000, stack Strategies 1 and 2:
+
+* **Level-0 cohorts** of size `B₀` (e.g. 64) under independent
+  `G_b`'s, each mixed via Strategy 1.
+* **Level-1 super-cohorts** aggregating `B₁` cohorts each, with
+  count vectors mixed via a second Strategy-1 protocol on the
+  level-1 hidden subgroup of `S_{B₀}` (cohort-label permutation).
+* **Global tally** = sum of level-1 super-cohort outputs.
+
+Per-voter anonymity at depth 2 is `log₂(B₀ · B₁)` bits (12 bits
+at `B₀ = B₁ = 64`, supporting a 262 144-voter electorate). The
+two layers are analytically independent; the total advantage
+budget is `Q · (k − 1 + d) · ε` for hierarchy depth `d`, which
+remains negligible at the balanced λ=128 tier through `Q ≈ 10⁹`
+voters.
+
+#### 2.1.1.6 Best practices for every deployment
+
+* **Spoilage as a fourth option.** Define
+  `reps : {yes, no, abstain, spoil} → X` so every ballot
+  canonicalizes to a public form. Spoilage stops being a public
+  failure mode and becomes a normal vote, eliminating the
+  "your-ballot-must-be-valid" coercion vector. The hybrid bound
+  becomes `(k − 1)·ε = 3ε` per ballot.
+* **Turnout privacy via council chaff.** The council injects `K`
+  chaff ballots in publicly committed proportion across the four
+  canonical representatives. Total bulletin-board ballot count
+  becomes `Q + K`; per-canonical-form chaff share is subtracted
+  at tally. `K = √Q` gives `O(1)` bits of leakage on per-voter
+  turnout; `K = Q` saturates turnout privacy.
+* **Replay protection.** Voter signs `(ballot, epoch_id)` with a
+  PQ-secure registration key; bulletin enforces one ballot per
+  `(identity, epoch_id)`. Use a hash-based or lattice signature
+  to match Orbcrypt's PQ posture (orthogonal to the orbit
+  primitive).
+* **Per-vote `g_i` derivation.** Derive
+  `g_i = PRF(voter_seed_i, ballot_seq, epoch_id)` per
+  `Orbcrypt/KeyMgmt/Nonce.lean` discipline. Accidental
+  resubmission then produces an identical `c_i`, which the
+  bulletin rejects as a duplicate rather than treating as two
+  ballots.
+* **End-to-end voter verification.** Once `G` is published,
+  every voter can verify (a) their `c_i` (or post-mix `c'_i`) is
+  in the bulletin, (b) `canon_G(c'_i) = reps(m_i)`, (c) the
+  published tally matches the bulletin's canonical-form
+  multiset. All three are public computations once `G` is
+  revealed; the orbit primitive delivers E2E-verifiability
+  without additional machinery.
+
+#### 2.1.1.7 Recommended stack by pool size
+
+| Pool size                          | λ tier                            | Stack                                                                                                          |
+|------------------------------------|-----------------------------------|----------------------------------------------------------------------------------------------------------------|
+| ≤ 50 (board / committee)           | balanced 128                      | §2.1 + threshold-`G` reveal; spoilage-as-fourth-option; E2E voter verification; no mix needed                  |
+| 50 – 5 000 (medium org)            | balanced 128                      | + Strategy 1 (threshold-`G` mix with permuted reveal) for receipt-freeness                                     |
+| 5 000 – 100 000 (large org / city) | balanced 128 or 192               | + Strategy 2 (VRF-based cohort partitioning, cohort size 64); per-cohort Strategy 1                            |
+| 100 000 – 10 M (subnational)       | balanced 192                      | + §2.1.1.5 hierarchical depth 2; Strategy 4 epoch rotation across multi-day windows                            |
+| ≥ 10 M (general retail)            | balanced 192 or conservative 128  | Strategy 3 delegation tree + voter-level orbit voting confined to small primaries with Strategies 1–2          |
+
+The cryptographic ceiling is never tight on this table; every
+entry is determined by the coercion-resistance trade-off between
+cohort size, mix overhead, and council trust assumptions.
+
+#### 2.1.1.8 Research-scope items needed for full v1.0 alignment
+
+1. **Threshold-permutation MPC formalisation.** Strategy 1's
+   joint mix is informal: a Lean formalisation of `t`-of-`n`
+   share-and-evaluate over `S_n` (or the wreath-product `G` of
+   HGOE) would convert §2.1.1.1 from a protocol sketch to a
+   machine-checked construction.
+2. **Cross-epoch ciphertext indistinguishability.** Strategy 4
+   currently rests on `refresh_depends_only_on_epoch_range`
+   (bundle-element independence) plus an informal composition
+   step. A single Lean lemma composing two independent
+   `ConcreteOIA(ε)` games to a `2ε` bound would close §2.1.1.4's
+   open formalisation point.
+3. **Cohort-assignment unbiasability.** The VRF beacon in
+   Strategy 2 is informal. Formalising "cohort assignment is
+   uniform conditional on adversary view" given a public
+   verifiable-randomness oracle is a small but currently missing
+   Lean lemma.
+4. **Concrete equivariant public combiner (or its
+   non-existence).** `concrete_combiner_advantage_bounded_by_oia`
+   and `combinerDistinguisherAdvantage_ge_inv_card` together
+   leave a `[1/|G|, ε]` gap in which a non-trivial equivariant
+   public combiner *might* live. A construction would lift §2.1
+   to single-phase receipt-freeness without the threshold-MPC of
+   Strategy 1; a non-existence proof would close the gap. Either
+   resolves §2.1's "Open" entry decisively.
+
+These items are independent. Items (1) and (2) are the most
+consequential for the §6 application table's "Open" column on
+row 2.1.
 
 ### 2.2 Anonymous members with revocable pseudonyms
 
@@ -625,7 +901,7 @@ Structural = Mathlib-grade equivalence-relation / subgroup identity).
 | 1.2 batched commitments | `canon_idem` (Standalone), #6 (Quantitative), #9 seed-key correctness (Standalone) | threshold share of `G` |
 | 1.3 CSIDH pair-keys | #17, #18 (both Standalone) | concrete `CommGroupAction` instance; atomic-swap needs adaptor-signature layer |
 | 1.4 asset tags | #1 (Standalone), `canon_eq_implies_orbit_eq` (Standalone) | regulator trust model |
-| 2.1 glass-ballot voting | `canon_eq_of_mem_orbit` (Standalone), #6 (Quantitative), `hybrid_argument_uniform` | coercion resistance |
+| 2.1 glass-ballot voting | `canon_eq_of_mem_orbit` (Standalone), #6 (Quantitative), `hybrid_argument_uniform`; multi-ballot bound `indQCPA_from_concreteOIA` (Quantitative); combiner gap `[1/|G|, ε]` from `combinerDistinguisherAdvantage_ge_inv_card` (Standalone) + `concrete_combiner_advantage_bounded_by_oia` (Quantitative) | per-voter coercion-resistance (mitigated by §2.1.1.1–§2.1.1.5; see §2.1.1.8 research-scope items) |
 | 2.2 pseudonyms | `canon_idem`, `canon_eq_of_mem_orbit`, `refresh_depends_only_on_epoch_range` (all Standalone) | bundle provisioning discipline |
 | 2.3 staged budgets | same as 1.2 | threshold share of `G_p` |
 | 2.4 delegation trees | `subgroupBitstringAction`, `canon_eq_of_mem_orbit` (Standalone) | subgroup rotation UX |
@@ -907,3 +1183,80 @@ research-scope discharges R-01 / R-07 / R-09 / R-13 (audit
 No design-level claims were weakened in this pass; the changes
 are classification + theorem-citation alignment with the
 recently-discharged research milestones (R-01, R-07, R-09, R-13).
+
+---
+
+## 12. Audit changelog (2026-05-07)
+
+A fourth pass refined §2.1 (glass-ballot voting) to address the
+"how large can the voting pool be?" question that
+`docs/USE_CASES.md` was previously silent on. The refinements
+distinguish the *cryptographic* multi-query ceiling (set by
+`indQCPA_from_concreteOIA`'s `Q · ε` bound and
+`docs/PARAMETERS.md` §4.3's birthday-on-orbits ceiling, neither of
+which is tight at the §6.2 balanced parameters) from the
+*coercion-resistance* ceiling (set by the §2.1 "Open" caveat),
+and document four batching strategies that extend the design to
+substantially larger electorates.
+
+* **§2.1 "Open" paragraph.** Replaced the "we lack the public
+  combiner" framing with the quantitative
+  `[1/|G|, ε]` characterisation: the lower bound is
+  `combinerDistinguisherAdvantage_ge_inv_card` (Workstream R-07,
+  **Standalone**); the upper bound is
+  `concrete_combiner_advantage_bounded_by_oia` (Workstream E6,
+  **Quantitative** under `ConcreteOIA(ε)`). The gap is non-empty
+  and even narrow at the recommended parameters (`[2⁻²⁵⁷, 2⁻¹²⁸]`
+  at balanced λ=128), so public re-randomization is not formally
+  ruled out — but no concrete non-degenerate `G`-equivariant
+  combiner is known for HGOE's `S_n`-on-bitstrings action, so it
+  is not currently realisable in practice. Added a forward
+  reference to §2.1.1.
+* **§2.1.1 (new subsection).** Documents the two distinct
+  ceilings on a single-key election, then covers four
+  composable batching strategies and their soundness:
+  * §2.1.1.1 **threshold-`G` mix-net** with commit-then-reveal
+    plus permuted re-randomization (receipt-freeness);
+  * §2.1.1.2 **cohort partitioning** with VRF-based assignment
+    (per-voter anonymity set bounded by cohort size);
+  * §2.1.1.3 **delegation tree** via the §2.4
+    `subgroupBitstringAction` chain (representative democracy
+    on a smaller orbit-layer pool);
+  * §2.1.1.4 **per-epoch `G` rotation** via
+    `refresh_depends_only_on_epoch_range` (forward secrecy
+    across epochs).
+  §2.1.1.5 covers hierarchical composition of Strategies 1–2 for
+  electorates beyond ~50 000. §2.1.1.6 lists best practices
+  (spoilage-as-fourth-option, turnout chaff, replay protection,
+  per-vote PRF-derived `g_i`, E2E voter verification). §2.1.1.7
+  gives a recommended-stack-by-pool-size table. §2.1.1.8 lists
+  four research-scope items that would close the open
+  formalisation points: (1) threshold-permutation MPC, (2)
+  cross-epoch ciphertext indistinguishability, (3) cohort-
+  assignment unbiasability, (4) concrete equivariant public
+  combiner (or a proof of non-existence).
+* **§6 alignment-table row 2.1.** Expanded the "Rests on" cell
+  to cite `indQCPA_from_concreteOIA` (Workstream R-09,
+  **Quantitative**, the `Q · ε` multi-ballot bound) and the
+  combiner-gap pair
+  `combinerDistinguisherAdvantage_ge_inv_card` /
+  `concrete_combiner_advantage_bounded_by_oia` with their Status
+  labels. Updated the "Open problem" cell to point at the
+  §2.1.1 mitigations and the §2.1.1.8 research-scope items.
+
+No design-level claims were weakened in this pass. The
+refinements (a) correct the §2.1 framing of CombineImpossibility
+from "we lack" to a quantitatively bounded
+`[1/|G|, ε]` characterisation, and (b) extend §2.1's recommended
+deployment scope from "small councils" to electorates of
+~262 144 voters at depth-2 hierarchical composition, all under
+the existing `ConcreteOIA(ε)` assumption and the `docs/PARAMETERS.md`
+§6.2 balanced parameter set.
+
+All Lean identifier citations introduced in this pass —
+`indQCPA_from_concreteOIA`, `combinerDistinguisherAdvantage_ge_inv_card`,
+`concrete_combiner_advantage_bounded_by_oia`,
+`canon_eq_of_mem_orbit`, `concrete_oia_implies_1cpa`,
+`subgroupBitstringAction`,
+`refresh_depends_only_on_epoch_range` — were verified against
+the current source files at the line numbers cited.
