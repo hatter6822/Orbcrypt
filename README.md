@@ -16,8 +16,8 @@ data meaningful — not from hiding the data itself. A message is the
 identity of an orbit under a secret permutation group `G ≤ S_n`; a
 ciphertext is a uniformly random element of that orbit. The hardness
 assumption (OIA) reduces to **Graph Isomorphism on Cai–Furer–Immerman
-graphs** and to **Permutation Code Equivalence**, both believed
-post-quantum hard.
+graphs** and to **Permutation Code Equivalence**. The quantum hardness of the
+implementation is conjectured. 
 
 ---
 
