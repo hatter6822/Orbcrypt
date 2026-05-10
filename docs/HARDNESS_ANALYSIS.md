@@ -445,14 +445,17 @@ finite-model theory and proof complexity:
 
 - `k`-WL captures first-order logic with counting and `k`-tuple
   variables (Cai–Fürer–Immerman 1992; Otto 1997).
-- `k`-WL is bi-interpretable with bounded-degree polynomial
-  invariants over the adjacency matrix (Atserias–Maneva 2013;
-  Berkholz–Grohe 2017's analysis of Sherali–Adams hierarchies on
-  graph-isomorphism formulations).
-- A **degree-`d` Gröbner basis attack** on the GI polynomial system
-  `π · A₁ · π^T = A₂` is functionally equivalent to checking
-  `2d`-WL color refinement (Grohe 2017, *Descriptive Complexity,
-  Canonisation, and Definable Graph Structure Theory*, §11–§13).
+- `k`-WL corresponds (at a fixed finite level) to bounded-degree
+  polynomial invariants over the adjacency matrix in
+  linear-algebraic / Sherali–Adams hierarchies — concretely,
+  Atserias–Maneva 2013 shows level-`k` Sherali–Adams on the
+  GI polytope captures `(k+1)`-WL with counting; Berkholz–Grohe
+  2017 extends the analysis to the Lasserre hierarchy.
+- A **bounded-degree Gröbner basis attack** on the GI polynomial
+  system `π · A₁ · π^T = A₂` is therefore captured by the WL
+  hierarchy at a corresponding finite level (Grohe 2017,
+  *Descriptive Complexity, Canonisation, and Definable Graph
+  Structure Theory*, §11–§13).
 
 Consequently: **CFI-resistance to `k`-WL for unbounded `k` ⟹
 resistance to fixed-degree algebraic attacks at the GI level.**
@@ -489,13 +492,16 @@ does not produce a polynomial-time PEP solver.
 
 For Orbcrypt's balanced parameters (`n = 4λ`, so `n = 512` at L3,
 `n = 1024` at L7 — see `docs/PARAMETERS.md` §6.2), algebraic PEP
-attacks are roughly **30+ orders of magnitude beyond practical**
-with current techniques, and the empirical `n ≈ 25–30` horizon for
-raw GB is on the order of 20 doublings short. This is the most
-direct algebraic threat to track — any breakthrough on PEP
-cryptanalysis (e.g. a new structural reduction, or a degree-fall on
-bilinear PEP systems analogous to HFE's hidden univariate trapdoor)
-would be the first place Orbcrypt's margin shrinks.
+attacks are far beyond practical at every security level: F5 / F4
+empirical complexity for random PEP scales as `2^Θ(n)`, and HGOE
+balanced sizes sit more than an order of magnitude past the
+`n ≈ 25–30` raw-GB horizon — the resulting work factor is
+`2^Ω(n)`, comfortably exceeding the `2^λ` security target for the
+parameters in `PARAMETERS.md` §2.2 / §6.2. This is the most direct
+algebraic threat to track — any breakthrough on PEP cryptanalysis
+(e.g. a new structural reduction, or a degree-fall on bilinear PEP
+systems analogous to HFE's hidden univariate trapdoor) would be the
+first place Orbcrypt's margin shrinks.
 
 ##### (b) Algebraic folding of the quasi-cyclic structure
 
