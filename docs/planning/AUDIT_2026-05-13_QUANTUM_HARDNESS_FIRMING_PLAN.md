@@ -35,6 +35,7 @@ posture identified in the cryptographer's read-out of the same date.
 - [§11 CI and audit-script updates](#11-ci-and-audit-script-updates)
 - [§12 Documentation-parity updates](#12-documentation-parity-updates)
 - [§13 Acceptance criteria and signoff](#13-acceptance-criteria-and-signoff)
+- [§14 Best-practices alignment audit](#14-best-practices-alignment-audit)
 - [Appendix A — Finding ↔ workstream cross-reference](#appendix-a--finding--workstream-cross-reference)
 - [Appendix B — Mathematical references](#appendix-b--mathematical-references)
 - [Appendix C — Non-vacuity Lean snippet templates](#appendix-c--non-vacuity-lean-snippet-templates)
@@ -63,13 +64,22 @@ audit-script extension), ~1900 lines of new canonical
 documentation, ~500 lines of new GAP cryptanalysis tooling, ~100
 lines of new CI Python, distributed across ~6 months of calendar
 time at single-thread pace and ~3.5 months with the parallelisation
-laid out in §10.
+laid out in §10. Plan is delivered as **16 PRs** sized to the
+≤ 800-LOC human-review target (§13.5).
 
 The "LOC (Lean)" column above is the *core-component* count
 (structures, definitions, headline theorems). The per-workstream
 tables in §§3.4, 4.6, 5.4, 6.6, 7.6 include audit-script entries,
 ε=1 inhabitation witnesses, and small additive corollaries; their
 totals are ~10–20% higher than the core figures.
+
+**Per-work-unit detail.** §§3.4.1, 4.6.1, 6.6.1 decompose the
+high-complexity work units (Q1.5–Q1.6, Q2.A.3b, Q2.B.1, Q4.B.1–B.2)
+into 28 sub-units with proof sketches, Definition-of-Done
+checklists, and Mathlib API reuse lists. §13.6 carries the
+per-module build-verification commands. §14 is the
+best-practices alignment audit confirming the plan satisfies
+every project policy (§§14.1–14.10).
 
 **Headline deliverables on plan completion.**
 
@@ -429,11 +439,15 @@ structure HSPDecisionalInstance
   decH₀ : DecidablePred (· ∈ H₀)
   decH₁ : DecidablePred (· ∈ H₁)
   /-- The promised function family: index 0 means f constant on
-      right cosets of H₀; index 1, on right cosets of H₁. -/
+      right cosets of H₀; index 1, on right cosets of H₁. The
+      coset predicate uses the standard Mathlib characterisation
+      `σ * τ⁻¹ ∈ H` for "σ in the right coset H · τ". -/
   f₀ : Equiv.Perm (Fin n) → Y
   f₁ : Equiv.Perm (Fin n) → Y
-  f₀_const_on_cosets : ∀ σ τ, σ ∈ H₀.carrier.image (· * τ) → f₀ σ = f₀ τ
-  f₁_const_on_cosets : ∀ σ τ, σ ∈ H₁.carrier.image (· * τ) → f₁ σ = f₁ τ
+  f₀_const_on_cosets : ∀ σ τ : Equiv.Perm (Fin n),
+    σ * τ⁻¹ ∈ H₀ → f₀ σ = f₀ τ
+  f₁_const_on_cosets : ∀ σ τ : Equiv.Perm (Fin n),
+    σ * τ⁻¹ ∈ H₁ → f₁ σ = f₁ τ
 
 /-- Distinguisher type: receives a list of (σ, f(σ)) pairs and
     outputs a bit guessing which of H₀ / H₁ is the hidden subgroup. -/
@@ -548,15 +562,239 @@ proof (R-09 follow-on) can discharge the `perQueryAdvantage` bound.
 | Q1.2 | `HSPDistinguisher` + `hspDecisionalAdvantage` | Lean def | 180 | Low | Q1.1 |
 | Q1.3 | `ConcreteHSPSn` predicate + sanity lemmas | Lean def + thm | 150 | Low | Q1.2 |
 | Q1.4 | `HSPOIABundle` structure + `orbits_distinct` carrier | Lean def | 100 | Low | Q1.1 |
-| Q1.5 | `hspOIABundleToScheme` encoder + scheme correctness | Lean def + thm | 220 | Med | Q1.4 |
-| Q1.6 | `oia_distinguisher_lifts_to_hsp_distinguisher` reduction | Lean thm | 260 | Med | Q1.3, Q1.5 |
-| Q1.7 | `concrete_hsp_sn_implies_concrete_oia` contrapositive | Lean thm | 80 | Low | Q1.6 |
+| Q1.5.a | `hspOIABundleToScheme` encoder definition | Lean def | 120 | Med | Q1.4 |
+| Q1.5.b | Scheme-correctness theorem (orbit disjointness, well-formedness) | Lean thm | 100 | Med | Q1.5.a |
+| Q1.6.a | Reduction algorithm (OIA-adv ↦ HSP-distinguisher constructor) | Lean def | 60 | Low | Q1.5.b |
+| Q1.6.b | PMF-equivalence lemma (`σ · basePoint` distribution under H₀ / H₁) | Lean thm | 80 | Med | Q1.6.a |
+| Q1.6.c | Advantage-transfer lemma (HSP-adv ≥ OIA-adv pointwise) | Lean thm | 80 | Med | Q1.6.b |
+| Q1.6.d | Headline composition (`oia_distinguisher_lifts_to_hsp_distinguisher`) | Lean thm | 40 | Low | Q1.6.c |
+| Q1.7 | `concrete_hsp_sn_implies_concrete_oia` contrapositive | Lean thm | 80 | Low | Q1.6.d |
 | Q1.8 | `hsp_to_oia_chain_at_one_exists` ε=1 inhabitation | Lean thm | 90 | Low | Q1.7 |
 | Q1.9 | `indQCPA_bound_from_hsp_sn_hardness` interpretive corollary | Lean thm | 90 | Low | Q1.7, existing R-09 stub |
 | Q1.10 | Audit script entries (`scripts/audit_phase_16.lean` §15.26) | Lean script | 50 | Low | Q1.7, Q1.8 |
 | Q1.11 | Doc-parity: DEVELOPMENT.md §§5.4.2, 8.2, 8.4.2; HARDNESS_ANALYSIS.md §1.6 stub | Doc | 70 | Low | Q1.7 |
 | Q1.12 | Doc-parity: API_SURFACE.md headline-table row addition | Doc | 30 | Low | Q1.7 |
 | **Q1 total** | | | **~1440** | | |
+
+### 3.4.1 Per-work-unit detail and implementation sketches
+
+The high-risk and high-complexity work units carry a decomposition,
+proof sketch, definition-of-done checklist, and Mathlib API
+reuse list. Low-risk plumbing units (Q1.1–Q1.4, Q1.7–Q1.12) are
+specified by their target API in §3.3 above.
+
+**Q1.5.a — `hspOIABundleToScheme` encoder definition.**
+
+The encoder produces an `OrbitEncScheme G X M` with:
+
+- `G := Equiv.Perm (Fin n)` — the ambient symmetric group;
+- `X := Bitstring n` — the orbit space;
+- `M := Fin 2` — the two-message space (indexing H₀ vs H₁
+  orbits of `basePoint`);
+- `reps : Fin 2 → Bitstring n := ![basePoint, basePoint]` — both
+  message reps equal `basePoint`; the *orbits* differ because
+  the underlying group differs (H₀ vs H₁).
+
+Wait — that doesn't quite work, because an `OrbitEncScheme`
+has a single group. The encoder must use **the supergroup
+`Equiv.Perm (Fin n)`** as the scheme group, with both H₀ and
+H₁ as *subgroups*. The two message orbits then correspond to
+two distinct elements in the ambient group's orbit of
+basePoint, not to two different acting groups.
+
+Restated correctly: the two reps are *distinct* base points
+`basePoint₀ := basePoint` and `basePoint₁ := σ · basePoint`
+for some `σ ∈ H₁ \ H₀`. The scheme group is the supergroup
+`G_super := H₀ ⊔ H₁` (the join of H₀ and H₁ in the subgroup
+lattice). Under `G_super`, the two reps lie in distinct
+orbits iff `basePoint₁ ∉ G_super · basePoint₀` — which is
+exactly the `orbits_distinct` hypothesis on the bundle.
+
+**Implementation sketch.**
+
+```lean
+def hspOIABundleToScheme
+    {n : ℕ} {Y : Type*} [Fintype Y] [DecidableEq Y]
+    (B : HSPOIABundle n Y) :
+    OrbitEncScheme (B.inst.H₀ ⊔ B.inst.H₁ : Subgroup _)
+                   (Bitstring n) (Fin 2) where
+  reps := fun m => Matrix.cons B.basePoint
+                       (Matrix.cons B.basePoint₁ (Matrix.empty)) m
+  reps_inj := /- from orbits_distinct -/
+  -- additional fields from the OrbitEncScheme structure
+  ...
+```
+
+**DoD checklist (Q1.5.a).**
+
+- [ ] `lake build Orbcrypt.Hardness.HSPToOIA` succeeds on
+      the encoder definition alone.
+- [ ] The `reps` function is total and decidable.
+- [ ] The `OrbitEncScheme` type-class search resolves cleanly
+      (the `Subgroup`-as-group `MulAction` instance composes).
+
+**Mathlib API reuse.** `Subgroup.sup_def`,
+`Subgroup.mem_sup`, `Matrix.cons`, `Matrix.empty`,
+`OrbitEncScheme` from `Crypto/Scheme.lean`.
+
+**Q1.5.b — Scheme-correctness theorem.**
+
+Once the encoder is constructed, prove the two scheme-level
+properties downstream theorems depend on:
+
+```lean
+/-- The encoded scheme's reps lie in distinct orbits under
+    its group. -/
+theorem hspOIABundleToScheme_reps_distinct_orbits
+    (B : HSPOIABundle n Y) :
+    MulAction.orbit _ ((hspOIABundleToScheme B).reps 0) ≠
+    MulAction.orbit _ ((hspOIABundleToScheme B).reps 1) := by
+  exact B.orbits_distinct
+
+/-- The encoded scheme is non-trivial (M has two distinct
+    elements). -/
+theorem hspOIABundleToScheme_M_nontrivial
+    (B : HSPOIABundle n Y) :
+    Nontrivial (Fin 2) := by infer_instance
+```
+
+**DoD checklist (Q1.5.b).** Both theorems declared and
+proved; `#print axioms` on each returns the canonical triple.
+
+**Q1.6.a — Reduction algorithm.**
+
+Construct an HSP distinguisher from an OIA adversary. Pure
+data-flow, no probabilistic content:
+
+```lean
+/-- Given an OIA-adversary A on the encoded scheme, build an
+    HSP single-query distinguisher. The construction:
+      input: (σ, f(σ)) where f is the hidden-subgroup oracle
+      define c := σ • basePoint
+      run A.choose to obtain (m₀, m₁) ∈ Fin 2 × Fin 2
+      run A.guess (params, c) to obtain a bit b'
+      output b' as the HSP guess. -/
+def oiaAdvToHspDistinguisher
+    {n : ℕ} {Y : Type*} [Fintype Y] [DecidableEq Y]
+    (B : HSPOIABundle n Y)
+    (A : Adversary (Bitstring n) (Fin 2)) :
+    HSPDistinguisher n Y 1 where
+  decide := fun samples =>
+    let (σ, _) := samples 0
+    let c := σ • B.basePoint
+    A.guess (encodedParams B) c
+```
+
+**DoD checklist (Q1.6.a).** Definition typechecks; the
+`samples 0` index is well-formed (Q = 1); the encoded
+params resolve.
+
+**Mathlib API reuse.** `Adversary` from `Crypto/Security.lean`,
+`Bitstring n` action from `Construction/Permutation.lean:94`.
+
+**Q1.6.b — PMF-equivalence lemma.**
+
+Show that the probability distribution `σ ←$ S_n; output (σ,
+σ • basePoint)` matches the OIA challenge distribution under
+the corresponding hidden subgroup. Specifically:
+
+```lean
+/-- The PMF over (σ, σ • basePoint) pairs, conditioned on
+    the hidden subgroup being H, equals the OIA challenge
+    PMF under H as the secret group. -/
+theorem hspChallengePMF_equiv_oiaChallengePMF
+    {n : ℕ} {Y : Type*} [Fintype Y] [DecidableEq Y]
+    (B : HSPOIABundle n Y) (H : Subgroup (Equiv.Perm (Fin n)))
+    (hH : H = B.inst.H₀ ∨ H = B.inst.H₁) :
+    (uniformPMF (Equiv.Perm (Fin n))).map
+        (fun σ => σ • (if H = B.inst.H₀ then B.basePoint
+                       else B.basePoint₁)) =
+    orbitDist H _ := ...
+```
+
+**Proof sketch.** Unfold `uniformPMF` and `orbitDist`
+(`Crypto/CompOIA.lean:69`); use `Subgroup.mulAction_uniform`
+equivalence; conclude via `PMF.map_uniformOfFintype`.
+
+**DoD checklist (Q1.6.b).** The PMF equivalence is declared
+and proved; the proof does not rely on Q1.6.a (so it can
+land independently).
+
+**Mathlib API reuse.** `PMF.uniformOfFintype`, `PMF.map`,
+`uniformPMF` (Orbcrypt-defined in
+`Probability/Monad.lean`).
+
+**Q1.6.c — Advantage-transfer lemma.**
+
+The probabilistic centerpiece. Show:
+
+```lean
+theorem hspDecisionalAdvantage_ge_indCPAAdvantage
+    {n : ℕ} {Y : Type*} [Fintype Y] [DecidableEq Y]
+    (B : HSPOIABundle n Y)
+    (A : Adversary (Bitstring n) (Fin 2)) :
+    hspDecisionalAdvantage B.inst (oiaAdvToHspDistinguisher B A) ≥
+      indCPAAdvantage (hspOIABundleToScheme B) A := ...
+```
+
+**Proof sketch.**
+
+1. Unfold both advantages to PMF-conditioned probabilities.
+2. By Q1.6.b, the `σ • basePoint` PMFs match the OIA challenge
+   PMFs.
+3. The distinguisher's output bit at each (H₀ / H₁) case
+   equals A's output bit at the corresponding OIA challenge.
+4. Therefore the absolute-difference of the two
+   distinguisher-output probabilities equals the absolute-
+   difference of A's two OIA-challenge output probabilities,
+   which is `indCPAAdvantage A`.
+
+**DoD checklist (Q1.6.c).** Inequality holds for all
+adversaries; centering convention (`indCPAAdvantage_eq` at
+`Crypto/CompSecurity.lean:114`) verified.
+
+**Mathlib API reuse.** `PMF.toFun`, `Finset.sum_le_sum`,
+`abs_sub_le_iff`.
+
+**Q1.6.d — Headline composition.**
+
+```lean
+theorem oia_distinguisher_lifts_to_hsp_distinguisher
+    {n : ℕ} {Y : Type*} [Fintype Y] [DecidableEq Y]
+    (B : HSPOIABundle n Y)
+    (A : Adversary (Bitstring n) (Fin 2))
+    {δ : ℝ}
+    (h_adv : indCPAAdvantage (hspOIABundleToScheme B) A ≥ δ) :
+    ∃ D : HSPDistinguisher n Y 1,
+      hspDecisionalAdvantage B.inst D ≥ δ := by
+  exact ⟨oiaAdvToHspDistinguisher B A,
+         h_adv.trans (hspDecisionalAdvantage_ge_indCPAAdvantage B A)⟩
+```
+
+**DoD checklist (Q1.6.d).** Theorem proved in ≤ 5 tactic
+steps using Q1.6.a, Q1.6.c.
+
+### 3.4.2 Pre-flight checks for W-Q1
+
+Before starting any W-Q1 work unit:
+
+1. **Mathlib pin.** Verify `lean-toolchain` matches
+   `leanprover/lean4:v4.30.0-rc1` and
+   `lake-manifest.json` matches the project pin
+   (`fa6418a8`).
+2. **Existing dependency build.** Run
+   `lake build Orbcrypt.Crypto.CompOIA
+   Orbcrypt.Crypto.CompSecurity
+   Orbcrypt.Construction.Permutation` to confirm the
+   dependencies of `HSPToOIA.lean` build clean.
+3. **Subgroup-API readiness.** `grep -rn 'Subgroup.sup_def'
+   Orbcrypt/` should return matches in
+   `Hardness/CodeEquivalence.lean` (the existing
+   `PAutSubgroup` machinery uses subgroup joins).
+4. **Audit-script slot reservation.** Add a §15.26 stub
+   header in `scripts/audit_phase_16.lean` *before*
+   starting Lean implementation; the eventual
+   `#print axioms` lines go under that header.
 
 **Risk-Med notes.**
 
@@ -923,71 +1161,133 @@ Two new files under `Orbcrypt/Hardness/`.
 
 #### 4.B.1 `Orbcrypt/Hardness/GrochowQiaoOIA.lean` — encoder shape
 
-The existing `Hardness/GrochowQiao.lean` (and its 26
-sub-modules under `Hardness/GrochowQiao/`) deliver the Karp
-reduction at the *isomorphism-set* level: there is an injective
-map `φ : Graph n → Tensor3 (dimGQ n) ℚ` such that
-`G₁ ≅ G₂ ↔ φ(G₁) ≅ φ(G₂)` under the corresponding group
-action on each side.
+The existing `Hardness/GrochowQiao.lean` (and its sub-modules
+under `Hardness/GrochowQiao/`) deliver the Karp reduction at
+the *isomorphism-set* level via `grochowQiaoEncode m adj :
+Tensor3 (dimGQ m) ℚ` (per
+`Hardness/GrochowQiao/EncoderPolynomialIdentities.lean`):
+`G₀ ≅_S_n G₁ ↔ encode G₀ ≅_GL³ encode G₁`.
 
-W-Q2.B lifts this to an `OrbitPreservingEncoding`:
+**Chain-direction note.** The post-W6 chain runs
+`ConcreteTensorOIA → ConcreteCEOIA → ConcreteGIOIA →
+ConcreteOIA` (each arrow: upper-hardness implies lower-hardness
+via a per-encoding witness). The GQ encoder gives a *direct*
+"Tensor → GI" arrow that bypasses CE — the standard chain step
+runs through CE, but the GQ step provides an alternative
+direct route. The Lean theorem shape mirrors the chain
+direction: `ConcreteTensorOIA` on the *encoded* tensors is the
+**hypothesis**; `ConcreteGIOIA` on the *original* graphs is
+the **conclusion**. Operationally, a GIOIA-adversary
+post-composed with the encoder is a TensorOIA-adversary; if
+TensorOIA at ε bounds all such adversaries, GIOIA at ε bounds
+the original.
+
+W-Q2.B lifts the Karp reduction to the OIA-preserving shape:
 
 ```lean
-/-- The Grochow–Qiao orbit-preserving encoding. Takes
-    a graph as a Bitstring (n choose 2) and produces the
-    corresponding tensor; orbit equivalence is preserved
-    in both directions. -/
-def grochowQiaoOrbitEncoding (n : ℕ) :
+/-- The Grochow–Qiao orbit-preserving encoder, lifted from
+    `grochowQiaoEncode`. The action on the graph side is the
+    `permuteAdj`-induced S_n-action (per
+    `Hardness/Reductions.lean:116`); the action on the tensor
+    side is the GL³ action (per `Hardness/TensorAction.lean`'s
+    `tensorAction` instance at line 243). The encoder is
+    orbit-equivariant via `liftedSigma`
+    (`Hardness/GrochowQiao.lean:135`). -/
+def grochowQiaoOrbitEncoder (n : ℕ) :
     OrbitPreservingEncoding
-      (Equiv.Perm (Fin n))         -- source group
-      (Bitstring (Nat.choose n 2)) -- source space (graph)
-      (Matrix (Fin n) (Fin n) ℚ × Matrix (Fin n) (Fin n) ℚ
-       × Matrix (Fin n) (Fin n) ℚ) -- target group (GL³)
+      (Equiv.Perm (Fin n))                              -- source group
+      (Fin n → Fin n → Bool)                            -- source space (adj matrix)
+      ((Matrix (Fin (dimGQ n)) (Fin (dimGQ n)) ℚ)³)     -- target group (GL³)
       (Tensor3 (dimGQ n) ℚ) := ...
 
-/-- Orbit-equivariance: the encoder maps S_n-orbits to
-    GL³-orbits. -/
-theorem grochowQiaoOrbitEncoding_equivariant {n : ℕ}
-    (σ : Equiv.Perm (Fin n)) (G : Bitstring (Nat.choose n 2)) :
-    (grochowQiaoOrbitEncoding n).encode (permuteAdj σ G) ∈
-      MulAction.orbit
-        (Matrix (Fin (dimGQ n)) (Fin (dimGQ n)) ℚ)³
-        ((grochowQiaoOrbitEncoding n).encode G) := ...
+/-- Orbit-equivariance: the S_n action on adjacency matrices
+    is intertwined with the GL³ action on tensors by the
+    `liftedSigma` embedding. -/
+theorem grochowQiaoOrbitEncoder_equivariant {n : ℕ}
+    (σ : Equiv.Perm (Fin n)) (adj : Fin n → Fin n → Bool) :
+    grochowQiaoEncode n (permuteAdj σ adj) =
+      (liftedSigmaTriple n σ) • (grochowQiaoEncode n adj) := ...
 
-/-- The headline conditional reduction: GI-OIA hardness at ε
-    implies Tensor-OIA hardness at ε under the GQ encoder. -/
-theorem grochowQiao_giOIA_implies_concreteTensorOIA
-    {n : ℕ} (G₀ G₁ : Bitstring (Nat.choose n 2)) {ε : ℝ}
-    (h_gi : ConcreteGIOIA G₀ G₁ ε) :
-    ConcreteTensorOIA
-      ((grochowQiaoOrbitEncoding n).encode G₀)
-      ((grochowQiaoOrbitEncoding n).encode G₁)
-      ε := ...
+/-- The headline conditional reduction in the **chain
+    direction**: TensorOIA hardness on the encoded tensors at
+    ε implies GIOIA hardness on the original graphs at ε. -/
+theorem grochowQiao_concreteTensorOIA_implies_concreteGIOIA
+    {n : ℕ} (adj₀ adj₁ : Fin n → Fin n → Bool) {ε : ℝ}
+    (h_tensor : ConcreteTensorOIA
+                  (grochowQiaoEncode n adj₀)
+                  (grochowQiaoEncode n adj₁)
+                  ε) :
+    ConcreteGIOIA adj₀ adj₁ ε := ...
 ```
 
 **LOC:** ~400. **Risk:** Med (depends on R-TI Phase 3 closing
-the `h_research` Props in `AlgEquivFromGL3.lean`; if that closure
-slips, the GQ-OIA lift inherits the `h_research` conditional).
+the `h_research` Props in `AlgEquivFromGL3.lean`; if that
+closure slips, the GQ-OIA lift inherits the `h_research`
+conditional). The `liftedSigmaTriple` GL³-lift of `liftedSigma`
+is a new helper this work-unit introduces (~30 LOC of the
+budget) — it takes a single permutation and produces the
+diagonal GL³ triple acting on the tensor.
 
 #### 4.B.2 `Orbcrypt/Hardness/CFItoGrochowQiaoChain.lean` — chain composition at non-trivial ε
 
+The composition story: a `CFIHardness` witness gives
+`ConcreteGIOIA` on CFI graphs at ε. The GQ encoder then gives
+the **upgrade** to `ConcreteTensorOIA` at ε on the GQ-encoded
+tensors of those CFI graphs, *only when the upgrade direction
+is provided as a separate conjecture* — call this
+`GQTensorOIAFromGIOIA H P`. The two-direction chain then
+inhabits `ConcreteHardnessChain` at non-trivial ε:
+
 ```lean
-/-- The chained conditional witness: CFI hardness at ε plus
-    the existing CE-to-GI encoder plus the GQ OIA-encoder
-    gives a `ConcreteHardnessChain` inhabitation at non-trivial ε. -/
+/-- Companion conjecture: TensorOIA holds on GQ-encoded CFI
+    tensors at the same ε as the underlying GIOIA. This is a
+    *separate* hardness conjecture (the GQ encoder gives only
+    one direction in Lean — Tensor → GI; upgrading GI-hardness
+    to Tensor-hardness on encoded instances requires the
+    *reverse* implication, which is not delivered by the Karp
+    reduction alone). Catalogued as a Conditional-status
+    hardness predicate. -/
+def GQTensorOIAFromGIOIA
+    {n₀ : ℕ} (H : SimpleGraph (Fin n₀)) [DecidableRel H.Adj]
+    (P : CFISeparatedTwistPair H) (ε : ℝ) : Prop :=
+  CFIHardness H P ε →
+    ConcreteTensorOIA
+      (grochowQiaoEncode (4 * n₀) (cfiAdj H P.t₀))
+      (grochowQiaoEncode (4 * n₀) (cfiAdj H P.t₁))
+      ε
+
+/-- The chained conditional witness: CFI hardness + the
+    GQ-TensorOIA-companion conjecture gives the full hardness
+    chain at non-trivial ε. -/
 theorem concrete_hardness_chain_at_cfi_grochowQiao
     {n₀ : ℕ} (H : SimpleGraph (Fin n₀)) [DecidableRel H.Adj]
     (P : CFISeparatedTwistPair H) {ε : ℝ}
     (h_cfi : CFIHardness H P ε)
-    (scheme : OrbitEncScheme _ _ _)
-    (h_scheme_via_cfi : scheme = cfiScheme H P)
-    {F : Type*} {S : SurrogateTensor F}
-    (h_surrogate_via_gq : S = grochowQiaoSurrogateOf n₀ H P) :
-    ConcreteHardnessChain scheme F S ε := ...
+    (h_gq_upgrade : GQTensorOIAFromGIOIA H P ε)
+    {F : Type*} (S : SurrogateTensor F) :
+    ConcreteHardnessChain (cfiScheme H P) F S ε := ...
 ```
 
-**LOC:** ~250. **Risk:** Med (composition of the conditional
-hypotheses across encoders).
+**Mathematical note.** The GQ Karp reduction
+(`Hardness/GrochowQiao.lean`) proves `GI(G₀, G₁) ↔ TI(encode
+G₀, encode G₁)` at the *decision* level. The corresponding
+hardness chain step in Lean is one-directional:
+`ConcreteTensorOIA on encoded tensors → ConcreteGIOIA on
+graphs` (the GIOIA-adversary post-composed-with-encoder
+becomes a TensorOIA-adversary). The reverse direction —
+"GIOIA hard ⟹ TensorOIA hard on encoded instances" — requires
+a *decoding* analysis: a TensorOIA-adversary on encoder-image
+tensors must be exhibitable as a GIOIA-adversary, which the
+Karp reduction does not directly establish (it gives only the
+forward direction). Hence the separate `GQTensorOIAFromGIOIA`
+hardness predicate, which the literature does support
+informally (the GQ encoder image is computationally
+indistinguishable from generic tensors at TI-hardness scale)
+but which is *not* a corollary of the Karp reduction alone.
+
+**LOC:** ~250. **Risk:** Med (composition of three conditional
+hypotheses: `CFIHardness`, `GQTensorOIAFromGIOIA`, and the
+existing chain machinery).
 
 ### 4.5 Update to `Hardness/Reductions.lean`
 
@@ -1023,32 +1323,315 @@ theorem exists_concreteHardnessChain_with_eps_lt_one :
 | Q2.A.1 | `Orbcrypt/Hardness/CFI/Basic.lean` — CFI vertex / graph data type | Lean def | 400 | Med | — |
 | Q2.A.2 | `Orbcrypt/Hardness/CFI/CardinalityLemmas.lean` — vertex / edge counts | Lean thm | 250 | Low | Q2.A.1 |
 | Q2.A.3a | `CycleSpace.lean` reverse direction (twist-diff in cycle space ⇒ iso) | Lean thm | 250 | Med | Q2.A.1, Q2.A.2 |
-| Q2.A.3b | `CycleSpace.lean` forward direction (iso ⇒ twist-diff) | Lean thm | 300 | **High** | Q2.A.3a |
+| Q2.A.3b.i | Local fibre re-labelling lemma (per-base-vertex permutation extraction) | Lean thm | 80 | Med | Q2.A.3a |
+| Q2.A.3b.ii | Edge-gadget twist-transport lemma (per-edge flip-bit extraction) | Lean thm | 70 | Med | Q2.A.3b.i |
+| Q2.A.3b.iii | Cycle-closure constraint (parities sum to zero around cycles) | Lean thm | 80 | **High** | Q2.A.3b.ii |
+| Q2.A.3b.iv | Cycle-space membership extraction | Lean thm | 50 | Med | Q2.A.3b.iii |
+| Q2.A.3b.v | Forward-direction composition (iso ⇒ twist-diff in cycle space) | Lean thm | 30 | Low | Q2.A.3b.iv |
 | Q2.A.4 | `Hardness.lean` — CFISeparatedTwistPair + CFIHardness Prop | Lean def | 200 | Low | Q2.A.3a |
-| Q2.A.5 | `OIAEncoder.lean` — cfiScheme + headline reduction | Lean def + thm | 350 | Med | Q2.A.4 |
-| Q2.B.1 | `GrochowQiaoOIA.lean` — orbit-preserving GQ encoder | Lean def + thm | 400 | Med | R-TI Phase 3 closure (or h_research carry-over) |
-| Q2.B.2 | `CFItoGrochowQiaoChain.lean` — chained ε-bound | Lean thm | 250 | Med | Q2.A.5, Q2.B.1 |
-| Q2.C.1 | `Hardness/Reductions.lean` additive lemmas (CFI/GQ chain entries) | Lean thm | 150 | Low | Q2.B.2 |
+| Q2.A.5.a | `cfiAdj` adjacency-matrix view (Fin (4n₀) → Fin (4n₀) → Bool) | Lean def | 100 | Med | Q2.A.1 |
+| Q2.A.5.b | `cfiScheme` OrbitEncScheme construction | Lean def | 130 | Med | Q2.A.5.a |
+| Q2.A.5.c | `cfi_hardness_implies_concreteGIOIA_eps_lt_one` headline | Lean thm | 120 | Low | Q2.A.5.b, Q2.A.4 |
+| Q2.B.1.a | `liftedSigmaTriple` helper (single perm → GL³ triple) | Lean def | 30 | Low | (existing `liftedSigma`) |
+| Q2.B.1.b | `grochowQiaoOrbitEncoder` encoder lift | Lean def | 100 | Med | Q2.B.1.a |
+| Q2.B.1.c | `grochowQiaoOrbitEncoder_equivariant` orbit-equivariance | Lean thm | 200 | Med | Q2.B.1.b, R-TI Phase 3 closure |
+| Q2.B.1.d | `grochowQiao_concreteTensorOIA_implies_concreteGIOIA` reduction | Lean thm | 70 | Low | Q2.B.1.c |
+| Q2.B.2.a | `GQTensorOIAFromGIOIA` companion hardness predicate | Lean def | 80 | Low | Q2.B.1.d |
+| Q2.B.2.b | `concrete_hardness_chain_at_cfi_grochowQiao` composition theorem | Lean thm | 170 | Med | Q2.A.5.c, Q2.B.2.a |
+| Q2.C.1 | `Hardness/Reductions.lean` additive lemmas (CFI/GQ chain entries) | Lean thm | 150 | Low | Q2.B.2.b |
 | Q2.C.2 | Audit script `scripts/audit_phase_16.lean` §15.27 entries | Lean script | 80 | Low | Q2.C.1 |
 | Q2.D.1 | `docs/HARDNESS_ANALYSIS.md` §3 update (chain diagram, ε<1 inhabitation) | Doc | 60 | Low | Q2.C.1 |
 | Q2.D.2 | `docs/DEVELOPMENT.md` §5.3 CFI sub-section finalisation | Doc | 40 | Low | Q2.C.1 |
-| Q2.D.3 | `docs/API_SURFACE.md` — three new headline rows | Doc | 30 | Low | Q2.C.1 |
+| Q2.D.3 | `docs/API_SURFACE.md` — four new headline rows | Doc | 30 | Low | Q2.C.1 |
 | Q2.D.4 | `CLAUDE.md` / `AGENTS.md` release-messaging policy update | Doc | 30 | Low | Q2.D.3 |
 | **Q2 total** | | | **~2790** | | |
 
-**Note on Q2.A.3b risk mitigation.** If the forward direction of
-the CFI iso ⇔ twist-diff-in-cycle-space theorem proves too deep
-for the planned ~300 LOC budget, the workstream stages it as a
-`Prop`-valued research-scope hypothesis `CFIForwardDirection H`
-analogous to `R-TI`'s `RestrictedGL3OnPathOnlyTensor`. Subsequent
-work-units (Q2.A.4, Q2.A.5) carry the hypothesis through. The
-release-messaging consequences are tracked in Q2.D.1 as an
-explicit "Conditional on CFIForwardDirection" Status entry.
+**Note on Q2.A.3b risk mitigation.** If any one of Q2.A.3b.i
+through Q2.A.3b.iv proves too deep for its allocated LOC
+budget, that sub-unit may be staged as a `Prop`-valued
+research-scope hypothesis (e.g.,
+`CFIForwardLocalFibreRelabelling H`) analogous to R-TI
+Phase 3's hypothesis-driven staging. The remaining sub-units
+carry the hypothesis through. Release-messaging consequences
+tracked in Q2.D.1 as an explicit "Conditional on
+&lt;hypothesis-name&gt;" Status entry. The most likely
+deferral candidate is Q2.A.3b.iii (cycle-closure), which is
+the algebraically deepest step.
+
+### 4.6.1 Per-work-unit detail and implementation sketches
+
+**Q2.A.3b — forward CFI direction (the highest-risk piece).**
+
+The Cai–Fürer–Immerman forward direction proves: given a
+graph isomorphism `φ : cfiGraph H t₀ ≃g cfiGraph H t₁`, the
+twist-difference `t₀ ⊕ t₁` lies in the cycle space of H.
+
+The full proof decomposes into five sub-units, each a
+discrete piece of structured reasoning.
+
+**Q2.A.3b.i — Local fibre re-labelling.**
+
+For each base vertex `v ∈ V(H)`, the isomorphism φ restricts
+to a bijection between the fibres `F(v)` and `F(φ_base(v))`
+where `φ_base` is the induced base-graph automorphism. (Note:
+`φ_base` is the identity in the standard CFI setting where
+the two graphs share base H; only the *fibre internal
+permutation* varies.) The restriction is determined by a
+parity-preserving permutation of `Fin (deg v) → Bool`.
+
+```lean
+/-- For every base vertex v, the iso φ induces a
+    parity-preserving local permutation of fibre v. -/
+theorem cfi_iso_local_fibre_permutation
+    {n₀ : ℕ} (H : SimpleGraph (Fin n₀)) [DecidableRel H.Adj]
+    (edgeIndex : _) (t₀ t₁ : Sym2 (Fin n₀) → Bool)
+    (φ : cfiGraph H edgeIndex t₀ ≃g cfiGraph H edgeIndex t₁)
+    (v : Fin n₀) :
+    ∃ π : Equiv.Perm (Fin (H.degree v) → Bool),
+      (∀ b, isEvenParity b ↔ isEvenParity (π b)) ∧
+      (∀ b : CFIFibre (H.degree v),
+         φ.toEquiv ⟨v, b⟩ = ⟨v, ⟨π b.bits, ...⟩⟩) := ...
+```
+
+**Proof sketch (Q2.A.3b.i).**
+
+1. φ preserves the base-vertex projection (since the base
+   graph H is connected and edge gadgets force `φ_base` to
+   be a graph automorphism of H; for `t₀ = t₁` modulo cycle
+   space, `φ_base` can be chosen the identity).
+2. The fibre over v has `2^(deg v - 1)` parity-even elements
+   forming a torsor over `(ZMod 2)^(deg v - 1)`; φ acts on
+   this torsor as an affine permutation.
+3. Use `Fintype.card_eq` to lift the bijection between
+   fibre-image and fibre-preimage.
+
+**Mathlib API reuse.** `SimpleGraph.Iso`,
+`SimpleGraph.Adj`, `Equiv.Perm`, `Finset.image`.
+
+**Q2.A.3b.ii — Edge-gadget twist-transport.**
+
+For each edge `e = (u, v) ∈ E(H)`, the CFI edge gadget
+constrains the side-bits of fibres F(u), F(v) at e. The iso
+φ maps edge gadgets to edge gadgets, and the per-vertex
+permutations (Q2.A.3b.i) compose with the edge-gadget map
+to yield a *twist-flip bit* `flipBit e : Bool` such that
+`t₁ e = t₀ e ⊕ flipBit e`.
+
+```lean
+/-- The iso φ induces a per-edge twist-flip function. -/
+theorem cfi_iso_edge_flipBit
+    (φ : cfiGraph H edgeIndex t₀ ≃g cfiGraph H edgeIndex t₁) :
+    ∃ flipBit : Sym2 (Fin n₀) → Bool,
+      (∀ e, e ∈ H.edgeSet → t₁ e = t₀ e ⊕ flipBit e) := ...
+```
+
+**Proof sketch (Q2.A.3b.ii).** Compose the per-vertex
+permutations from Q2.A.3b.i across each edge gadget; the
+resulting parity-difference is the flip bit. ~70 LOC.
+
+**Q2.A.3b.iii — Cycle-closure constraint.**
+
+The deepest algebraic step. For any cycle `C` in H, the sum
+`Σ_{e ∈ C} flipBit e (in ZMod 2)` equals zero — because
+walking around a closed cycle, the per-vertex
+re-labellings must return to the original.
+
+```lean
+/-- The flipBit function vanishes on every cycle of H (mod 2). -/
+theorem cfi_iso_flipBit_zero_on_cycles
+    (φ : cfiGraph H edgeIndex t₀ ≃g cfiGraph H edgeIndex t₁)
+    (flipBit : Sym2 (Fin n₀) → Bool)
+    (h_flip : ∀ e, e ∈ H.edgeSet → t₁ e = t₀ e ⊕ flipBit e)
+    (C : H.Walk v v) (hC : C.IsCycle) :
+    (C.edges.foldl
+      (fun acc e => acc ⊕ flipBit (Sym2.mk e))
+      false) = false := ...
+```
+
+**Proof sketch (Q2.A.3b.iii).** Induction on the cycle
+length. The base case is trivial; the inductive step uses
+the per-vertex parity-preservation property at the cycle's
+shared vertex to show the XOR-accumulator returns to its
+initial value. The key combinatorial identity is that the
+sum of "flip bits" around a closed walk equals the change
+in vertex-labelling state, which vanishes on cycles. ~80
+LOC.
+
+**This is the load-bearing combinatorial step**, and the
+sub-unit most likely to require staging as a research-scope
+`Prop`-valued hypothesis if the formalisation budget
+overruns.
+
+**Q2.A.3b.iv — Cycle-space membership.**
+
+By definition, `cycleSpace H` is the F₂-subspace of edge
+indicators that vanishes on all cycle-edge sums. Q2.A.3b.iii
+shows that `flipBit` viewed as an F₂-edge-vector satisfies
+this; therefore `flipBit ∈ cycleSpace H`.
+
+```lean
+theorem flipBit_mem_cycleSpace
+    (flipBit : Sym2 (Fin n₀) → Bool)
+    (h_cycles : ∀ {v} (C : H.Walk v v), C.IsCycle →
+       (C.edges.foldl
+         (fun acc e => acc ⊕ flipBit (Sym2.mk e))
+         false) = false) :
+    (fun e => if flipBit e then (1 : ZMod 2) else 0) ∈
+      cycleSpace H := ...
+```
+
+**Proof sketch (Q2.A.3b.iv).** Direct unfolding of
+`cycleSpace` definition (Q2.A.3 reverse direction provides
+this); concludes via Q2.A.3b.iii. ~50 LOC.
+
+**Q2.A.3b.v — Headline composition.**
+
+Compose Q2.A.3b.i–.iv into the forward direction:
+
+```lean
+theorem cfi_iso_implies_twist_diff_in_cycle_space
+    (φ : cfiGraph H edgeIndex t₀ ≃g cfiGraph H edgeIndex t₁) :
+    (fun e => (t₀ e).xor (t₁ e) ∧ True
+              -- toggled-edge indicator
+              |> coerce_to_ZMod2)
+      ∈ cycleSpace H := by
+  obtain ⟨flipBit, h_flip⟩ := cfi_iso_edge_flipBit φ
+  have h_cycles := cfi_iso_flipBit_zero_on_cycles φ flipBit h_flip
+  have h_mem := flipBit_mem_cycleSpace flipBit (by ...)
+  -- relate (t₀ ⊕ t₁) to flipBit via h_flip
+  ...
+```
+
+**LOC:** ~30. **Risk:** Low (mechanical composition).
+
+**Q2.B.1.a — `liftedSigmaTriple` helper.**
+
+The existing `liftedSigma` (`Hardness/GrochowQiao.lean:135`)
+lifts a permutation `σ : Equiv.Perm (Fin m)` to
+`liftedSigma m σ : Equiv.Perm (Fin (dimGQ m))` acting on
+the slot space. To use it inside the GL³ tensor action, we
+need a triple `(P, P, P)` of matrices, all equal to the
+permutation matrix of `liftedSigma m σ`:
+
+```lean
+noncomputable def liftedSigmaTriple (m : ℕ)
+    (σ : Equiv.Perm (Fin m)) :
+    Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ ×
+    Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ ×
+    Matrix (Fin (dimGQ m)) (Fin (dimGQ m)) ℚ :=
+  let P := (liftedSigma m σ).toMatrix
+  (P, P, P)
+```
+
+**LOC:** ~30. **Risk:** Low (one definition, Mathlib's
+`Equiv.Perm.toMatrix`).
+
+**Q2.B.1.b — `grochowQiaoOrbitEncoder` lift.**
+
+Wrap `grochowQiaoEncode` into the `OrbitPreservingEncoding`
+type from `Hardness/Encoding.lean`:
+
+```lean
+def grochowQiaoOrbitEncoder (n : ℕ) :
+    OrbitPreservingEncoding
+      (Equiv.Perm (Fin n))
+      (Fin n → Fin n → Bool)
+      ((Matrix (Fin (dimGQ n)) (Fin (dimGQ n)) ℚ)³)
+      (Tensor3 (dimGQ n) ℚ) where
+  encode := grochowQiaoEncode n
+  liftGroup := liftedSigmaTriple n
+  liftGroup_one := /- from liftedSigma_one (line 137) -/
+  liftGroup_mul := /- from liftedSigma_mul (existing helper) -/
+  encode_equivariant := /- by Q2.B.1.c -/
+```
+
+**LOC:** ~100. **Risk:** Med (the `liftGroup_one` /
+`liftGroup_mul` discharges depend on existing lemmas;
+verify these are exposed).
+
+**Q2.B.1.c — `grochowQiaoOrbitEncoder_equivariant`.**
+
+The orbit-equivariance theorem: applying the encoder after
+the S_n action equals applying the encoder then the GL³
+action.
+
+```lean
+theorem grochowQiaoOrbitEncoder_equivariant {n : ℕ}
+    (σ : Equiv.Perm (Fin n)) (adj : Fin n → Fin n → Bool) :
+    grochowQiaoEncode n (permuteAdj σ adj) =
+      (liftedSigmaTriple n σ) • (grochowQiaoEncode n adj) := ...
+```
+
+**Proof sketch.**
+
+1. Unfold `grochowQiaoEncode` and `permuteAdj`.
+2. Expand the GL³ tensor action via
+   `tensorContract` (`Hardness/TensorAction.lean:109`).
+3. The key identity: `grochowQiaoEncode n adj (i, j, k) =
+   grochowQiaoEncode n (permuteAdj σ adj) (liftedSigma σ i,
+   liftedSigma σ j, liftedSigma σ k)`. This is the
+   *equivariance identity for the encoder*, which the R-TI
+   Phase 3 closure delivers (or stages via `h_research`).
+4. Apply `Finset.sum_bij` with `liftedSigma σ` as the
+   bijection.
+
+**LOC:** ~200. **Risk:** Med (depends on R-TI Phase 3
+content; if `h_research` persists, this theorem inherits the
+hypothesis).
+
+**Mathlib API reuse.** `Finset.sum_bij`,
+`Matrix.permutationMatrix_smul_eq_compose`,
+`tensorContract` from `Hardness/TensorAction.lean:109`.
+
+**Q2.B.1.d — Reduction theorem.**
+
+```lean
+theorem grochowQiao_concreteTensorOIA_implies_concreteGIOIA
+    {n : ℕ} (adj₀ adj₁ : Fin n → Fin n → Bool) {ε : ℝ}
+    (h_tensor : ConcreteTensorOIA
+                  (grochowQiaoEncode n adj₀)
+                  (grochowQiaoEncode n adj₁)
+                  ε) :
+    ConcreteGIOIA adj₀ adj₁ ε := by
+  intro A_GI  -- a GIOIA adversary
+  -- Build the corresponding TensorOIA adversary via encoder
+  -- post-composition. Use Q2.B.1.c to transfer the orbit
+  -- distribution; then h_tensor bounds the advantage by ε.
+  ...
+```
+
+**LOC:** ~70. **Risk:** Low (the construction is the
+"adversary lift" pattern, parallel to Q1.6.c).
+
+### 4.6.2 Pre-flight checks for W-Q2
+
+Before starting any W-Q2 work unit:
+
+1. **R-TI Phase 3 status.** Verify the in-flight
+   `docs/planning/AUDIT_2026-04-28_PHASE_3_PROP_DISCHARGE_PLAN.md`
+   has either (a) landed an unconditional
+   `grochowQiao_isInhabitedKarpReduction`, or (b)
+   explicitly committed to the carry-over `h_research`
+   hypothesis. W-Q2.B.1.c inherits this choice.
+2. **Mathlib SimpleGraph readiness.** Run
+   `lake build Mathlib.Combinatorics.SimpleGraph.Basic
+   Mathlib.Combinatorics.SimpleGraph.Connectivity`
+   to confirm the SimpleGraph subtree builds clean (used
+   by W-Q2.A's CFI graph type).
+3. **`Sym2` decidability.** Verify
+   `DecidableEq (Sym2 (Fin n₀))` resolves in the build
+   environment (it does at the project Mathlib pin; the
+   pre-flight check ensures we're not surprised).
+4. **CycleSpace prior art.** Search Mathlib for an existing
+   `SimpleGraph.cycleSpace` definition (none exists at the
+   pinned commit); confirm Q2.A.3 is novel.
+5. **Audit-script slot reservation.** Add a §15.27 stub
+   header in `scripts/audit_phase_16.lean`.
 
 ### 4.7 Cross-cutting with W-Q5
 
 Q2.B introduces non-trivial `ConcreteTensorOIA` content (the
-`grochowQiao_giOIA_implies_concreteTensorOIA` reduction). Every
+`grochowQiao_concreteTensorOIA_implies_concreteGIOIA` reduction). Every
 caller who lands a non-trivial ε < 1 instantiation of this
 reduction must satisfy W-Q5's `TensorOIAParameterReview` carrier
 (§7). The cross-reference is mechanically enforced by the
@@ -1087,7 +1670,7 @@ W-Q2 closes when **all** of the following are demonstrably true:
 2. `cfi_hardness_implies_concreteGIOIA_eps_lt_one` is declared
    and proved (modulo Q2.A.3b conditional carry-over, if
    staged).
-3. `grochowQiao_giOIA_implies_concreteTensorOIA` is declared
+3. `grochowQiao_concreteTensorOIA_implies_concreteGIOIA` is declared
    and proved (modulo R-TI Phase 3 carry-over, if staged).
 4. `exists_concreteHardnessChain_with_eps_lt_one` exhibits a
    *symbolic* ε < 1 inhabitation (the ε is left as a variable;
@@ -1654,19 +2237,265 @@ escalating to a parameter-tuning error.
 | Q4.A.1 | `orbcrypt_paut_study.g` GAP script | GAP | 350 | Low | — |
 | Q4.A.2 | Run study, produce CSV (`orbcrypt_paut_study.csv`) | Data | — | Med (result-dependent) | Q4.A.1 |
 | Q4.A.3 | `docs/QC_PAUT_DISTRIBUTION.md` analysis document | Doc | 500 | Low | Q4.A.2 |
-| Q4.B.1 | `KeyMgmt/StructuralFence.lean` — predicates + decidability | Lean def | 250 | Low | — |
-| Q4.B.2 | Necessity theorem under `ShorAbelianHiddenAttack` | Lean thm | 200 | Med | Q4.B.1 |
-| Q4.B.3 | `HGOEKeyExpansion` structurally_non_abelian field update | Lean def | 100 | Low | Q4.B.1 |
+| Q4.B.1.a | `IsStructurallyNonAbelian` definition | Lean def | 80 | Low | — |
+| Q4.B.1.b | `IsStructurallyNonAbelian` decidability instance | Lean inst | 80 | Med | Q4.B.1.a |
+| Q4.B.1.c | Equivalence with not-abelian (`_of_pos_threshold_implies_not_abelian`) | Lean thm | 50 | Low | Q4.B.1.a |
+| Q4.B.1.d | Threshold monotonicity + sanity lemmas | Lean thm | 40 | Low | Q4.B.1.a |
+| Q4.B.2.a | `ShorAbelianHiddenAttack` research-scope predicate | Lean def | 60 | Low | — |
+| Q4.B.2.b | `abelian_PAut_implies_oia_break_under_shorAbelianHidden` | Lean thm | 100 | Med | Q4.B.2.a, Q4.B.1.c |
+| Q4.B.2.c | Contrapositive `concreteOIA_lt_one_implies_PAut_not_abelian` | Lean thm | 40 | Low | Q4.B.2.b |
+| Q4.B.3 | `HGOEKeyExpansion` structurally_non_abelian field update | Lean def | 100 | Low | Q4.B.1.a |
 | Q4.B.4 | Update existing L1–L7 instances with concrete witnesses | Lean def | 80 | Low | Q4.B.3, Q4.C.2 |
-| Q4.C.1 | `orbcrypt_keygen.g` Stage 2.5 update | GAP | 150 | Low | Q4.B.1 |
+| Q4.B.5 | `structurally_non_abelian_yields_orbit_distinct_pairs` (W-Q1 bridge) | Lean thm | 60 | Med | Q4.B.1.c |
+| Q4.C.1 | `orbcrypt_keygen.g` Stage 2.5 update | GAP | 150 | Low | Q4.B.1.a |
 | Q4.C.2 | `orbcrypt_params.g` per-level threshold update | GAP | 50 | Low | Q4.A.3 |
 | Q4.D.1 | `docs/PARAMETERS.md` §4 update — structural fence row | Doc | 80 | Low | Q4.A.3 |
 | Q4.D.2 | `docs/DEVELOPMENT.md` §6.2 Stage 2.5 insertion | Doc | 50 | Low | Q4.C.1 |
-| Q4.D.3 | `docs/HARDNESS_ANALYSIS.md` §4.2 cross-reference | Doc | 30 | Low | Q4.B.2 |
-| Q4.D.4 | `docs/API_SURFACE.md` headline row for `concreteOIA_lt_one_implies_PAut_not_abelian` | Doc | 20 | Low | Q4.B.2 |
-| Q4.E.1 | Audit script § 15.29 entries | Lean script | 50 | Low | Q4.B.2 |
+| Q4.D.3 | `docs/HARDNESS_ANALYSIS.md` §4.2 cross-reference | Doc | 30 | Low | Q4.B.2.c |
+| Q4.D.4 | `docs/API_SURFACE.md` headline row for `concreteOIA_lt_one_implies_PAut_not_abelian` | Doc | 20 | Low | Q4.B.2.c |
+| Q4.E.1 | Audit script § 15.29 entries | Lean script | 50 | Low | Q4.B.2.c |
 | Q4.E.2 | CI gate #7 (GAP-Lean) test-vector regeneration | CI | — | Low | Q4.B.4 |
-| **Q4 total** | | | **~1860** | | |
+| **Q4 total** | | | **~1920** | | |
+
+### 6.6.1 Per-work-unit detail and implementation sketches
+
+**Q4.B.1.a — `IsStructurallyNonAbelian` definition.**
+
+The predicate captures "the commutator subgroup is large
+enough relative to the parent group" — a quantitative
+non-abelianness measure. The standard formula is
+`|[G, G]| / |G| ≥ θ` for a threshold parameter `θ ∈ (0, 1] ⊆ ℚ`.
+
+```lean
+/-- A finite subgroup is structurally non-abelian at
+    threshold θ if its commutator subgroup occupies at least
+    fraction θ of the parent. Threshold parameterised by ℚ
+    to keep the predicate computable / decidable. -/
+def IsStructurallyNonAbelian
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n))) (θ : ℚ)
+    [Fintype G] [Fintype ↥(commutator G)] : Prop :=
+  θ.num.toNat * (Fintype.card G) ≤
+    θ.den * (Fintype.card ↥(commutator G))
+```
+
+**Note on the rational-threshold encoding.** Using `ℚ`
+keeps the predicate decidable; the natural-number
+arithmetic on the integer numerator / denominator avoids
+`Real.lt`'s undecidability and lets the GAP-side fence
+output be type-checked at compile time. The conversion
+`θ.num.toNat` is safe because the fence's threshold is
+always `> 0`.
+
+**LOC:** ~80. **DoD checklist.**
+
+- [ ] Definition declared and typechecked.
+- [ ] Both `Fintype` instance assumptions wired correctly
+      (the `commutator G` Fintype derives from `Fintype G`
+      via `Subgroup.fintype` in Mathlib).
+- [ ] A unit test: `IsStructurallyNonAbelian S₃ (1/4 : ℚ)`
+      decides `True` (S₃ has commutator A₃ of index 2; ratio
+      1/2 ≥ 1/4).
+
+**Mathlib API reuse.** `commutator`, `Subgroup.fintype`,
+`Fintype.card`, `Rat.num`, `Rat.den`.
+
+**Q4.B.1.b — Decidability instance.**
+
+The predicate's truth depends only on two natural-number
+cardinalities and a rational threshold; the Lean inequality
+is between ℕ-products, hence decidable:
+
+```lean
+instance decidableIsStructurallyNonAbelian
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n)))
+    [Fintype G] [DecidablePred (· ∈ commutator G)]
+    [Fintype ↥(commutator G)]
+    (θ : ℚ) :
+    Decidable (IsStructurallyNonAbelian G θ) :=
+  Nat.decLe _ _
+```
+
+**LOC:** ~80 (includes the `DecidablePred (· ∈ commutator G)`
+plumbing, which requires deriving from `DecidablePred (· ∈ G)`
+via `commutator`'s definition).
+
+**Risk: Med.** The `commutator` subgroup's decidable
+membership is non-trivial — it requires deciding whether an
+element is a product of commutators. For `Equiv.Perm (Fin n)`
+with small `n`, `decide` suffices via brute enumeration; for
+production `n ≥ 256`, decidability is type-class-only (not
+runtime-tractable). The instance is therefore used solely for
+Lean elaboration; runtime structural fences live in GAP.
+
+**Q4.B.1.c — Equivalence with not-abelian.**
+
+```lean
+theorem isStructurallyNonAbelian_of_pos_threshold_implies_not_abelian
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n)))
+    [Fintype G] [Fintype ↥(commutator G)]
+    {θ : ℚ} (hθ_pos : 0 < θ)
+    (h : IsStructurallyNonAbelian G θ) :
+    ¬ ∀ a b ∈ G, a * b = b * a := ...
+```
+
+**Proof sketch.**
+
+1. Suppose for contradiction that G is abelian.
+2. Then `commutator G = ⊥`, so `Fintype.card ↥(commutator G) = 1`.
+3. Substituting in the IsStructurallyNonAbelian inequality:
+   `θ.num.toNat * |G| ≤ θ.den * 1`, i.e., `|G| ≤ θ.den / θ.num`.
+4. For `|G| ≥ 2` (true unless G is trivial, which contradicts
+   `0 < θ`), this fails.
+5. Contradiction.
+
+**LOC:** ~50. **DoD checklist.**
+
+- [ ] Theorem proved without `sorry`.
+- [ ] `#print axioms` reports the canonical triple.
+- [ ] Unit test on `S₃` and `A_n` for small `n`.
+
+**Q4.B.1.d — Threshold monotonicity + sanity.**
+
+```lean
+/-- If structurally non-abelian at θ, then at any smaller
+    θ' ≤ θ. -/
+theorem isStructurallyNonAbelian_mono
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n)))
+    [Fintype G] [Fintype ↥(commutator G)]
+    {θ θ' : ℚ} (hle : θ' ≤ θ) (hpos : 0 < θ') :
+    IsStructurallyNonAbelian G θ → IsStructurallyNonAbelian G θ' := ...
+
+/-- The trivial threshold θ = 0 is always satisfied (vacuously). -/
+theorem isStructurallyNonAbelian_zero
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n)))
+    [Fintype G] [Fintype ↥(commutator G)] :
+    IsStructurallyNonAbelian G 0 := ...
+```
+
+**LOC:** ~40. **Risk:** Low.
+
+**Q4.B.2.a — `ShorAbelianHiddenAttack` research-scope predicate.**
+
+The predicate captures "Shor's algorithm on abelian HSP gives
+an OIA-break at the relevant ε" as a research-scope
+hypothesis. The Lean shape is the **negation** of OIA at the
+specified ε — i.e., the predicate asserts there exists an
+adversary with advantage > ε.
+
+```lean
+/-- Research-scope predicate: on an abelian permutation
+    subgroup G, Shor's algorithm on the abelian HSP recovers
+    G with polynomially many quantum queries and breaks the
+    associated OIA-scheme indistinguishability at advantage
+    1 - ε (i.e., negates ConcreteOIA at the same ε).
+
+    This is a *meta-mathematical* assumption — the Lean
+    formalisation does not contain a quantum-computation
+    framework, so the assumption is encoded as a Prop the
+    consumer of the necessity theorem supplies.
+
+    Catalogued as research milestone R-Q3.1
+    (Shor-abelian-hidden formalisation). -/
+def ShorAbelianHiddenAttack
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n))) (ε : ℝ) : Prop :=
+  ∀ (M : Type*) [Fintype M] [DecidableEq M]
+    (reps : M → Bitstring n)
+    (_ : ∀ a b ∈ G, a * b = b * a),
+    ¬ ConcreteOIA (hgoeScheme reps) ε
+```
+
+**LOC:** ~60. **Note.** The predicate quantifies over all
+`(M, reps)` pairs because Shor's algorithm break is uniform
+across any orbit-encryption scheme using `G` as the secret
+group — the abelian-HSP recovery yields `G` itself, after
+which orbit-membership is poly-time.
+
+**Q4.B.2.b — Forward necessity theorem.**
+
+```lean
+theorem abelian_PAut_implies_oia_break_under_shorAbelianHidden
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n))) {ε : ℝ}
+    (h_abelian : ∀ a b ∈ G, a * b = b * a)
+    (h_shor : ShorAbelianHiddenAttack G ε)
+    {M : Type*} [Fintype M] [DecidableEq M]
+    (reps : M → Bitstring n) :
+    ¬ ConcreteOIA (hgoeScheme reps) ε := by
+  exact h_shor M reps h_abelian
+```
+
+**Proof.** Direct application of `h_shor` to the abelian
+hypothesis. ~100 LOC accounts for the (M, reps) parameter
+plumbing and the `hgoeScheme` import / unfold; the proof
+core is the single `exact` line above.
+
+**Q4.B.2.c — Contrapositive.**
+
+```lean
+theorem concreteOIA_lt_one_implies_PAut_not_abelian
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n))) {ε : ℝ}
+    (h_shor : ShorAbelianHiddenAttack G ε)
+    {M : Type*} [Fintype M] [DecidableEq M]
+    (reps : M → Bitstring n)
+    (h_oia : ConcreteOIA (hgoeScheme reps) ε)
+    (_ : ε < 1) :
+    ¬ ∀ a b ∈ G, a * b = b * a := by
+  intro h_abelian
+  exact (abelian_PAut_implies_oia_break_under_shorAbelianHidden
+           G h_abelian h_shor reps) h_oia
+```
+
+**LOC:** ~40. **Risk:** Low.
+
+**Q4.B.5 — W-Q1 cross-cutting bridge.**
+
+```lean
+theorem structurally_non_abelian_yields_orbit_distinct_pairs
+    {n : ℕ} (G : Subgroup (Equiv.Perm (Fin n))) {θ : ℚ}
+    [Fintype G] [Fintype ↥(commutator G)]
+    (hθ : 0 < θ) (h : IsStructurallyNonAbelian G θ) :
+    ∃ x : Bitstring n,
+      MulAction.orbit (⊥ : Subgroup (Equiv.Perm (Fin n))) x ≠
+        MulAction.orbit G x := ...
+```
+
+**Proof sketch.**
+
+1. By Q4.B.1.c, G is not abelian.
+2. Therefore there exist `a, b ∈ G` with `[a, b] ≠ 1`.
+3. The commutator `[a, b]` is a non-identity permutation in
+   `Equiv.Perm (Fin n)`, so it moves some index `i ∈ Fin n`.
+4. Construct `x : Bitstring n` as the indicator of `i`'s
+   position vs the position `[a, b](i)`. The trivial-orbit
+   `{x}` and the G-orbit `G · x ⊇ {x, [a, b] · x}` differ.
+5. Conclude with `Set.ext` distinguishing the two orbits.
+
+**LOC:** ~60. **Risk:** Med (the construction of `x`
+requires care to ensure the commutator's effect is observable
+in the bitstring).
+
+**Mathlib API reuse.** `Subgroup.commutator`,
+`Equiv.Perm.ne_one_iff_exists_apply_ne`, `MulAction.orbit`,
+`Set.ext`.
+
+### 6.6.2 Pre-flight checks for W-Q4
+
+1. **GAP install ready.** Confirm `gap -q -b -c 'Print(Size(SymmetricGroup(5)));'`
+   returns `120` (validates `apt-get install gap`).
+2. **`PermutationAutomorphismGroup` available.** GAP query
+   `gap -q -b -c 'Print(PermutationAutomorphismGroup);'`
+   should return a function reference; if missing, load
+   the `guava` GAP package.
+3. **`commutator` API in Mathlib.** Verify
+   `Mathlib.GroupTheory.Commutator.Basic` is reachable from
+   `Orbcrypt/KeyMgmt/SeedKey.lean`'s import graph (it is, via
+   `Hardness/CodeEquivalence.lean`'s `PAutSubgroup`).
+4. **Existing L1–L7 instance shapes.** Read
+   `Orbcrypt/KeyMgmt/SeedKey.lean` for the current
+   `HGOEKeyExpansion` field list before Q4.B.3's field
+   addition.
+5. **GAP cryptanalysis hardware.** Allocate the dedicated
+   workstation for Q4.A.2 (12–24h wall-clock at L7); the
+   PAut study cannot run in CI.
 
 ### 6.7 Cross-cutting with W-Q1
 
@@ -2568,6 +3397,239 @@ checkpoint:
   any new `ConcreteTensorOIA` instances landed since
   workstream completion.
 
+### 13.5 Per-PR boundary recommendation
+
+The work-units decompose into natural PR groupings that each
+satisfy three properties: (i) each PR's content is internally
+coherent (the units within build on each other), (ii) every
+PR independently passes CI gates #1–#9, (iii) each PR is
+sized for human review (target: 400–800 LOC of new Lean per
+PR, or 1500 lines of doc + GAP). The proposed PR sequence:
+
+**W-Q1 PRs (3 PRs total).**
+
+| PR | Work units | LOC (Lean) | Description |
+|----|------------|----------:|-------------|
+| Q1-PR-1 | Q1.1, Q1.2, Q1.3 | 450 | HSP-side definitions: `HSPDecisionalInstance`, `HSPDistinguisher`, `ConcreteHSPSn` + sanity lemmas. Lands `Orbcrypt/Hardness/HSPSubgroup.lean` complete. |
+| Q1-PR-2 | Q1.4, Q1.5.a, Q1.5.b, Q1.6.a–d, Q1.7, Q1.8 | 750 | Reduction: bundle + encoder + algorithm + advantage transfer + contrapositive + ε=1 witness. Lands `Orbcrypt/Hardness/HSPToOIA.lean` complete. |
+| Q1-PR-3 | Q1.9, Q1.10, Q1.11, Q1.12 | 290 (Lean 140 + doc 100 + audit-script 50) | Multi-query corollary in `Crypto/CompSecurity.lean`, audit-script extension, canonical-doc updates. |
+
+**W-Q2 PRs (5 PRs total).**
+
+| PR | Work units | LOC | Description |
+|----|------------|----:|-------------|
+| Q2-PR-1 | Q2.A.1, Q2.A.2 | 650 | CFI data type + cardinality lemmas. Lands `CFI/Basic.lean`, `CFI/CardinalityLemmas.lean`. |
+| Q2-PR-2 | Q2.A.3a | 250 | CFI reverse direction (constructive iso from twist-diff). Lands `CFI/CycleSpace.lean` reverse half. |
+| Q2-PR-3 | Q2.A.3b.i–v | 310 | CFI forward direction (the highest-risk piece). Each sub-unit can land as a separate commit within the PR. |
+| Q2-PR-4 | Q2.A.4, Q2.A.5.a–c | 550 | CFI hardness predicate + OIA encoder + headline reduction. Lands `CFI/Hardness.lean`, `CFI/OIAEncoder.lean`. |
+| Q2-PR-5 | Q2.B.1.a–d, Q2.B.2.a, Q2.B.2.b, Q2.C.1, Q2.C.2, Q2.D.1–4 | 690 + docs | GQ-OIA leg + chain composition + audit-script + doc parity. Lands `GrochowQiaoOIA.lean`, `CFItoGrochowQiaoChain.lean`, additive lemmas in `Hardness/Reductions.lean`. |
+
+**W-Q3 PRs (2 PRs total).**
+
+| PR | Work units | LOC | Description |
+|----|------------|----:|-------------|
+| Q3-PR-1 | Q3.1, Q3.2, Q3.3 | 550 | Q2 stub framework: `Q2Adversary`, `IsQ2Secure`, classical embedding, research-scope predicate. Lands `Crypto/Q2Game.lean`. |
+| Q3-PR-2 | Q3.4, Q3.5, Q3.6, Q3.7, Q3.8, Q3.9, Q3.10, Q3.11, Q3.12 | 250 Lean + 1130 doc | HGOE Q2-conditional theorem + `docs/Q2_MODEL_ANALYSIS.md` + canonical-doc cross-references + R-Q3 catalogue entry + audit-script. |
+
+**W-Q4 PRs (4 PRs total).**
+
+| PR | Work units | LOC | Description |
+|----|------------|----:|-------------|
+| Q4-PR-1 | Q4.A.1, Q4.A.2, Q4.A.3 | 350 GAP + 500 doc | Empirical-study GAP script + study execution + analysis document. Independent of the Lean leg. |
+| Q4-PR-2 | Q4.B.1.a–d, Q4.B.5 | 310 | Lean structural-fence predicates + W-Q1 bridge lemma. Lands `KeyMgmt/StructuralFence.lean`. |
+| Q4-PR-3 | Q4.B.2.a–c, Q4.B.3, Q4.B.4 | 380 | Necessity theorem + `HGOEKeyExpansion` field + L1–L7 instance updates. |
+| Q4-PR-4 | Q4.C.1, Q4.C.2, Q4.D.1–4, Q4.E.1, Q4.E.2 | 200 GAP + 180 doc + 50 Lean | GAP keygen pipeline update + canonical-doc parity + audit-script + test-vector regeneration. |
+
+**W-Q5 PRs (2 PRs total).**
+
+| PR | Work units | LOC | Description |
+|----|------------|----:|-------------|
+| Q5-PR-1 | Q5.1, Q5.8 | 180 | `Hardness/TensorOIAParameterFence.lean` carrier + audit-script entry. |
+| Q5-PR-2 | Q5.2, Q5.3, Q5.4, Q5.5, Q5.6, Q5.7 | 100 Py + 30 CI + 530 doc | Discipline document + CI script + workflow wiring + doc-parity. |
+
+**Total PRs: 16.** All PRs are sized within the 800-LOC
+human-review target. Risk-High sub-units (Q2.A.3b.iii) live
+inside a single PR (Q2-PR-3) but commit as separate units
+inside the PR's commit history, preserving granular
+rollback.
+
+**PR-level dependencies.** Within a workstream PRs are
+strictly sequential. Across workstreams the sequencing is
+per §10.2: Q1-PR-* and Q4-PR-1 / Q4-PR-2 / Q4-PR-3 can
+launch in parallel; Q2-PR-* and Q5-PR-* form the
+release-blocking Path A; Q3-PR-* and Q4-PR-4 are
+parallel-but-late.
+
+### 13.6 Per-module build-verification commands
+
+Every PR's CI run executes `lake build` (the default
+target) plus the gates #1–#9. In addition, each new Lean
+module carries an explicit per-module build command that
+the author must run locally before pushing, per `CLAUDE.md`
+§ "Module build verification (mandatory)". The canonical
+commands per workstream:
+
+**W-Q1.**
+
+```bash
+source ~/.elan/env
+lake build Orbcrypt.Hardness.HSPSubgroup
+lake build Orbcrypt.Hardness.HSPToOIA
+lake build Orbcrypt.Crypto.CompSecurity   # touched by Q1.9
+```
+
+**W-Q2.**
+
+```bash
+source ~/.elan/env
+lake build Orbcrypt.Hardness.CFI.Basic
+lake build Orbcrypt.Hardness.CFI.CardinalityLemmas
+lake build Orbcrypt.Hardness.CFI.CycleSpace
+lake build Orbcrypt.Hardness.CFI.Hardness
+lake build Orbcrypt.Hardness.CFI.OIAEncoder
+lake build Orbcrypt.Hardness.GrochowQiaoOIA
+lake build Orbcrypt.Hardness.CFItoGrochowQiaoChain
+lake build Orbcrypt.Hardness.Reductions   # touched by Q2.C.1
+```
+
+**W-Q3.**
+
+```bash
+source ~/.elan/env
+lake build Orbcrypt.Crypto.Q2Game
+```
+
+**W-Q4.**
+
+```bash
+source ~/.elan/env
+lake build Orbcrypt.KeyMgmt.StructuralFence
+lake build Orbcrypt.KeyMgmt.SeedKey   # touched by Q4.B.3
+```
+
+**W-Q5.**
+
+```bash
+source ~/.elan/env
+lake build Orbcrypt.Hardness.TensorOIAParameterFence
+```
+
+**Cross-workstream.** After every workstream completes,
+the full project must build via `lake build` (default
+target), confirming the new modules are reachable from
+the root `Orbcrypt.lean` import file.
+
+```bash
+source ~/.elan/env
+lake build   # default target, validates root import graph
+```
+
+---
+
+## 14. Best-practices alignment audit
+
+Every workstream of this plan must satisfy the project's
+absolute policies (`CLAUDE.md` § Absolute policies) and
+conventions (`CLAUDE.md` § Conventions). This section is the
+checklist confirming alignment.
+
+### 14.1 Zero-`axiom` discipline
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| No new `axiom` declarations | ✅ | All five workstreams introduce `Prop`-valued definitions only. Verified in §8.1. |
+| `#print axioms` triple for every new headline theorem | ✅ | 27 new audit-script entries planned across §§15.26–15.30. Verified in §8.4. |
+| Probabilistic chain remains the sole security chain | ✅ | No new deterministic-chain content; W-Q1's reduction lives at the probabilistic level (`ConcreteOIA`, `ConcreteHSPSn`). |
+
+### 14.2 Naming hygiene
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| No process-marker tokens in declaration names | ✅ | Appendix C lists 44 new identifiers; all are content-named. Pre-clearance grep recipe in §8.2. |
+| Stable plan IDs in `/-- … -/` docstrings only | ✅ | `W-Q1` … `W-Q5`, `QH-01` … `QH-05`, `R-Q3` appear in docstrings, changelog, planning docs — never in identifier names. |
+| File names content-describing | ✅ | `HSPSubgroup.lean`, `CFI/Basic.lean`, `Q2Game.lean`, `StructuralFence.lean`, `TensorOIAParameterFence.lean` — all content-named. |
+
+### 14.3 Release-messaging discipline
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| Status classification per headline theorem | ✅ | 9 new headline rows in `docs/API_SURFACE.md`; each carries explicit Status (§10.3). |
+| ε = 1 disclosure | ✅ | W-Q1's `hsp_to_oia_chain_at_one_exists` and W-Q2's `cfi_chain_at_one_exists` are Standalone-at-ε=1; both noted explicitly. |
+| `Conditional` citation hypothesis disclosure | ✅ | W-Q1 (`ConcreteHSPSn`), W-Q2 (`CFIHardness`, `GQTensorOIAFromGIOIA`), W-Q3 (`CosetStateFourierResistance`), W-Q4 (`ShorAbelianHiddenAttack`) — each conditional explicitly named. |
+| Scaffolding citations forbidden | ✅ | No new content that re-introduces deterministic-chain scaffolding shapes. |
+
+### 14.4 PR-authoring discipline
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| No session URLs in PR bodies | ✅ | Plan pre-clearance grep §8.2 catches; PR creation discipline in §13.5. |
+| Cite audit document + theorem name + file path | ✅ | Each PR template includes the W-Q\* / Q\*.\* references and the canonical-doc paths. |
+| One commit per work unit | ✅ | PR groupings in §13.5 align commits to work-units. |
+| Doc-parity in same PR | ✅ | Q1-PR-3, Q2-PR-5, Q3-PR-2, Q4-PR-4, Q5-PR-2 explicitly bundle canonical-doc updates. |
+
+### 14.5 Build / CI discipline
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| `lake build <Module.Path>` for each new module | ✅ | Each workstream's exit criteria include per-module build verification (§13.6 below). |
+| `lake build` default target unaffected | ✅ | All new modules are imported via `Orbcrypt.lean` updates (one of the work units in each workstream's PR-1 or PR-2). |
+| Eight CI gates remain green | ✅ | Plus the new gate #9 from W-Q5. Verified per workstream exit criteria. |
+
+### 14.6 Mathlib reuse discipline
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| Use Mathlib over re-implementing | ✅ | Each workstream's per-work-unit detail lists Mathlib API reuse. |
+| No `import Mathlib` | ✅ | Plan adds only targeted Mathlib imports (§8.5 enumerates them). |
+| Stay at pinned Mathlib commit | ✅ | No new `require` directives; lake-manifest unchanged. |
+
+### 14.7 Documentation discipline
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| Module docstring on every new `.lean` file | ✅ | Per-PR review checklist (carried over from 2026-04-23 plan §19.4). |
+| Public-def docstring on every new declaration | ✅ | Sample docstrings shown in target-API blocks. |
+| Cross-document updates in same PR | ✅ | §12 maps every doc-touching workstream to its exit criteria. |
+| Byte-identical `CLAUDE.md` / `AGENTS.md` | ✅ | Q5-PR-2 explicitly couples the two updates. |
+
+### 14.8 Vulnerability-reporting alignment
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| Surface CVE-worthy issues immediately | ✅ | The plan's contingency (W-Q4.X, §10.4) is the explicit channel for the only foreseeable surface — Q4.A.2 empirical result revealing keygen weakness. |
+| No silent fixes | ✅ | Every Lean addition lands via reviewable PR; the GAP keygen update (Q4.C.1) is gated by the empirical study (Q4.A.2) being public. |
+
+### 14.9 Background-agent file-change protection
+
+| Policy | Status | Plan compliance |
+|--------|:------:|-----------------|
+| Partition discipline for parallel work | ✅ | §8.8 documents file ownership; §13.5 PR sequencing avoids overlap. |
+| One-way imports for cross-workstream content | ✅ | W-Q1 ↔ W-Q4 bridge is one-way (W-Q4.B.5 → W-Q1.5.b). |
+| No background writes to foreground-edited files | ✅ | Each workstream owns a disjoint file set; shared canonical-doc edits are sequenced per §12. |
+
+### 14.10 Composite check
+
+A single command verifies all of 14.1–14.9 on the integrating
+branch:
+
+```bash
+# Run on every workstream-completion PR.
+source ~/.elan/env && \
+  lake build && \
+  python3 scripts/audit_hypothesis_consumption.py && \
+  lake env lean scripts/audit_phase_16.lean && \
+  python3 scripts/audit_tensor_oia_parameters.py && \
+  git diff --cached -U0 -- '*.lean' \
+    | grep -E '^\+(def|theorem|structure|class|instance|abbrev|lemma|noncomputable)' \
+    | grep -iE 'workstream|\bws[0-9_a-z]*|\bwu[0-9_a-z]*|\bphase[0-9_]|audit|\bf[0-9]{2}\b|\bstep[0-9]|\btmp\b|\btodo\b|\bfixme\b|claude_|session_' \
+    && echo "NAMING-RULE VIOLATION" || echo "Naming-rule clean."
+```
+
+Empty grep output is required for the naming-rule check; all
+other commands must exit 0. This command is added to the
+`docs/planning/AUDIT_2026-05-13_QUANTUM_HARDNESS_FIRMING_PLAN.md`
+review-time toolkit as the canonical pre-merge gate.
+
 ---
 
 ## Appendix A — Finding ↔ workstream cross-reference
@@ -2790,10 +3852,10 @@ example :
 #print axioms Orbcrypt.cfi_chain_at_one_exists
 
 -- 15.27.3 — GQ orbit-equivariance lemma
-#print axioms Orbcrypt.grochowQiaoOrbitEncoding_equivariant
+#print axioms Orbcrypt.grochowQiaoOrbitEncoder_equivariant
 
 -- 15.27.4 — GQ giOIA-to-tensorOIA reduction
-#print axioms Orbcrypt.grochowQiao_giOIA_implies_concreteTensorOIA
+#print axioms Orbcrypt.grochowQiao_concreteTensorOIA_implies_concreteGIOIA
 
 -- 15.27.5 — chained CFI/GQ witness
 #print axioms Orbcrypt.concrete_hardness_chain_at_cfi_grochowQiao
@@ -2880,10 +3942,11 @@ IDs.
 | W-Q2 | `cfiScheme` | `def` | CFI OIA scheme |
 | W-Q2 | `cfi_hardness_implies_concreteGIOIA_eps_lt_one` | `theorem` | CFI conditional ε<1 reduction |
 | W-Q2 | `cfi_chain_at_one_exists` | `theorem` | CFI ε=1 inhabitation |
-| W-Q2 | `grochowQiaoOrbitEncoding` | `def` | GQ OIA encoder |
-| W-Q2 | `grochowQiaoOrbitEncoding_equivariant` | `theorem` | orbit equivariance |
-| W-Q2 | `grochowQiao_giOIA_implies_concreteTensorOIA` | `theorem` | GI-to-TI OIA reduction |
-| W-Q2 | `concrete_hardness_chain_at_cfi_grochowQiao` | `theorem` | chained ε-bound |
+| W-Q2 | `grochowQiaoOrbitEncoder` | `def` | GQ OIA encoder |
+| W-Q2 | `grochowQiaoOrbitEncoder_equivariant` | `theorem` | orbit equivariance |
+| W-Q2 | `grochowQiao_concreteTensorOIA_implies_concreteGIOIA` | `theorem` | TI-hardness ⇒ GI-hardness via GQ encoder (chain-direction) |
+| W-Q2 | `GQTensorOIAFromGIOIA` | `def` | companion reverse-direction hardness predicate |
+| W-Q2 | `concrete_hardness_chain_at_cfi_grochowQiao` | `theorem` | chained ε-bound (CFI + GQ-companion) |
 | W-Q2 | `ind1cpa_advantage_bound_via_cfi` | `theorem` | quantitative IND-1-CPA bound via CFI |
 | W-Q2 | `exists_concreteHardnessChain_with_eps_lt_one` | `theorem` | symbolic ε<1 existence |
 | W-Q3 | `Q2Adversary` | `structure` | Q2 adversary stub |
